@@ -513,11 +513,6 @@ def _resolve_app_context(args: argparse.Namespace) -> tuple[Path, Path, dict[str
     if not isinstance(board, str) or not board:
         raise SystemExit("Unable to determine target board from args or nsx.yml")
     workspace = _workspace_for_app_dir(app_dir)
-    build_dir = (
-        Path(args.build_dir).expanduser().resolve()
-        if getattr(args, "build_dir", None)
-        else _default_build_dir(app_dir, board)
-    )
     return app_dir, workspace, nsx_cfg, app_name, board
 
 
