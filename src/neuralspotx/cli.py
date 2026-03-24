@@ -40,6 +40,7 @@ DEFAULT_SOC_FOR_BOARD = {
 
 DEFAULT_TOOLCHAIN = "arm-none-eabi-gcc"
 DEFAULT_REPO_NAME = "neuralspotx"
+VERBOSE = 0
 
 WEST_MANIFEST_TEMPLATE = """manifest:
   version: "0.13"
@@ -56,6 +57,66 @@ __AMBIQ_PROJECT_BLOCK__  self:
 
 def _run(cmd: list[str], cwd: Path | None = None) -> None:
     subprocess.run(cmd, cwd=str(cwd) if cwd else None, check=True)
+
+
+def _run_capture(cmd: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+    return subprocess.run(
+        cmd,
+        cwd=str(cwd) if cwd else None,
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+
+
+def _print_captured_output(result: subprocess.CompletedProcess[str]) -> None:
+    if result.stdout:
+        print(result.stdout, end="")
+    if result.stderr:
+        print(result.stderr, end="")
+
+
+def _jlink_failure_hint(output: str) -> str | None:
+    lowered = output.lower()
+    if "failed to open dll" in lowered:
+        return (
+            "SEGGER J-Link failed to load its runtime library.\n"
+            "Check that the J-Link tools are installed correctly and can run outside `nsx`."
+        )
+    if "connecting to j-link via usb...failed" in lowered or "cannot connect to j-link" in lowered:
+        return (
+            "SEGGER J-Link could not connect to the probe over USB.\n"
+            "Check the probe connection, power, and that no other tool is holding the J-Link."
+        )
+    if "cannot connect to target" in lowered or "failed to connect to target" in lowered:
+        return (
+            "SEGGER J-Link connected, but could not connect to the target device.\n"
+            "Check target power, SWD wiring, board selection, and reset state."
+        )
+    return None
+
+
+def _format_subprocess_error(exc: subprocess.CalledProcessError, *, context: str) -> str:
+    output_parts: list[str] = []
+    stdout = getattr(exc, "stdout", None)
+    stderr = getattr(exc, "stderr", None)
+    if isinstance(stdout, str) and stdout.strip():
+        output_parts.append(stdout.strip())
+    if isinstance(stderr, str) and stderr.strip():
+        output_parts.append(stderr.strip())
+    combined_output = "\n".join(output_parts)
+
+    hint = _jlink_failure_hint(combined_output)
+    if hint:
+        message = f"{context} failed.\n{hint}"
+        if VERBOSE == 0:
+            message += "\nRe-run with `--verbose` for the full tool output."
+        return message
+
+    message = f"{context} failed with exit code {exc.returncode}."
+    if VERBOSE == 0:
+        message += "\nRe-run with `--verbose` for the full subprocess traceback."
+    return message
 
 
 def _extract_view_command(build_dir: Path, target: str) -> list[str]:
@@ -96,6 +157,26 @@ def _require_tool(name: str) -> None:
         raise SystemExit(f"Required tool not found in PATH: {name}{hint}")
 
 
+def _tool_path(name: str) -> str | None:
+    return shutil.which(name)
+
+
+def _doctor_check(
+    label: str,
+    ok: bool,
+    *,
+    detail: str | None = None,
+    hint: str | None = None,
+) -> bool:
+    status = "OK" if ok else "FAIL"
+    print(f"[{status}] {label}")
+    if detail:
+        print(f"  {detail}")
+    if hint and not ok:
+        print(f"  Hint: {hint}")
+    return ok
+
+
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
 
@@ -119,9 +200,31 @@ def _effective_registry(base_registry: dict[str, Any], nsx_cfg: dict[str, Any]) 
 
     merged.setdefault("projects", {})
     merged.setdefault("modules", {})
-    merged["projects"].update(projects)
-    merged["modules"].update(modules)
+    for name, override in projects.items():
+        if not isinstance(name, str) or not isinstance(override, dict):
+            continue
+        current = merged["projects"].get(name, {})
+        if not isinstance(current, dict):
+            current = {}
+        current.update(override)
+        merged["projects"][name] = current
+    for name, override in modules.items():
+        if not isinstance(name, str) or not isinstance(override, dict):
+            continue
+        current = merged["modules"].get(name, {})
+        if not isinstance(current, dict):
+            current = {}
+        current.update(override)
+        merged["modules"][name] = current
     return merged
+
+
+def _registry_project_entry(registry: dict[str, Any], project_name: str) -> dict[str, Any]:
+    projects = registry.get("projects", {})
+    if not isinstance(projects, dict):
+        return {}
+    entry = projects.get(project_name, {})
+    return entry if isinstance(entry, dict) else {}
 
 
 def _render_west_manifest(
@@ -212,6 +315,63 @@ def _vendored_target_dir(app_dir: Path, module_name: str, metadata: str) -> Path
     return app_dir / _vendored_metadata_relpath(metadata).parent
 
 
+def _metadata_path_relative_to_project(metadata: Path, project_path: str | None) -> Path:
+    if not project_path:
+        return metadata
+    project_parts = Path(project_path).parts
+    metadata_parts = metadata.parts
+    if metadata_parts[: len(project_parts)] == project_parts:
+        remainder = metadata_parts[len(project_parts) :]
+        if remainder:
+            return Path(*remainder)
+    return metadata
+
+
+def _project_checkout_candidates(
+    project_name: str,
+    registry: dict[str, Any],
+    workspace: Path,
+) -> list[Path]:
+    project_entry = _registry_project_entry(registry, project_name)
+    project_path = project_entry.get("path")
+    candidates: list[Path] = []
+
+    local_path = project_entry.get("local_path")
+    if isinstance(local_path, str):
+        candidates.append(Path(local_path).expanduser())
+
+    if isinstance(project_path, str):
+        candidates.append(workspace / project_path)
+
+    if project_name == DEFAULT_REPO_NAME:
+        candidates.append(_repo_root())
+    elif isinstance(project_path, str):
+        repo_name = Path(project_path).name
+        candidates.append(_repo_root().parent / "nsx-modules" / repo_name)
+
+    unique: list[Path] = []
+    for candidate in candidates:
+        resolved = candidate.resolve()
+        if resolved not in unique:
+            unique.append(resolved)
+    return unique
+
+
+def _packaged_metadata_path(metadata: Path) -> Path | None:
+    parts = metadata.parts
+    if len(parts) >= 4 and tuple(parts[:2]) == ("src", "neuralspotx") and parts[2] == "boards":
+        resource = resources.files("neuralspotx").joinpath("boards", *parts[3:])
+    elif len(parts) >= 3 and tuple(parts[:3]) == ("src", "neuralspotx", "cmake"):
+        resource = resources.files("neuralspotx").joinpath("cmake", *parts[3:])
+    else:
+        return None
+
+    with resources.as_file(resource) as resource_path:
+        if resource_path.exists():
+            return resource_path
+    return None
+
+
 def _vendor_module_into_app(
     app_dir: Path,
     module_name: str,
@@ -219,9 +379,20 @@ def _vendor_module_into_app(
     workspace: Path,
 ) -> None:
     entry = registry_entry_for_module(registry, module_name)
-    source_metadata = _module_metadata_path(module_name, entry, workspace)
-    source_dir = source_metadata.parent
+    source_metadata = _module_metadata_path(module_name, entry, registry, workspace)
     destination_dir = _vendored_target_dir(app_dir, module_name, entry.metadata)
+
+    project_entry = _registry_project_entry(registry, entry.project)
+    project_path = project_entry.get("path") if isinstance(project_entry.get("path"), str) else None
+    metadata_rel = _metadata_path_relative_to_project(Path(entry.metadata), project_path)
+
+    source_dir = source_metadata.parent
+    if project_path is not None:
+        for checkout_root in _project_checkout_candidates(entry.project, registry, workspace):
+            candidate_dir = checkout_root / metadata_rel.parent
+            if candidate_dir.exists():
+                source_dir = candidate_dir
+                break
 
     if destination_dir.resolve() == source_dir.resolve():
         return
@@ -338,52 +509,10 @@ def _workspace_for_app_dir(app_dir: Path) -> Path:
     raise SystemExit(f"Unable to determine workspace root from app dir: {app_dir}")
 
 
-def _nsx_repo_candidates(workspace: Path) -> list[Path]:
-    candidates = [
-        workspace / DEFAULT_REPO_NAME,
-        workspace / "modules" / DEFAULT_REPO_NAME,
-        _repo_root(),
-    ]
-    unique: list[Path] = []
-    for candidate in candidates:
-        resolved = candidate.resolve()
-        if resolved not in unique:
-            unique.append(resolved)
-    return unique
-
-
-def _workspace_base_candidates(workspace: Path) -> list[Path]:
-    candidates = [workspace]
-    if workspace.name == DEFAULT_REPO_NAME:
-        candidates.append(workspace.parent)
-    candidates.append(_repo_root().parent)
-    unique: list[Path] = []
-    for candidate in candidates:
-        resolved = candidate.resolve()
-        if resolved not in unique:
-            unique.append(resolved)
-    return unique
-
-
-def _external_metadata_candidates(metadata: Path, workspace: Path) -> list[Path]:
-    parts = metadata.parts
-    candidates: list[Path] = []
-    for base in _workspace_base_candidates(workspace):
-        if len(parts) >= 2 and parts[0] == "modules":
-            candidates.append(base / "nsx-modules" / parts[1] / metadata.name)
-        elif len(parts) >= 3 and tuple(parts[:3]) == ("src", "neuralspotx", "cmake"):
-            candidates.append(_repo_root() / metadata)
-    unique: list[Path] = []
-    for candidate in candidates:
-        resolved = candidate.resolve()
-        if resolved not in unique:
-            unique.append(resolved)
-    return unique
-
-
 def _module_metadata_path(
     module_name: str,
     registry_entry: RegistryModuleEntry,
+    registry: dict[str, Any],
     workspace: Path,
     app_dir: Path | None = None,
 ) -> Path:
@@ -400,30 +529,30 @@ def _module_metadata_path(
             f"absolute path '{metadata}'"
         )
 
-    for nsx_root in _nsx_repo_candidates(workspace):
-        path = nsx_root / metadata
-        if path.exists():
-            return path
+    packaged = _packaged_metadata_path(metadata)
+    if packaged is not None:
+        return packaged
 
-    for candidate in _external_metadata_candidates(metadata, workspace):
+    project_entry = _registry_project_entry(registry, registry_entry.project)
+    project_path = project_entry.get("path") if isinstance(project_entry.get("path"), str) else None
+    metadata_rel = _metadata_path_relative_to_project(metadata, project_path)
+    searched: list[Path] = []
+
+    for checkout_root in _project_checkout_candidates(registry_entry.project, registry, workspace):
+        candidate = checkout_root / metadata_rel
+        searched.append(candidate)
         if candidate.exists():
             return candidate
 
     workspace_path = (workspace / metadata).resolve()
+    searched.append(workspace_path)
     if workspace_path.exists():
         return workspace_path
 
     raise SystemExit(
         f"Unable to locate nsx-module.yaml for module '{module_name}'. "
         f"Searched metadata path '{registry_entry.metadata}' under: "
-        + ", ".join(
-            str(p)
-            for p in [
-                *_nsx_repo_candidates(workspace),
-                *_external_metadata_candidates(metadata, workspace),
-                workspace,
-            ]
-        )
+        + ", ".join(str(p) for p in searched)
     )
 
 
@@ -434,7 +563,7 @@ def _load_module_metadata(
     app_dir: Path | None = None,
 ) -> dict[str, Any]:
     entry = registry_entry_for_module(registry, module_name)
-    metadata_path = _module_metadata_path(module_name, entry, workspace, app_dir=app_dir)
+    metadata_path = _module_metadata_path(module_name, entry, registry, workspace, app_dir=app_dir)
     data = _read_yaml(metadata_path)
     validate_nsx_module_metadata(data, str(metadata_path))
     return data
@@ -755,6 +884,27 @@ def _sync_projects_for_modules(
     _run(["west", "update", *projects], cwd=workspace)
 
 
+def _workspace_has_manifest(workspace: Path) -> bool:
+    return (workspace / "manifest" / "west.yml").exists()
+
+
+def _ensure_workspace_projects_for_modules(
+    workspace: Path,
+    nsx_cfg: dict[str, Any],
+    registry: dict[str, Any],
+    module_names: list[str],
+    *,
+    sync: bool,
+) -> None:
+    if not _workspace_has_manifest(workspace):
+        return
+    temp_cfg = copy.deepcopy(nsx_cfg)
+    _update_nsx_cfg_modules(temp_cfg, module_names, registry)
+    _update_workspace_manifest(workspace, temp_cfg, registry)
+    if sync:
+        _sync_projects_for_modules(workspace, module_names, registry)
+
+
 def _load_app_cfg(app_dir: Path) -> dict[str, Any]:
     cfg_path = app_dir / "nsx.yml"
     if not cfg_path.exists():
@@ -804,8 +954,9 @@ def cmd_init_workspace(args: argparse.Namespace) -> None:
     workspace.mkdir(parents=True, exist_ok=True)
     manifest_dir.mkdir(parents=True, exist_ok=True)
 
-    repo_root = _repo_root()
-    default_nsx_url = repo_root.as_uri()
+    default_nsx_url = _registry_project_entry(_load_registry(), DEFAULT_REPO_NAME).get("url")
+    if not isinstance(default_nsx_url, str) or not default_nsx_url:
+        raise SystemExit("Built-in registry is missing a default URL for the neuralspotx project.")
     nsx_repo_url = args.nsx_repo_url or default_nsx_url
 
     manifest_text = _render_west_manifest(
@@ -909,13 +1060,39 @@ def cmd_create_app(args: argparse.Namespace) -> None:
         registry=base_registry,
         west_manifest_rel="../../manifest/west.yml",
     )
+    if args.no_bootstrap:
+        nsx_cfg["modules"] = []
+        _save_app_cfg(app_dir, nsx_cfg)
+        _write_app_module_file(app_dir, nsx_cfg)
+        print(f"Created app '{app_name}' at: {app_dir}")
+        print("Starter modules were not bootstrapped (--no-bootstrap).")
+        print("Next steps:")
+        print(f"  1) cd {app_dir}")
+        print("  2) Run `uv run nsx module list --app-dir .`")
+        print("  3) Add modules with `uv run nsx module add <module> --app-dir .`")
+        return
+
     registry = _effective_registry(base_registry, nsx_cfg)
+    _ensure_workspace_projects_for_modules(
+        workspace,
+        nsx_cfg,
+        registry,
+        _module_names_from_nsx(nsx_cfg),
+        sync=not args.no_sync,
+    )
     starter_modules = _resolve_module_closure(
         _module_names_from_nsx(nsx_cfg),
         app_dir=None,
         nsx_cfg=nsx_cfg,
         registry=registry,
         workspace=workspace,
+    )
+    _ensure_workspace_projects_for_modules(
+        workspace,
+        nsx_cfg,
+        registry,
+        starter_modules,
+        sync=not args.no_sync,
     )
     _update_nsx_cfg_modules(nsx_cfg, starter_modules, registry)
     _save_app_cfg(app_dir, nsx_cfg)
@@ -938,6 +1115,83 @@ def cmd_sync(args: argparse.Namespace) -> None:
     _require_tool("west")
     workspace = Path(args.workspace).expanduser().resolve()
     _run(["west", "update"], cwd=workspace)
+
+
+def cmd_doctor(args: argparse.Namespace) -> None:
+    all_ok = True
+
+    python_exe = shutil.which("python") or shutil.which("python3")
+    all_ok &= _doctor_check("Python", python_exe is not None, detail=python_exe)
+    all_ok &= _doctor_check("uv", _tool_path("uv") is not None, detail=_tool_path("uv"))
+    all_ok &= _doctor_check("cmake", _tool_path("cmake") is not None, detail=_tool_path("cmake"))
+    all_ok &= _doctor_check("ninja", _tool_path("ninja") is not None, detail=_tool_path("ninja"))
+    all_ok &= _doctor_check(
+        "west",
+        _tool_path("west") is not None,
+        detail=_tool_path("west"),
+        hint="Run `uv sync` in the neuralspotx repo if west is missing.",
+    )
+    all_ok &= _doctor_check(
+        "arm-none-eabi-gcc",
+        _tool_path("arm-none-eabi-gcc") is not None,
+        detail=_tool_path("arm-none-eabi-gcc"),
+        hint="Install the Arm GNU toolchain and ensure it is in PATH.",
+    )
+
+    jlink_path = _tool_path("JLinkExe")
+    jlink_ok = jlink_path is not None
+    all_ok &= _doctor_check(
+        "SEGGER JLinkExe",
+        jlink_ok,
+        detail=jlink_path,
+        hint="Install the SEGGER J-Link package and ensure `JLinkExe` is in PATH.",
+    )
+
+    swo_path = _tool_path("JLinkSWOViewerCL")
+    all_ok &= _doctor_check(
+        "SEGGER JLinkSWOViewerCL",
+        swo_path is not None,
+        detail=swo_path,
+        hint="Install the SEGGER J-Link package and ensure `JLinkSWOViewerCL` is in PATH.",
+    )
+
+    if jlink_ok:
+        try:
+            probe = _run_capture(["JLinkExe", "-CommandFile", "/dev/null", "-NoGui", "1"])
+            output = (probe.stdout or "") + (probe.stderr or "")
+            dll_hint = _jlink_failure_hint(output)
+            if dll_hint:
+                all_ok &= _doctor_check(
+                    "SEGGER J-Link runtime",
+                    False,
+                    detail=dll_hint.splitlines()[0],
+                    hint="Run `JLinkExe` directly and reinstall SEGGER tools if the runtime is broken.",
+                )
+            else:
+                all_ok &= _doctor_check(
+                    "SEGGER J-Link runtime",
+                    True,
+                    detail="JLinkExe launched successfully.",
+                )
+        except subprocess.CalledProcessError as exc:
+            output = (exc.stdout or "") + (exc.stderr or "")
+            dll_hint = _jlink_failure_hint(output)
+            if dll_hint:
+                all_ok &= _doctor_check(
+                    "SEGGER J-Link runtime",
+                    False,
+                    detail=dll_hint.splitlines()[0],
+                    hint="Run `JLinkExe` directly and reinstall SEGGER tools if the runtime is broken.",
+                )
+            else:
+                all_ok &= _doctor_check(
+                    "SEGGER J-Link runtime",
+                    True,
+                    detail="JLinkExe launched. Probe connectivity was not required for this check.",
+                )
+
+    if not all_ok:
+        raise SystemExit("One or more required tools are missing or misconfigured.")
 
 
 def cmd_configure(args: argparse.Namespace) -> None:
@@ -975,7 +1229,15 @@ def cmd_flash(args: argparse.Namespace) -> None:
     if not (build_dir / "build.ninja").exists():
         _run_cmake_configure(app_dir, build_dir, board)
     target = f"{app_name}_flash"
-    _run(["cmake", "--build", str(build_dir), "--target", target, "-j", str(args.jobs)])
+    cmd = ["cmake", "--build", str(build_dir), "--target", target, "-j", str(args.jobs)]
+    if VERBOSE > 0:
+        _run(cmd)
+        return
+    try:
+        result = _run_capture(cmd)
+    except subprocess.CalledProcessError as exc:
+        raise SystemExit(_format_subprocess_error(exc, context="Flash")) from None
+    _print_captured_output(result)
 
 
 def cmd_view(args: argparse.Namespace) -> None:
@@ -1001,6 +1263,10 @@ def cmd_clean(args: argparse.Namespace) -> None:
     )
     if not build_dir.exists():
         return
+    if args.full:
+        shutil.rmtree(build_dir)
+        print(f"Removed build directory: {build_dir}")
+        return
     if not (build_dir / "build.ninja").exists():
         _run_cmake_configure(app_dir, build_dir, board)
     _run(["cmake", "--build", str(build_dir), "--target", "clean"])
@@ -1022,12 +1288,26 @@ def cmd_module_add(args: argparse.Namespace) -> None:
 
     enabled = _module_names_from_nsx(nsx_cfg)
     desired_modules = _unique_preserving_order(enabled + [args.module])
+    _ensure_workspace_projects_for_modules(
+        workspace,
+        nsx_cfg,
+        registry,
+        desired_modules,
+        sync=not args.no_sync,
+    )
     new_modules = _resolve_module_closure(
         desired_modules,
         app_dir=app_dir,
         nsx_cfg=nsx_cfg,
         registry=registry,
         workspace=workspace,
+    )
+    _ensure_workspace_projects_for_modules(
+        workspace,
+        nsx_cfg,
+        registry,
+        new_modules,
+        sync=not args.no_sync,
     )
     if args.dry_run:
         print("[dry-run] modules to enable:", ", ".join(new_modules))
@@ -1124,6 +1404,14 @@ def cmd_module_update(args: argparse.Namespace) -> None:
         to_update = {args.module}
     else:
         to_update = set(current)
+
+    _ensure_workspace_projects_for_modules(
+        workspace,
+        nsx_cfg,
+        registry,
+        sorted(current),
+        sync=not args.no_sync,
+    )
 
     resolved_modules = _resolve_module_closure(
         current_modules,
@@ -1244,6 +1532,13 @@ def cmd_module_register(args: argparse.Namespace) -> None:
     _save_app_cfg(app_dir, target_cfg)
     _write_app_module_file(app_dir, target_cfg)
     effective = _effective_registry(base_registry, target_cfg)
+    _ensure_workspace_projects_for_modules(
+        workspace,
+        target_cfg,
+        effective,
+        [module_name],
+        sync=not args.no_sync,
+    )
     _vendor_modules_into_app(app_dir, [module_name], effective, workspace)
 
     print(f"Registered module '{module_name}' for app {app_dir.name}")
@@ -1252,24 +1547,35 @@ def cmd_module_register(args: argparse.Namespace) -> None:
 
 
 def _build_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="NSX west-backed workspace helper")
+    parser = argparse.ArgumentParser(
+        description="NSX workspace-first helper for creating and building bare-metal Ambiq apps"
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="count",
+        default=0,
+        help="Increase CLI verbosity. Repeat for more detail.",
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     p_init = sub.add_parser("init-workspace", help="Create west manifest + init/update workspace")
     p_init.add_argument("workspace", help="Workspace directory to initialize")
-    p_init.add_argument("--nsx-repo-url", default=None, help="NSX repo URL (default: current repo file:// URL)")
+    p_init.add_argument("--nsx-repo-url", default=None, help="NSX repo URL (default: packaged registry upstream URL)")
     p_init.add_argument("--nsx-revision", default="main", help="NSX revision/branch/tag")
     p_init.add_argument("--ambiqsuite-repo-url", default=None, help="Optional AmbiqSuite repo URL")
     p_init.add_argument("--ambiqsuite-revision", default="main", help="Optional AmbiqSuite revision")
     p_init.add_argument("--skip-update", action="store_true", help="Initialize manifest but skip west update")
     p_init.set_defaults(func=cmd_init_workspace)
 
-    p_new = sub.add_parser("create-app", help="Create a new app from the external app template")
+    p_new = sub.add_parser("create-app", help="Create a new app in an initialized NSX workspace")
     p_new.add_argument("workspace", help="Workspace root")
     p_new.add_argument("name", help="Application name")
     p_new.add_argument("--board", default="apollo510_evb", help="Target board package suffix")
     p_new.add_argument("--soc", default=None, help="Target SoC package suffix (default inferred from board)")
     p_new.add_argument("--force", action="store_true", help="Allow writing into a non-empty app directory")
+    p_new.add_argument("--no-bootstrap", action="store_true", help="Create the app without vendoring starter modules")
+    p_new.add_argument("--no-sync", action="store_true", help="Skip west update for built-in module projects during app creation")
     p_new.set_defaults(func=cmd_create_app)
 
     p_new_alias = sub.add_parser("new", help="Alias for create-app")
@@ -1278,11 +1584,16 @@ def _build_parser() -> argparse.ArgumentParser:
     p_new_alias.add_argument("--board", default="apollo510_evb", help="Target board package suffix")
     p_new_alias.add_argument("--soc", default=None, help="Target SoC package suffix (default inferred from board)")
     p_new_alias.add_argument("--force", action="store_true", help="Allow writing into a non-empty app directory")
+    p_new_alias.add_argument("--no-bootstrap", action="store_true", help="Create the app without vendoring starter modules")
+    p_new_alias.add_argument("--no-sync", action="store_true", help="Skip west update for built-in module projects during app creation")
     p_new_alias.set_defaults(func=cmd_create_app)
 
     p_sync = sub.add_parser("sync", help="Run west update in an existing workspace")
     p_sync.add_argument("workspace", help="Workspace root")
     p_sync.set_defaults(func=cmd_sync)
+
+    p_doctor = sub.add_parser("doctor", help="Check the local NSX toolchain environment")
+    p_doctor.set_defaults(func=cmd_doctor)
 
     p_configure = sub.add_parser("configure", help="Configure a generated NSX app with CMake")
     p_configure.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
@@ -1315,6 +1626,11 @@ def _build_parser() -> argparse.ArgumentParser:
     p_clean.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
     p_clean.add_argument("--board", default=None, help="Override board from nsx.yml")
     p_clean.add_argument("--build-dir", default=None, help="Build directory override")
+    p_clean.add_argument(
+        "--full",
+        action="store_true",
+        help="Remove the full build directory instead of only running the build-system clean target",
+    )
     p_clean.set_defaults(func=cmd_clean)
 
     p_mod = sub.add_parser("module", help="Manage app-local NSX modules")
@@ -1365,5 +1681,12 @@ def _build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
-    args.func(args)
+    global VERBOSE
+    VERBOSE = args.verbose
+    try:
+        args.func(args)
+    except subprocess.CalledProcessError as exc:
+        if VERBOSE > 0:
+            raise
+        raise SystemExit(_format_subprocess_error(exc, context="Command")) from None
     return 0

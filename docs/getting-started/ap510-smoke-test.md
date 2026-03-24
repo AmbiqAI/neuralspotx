@@ -1,40 +1,43 @@
-# AP510 Smoke Test
+# Apollo510 Smoke Test
 
-This is the canonical bare-metal NSX smoke test for the Apollo510 EVB.
+This is the canonical NSX hardware smoke test for the Apollo510 EVB.
 
 It verifies:
+
 - app generation
 - module vendoring
-- configure/build
+- configure and build
 - flash
 - SWO output through `nsx view`
 
 ## Prerequisites
 
-- Apollo510 EVB connected over USB/J-Link
+- Apollo510 EVB connected over USB or J-Link
 - Arm GNU toolchain in `PATH`
 - SEGGER `JLinkExe` and `JLinkSWOViewerCL` in `PATH`
-- NSX repo synced:
+- NSX environment already synced
 
 ```bash
-cd /Users/adampage/Ambiq/neuralspot/neuralspotx
+cd <nsx-repo>
 uv sync
 ```
 
-## Existing Reference App
+## Reference Smoke App
 
 The checked-in reference app is:
 
-- [`/Users/adampage/Ambiq/neuralspot/nsx-apps/smoke_apollo510_evb`](/Users/adampage/Ambiq/neuralspot/nsx-apps/smoke_apollo510_evb)
+```text
+../nsx-apps/smoke_apollo510_evb
+```
 
-From the NSX repo root:
+Run the full loop:
 
 ```bash
-cd /Users/adampage/Ambiq/neuralspot/neuralspotx
-uv run nsx configure --app-dir /Users/adampage/Ambiq/neuralspot/nsx-apps/smoke_apollo510_evb
-uv run nsx build --app-dir /Users/adampage/Ambiq/neuralspot/nsx-apps/smoke_apollo510_evb
-uv run nsx flash --app-dir /Users/adampage/Ambiq/neuralspot/nsx-apps/smoke_apollo510_evb
-uv run nsx view --app-dir /Users/adampage/Ambiq/neuralspot/nsx-apps/smoke_apollo510_evb
+cd <nsx-repo>
+uv run nsx configure --app-dir ../nsx-apps/smoke_apollo510_evb
+uv run nsx build --app-dir ../nsx-apps/smoke_apollo510_evb
+uv run nsx flash --app-dir ../nsx-apps/smoke_apollo510_evb
+uv run nsx view --app-dir ../nsx-apps/smoke_apollo510_evb
 ```
 
 Expected SWO output:
@@ -45,28 +48,29 @@ nsx hello from generated app
 ...
 ```
 
-## Fresh App Generation
+## Fresh App Flow
 
 Create a fresh workspace and app:
 
 ```bash
-cd /Users/adampage/Ambiq/neuralspot/neuralspotx
-uv run nsx init-workspace /tmp/nsx-ap510-smoke --skip-update
-uv run nsx create-app /tmp/nsx-ap510-smoke hello_ap510_smoke --board apollo510_evb
+cd <nsx-repo>
+uv run nsx init-workspace <workspace> --skip-update
+uv run nsx create-app <workspace> hello_ap510_smoke --board apollo510_evb
 ```
 
-Build and run it:
+Build, flash, and view it:
 
 ```bash
-cd /Users/adampage/Ambiq/neuralspot/neuralspotx
-uv run nsx configure --app-dir /tmp/nsx-ap510-smoke/apps/hello_ap510_smoke
-uv run nsx build --app-dir /tmp/nsx-ap510-smoke/apps/hello_ap510_smoke
-uv run nsx flash --app-dir /tmp/nsx-ap510-smoke/apps/hello_ap510_smoke
-uv run nsx view --app-dir /tmp/nsx-ap510-smoke/apps/hello_ap510_smoke
+cd <nsx-repo>
+uv run nsx configure --app-dir <workspace>/apps/hello_ap510_smoke
+uv run nsx build --app-dir <workspace>/apps/hello_ap510_smoke
+uv run nsx flash --app-dir <workspace>/apps/hello_ap510_smoke
+uv run nsx view --app-dir <workspace>/apps/hello_ap510_smoke
 ```
 
 ## Notes
 
-- Generated apps vendor their modules under `app/modules/` and their board definition under `app/boards/`.
-- `cmake/nsx/` is copied from the packaged Python repo assets and is the source of flash/view behavior inside the generated app.
-- The smoke-test app intentionally prints once per second so SWO attach timing is forgiving.
+- generated apps vendor modules under `app/modules/`
+- generated apps vendor board definitions under `app/boards/`
+- `cmake/nsx/` is copied from the packaged tooling assets
+- the smoke app prints once per second so SWO attach timing is forgiving

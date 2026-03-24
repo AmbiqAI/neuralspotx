@@ -1,57 +1,55 @@
 # Overview
 
-## Purpose
+NSX provides a modular bare-metal application workflow for Ambiq targets.
 
-NSX provides a modular build/tooling ecosystem for quickly creating firmware demo
-projects for a specific Ambiq board/SoC, with reproducible dependency wiring.
+## Primary Goals
 
-Primary goals:
+1. Fast bootstrap for board-specific apps.
+2. Reproducible module and board vendoring into generated apps.
+3. Clear build behavior driven by CMake.
+4. Small, inspectable projects for bring-up, profiling, and feature validation.
 
-1. Fast bootstrap for board-specific demo apps.
-2. Out-of-tree app builds with vendored app-local build support.
-3. Tool-friendly project generation for automation workflows (for example future
-   AutoDeploy replacement flows).
+## Core Principles
 
-## Design Principles
+1. AmbiqSuite-first baseline for bare-metal targets.
+2. Single-target apps by default.
+3. CMake as build truth.
+4. Explicit metadata for dependency and compatibility decisions.
+5. Wrapper modules for curated SDK consumption.
 
-1. AmbiqSuite-first: NSX must support bare-metal AmbiqSuite bring-up as the
-   baseline.
-2. Modular composition: SoC, board, runtime, and optional features are separate
-   modules.
-3. Deterministic bootstrap: generated app metadata and lock data must allow
-   reproducible setups.
-4. Build truth in CMake: metadata orchestrates dependencies; CMake targets remain
-   authoritative for compilation/linking.
-5. Performance-first default path: for new products and profiling-sensitive
-   workflows, NSX should prefer AmbiqSuite-backed targets over Zephyr variants.
-6. Single-target apps by default: one app should target one board/SoC/toolchain.
+## Implemented Architecture
 
-## Current Architecture (Implemented)
+NSX currently provides:
 
-1. CMake module layering in NSX:
-   - SoC HAL integration
-   - board packages
-   - runtime core
-   - optional portable API
-2. Python CLI (`nsx`, from `neuralspotx`) for:
-   - workspace init/sync
-   - app creation
-   - module lifecycle commands
-3. Metadata model:
-   - per-module `nsx-module.yaml`
-   - curated lock file `neuralspotx.data/registry.lock.yaml`
-   - per-app `nsx.yml`
-4. Generated apps receive:
-   - app-local `cmake/nsx/`
-   - vendored `modules/`
-   - vendored `boards/`
+1. a Python CLI (`nsx`)
+2. packaged app templates
+3. packaged CMake helpers
+4. built-in board definitions
+5. curated lock metadata for known module sets
 
-## Near-Term Direction
+Generated apps receive:
 
-1. Prioritize out-of-tree vendored app flow as the long-term model.
-2. Move module and board sources out of the Python repo over time.
-3. Remove monorepo root assumptions over time (for eventual split repos).
-4. Promote `nsx` CLI packaging model (PyPI + pipx) while keeping project-local
-   deterministic environments.
-5. Keep BLE/network/RTOS stacks out of baseline profiles; treat them as optional
-   add-on modules.
+1. app-local `cmake/nsx/`
+2. vendored `modules/`
+3. vendored `boards/`
+4. target metadata in `nsx.yml`
+
+## Current Layering
+
+1. raw SDK provider modules such as `nsx-ambiqsuite-r3`, `nsx-ambiqsuite-r4`,
+   and `nsx-ambiqsuite-r5`
+2. release-specific wrapper modules such as `nsx-ambiq-hal-r*` and
+   `nsx-ambiq-bsp-r*`
+3. shared NSX integration modules such as `nsx-soc-hal` and
+   `nsx-cmsis-startup`
+4. higher-level runtime modules such as `nsx-core`, `nsx-harness`,
+   `nsx-utils`, and `nsx-peripherals`
+
+## Target Environment
+
+NSX is intended for:
+
+1. board bring-up
+2. smoke tests
+3. profiling and instrumentation workflows
+4. small targeted examples such as USB or interface validation

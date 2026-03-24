@@ -6,7 +6,7 @@ repos.
 ## Goal
 
 Each raw SDK provider repo should have a coherent provenance story that can be
-explained without local migration context.
+explained clearly from the repo itself.
 
 The preferred model is:
 
@@ -97,6 +97,6 @@ Local history currently provides:
 2. MCU directory
 3. system source
 
-But it does not yet provide a clean board/BSP/lib bundle in the local SDK
-history used during this migration. Until that exists as a coherent upstream
-branchable payload, NSX should not expose `apollo510L_eb` as a built-in board.
+But it does not yet provide a clean board/BSP/lib bundle in the current SDK
+history. Until that exists as a coherent upstream branchable payload, NSX
+should not expose `apollo510L_eb` as a built-in board.

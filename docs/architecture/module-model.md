@@ -69,7 +69,7 @@ Recommended interpretation:
 
 ## Source Modes for Modules
 
-NSX supports module sources in these forms during migration:
+NSX supports module sources in these forms:
 
 1. curated source repos or local repo snapshots
 2. local filesystem path source (registered per app)

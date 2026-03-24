@@ -1,0 +1,29 @@
+# `nsx build`
+
+Builds a generated NSX app.
+
+## Syntax
+
+```text
+nsx build [--app-dir APP_DIR] [--board BOARD]
+          [--build-dir BUILD_DIR] [--target TARGET] [--jobs JOBS]
+```
+
+## Main Arguments
+
+- `--app-dir`: app directory containing `nsx.yml`
+- `--board`: override board from `nsx.yml`
+- `--build-dir`: build directory override
+- `--target`: explicit build target
+- `--jobs`: parallel build jobs
+
+## Example
+
+```bash
+cd <nsx-repo>
+uv run nsx build --app-dir <app-dir> --jobs 8
+```
+
+## Notes
+
+- this operates on the generated app’s CMake build tree

@@ -1,0 +1,67 @@
+site_name: NSX
+site_description: Bare-metal application tooling and build workflow for Ambiq targets
+repo_url: https://github.com/AmbiqAI/neuralspotx
+theme:
+  name: material
+  features:
+    - navigation.instant
+    - navigation.sections
+    - navigation.top
+    - content.code.copy
+markdown_extensions:
+  - admonition
+  - tables
+  - toc:
+      permalink: true
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - pymdownx.tabbed:
+      alternate_style: true
+plugins:
+  - search
+nav:
+  - Home: index.md
+  - Getting Started:
+      - Overview: getting-started/index.md
+      - Install and Setup: getting-started/install.md
+      - First App: getting-started/first-app.md
+      - Apollo510 Smoke Test: getting-started/ap510-smoke-test.md
+      - Other Smoke Targets: getting-started/other-smoke-targets.md
+  - User Guide:
+      - Workspace Model: user-guide/workspace-model.md
+      - Create an App: user-guide/create-app.md
+      - App Layout: user-guide/app-layout.md
+      - Modules: user-guide/modules.md
+      - Build, Flash, and View: user-guide/build-flash-view.md
+      - Boards and Targets: user-guide/boards-and-targets.md
+      - SDK Provider Selection: user-guide/sdk-provider-selection.md
+      - Troubleshooting: user-guide/troubleshooting.md
+  - Command Reference:
+      - CLI Overview: reference/cli-overview.md
+      - init-workspace: reference/init-workspace.md
+      - create-app and new: reference/create-app.md
+      - sync: reference/sync.md
+      - doctor: reference/doctor.md
+      - configure: reference/configure.md
+      - build: reference/build.md
+      - flash: reference/flash.md
+      - view: reference/view.md
+      - clean: reference/clean.md
+      - module: reference/module.md
+  - Architecture:
+      - Overview: architecture/overview.md
+      - App Generation Flow: architecture/app-generation-flow.md
+      - Design Decisions: architecture/design-decisions.md
+      - Module Model: architecture/module-model.md
+      - Metadata Model: architecture/metadata-model.md
+      - SDK Provider Model: architecture/sdk-provider-model.md
+      - Board Coverage: architecture/board-coverage.md
+      - SDK Upstream Plan: architecture/sdk-upstream-plan.md
+  - Contributing:
+      - Overview: contributing/index.md
+      - Repo Layout: contributing/repo-layout.md
+      - Docs Workflow: contributing/docs-workflow.md
+      - Adding Boards: contributing/adding-boards.md
+      - Adding Modules: contributing/adding-modules.md
+      - Internal Module Coverage: contributing/module-coverage.md
+      - SDK Providers: contributing/sdk-providers.md

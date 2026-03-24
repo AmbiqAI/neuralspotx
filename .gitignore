@@ -1,5 +1,7 @@
 /build/
 .venv/
+/site/
+*.egg-info/
 **/.DS_Store
 **/__pycache__/
 *.pyc
