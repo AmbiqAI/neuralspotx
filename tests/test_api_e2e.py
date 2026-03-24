@@ -6,15 +6,22 @@ import pytest
 import yaml
 
 from neuralspotx import (
+    AppBuildRequest,
     AppCleanRequest,
     AppCreateRequest,
     ModuleRegisterRequest,
     NSXError,
     WorkspaceInitRequest,
+    add_module,
+    build_app,
     clean_app,
+    cli,
     create_app,
     init_workspace,
     register_module,
+    remove_module,
+    sync_workspace,
+    update_modules,
 )
 
 
@@ -50,6 +57,15 @@ def _write_local_module_metadata(path: Path, module_name: str = "local-demo") ->
         + "\n",
         encoding="utf-8",
     )
+
+
+def _write_local_module_project(root: Path, module_name: str = "local-demo") -> Path:
+    root.mkdir(parents=True, exist_ok=True)
+    metadata_path = root / "nsx-module.yaml"
+    _write_local_module_metadata(metadata_path, module_name=module_name)
+    (root / "CMakeLists.txt").write_text("add_library(local_demo INTERFACE)\n", encoding="utf-8")
+    (root / "README.md").write_text("version one\n", encoding="utf-8")
+    return metadata_path
 
 
 def test_create_app_requires_initialized_workspace(tmp_path: Path) -> None:
@@ -124,3 +140,86 @@ def test_full_clean_removes_build_directory(tmp_path: Path) -> None:
     )
 
     assert not build_dir.exists()
+
+
+def test_sync_workspace_uses_shared_impl_without_shelling_from_api(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    init_workspace(WorkspaceInitRequest(workspace=tmp_path, skip_update=True))
+
+    calls: list[tuple[list[str], Path | None]] = []
+
+    def fake_run(cmd: list[str], cwd: Path | None = None) -> None:
+        calls.append((cmd, cwd))
+
+    monkeypatch.setattr(cli, "_run", fake_run)
+
+    sync_workspace(tmp_path)
+
+    assert calls == [(["west", "update"], tmp_path)]
+
+
+def test_local_module_round_trip_add_update_remove(tmp_path: Path) -> None:
+    init_workspace(WorkspaceInitRequest(workspace=tmp_path, skip_update=True))
+    create_app(tmp_path, "hello_modules", board="apollo510_evb", no_bootstrap=True)
+
+    app_dir = tmp_path / "apps" / "hello_modules"
+    project_root = tmp_path / "local-projects" / "local-demo"
+    metadata_path = _write_local_module_project(project_root)
+
+    register_module(
+        ModuleRegisterRequest(
+            app_dir=app_dir,
+            module="local-demo",
+            metadata=metadata_path,
+            project="local-demo-proj",
+            project_local_path=project_root,
+        )
+    )
+
+    add_module(app_dir, "local-demo")
+
+    cfg = _load_yaml(app_dir / "nsx.yml")
+    assert [item["name"] for item in cfg["modules"]] == ["local-demo"]
+    vendored_readme = app_dir / "modules" / "local-demo" / "README.md"
+    assert vendored_readme.read_text(encoding="utf-8") == "version one\n"
+
+    (project_root / "README.md").write_text("version two\n", encoding="utf-8")
+    update_modules(app_dir, module="local-demo")
+    assert vendored_readme.read_text(encoding="utf-8") == "version two\n"
+
+    remove_module(app_dir, "local-demo")
+    cfg = _load_yaml(app_dir / "nsx.yml")
+    assert cfg["modules"] == []
+    assert not (app_dir / "modules" / "local-demo").exists()
+
+
+def test_build_app_uses_shared_impl_and_triggers_configure_when_needed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    init_workspace(WorkspaceInitRequest(workspace=tmp_path, skip_update=True))
+    create_app(tmp_path, "hello_build", board="apollo510_evb", no_bootstrap=True)
+
+    app_dir = tmp_path / "apps" / "hello_build"
+    build_dir = app_dir / "build" / "apollo510_evb"
+    configure_calls: list[tuple[Path, Path, str]] = []
+    build_calls: list[list[str]] = []
+
+    def fake_configure(app: Path, build: Path, board: str) -> None:
+        configure_calls.append((app, build, board))
+        build.mkdir(parents=True, exist_ok=True)
+        (build / "build.ninja").write_text("# fake\n", encoding="utf-8")
+
+    def fake_run(cmd: list[str], cwd: Path | None = None) -> None:
+        del cwd
+        build_calls.append(cmd)
+
+    monkeypatch.setattr(cli, "_run_cmake_configure", fake_configure)
+    monkeypatch.setattr(cli, "_run", fake_run)
+
+    build_app(AppBuildRequest(app_dir=app_dir, jobs=3))
+
+    assert configure_calls == [(app_dir, build_dir, "apollo510_evb")]
+    assert build_calls == [
+        ["cmake", "--build", str(build_dir), "--target", "hello_build", "-j", "3"]
+    ]

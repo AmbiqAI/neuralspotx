@@ -7,6 +7,7 @@ Topics covered here:
 
 - repo layout
 - docs workflow
+- release workflow
 - adding boards
 - adding modules
 - internal module coverage

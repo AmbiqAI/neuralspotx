@@ -974,7 +974,7 @@ def _print_module_table(registry: dict[str, Any], enabled: set[str]) -> None:
 def cmd_init_workspace(args: argparse.Namespace) -> None:
     _require_tool("west")
     workspace = Path(args.workspace).expanduser().resolve()
-    _init_workspace_impl(
+    init_workspace_impl(
         workspace,
         nsx_repo_url=args.nsx_repo_url,
         nsx_revision=args.nsx_revision,
@@ -984,7 +984,7 @@ def cmd_init_workspace(args: argparse.Namespace) -> None:
     )
 
 
-def _init_workspace_impl(
+def init_workspace_impl(
     workspace: Path,
     *,
     nsx_repo_url: str | None = None,
@@ -1026,20 +1026,41 @@ def _init_workspace_impl(
 
 
 def cmd_create_app(args: argparse.Namespace) -> None:
+    create_app_impl(
+        Path(args.workspace).expanduser().resolve(),
+        args.name,
+        board=args.board,
+        soc=args.soc,
+        force=args.force,
+        init_workspace=args.init_workspace,
+        no_bootstrap=args.no_bootstrap,
+        no_sync=args.no_sync,
+    )
+
+
+def create_app_impl(
+    workspace: Path,
+    app_name: str,
+    *,
+    board: str = "apollo510_evb",
+    soc: str | None = None,
+    force: bool = False,
+    init_workspace: bool = False,
+    no_bootstrap: bool = False,
+    no_sync: bool = False,
+) -> Path:
     base_registry = _load_registry()
-    workspace = Path(args.workspace).expanduser().resolve()
-    if args.init_workspace and not _workspace_has_manifest(workspace):
-        _init_workspace_impl(
+    if init_workspace and not _workspace_has_manifest(workspace):
+        init_workspace_impl(
             workspace,
-            skip_update=args.no_sync and args.no_bootstrap,
+            skip_update=no_sync and no_bootstrap,
         )
     _require_initialized_workspace(workspace)
-    app_name = args.name
 
-    soc = args.soc or DEFAULT_SOC_FOR_BOARD.get(args.board)
+    soc = soc or DEFAULT_SOC_FOR_BOARD.get(board)
     if soc is None:
         raise SystemExit(
-            f"Unable to infer --soc for board '{args.board}'. Pass --soc explicitly."
+            f"Unable to infer --soc for board '{board}'. Pass --soc explicitly."
         )
 
     template_root = resources.files("neuralspotx.templates").joinpath("external_app")
@@ -1048,7 +1069,7 @@ def cmd_create_app(args: argparse.Namespace) -> None:
             raise SystemExit(f"Template directory not found: {src_template}")
 
         app_dir = workspace / "apps" / app_name
-        if app_dir.exists() and any(app_dir.iterdir()) and not args.force:
+        if app_dir.exists() and any(app_dir.iterdir()) and not force:
             raise SystemExit(f"App directory already exists and is not empty: {app_dir}")
 
         app_dir.mkdir(parents=True, exist_ok=True)
@@ -1093,11 +1114,11 @@ def cmd_create_app(args: argparse.Namespace) -> None:
     )
     lines = _replace_exact_line(lines, "find_package(nsx_soc_apollo510 REQUIRED CONFIG)", f"find_package(nsx_soc_{soc} REQUIRED CONFIG)")
     lines = _replace_exact_line(
-        lines, "find_package(nsx_board_apollo510_evb REQUIRED CONFIG)", f"find_package(nsx_board_{args.board} REQUIRED CONFIG)"
+        lines, "find_package(nsx_board_apollo510_evb REQUIRED CONFIG)", f"find_package(nsx_board_{board} REQUIRED CONFIG)"
     )
-    lines = _replace_exact_line(lines, "    nsx::board_apollo510_evb", f"    nsx::board_{args.board}")
+    lines = _replace_exact_line(lines, "    nsx::board_apollo510_evb", f"    nsx::board_{board}")
 
-    if args.board != "apollo510_evb":
+    if board != "apollo510_evb":
         lines = [
             line
             for line in lines
@@ -1108,12 +1129,12 @@ def cmd_create_app(args: argparse.Namespace) -> None:
 
     nsx_cfg = _generate_nsx_config(
         app_name=app_name,
-        board=args.board,
+        board=board,
         soc=soc,
         registry=base_registry,
         west_manifest_rel="../../manifest/west.yml",
     )
-    if args.no_bootstrap:
+    if no_bootstrap:
         nsx_cfg["modules"] = []
         _save_app_cfg(app_dir, nsx_cfg)
         _write_app_module_file(app_dir, nsx_cfg)
@@ -1123,7 +1144,7 @@ def cmd_create_app(args: argparse.Namespace) -> None:
         print(f"  1) cd {app_dir}")
         print("  2) Run `uv run nsx module list --app-dir .`")
         print("  3) Add modules with `uv run nsx module add <module> --app-dir .`")
-        return
+        return app_dir
 
     registry = _effective_registry(base_registry, nsx_cfg)
     _ensure_workspace_projects_for_modules(
@@ -1131,7 +1152,7 @@ def cmd_create_app(args: argparse.Namespace) -> None:
         nsx_cfg,
         registry,
         _module_names_from_nsx(nsx_cfg),
-        sync=not args.no_sync,
+        sync=not no_sync,
     )
     starter_modules = _resolve_module_closure(
         _module_names_from_nsx(nsx_cfg),
@@ -1145,7 +1166,7 @@ def cmd_create_app(args: argparse.Namespace) -> None:
         nsx_cfg,
         registry,
         starter_modules,
-        sync=not args.no_sync,
+        sync=not no_sync,
     )
     _update_nsx_cfg_modules(nsx_cfg, starter_modules, registry)
     _save_app_cfg(app_dir, nsx_cfg)
@@ -1162,16 +1183,24 @@ def cmd_create_app(args: argparse.Namespace) -> None:
     print(f"  1) cd {app_dir}")
     print("  2) Run `uv run nsx configure --app-dir .`")
     print("  3) Run `uv run nsx build --app-dir .`, `uv run nsx flash --app-dir .`, or `uv run nsx view --app-dir .`")
+    return app_dir
 
 
 def cmd_sync(args: argparse.Namespace) -> None:
+    sync_workspace_impl(Path(args.workspace).expanduser().resolve())
+
+
+def sync_workspace_impl(workspace: Path) -> None:
     _require_tool("west")
-    workspace = Path(args.workspace).expanduser().resolve()
     _require_initialized_workspace(workspace)
     _run(["west", "update"], cwd=workspace)
 
 
 def cmd_doctor(args: argparse.Namespace) -> None:
+    doctor_impl()
+
+
+def doctor_impl() -> None:
     all_ok = True
 
     python_exe = shutil.which("python") or shutil.which("python3")
@@ -1255,84 +1284,170 @@ def cmd_doctor(args: argparse.Namespace) -> None:
 
 
 def cmd_configure(args: argparse.Namespace) -> None:
-    app_dir, _, _, _, board = _resolve_app_context(args)
-    build_dir = (
-        Path(args.build_dir).expanduser().resolve()
-        if args.build_dir
-        else _default_build_dir(app_dir, board)
+    configure_app_impl(
+        Path(args.app_dir).expanduser().resolve(),
+        board=args.board,
+        build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
     )
-    _run_cmake_configure(app_dir, build_dir, board)
-    print(f"Configured app at: {app_dir}")
-    print(f"Build directory: {build_dir}")
 
 
 def cmd_build(args: argparse.Namespace) -> None:
-    app_dir, _, _, app_name, board = _resolve_app_context(args)
-    build_dir = (
-        Path(args.build_dir).expanduser().resolve()
-        if args.build_dir
-        else _default_build_dir(app_dir, board)
+    build_app_impl(
+        Path(args.app_dir).expanduser().resolve(),
+        board=args.board,
+        build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
+        target=args.target,
+        jobs=args.jobs,
     )
-    if not (build_dir / "build.ninja").exists():
-        _run_cmake_configure(app_dir, build_dir, board)
-    target = args.target or app_name
-    _run(["cmake", "--build", str(build_dir), "--target", target, "-j", str(args.jobs)])
 
 
 def cmd_flash(args: argparse.Namespace) -> None:
-    app_dir, _, _, app_name, board = _resolve_app_context(args)
-    build_dir = (
-        Path(args.build_dir).expanduser().resolve()
-        if args.build_dir
-        else _default_build_dir(app_dir, board)
+    flash_app_impl(
+        Path(args.app_dir).expanduser().resolve(),
+        board=args.board,
+        build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
+        jobs=args.jobs,
     )
-    if not (build_dir / "build.ninja").exists():
-        _run_cmake_configure(app_dir, build_dir, board)
+
+
+def _resolve_build_context(
+    app_dir: Path,
+    *,
+    board: str | None = None,
+    build_dir: Path | None = None,
+) -> tuple[Path, str, str, Path]:
+    resolved_app_dir, _, _, app_name, resolved_board = _resolve_app_context(
+        argparse.Namespace(app_dir=str(app_dir), board=board)
+    )
+    resolved_build_dir = build_dir or _default_build_dir(resolved_app_dir, resolved_board)
+    return resolved_app_dir, app_name, resolved_board, resolved_build_dir
+
+
+def configure_app_impl(
+    app_dir: Path,
+    *,
+    board: str | None = None,
+    build_dir: Path | None = None,
+) -> Path:
+    resolved_app_dir, _, resolved_board, resolved_build_dir = _resolve_build_context(
+        app_dir,
+        board=board,
+        build_dir=build_dir,
+    )
+    _run_cmake_configure(resolved_app_dir, resolved_build_dir, resolved_board)
+    print(f"Configured app at: {resolved_app_dir}")
+    print(f"Build directory: {resolved_build_dir}")
+    return resolved_build_dir
+
+
+def build_app_impl(
+    app_dir: Path,
+    *,
+    board: str | None = None,
+    build_dir: Path | None = None,
+    target: str | None = None,
+    jobs: int = 8,
+) -> Path:
+    resolved_app_dir, app_name, resolved_board, resolved_build_dir = _resolve_build_context(
+        app_dir,
+        board=board,
+        build_dir=build_dir,
+    )
+    if not (resolved_build_dir / "build.ninja").exists():
+        _run_cmake_configure(resolved_app_dir, resolved_build_dir, resolved_board)
+    resolved_target = target or app_name
+    _run(["cmake", "--build", str(resolved_build_dir), "--target", resolved_target, "-j", str(jobs)])
+    return resolved_build_dir
+
+
+def flash_app_impl(
+    app_dir: Path,
+    *,
+    board: str | None = None,
+    build_dir: Path | None = None,
+    jobs: int = 8,
+) -> Path:
+    resolved_app_dir, app_name, resolved_board, resolved_build_dir = _resolve_build_context(
+        app_dir,
+        board=board,
+        build_dir=build_dir,
+    )
+    if not (resolved_build_dir / "build.ninja").exists():
+        _run_cmake_configure(resolved_app_dir, resolved_build_dir, resolved_board)
     target = f"{app_name}_flash"
-    cmd = ["cmake", "--build", str(build_dir), "--target", target, "-j", str(args.jobs)]
+    cmd = ["cmake", "--build", str(resolved_build_dir), "--target", target, "-j", str(jobs)]
     if VERBOSE > 0:
         _run(cmd)
-        return
+        return resolved_build_dir
     try:
         result = _run_capture(cmd)
     except subprocess.CalledProcessError as exc:
         raise SystemExit(_format_subprocess_error(exc, context="Flash")) from None
     _print_captured_output(result)
+    return resolved_build_dir
 
 
 def cmd_view(args: argparse.Namespace) -> None:
-    app_dir, _, _, app_name, board = _resolve_app_context(args)
-    build_dir = (
-        Path(args.build_dir).expanduser().resolve()
-        if args.build_dir
-        else _default_build_dir(app_dir, board)
+    view_app_impl(
+        Path(args.app_dir).expanduser().resolve(),
+        board=args.board,
+        build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
     )
-    if not (build_dir / "build.ninja").exists():
-        _run_cmake_configure(app_dir, build_dir, board)
+
+
+def view_app_impl(
+    app_dir: Path,
+    *,
+    board: str | None = None,
+    build_dir: Path | None = None,
+) -> Path:
+    resolved_app_dir, app_name, resolved_board, resolved_build_dir = _resolve_build_context(
+        app_dir,
+        board=board,
+        build_dir=build_dir,
+    )
+    if not (resolved_build_dir / "build.ninja").exists():
+        _run_cmake_configure(resolved_app_dir, resolved_build_dir, resolved_board)
     target = f"{app_name}_view"
-    view_cmd = _extract_view_command(build_dir, target)
+    view_cmd = _extract_view_command(resolved_build_dir, target)
     try:
-        subprocess.run(view_cmd, cwd=str(build_dir), check=True)
+        subprocess.run(view_cmd, cwd=str(resolved_build_dir), check=True)
     except subprocess.CalledProcessError as exc:
         raise SystemExit(_format_subprocess_error(exc, context="View")) from None
+    return resolved_build_dir
 
 
 def cmd_clean(args: argparse.Namespace) -> None:
-    app_dir, _, _, _, board = _resolve_app_context(args)
-    build_dir = (
-        Path(args.build_dir).expanduser().resolve()
-        if args.build_dir
-        else _default_build_dir(app_dir, board)
+    clean_app_impl(
+        Path(args.app_dir).expanduser().resolve(),
+        board=args.board,
+        build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
+        full=args.full,
     )
-    if not build_dir.exists():
-        return
-    if args.full:
-        shutil.rmtree(build_dir)
-        print(f"Removed build directory: {build_dir}")
-        return
-    if not (build_dir / "build.ninja").exists():
-        _run_cmake_configure(app_dir, build_dir, board)
-    _run(["cmake", "--build", str(build_dir), "--target", "clean"])
+
+
+def clean_app_impl(
+    app_dir: Path,
+    *,
+    board: str | None = None,
+    build_dir: Path | None = None,
+    full: bool = False,
+) -> Path:
+    resolved_app_dir, _, resolved_board, resolved_build_dir = _resolve_build_context(
+        app_dir,
+        board=board,
+        build_dir=build_dir,
+    )
+    if not resolved_build_dir.exists():
+        return resolved_build_dir
+    if full:
+        shutil.rmtree(resolved_build_dir)
+        print(f"Removed build directory: {resolved_build_dir}")
+        return resolved_build_dir
+    if not (resolved_build_dir / "build.ninja").exists():
+        _run_cmake_configure(resolved_app_dir, resolved_build_dir, resolved_board)
+    _run(["cmake", "--build", str(resolved_build_dir), "--target", "clean"])
+    return resolved_build_dir
 
 
 def cmd_module_list(args: argparse.Namespace) -> None:
@@ -1344,19 +1459,33 @@ def cmd_module_list(args: argparse.Namespace) -> None:
 
 
 def cmd_module_add(args: argparse.Namespace) -> None:
-    app_dir = Path(args.app_dir).expanduser().resolve()
+    add_module_impl(
+        Path(args.app_dir).expanduser().resolve(),
+        args.module,
+        dry_run=args.dry_run,
+        no_sync=args.no_sync,
+    )
+
+
+def add_module_impl(
+    app_dir: Path,
+    module_name: str,
+    *,
+    dry_run: bool = False,
+    no_sync: bool = False,
+) -> list[str]:
     workspace = _workspace_for_app_dir(app_dir)
     nsx_cfg = _load_app_cfg(app_dir)
     registry = _effective_registry(_load_registry(), nsx_cfg)
 
     enabled = _module_names_from_nsx(nsx_cfg)
-    desired_modules = _unique_preserving_order(enabled + [args.module])
+    desired_modules = _unique_preserving_order(enabled + [module_name])
     _ensure_workspace_projects_for_modules(
         workspace,
         nsx_cfg,
         registry,
         desired_modules,
-        sync=not args.no_sync,
+        sync=not no_sync,
     )
     new_modules = _resolve_module_closure(
         desired_modules,
@@ -1370,29 +1499,44 @@ def cmd_module_add(args: argparse.Namespace) -> None:
         nsx_cfg,
         registry,
         new_modules,
-        sync=not args.no_sync,
+        sync=not no_sync,
     )
-    if args.dry_run:
+    if dry_run:
         print("[dry-run] modules to enable:", ", ".join(new_modules))
-        return
+        return new_modules
 
     _update_nsx_cfg_modules(nsx_cfg, new_modules, registry)
     _save_app_cfg(app_dir, nsx_cfg)
     _write_app_module_file(app_dir, nsx_cfg)
     _vendor_modules_into_app(app_dir, new_modules, registry, workspace)
 
-    print(f"Enabled module '{args.module}'")
+    print(f"Enabled module '{module_name}'")
     print("Resolved module set:", ", ".join(new_modules))
+    return new_modules
 
 
 def cmd_module_remove(args: argparse.Namespace) -> None:
-    app_dir = Path(args.app_dir).expanduser().resolve()
+    remove_module_impl(
+        Path(args.app_dir).expanduser().resolve(),
+        args.module,
+        dry_run=args.dry_run,
+        no_sync=args.no_sync,
+    )
+
+
+def remove_module_impl(
+    app_dir: Path,
+    module_name: str,
+    *,
+    dry_run: bool = False,
+    no_sync: bool = False,
+) -> tuple[list[str], list[str]]:
     workspace = _workspace_for_app_dir(app_dir)
     nsx_cfg = _load_app_cfg(app_dir)
     registry = _effective_registry(_load_registry(), nsx_cfg)
     enabled = _module_names_from_nsx(nsx_cfg)
-    if args.module not in enabled:
-        raise SystemExit(f"Module '{args.module}' is not enabled in nsx.yml")
+    if module_name not in enabled:
+        raise SystemExit(f"Module '{module_name}' is not enabled in nsx.yml")
 
     profile_name = nsx_cfg.get("profile")
     protected: set[str] = set()
@@ -1404,13 +1548,13 @@ def cmd_module_remove(args: argparse.Namespace) -> None:
                 protected = {m for m in base_mods if isinstance(m, str)}
 
     current = set(enabled)
-    remove_set = {args.module}
+    remove_set = {module_name}
     dependents = _module_dependents(enabled, registry, workspace, app_dir=app_dir)
 
-    blockers = sorted(name for name in dependents.get(args.module, set()) if name in current)
+    blockers = sorted(name for name in dependents.get(module_name, set()) if name in current)
     if blockers:
         raise SystemExit(
-            f"Cannot remove '{args.module}'; required by enabled module(s): {', '.join(blockers)}"
+            f"Cannot remove '{module_name}'; required by enabled module(s): {', '.join(blockers)}"
         )
 
     changed = True
@@ -1437,34 +1581,49 @@ def cmd_module_remove(args: argparse.Namespace) -> None:
         registry=registry,
         workspace=workspace,
     )
-    if args.dry_run:
+    if dry_run:
         print("[dry-run] modules to remove:", ", ".join(sorted(remove_set)))
         print("[dry-run] remaining modules:", ", ".join(new_modules))
-        return
+        return sorted(remove_set), new_modules
 
     _update_nsx_cfg_modules(nsx_cfg, new_modules, registry)
     _save_app_cfg(app_dir, nsx_cfg)
     _write_app_module_file(app_dir, nsx_cfg)
-    for module_name in sorted(remove_set):
-        _remove_vendored_module_from_app(app_dir, module_name, registry)
+    for removed_name in sorted(remove_set):
+        _remove_vendored_module_from_app(app_dir, removed_name, registry)
 
-    print(f"Removed module '{args.module}'")
+    print(f"Removed module '{module_name}'")
     print("Removed set:", ", ".join(sorted(remove_set)))
     print("Remaining modules:", ", ".join(new_modules))
+    return sorted(remove_set), new_modules
 
 
 def cmd_module_update(args: argparse.Namespace) -> None:
-    app_dir = Path(args.app_dir).expanduser().resolve()
+    update_modules_impl(
+        Path(args.app_dir).expanduser().resolve(),
+        module_name=args.module,
+        dry_run=args.dry_run,
+        no_sync=args.no_sync,
+    )
+
+
+def update_modules_impl(
+    app_dir: Path,
+    *,
+    module_name: str | None = None,
+    dry_run: bool = False,
+    no_sync: bool = False,
+) -> list[str]:
     workspace = _workspace_for_app_dir(app_dir)
     nsx_cfg = _load_app_cfg(app_dir)
     registry = _effective_registry(_load_registry(), nsx_cfg)
 
     current_modules = _module_names_from_nsx(nsx_cfg)
     current = set(current_modules)
-    if args.module:
-        if args.module not in current:
-            raise SystemExit(f"Module '{args.module}' is not enabled in nsx.yml")
-        to_update = {args.module}
+    if module_name:
+        if module_name not in current:
+            raise SystemExit(f"Module '{module_name}' is not enabled in nsx.yml")
+        to_update = {module_name}
     else:
         to_update = set(current)
 
@@ -1473,7 +1632,7 @@ def cmd_module_update(args: argparse.Namespace) -> None:
         nsx_cfg,
         registry,
         sorted(current),
-        sync=not args.no_sync,
+        sync=not no_sync,
     )
 
     resolved_modules = _resolve_module_closure(
@@ -1484,9 +1643,9 @@ def cmd_module_update(args: argparse.Namespace) -> None:
         workspace=workspace,
     )
 
-    if args.dry_run:
+    if dry_run:
         print("[dry-run] modules to refresh from registry:", ", ".join(sorted(to_update)))
-        return
+        return sorted(to_update)
 
     _update_nsx_cfg_modules(nsx_cfg, resolved_modules, registry)
     _save_app_cfg(app_dir, nsx_cfg)
@@ -1494,21 +1653,51 @@ def cmd_module_update(args: argparse.Namespace) -> None:
     vendored_modules = [name for name in resolved_modules if name in to_update]
     _vendor_modules_into_app(app_dir, vendored_modules, registry, workspace)
 
-    if args.module:
-        print(f"Updated module '{args.module}' to lockfile revision")
+    if module_name:
+        print(f"Updated module '{module_name}' to lockfile revision")
     else:
         print("Updated all enabled modules to lockfile revisions")
+    return resolved_modules
 
 
 def cmd_module_register(args: argparse.Namespace) -> None:
-    app_dir = Path(args.app_dir).expanduser().resolve()
+    register_module_impl(
+        Path(args.app_dir).expanduser().resolve(),
+        args.module,
+        metadata=Path(args.metadata).expanduser(),
+        project=args.project,
+        project_url=args.project_url,
+        project_revision=args.project_revision,
+        project_path=args.project_path,
+        project_local_path=Path(args.project_local_path).expanduser().resolve()
+        if args.project_local_path
+        else None,
+        override=args.override,
+        dry_run=args.dry_run,
+        no_sync=args.no_sync,
+    )
+
+
+def register_module_impl(
+    app_dir: Path,
+    module_name: str,
+    *,
+    metadata: Path,
+    project: str,
+    project_url: str | None = None,
+    project_revision: str | None = None,
+    project_path: str | None = None,
+    project_local_path: Path | None = None,
+    override: bool = False,
+    dry_run: bool = False,
+    no_sync: bool = False,
+) -> Path:
     workspace = _workspace_for_app_dir(app_dir)
     nsx_cfg = _load_app_cfg(app_dir)
     base_registry = _load_registry()
     registry = _effective_registry(base_registry, nsx_cfg)
 
-    module_name = args.module
-    metadata_path = Path(args.metadata).expanduser()
+    metadata_path = metadata
     if not metadata_path.is_absolute():
         metadata_path = (app_dir / metadata_path).resolve()
     if not metadata_path.exists():
@@ -1524,7 +1713,7 @@ def cmd_module_register(args: argparse.Namespace) -> None:
         )
 
     manifest_projects = _manifest_projects_by_name(workspace)
-    project_name = args.project
+    project_name = project
     existing_project = manifest_projects.get(project_name)
     project_entry: dict[str, Any] = {}
     if existing_project is not None:
@@ -1535,14 +1724,12 @@ def cmd_module_register(args: argparse.Namespace) -> None:
             "path": existing_project.get("path"),
         }
     else:
-        if args.project_local_path and (
-            args.project_url or args.project_revision or args.project_path
-        ):
+        if project_local_path and (project_url or project_revision or project_path):
             raise SystemExit(
                 "Use either --project-local-path OR (--project-url --project-revision --project-path), not both."
             )
-        if args.project_local_path:
-            local_path = Path(args.project_local_path).expanduser().resolve()
+        if project_local_path:
+            local_path = project_local_path.resolve()
             if not local_path.exists():
                 raise SystemExit(f"--project-local-path does not exist: {local_path}")
             project_entry = {
@@ -1550,20 +1737,20 @@ def cmd_module_register(args: argparse.Namespace) -> None:
                 "local_path": str(local_path),
             }
         else:
-            if not (args.project_url and args.project_revision and args.project_path):
+            if not (project_url and project_revision and project_path):
                 raise SystemExit(
                     f"Project '{project_name}' is not in workspace manifest. "
                     "Provide --project-local-path OR --project-url + --project-revision + --project-path."
                 )
             project_entry = {
                 "name": project_name,
-                "url": args.project_url,
-                "revision": args.project_revision,
-                "path": args.project_path,
+                "url": project_url,
+                "revision": project_revision,
+                "path": project_path,
             }
 
     current_modules = registry.get("modules", {})
-    if module_name in current_modules and not args.override:
+    if module_name in current_modules and not override:
         raise SystemExit(
             f"Module '{module_name}' already exists in effective registry. "
             "Use --override to replace it for this app."
@@ -1585,12 +1772,12 @@ def cmd_module_register(args: argparse.Namespace) -> None:
         "metadata": _metadata_storage_path(app_dir, metadata_path, project_entry),
     }
 
-    if args.dry_run:
+    if dry_run:
         print("[dry-run] would register module:")
         print(f"  module={module_name}")
         print(f"  project={project_name}")
         print(f"  metadata={modules[module_name]['metadata']}")
-        return
+        return metadata_path
 
     _save_app_cfg(app_dir, target_cfg)
     _write_app_module_file(app_dir, target_cfg)
@@ -1600,13 +1787,14 @@ def cmd_module_register(args: argparse.Namespace) -> None:
         target_cfg,
         effective,
         [module_name],
-        sync=not args.no_sync,
+        sync=not no_sync,
     )
     _vendor_modules_into_app(app_dir, [module_name], effective, workspace)
 
     print(f"Registered module '{module_name}' for app {app_dir.name}")
     print(f"Project: {project_name}")
     print(f"Metadata: {metadata_path}")
+    return metadata_path
 
 
 def _build_parser() -> argparse.ArgumentParser:

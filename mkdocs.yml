@@ -62,6 +62,7 @@ nav:
       - Overview: contributing/index.md
       - Repo Layout: contributing/repo-layout.md
       - Docs Workflow: contributing/docs-workflow.md
+      - Releases: contributing/releases.md
       - Adding Boards: contributing/adding-boards.md
       - Adding Modules: contributing/adding-modules.md
       - Internal Module Coverage: contributing/module-coverage.md

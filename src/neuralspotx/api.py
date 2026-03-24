@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-import argparse
-from dataclasses import asdict, dataclass
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from . import cli
 
@@ -97,20 +95,9 @@ class ModuleRegisterRequest:
     no_sync: bool = False
 
 
-def _normalize_kwargs(data: dict[str, Any]) -> dict[str, Any]:
-    normalized: dict[str, Any] = {}
-    for key, value in data.items():
-        if isinstance(value, Path):
-            normalized[key] = str(value)
-        else:
-            normalized[key] = value
-    return normalized
-
-
-def _invoke(func: Any, request: object | None = None, **kwargs: Any) -> None:
-    payload = asdict(request) if request is not None else kwargs
+def _invoke(func, *args, **kwargs) -> None:
     try:
-        func(argparse.Namespace(**_normalize_kwargs(payload)))
+        func(*args, **kwargs)
     except SystemExit as exc:
         code = exc.code
         if code in (None, 0):
@@ -139,7 +126,15 @@ def init_workspace(
             skip_update=skip_update,
         )
     )
-    _invoke(cli.cmd_init_workspace, request)
+    _invoke(
+        cli.init_workspace_impl,
+        Path(request.workspace).expanduser().resolve(),
+        nsx_repo_url=request.nsx_repo_url,
+        nsx_revision=request.nsx_revision,
+        ambiqsuite_repo_url=request.ambiqsuite_repo_url,
+        ambiqsuite_revision=request.ambiqsuite_revision,
+        skip_update=request.skip_update,
+    )
 
 
 def create_app(
@@ -169,7 +164,17 @@ def create_app(
     )
     if not request.name:
         raise NSXError("create_app requires a non-empty app name")
-    _invoke(cli.cmd_create_app, request)
+    _invoke(
+        cli.create_app_impl,
+        Path(request.workspace).expanduser().resolve(),
+        request.name,
+        board=request.board,
+        soc=request.soc,
+        force=request.force,
+        init_workspace=request.init_workspace,
+        no_bootstrap=request.no_bootstrap,
+        no_sync=request.no_sync,
+    )
 
 
 def sync_workspace(workspace: PathLike | WorkspaceSyncRequest) -> None:
@@ -178,11 +183,11 @@ def sync_workspace(workspace: PathLike | WorkspaceSyncRequest) -> None:
         if isinstance(workspace, WorkspaceSyncRequest)
         else WorkspaceSyncRequest(workspace=workspace)
     )
-    _invoke(cli.cmd_sync, request)
+    _invoke(cli.sync_workspace_impl, Path(request.workspace).expanduser().resolve())
 
 
 def doctor() -> None:
-    _invoke(cli.cmd_doctor)
+    _invoke(cli.doctor_impl)
 
 
 def configure_app(
@@ -196,7 +201,12 @@ def configure_app(
         if isinstance(app_dir, AppActionRequest)
         else AppActionRequest(app_dir=app_dir, board=board, build_dir=build_dir)
     )
-    _invoke(cli.cmd_configure, request)
+    _invoke(
+        cli.configure_app_impl,
+        Path(request.app_dir).expanduser().resolve(),
+        board=request.board,
+        build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
+    )
 
 
 def build_app(
@@ -218,7 +228,14 @@ def build_app(
             jobs=jobs,
         )
     )
-    _invoke(cli.cmd_build, request)
+    _invoke(
+        cli.build_app_impl,
+        Path(request.app_dir).expanduser().resolve(),
+        board=request.board,
+        build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
+        target=request.target,
+        jobs=request.jobs,
+    )
 
 
 def flash_app(
@@ -233,7 +250,13 @@ def flash_app(
         if isinstance(app_dir, AppFlashRequest)
         else AppFlashRequest(app_dir=app_dir, board=board, build_dir=build_dir, jobs=jobs)
     )
-    _invoke(cli.cmd_flash, request)
+    _invoke(
+        cli.flash_app_impl,
+        Path(request.app_dir).expanduser().resolve(),
+        board=request.board,
+        build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
+        jobs=request.jobs,
+    )
 
 
 def view_app(
@@ -247,7 +270,12 @@ def view_app(
         if isinstance(app_dir, AppActionRequest)
         else AppActionRequest(app_dir=app_dir, board=board, build_dir=build_dir)
     )
-    _invoke(cli.cmd_view, request)
+    _invoke(
+        cli.view_app_impl,
+        Path(request.app_dir).expanduser().resolve(),
+        board=request.board,
+        build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
+    )
 
 
 def clean_app(
@@ -262,7 +290,13 @@ def clean_app(
         if isinstance(app_dir, AppCleanRequest)
         else AppCleanRequest(app_dir=app_dir, board=board, build_dir=build_dir, full=full)
     )
-    _invoke(cli.cmd_clean, request)
+    _invoke(
+        cli.clean_app_impl,
+        Path(request.app_dir).expanduser().resolve(),
+        board=request.board,
+        build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
+        full=request.full,
+    )
 
 
 def add_module(
@@ -284,7 +318,13 @@ def add_module(
     )
     if not request.module:
         raise NSXError("add_module requires a module name")
-    _invoke(cli.cmd_module_add, request)
+    _invoke(
+        cli.add_module_impl,
+        Path(request.app_dir).expanduser().resolve(),
+        request.module,
+        dry_run=request.dry_run,
+        no_sync=request.no_sync,
+    )
 
 
 def remove_module(
@@ -306,7 +346,13 @@ def remove_module(
     )
     if not request.module:
         raise NSXError("remove_module requires a module name")
-    _invoke(cli.cmd_module_remove, request)
+    _invoke(
+        cli.remove_module_impl,
+        Path(request.app_dir).expanduser().resolve(),
+        request.module,
+        dry_run=request.dry_run,
+        no_sync=request.no_sync,
+    )
 
 
 def update_modules(
@@ -326,7 +372,13 @@ def update_modules(
             no_sync=no_sync,
         )
     )
-    _invoke(cli.cmd_module_update, request)
+    _invoke(
+        cli.update_modules_impl,
+        Path(request.app_dir).expanduser().resolve(),
+        module_name=request.module,
+        dry_run=request.dry_run,
+        no_sync=request.no_sync,
+    )
 
 
 def register_module(
@@ -362,4 +414,19 @@ def register_module(
     )
     if not request.module or not request.metadata or not request.project:
         raise NSXError("register_module requires module, metadata, and project")
-    _invoke(cli.cmd_module_register, request)
+    _invoke(
+        cli.register_module_impl,
+        Path(request.app_dir).expanduser().resolve(),
+        request.module,
+        metadata=Path(request.metadata).expanduser(),
+        project=request.project,
+        project_url=request.project_url,
+        project_revision=request.project_revision,
+        project_path=request.project_path,
+        project_local_path=(
+            Path(request.project_local_path).expanduser() if request.project_local_path else None
+        ),
+        override=request.override,
+        dry_run=request.dry_run,
+        no_sync=request.no_sync,
+    )

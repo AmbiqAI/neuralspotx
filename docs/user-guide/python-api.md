@@ -34,6 +34,13 @@ The API supports two styles:
 - direct function arguments
 - dataclass request objects
 
+The Python API and CLI now share the same non-argparse implementation layer.
+That means:
+
+- the CLI remains the main user-facing entry point
+- higher-level Python tools can call NSX directly without shelling out
+- API tests and CLI behavior exercise the same workflow logic
+
 ## Example: Direct Calls
 
 ```python
@@ -82,8 +89,9 @@ build_app(
 
 ## Notes
 
-- the current Python API is still backed by the same implementation used by the
-  CLI
-- dataclass request objects give future tools a cleaner typed integration surface
-- over time, more of the internal workflow can move into library-first
-  implementation units
+- dataclass request objects give higher-level tools a cleaner typed integration
+  surface
+- the API is suitable for tools built on top of NSX, such as profilers,
+  validators, and app generators
+- the API raises `NSXError` for workflow failures instead of exposing argparse
+  behavior directly

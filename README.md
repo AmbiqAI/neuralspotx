@@ -17,6 +17,9 @@ NSX is a lightweight bare-metal workflow for Ambiq targets. It provides:
 The primary audience is app developers creating small, focused NSX applications
 for bring-up, profiling, validation, and simple demos.
 
+For contributor workflows such as releases, CI, and the Python API surface, use
+the docs site under `docs/`.
+
 ## Documentation
 
 The main documentation lives in the docs site built from `docs/`.
