@@ -305,14 +305,17 @@ def _vendored_metadata_relpath(metadata: str) -> Path:
         return Path("cmake") / "nsx" / metadata_path.name
     if tuple(parts[:3]) == ("src", "neuralspotx", "cmake"):
         return Path("cmake") / "nsx" / metadata_path.name
-    raise SystemExit(f"Unsupported vendored metadata location: {metadata}")
+    return metadata_path
 
 
 def _vendored_target_dir(app_dir: Path, module_name: str, metadata: str) -> Path:
     metadata_path = Path(metadata)
     if metadata_path.is_absolute():
         return app_dir / "modules" / module_name
-    return app_dir / _vendored_metadata_relpath(metadata).parent
+    relpath = _vendored_metadata_relpath(metadata)
+    if relpath.parts and relpath.parts[0] in {"modules", "boards", "cmake"}:
+        return app_dir / relpath.parent
+    return app_dir / "modules" / module_name
 
 
 def _metadata_path_relative_to_project(metadata: Path, project_path: str | None) -> Path:
@@ -343,18 +346,45 @@ def _project_checkout_candidates(
     if isinstance(project_path, str):
         candidates.append(workspace / project_path)
 
-    if project_name == DEFAULT_REPO_NAME:
-        candidates.append(_repo_root())
-    elif isinstance(project_path, str):
-        repo_name = Path(project_path).name
-        candidates.append(_repo_root().parent / "nsx-modules" / repo_name)
-
     unique: list[Path] = []
     for candidate in candidates:
         resolved = candidate.resolve()
         if resolved not in unique:
             unique.append(resolved)
     return unique
+
+
+def _require_initialized_workspace(workspace: Path) -> None:
+    if (workspace / ".west").exists() and (workspace / "manifest" / "west.yml").exists():
+        return
+    raise SystemExit(
+        f"Workspace is not initialized: {workspace}\n"
+        "Run `nsx init-workspace <workspace>` before creating apps or syncing modules."
+    )
+
+
+def _metadata_storage_path(app_dir: Path, metadata_path: Path, project_entry: dict[str, Any]) -> str:
+    local_path = project_entry.get("local_path")
+    if isinstance(local_path, str):
+        local_root = Path(local_path).expanduser().resolve()
+        try:
+            return str(metadata_path.resolve().relative_to(local_root))
+        except ValueError:
+            pass
+
+    project_path = project_entry.get("path")
+    if isinstance(project_path, str):
+        project_root = (_workspace_for_app_dir(app_dir) / project_path).resolve()
+        try:
+            metadata_rel = metadata_path.resolve().relative_to(project_root)
+            return str(Path(project_path) / metadata_rel)
+        except ValueError:
+            pass
+
+    try:
+        return str(metadata_path.resolve().relative_to(app_dir.resolve()))
+    except ValueError:
+        return str(metadata_path.resolve())
 
 
 def _packaged_metadata_path(metadata: Path) -> Path | None:
@@ -395,6 +425,8 @@ def _vendor_module_into_app(
                 break
 
     if destination_dir.resolve() == source_dir.resolve():
+        return
+    if destination_dir.resolve().is_relative_to(source_dir.resolve()):
         return
 
     preserve_existing = destination_dir == app_dir / "cmake" / "nsx"
@@ -981,6 +1013,7 @@ def cmd_init_workspace(args: argparse.Namespace) -> None:
 def cmd_create_app(args: argparse.Namespace) -> None:
     base_registry = _load_registry()
     workspace = Path(args.workspace).expanduser().resolve()
+    _require_initialized_workspace(workspace)
     app_name = args.name
 
     soc = args.soc or DEFAULT_SOC_FOR_BOARD.get(args.board)
@@ -1114,6 +1147,7 @@ def cmd_create_app(args: argparse.Namespace) -> None:
 def cmd_sync(args: argparse.Namespace) -> None:
     _require_tool("west")
     workspace = Path(args.workspace).expanduser().resolve()
+    _require_initialized_workspace(workspace)
     _run(["west", "update"], cwd=workspace)
 
 
@@ -1157,7 +1191,13 @@ def cmd_doctor(args: argparse.Namespace) -> None:
 
     if jlink_ok:
         try:
-            probe = _run_capture(["JLinkExe", "-CommandFile", "/dev/null", "-NoGui", "1"])
+            probe = subprocess.run(
+                ["JLinkExe", "-CommandFile", "-", "-NoGui", "1"],
+                check=True,
+                text=True,
+                capture_output=True,
+                stdin=subprocess.DEVNULL,
+            )
             output = (probe.stdout or "") + (probe.stderr or "")
             dll_hint = _jlink_failure_hint(output)
             if dll_hint:
@@ -1251,7 +1291,10 @@ def cmd_view(args: argparse.Namespace) -> None:
         _run_cmake_configure(app_dir, build_dir, board)
     target = f"{app_name}_view"
     view_cmd = _extract_view_command(build_dir, target)
-    subprocess.run(view_cmd, cwd=str(build_dir), check=True)
+    try:
+        subprocess.run(view_cmd, cwd=str(build_dir), check=True)
+    except subprocess.CalledProcessError as exc:
+        raise SystemExit(_format_subprocess_error(exc, context="View")) from None
 
 
 def cmd_clean(args: argparse.Namespace) -> None:
@@ -1519,14 +1562,14 @@ def cmd_module_register(args: argparse.Namespace) -> None:
     modules[module_name] = {
         "project": project_name,
         "revision": project_entry.get("revision", "main"),
-        "metadata": str(metadata_path),
+        "metadata": _metadata_storage_path(app_dir, metadata_path, project_entry),
     }
 
     if args.dry_run:
         print("[dry-run] would register module:")
         print(f"  module={module_name}")
         print(f"  project={project_name}")
-        print(f"  metadata={metadata_path}")
+        print(f"  metadata={modules[module_name]['metadata']}")
         return
 
     _save_app_cfg(app_dir, target_cfg)
