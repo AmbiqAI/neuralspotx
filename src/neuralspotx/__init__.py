@@ -1,7 +1,17 @@
 """Canonical Python package for neuralspotx tooling."""
 
 from .api import (
+    AppActionRequest,
+    AppBuildRequest,
+    AppCleanRequest,
+    AppCreateRequest,
+    AppFlashRequest,
+    ModuleChangeRequest,
+    ModuleRegisterRequest,
+    ModuleUpdateRequest,
     NSXError,
+    WorkspaceInitRequest,
+    WorkspaceSyncRequest,
     add_module,
     build_app,
     clean_app,
@@ -19,7 +29,17 @@ from .api import (
 from .cli import main
 
 __all__ = [
+    "AppActionRequest",
+    "AppBuildRequest",
+    "AppCleanRequest",
+    "AppCreateRequest",
+    "AppFlashRequest",
+    "ModuleChangeRequest",
+    "ModuleRegisterRequest",
+    "ModuleUpdateRequest",
     "NSXError",
+    "WorkspaceInitRequest",
+    "WorkspaceSyncRequest",
     "add_module",
     "build_app",
     "clean_app",

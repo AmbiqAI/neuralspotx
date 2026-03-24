@@ -29,7 +29,12 @@ The `neuralspotx` package exports a small API that mirrors the CLI workflow:
 
 Failures raise `neuralspotx.NSXError`.
 
-## Example
+The API supports two styles:
+
+- direct function arguments
+- dataclass request objects
+
+## Example: Direct Calls
 
 ```python
 from neuralspotx import NSXError, build_app, configure_app, create_app, init_workspace
@@ -46,10 +51,39 @@ except NSXError as exc:
     print(f"NSX failed: {exc}")
 ```
 
+## Example: Dataclass Requests
+
+```python
+from neuralspotx import (
+    AppBuildRequest,
+    AppCreateRequest,
+    WorkspaceInitRequest,
+    build_app,
+    create_app,
+    init_workspace,
+)
+
+init_workspace(WorkspaceInitRequest(workspace="demo-workspace", skip_update=True))
+create_app(
+    AppCreateRequest(
+        workspace="demo-workspace",
+        name="hello_ap510",
+        board="apollo510_evb",
+        no_bootstrap=True,
+    )
+)
+build_app(
+    AppBuildRequest(
+        app_dir="demo-workspace/apps/hello_ap510",
+        jobs=4,
+    )
+)
+```
+
 ## Notes
 
-- the current Python API is a thin wrapper over the same implementation used by
-  the CLI
-- it is intended to mirror CLI behavior closely
+- the current Python API is still backed by the same implementation used by the
+  CLI
+- dataclass request objects give future tools a cleaner typed integration surface
 - over time, more of the internal workflow can move into library-first
   implementation units
