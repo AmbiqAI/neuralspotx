@@ -1,0 +1,6 @@
+# SEGGER defaults derived from existing make/jlink.mk (apollo4 family)
+set(NSX_SEGGER_DEVICE "AMAP42KK-KBR")
+set(NSX_SEGGER_IF_SPEED "4000")
+set(NSX_SEGGER_PF_ADDR "0x18000")
+set(NSX_SEGGER_CPUFREQ "96105000")
+set(NSX_SEGGER_SWOFREQ "1000000")

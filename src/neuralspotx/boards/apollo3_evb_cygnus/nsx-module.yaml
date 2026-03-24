@@ -1,0 +1,36 @@
+schema_version: 1
+
+module:
+  name: nsx-board-apollo3-evb-cygnus
+  type: board
+  version: "0.1.0"
+
+support:
+  ambiqsuite: true
+  zephyr: false
+
+build:
+  cmake:
+    package: nsx_board_apollo3_evb_cygnus
+    targets:
+      - nsx::board_apollo3_evb_cygnus
+
+depends:
+  required:
+    - nsx-ambiq-hal-r3
+    - nsx-ambiq-bsp-r3
+    - nsx-soc-hal
+    - nsx-cmsis-startup
+    - nsx-ambiqsuite-r3
+  optional: []
+
+constraints:
+  required_sdk_provider: nsx-ambiqsuite-r3
+
+compatibility:
+  boards:
+    - apollo3_evb_cygnus
+  socs:
+    - apollo3
+  toolchains:
+    - arm-none-eabi-gcc

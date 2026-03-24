@@ -1,0 +1,28 @@
+[project]
+name = "neuralspotx"
+version = "0.1.0"
+description = "Python tooling and workspace bootstrap for neuralspotx"
+requires-python = ">=3.10"
+dependencies = [
+    "PyYAML>=6.0",
+    "west==1.2.0",
+]
+
+[project.scripts]
+nsx = "neuralspotx.cli:main"
+
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["neuralspotx", "neuralspotx.*"]
+
+[tool.setuptools.package-data]
+neuralspotx = ["templates/external_app/**/*", "cmake/**/*", "boards/**/*"]
+"neuralspotx.data" = ["*.yaml"]

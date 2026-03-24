@@ -1,0 +1,6 @@
+ExitOnError 1
+Reset
+LoadFile @NSX_JLINK_BIN_FILE@, @NSX_SEGGER_PF_ADDR@
+Reset
+Go
+Exit

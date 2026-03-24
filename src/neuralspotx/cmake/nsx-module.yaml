@@ -1,0 +1,35 @@
+schema_version: 1
+
+module:
+  name: nsx-tooling
+  type: tooling
+  version: "0.1.0"
+
+support:
+  ambiqsuite: true
+  zephyr: false
+
+build:
+  cmake:
+    package: nsx_tooling
+    targets:
+      - nsx::tooling_helpers
+
+depends:
+  required: []
+  optional: []
+
+compatibility:
+  boards:
+    - "*"
+  socs:
+    - apollo3
+    - apollo3p
+    - apollo4l
+    - apollo4p
+    - apollo5b
+    - apollo510
+    - apollo510b
+    - apollo330P
+  toolchains:
+    - arm-none-eabi-gcc

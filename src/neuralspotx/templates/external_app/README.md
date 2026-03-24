@@ -1,0 +1,35 @@
+# External NSX App Template
+
+This template shows a standalone NSX app with vendored modules and board content.
+
+## Create
+
+```bash
+uv run nsx create-app ~/ws my_app --board apollo510_evb
+cd ~/ws/apps/my_app
+```
+
+## Build
+
+```bash
+uv run nsx configure --app-dir .
+uv run nsx build --app-dir .
+uv run nsx flash --app-dir .
+uv run nsx view --app-dir .
+```
+
+Expected SWO output after `flash` + `view`:
+
+```text
+nsx hello from generated app
+nsx hello from generated app
+...
+```
+
+## Layout
+
+- `cmake/nsx/` contains copied NSX CMake support.
+- `modules/` contains vendored NSX module source copied by `nsx`.
+- `boards/` contains the vendored board definition for the selected target.
+- `nsx.yml` tracks the app board and enabled module set.
+- The default app prints once per second so SWO attach timing is forgiving.
