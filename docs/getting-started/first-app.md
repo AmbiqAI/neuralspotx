@@ -22,6 +22,13 @@ cd <nsx-repo>
 uv run nsx init-workspace <workspace>
 ```
 
+If you prefer, `create-app` can also initialize the workspace for you:
+
+```bash
+cd <nsx-repo>
+uv run nsx create-app <workspace> hello_ap510 --board apollo510_evb --init-workspace
+```
+
 This creates a workspace with:
 
 - `manifest/`

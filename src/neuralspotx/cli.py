@@ -978,8 +978,28 @@ def _print_module_table(registry: dict[str, Any], enabled: set[str]) -> None:
 
 def cmd_init_workspace(args: argparse.Namespace) -> None:
     _require_tool("west")
-
     workspace = Path(args.workspace).expanduser().resolve()
+    _init_workspace_impl(
+        workspace,
+        nsx_repo_url=args.nsx_repo_url,
+        nsx_revision=args.nsx_revision,
+        ambiqsuite_repo_url=args.ambiqsuite_repo_url,
+        ambiqsuite_revision=args.ambiqsuite_revision,
+        skip_update=args.skip_update,
+    )
+
+
+def _init_workspace_impl(
+    workspace: Path,
+    *,
+    nsx_repo_url: str | None = None,
+    nsx_revision: str = "main",
+    ambiqsuite_repo_url: str | None = None,
+    ambiqsuite_revision: str = "main",
+    skip_update: bool = False,
+) -> None:
+    _require_tool("west")
+
     manifest_dir = workspace / "manifest"
     west_yml = manifest_dir / "west.yml"
 
@@ -989,20 +1009,20 @@ def cmd_init_workspace(args: argparse.Namespace) -> None:
     default_nsx_url = _registry_project_entry(_load_registry(), DEFAULT_REPO_NAME).get("url")
     if not isinstance(default_nsx_url, str) or not default_nsx_url:
         raise SystemExit("Built-in registry is missing a default URL for the neuralspotx project.")
-    nsx_repo_url = args.nsx_repo_url or default_nsx_url
+    effective_nsx_repo_url = nsx_repo_url or default_nsx_url
 
     manifest_text = _render_west_manifest(
-        nsx_repo_url=nsx_repo_url,
-        nsx_revision=args.nsx_revision,
-        ambiqsuite_url=args.ambiqsuite_repo_url,
-        ambiqsuite_revision=args.ambiqsuite_revision,
+        nsx_repo_url=effective_nsx_repo_url,
+        nsx_revision=nsx_revision,
+        ambiqsuite_url=ambiqsuite_repo_url,
+        ambiqsuite_revision=ambiqsuite_revision,
     )
     west_yml.write_text(manifest_text, encoding="utf-8")
 
     if not (workspace / ".west").exists():
         _run(["west", "init", "-l", "manifest"], cwd=workspace)
 
-    if not args.skip_update:
+    if not skip_update:
         _run(["west", "update"], cwd=workspace)
 
     print(f"NSX workspace initialized at: {workspace}")
@@ -1013,6 +1033,11 @@ def cmd_init_workspace(args: argparse.Namespace) -> None:
 def cmd_create_app(args: argparse.Namespace) -> None:
     base_registry = _load_registry()
     workspace = Path(args.workspace).expanduser().resolve()
+    if args.init_workspace and not _workspace_has_manifest(workspace):
+        _init_workspace_impl(
+            workspace,
+            skip_update=args.no_sync and args.no_bootstrap,
+        )
     _require_initialized_workspace(workspace)
     app_name = args.name
 
@@ -1617,6 +1642,11 @@ def _build_parser() -> argparse.ArgumentParser:
     p_new.add_argument("--board", default="apollo510_evb", help="Target board package suffix")
     p_new.add_argument("--soc", default=None, help="Target SoC package suffix (default inferred from board)")
     p_new.add_argument("--force", action="store_true", help="Allow writing into a non-empty app directory")
+    p_new.add_argument(
+        "--init-workspace",
+        action="store_true",
+        help="Initialize the workspace first if it has not been set up yet",
+    )
     p_new.add_argument("--no-bootstrap", action="store_true", help="Create the app without vendoring starter modules")
     p_new.add_argument("--no-sync", action="store_true", help="Skip west update for built-in module projects during app creation")
     p_new.set_defaults(func=cmd_create_app)
@@ -1627,6 +1657,11 @@ def _build_parser() -> argparse.ArgumentParser:
     p_new_alias.add_argument("--board", default="apollo510_evb", help="Target board package suffix")
     p_new_alias.add_argument("--soc", default=None, help="Target SoC package suffix (default inferred from board)")
     p_new_alias.add_argument("--force", action="store_true", help="Allow writing into a non-empty app directory")
+    p_new_alias.add_argument(
+        "--init-workspace",
+        action="store_true",
+        help="Initialize the workspace first if it has not been set up yet",
+    )
     p_new_alias.add_argument("--no-bootstrap", action="store_true", help="Create the app without vendoring starter modules")
     p_new_alias.add_argument("--no-sync", action="store_true", help="Skip west update for built-in module projects during app creation")
     p_new_alias.set_defaults(func=cmd_create_app)
