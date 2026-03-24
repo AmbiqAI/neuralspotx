@@ -2,6 +2,7 @@
 
 [![CI](https://github.com/AmbiqAI/neuralspotx/actions/workflows/ci.yml/badge.svg)](https://github.com/AmbiqAI/neuralspotx/actions/workflows/ci.yml)
 [![Pages](https://github.com/AmbiqAI/neuralspotx/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/AmbiqAI/neuralspotx/actions/workflows/deploy-pages.yml)
+[![Release Please](https://github.com/AmbiqAI/neuralspotx/actions/workflows/release-please.yml/badge.svg)](https://github.com/AmbiqAI/neuralspotx/actions/workflows/release-please.yml)
 
 `neuralspotx` is the NSX tooling repo.
 
