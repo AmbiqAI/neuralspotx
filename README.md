@@ -1,5 +1,8 @@
 # neuralspotx
 
+[![CI](https://github.com/AmbiqAI/neuralspotx/actions/workflows/ci.yml/badge.svg)](https://github.com/AmbiqAI/neuralspotx/actions/workflows/ci.yml)
+[![Pages](https://github.com/AmbiqAI/neuralspotx/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/AmbiqAI/neuralspotx/actions/workflows/deploy-pages.yml)
+
 `neuralspotx` is the NSX tooling repo.
 
 NSX is a lightweight bare-metal workflow for Ambiq targets. It provides:
