@@ -8,29 +8,109 @@ channels:
 projects:
   neuralspotx:
     name: neuralspotx
-    url: local://neuralspotx
+    url: https://github.com/AmbiqAI/neuralspotx.git
     revision: main
     path: neuralspotx
   nsx-ambiqsuite-r3:
     name: nsx-ambiqsuite-r3
-    url: local://nsx-ambiqsuite-r3
+    url: https://github.com/AmbiqAI/nsx-ambiqsuite-r3.git
     revision: r3.1.1
     path: modules/nsx-ambiqsuite-r3
   nsx-ambiqsuite-r4:
     name: nsx-ambiqsuite-r4
-    url: local://nsx-ambiqsuite-r4
+    url: https://github.com/AmbiqAI/nsx-ambiqsuite-r4.git
     revision: r4.5.0
     path: modules/nsx-ambiqsuite-r4
   nsx-ambiqsuite-r5:
     name: nsx-ambiqsuite-r5
-    url: local://nsx-ambiqsuite-r5
+    url: https://github.com/AmbiqAI/nsx-ambiqsuite-r5.git
     revision: r5.3
     path: modules/nsx-ambiqsuite-r5
-  ambiqsuite:
-    name: ambiqsuite
-    url: local://ambiqsuite
+  nsx-ambiq-hal-r3:
+    name: nsx-ambiq-hal-r3
+    url: https://github.com/AmbiqAI/nsx-ambiq-hal-r3.git
     revision: main
-    path: modules/ambiqsuite
+    path: modules/nsx-ambiq-hal-r3
+  nsx-ambiq-hal-r4:
+    name: nsx-ambiq-hal-r4
+    url: https://github.com/AmbiqAI/nsx-ambiq-hal-r4.git
+    revision: main
+    path: modules/nsx-ambiq-hal-r4
+  nsx-ambiq-hal-r5:
+    name: nsx-ambiq-hal-r5
+    url: https://github.com/AmbiqAI/nsx-ambiq-hal-r5.git
+    revision: main
+    path: modules/nsx-ambiq-hal-r5
+  nsx-ambiq-bsp-r3:
+    name: nsx-ambiq-bsp-r3
+    url: https://github.com/AmbiqAI/nsx-ambiq-bsp-r3.git
+    revision: main
+    path: modules/nsx-ambiq-bsp-r3
+  nsx-ambiq-bsp-r4:
+    name: nsx-ambiq-bsp-r4
+    url: https://github.com/AmbiqAI/nsx-ambiq-bsp-r4.git
+    revision: main
+    path: modules/nsx-ambiq-bsp-r4
+  nsx-ambiq-bsp-r5:
+    name: nsx-ambiq-bsp-r5
+    url: https://github.com/AmbiqAI/nsx-ambiq-bsp-r5.git
+    revision: main
+    path: modules/nsx-ambiq-bsp-r5
+  nsx-soc-hal:
+    name: nsx-soc-hal
+    url: https://github.com/AmbiqAI/nsx-soc-hal.git
+    revision: main
+    path: modules/nsx-soc-hal
+  nsx-cmsis-startup:
+    name: nsx-cmsis-startup
+    url: https://github.com/AmbiqAI/nsx-cmsis-startup.git
+    revision: main
+    path: modules/nsx-cmsis-startup
+  nsx-core:
+    name: nsx-core
+    url: https://github.com/AmbiqAI/nsx-core.git
+    revision: main
+    path: modules/nsx-core
+  nsx-harness:
+    name: nsx-harness
+    url: https://github.com/AmbiqAI/nsx-harness.git
+    revision: main
+    path: modules/nsx-harness
+  nsx-utils:
+    name: nsx-utils
+    url: https://github.com/AmbiqAI/nsx-utils.git
+    revision: main
+    path: modules/nsx-utils
+  nsx-peripherals:
+    name: nsx-peripherals
+    url: https://github.com/AmbiqAI/nsx-peripherals.git
+    revision: main
+    path: modules/nsx-peripherals
+  nsx-power:
+    name: nsx-power
+    url: https://github.com/AmbiqAI/nsx-power.git
+    revision: main
+    path: modules/nsx-power
+  nsx-portable-api:
+    name: nsx-portable-api
+    url: https://github.com/AmbiqAI/nsx-portable-api.git
+    revision: main
+    path: modules/nsx-portable-api
+  nsx-uart:
+    name: nsx-uart
+    url: https://github.com/AmbiqAI/nsx-uart.git
+    revision: main
+    path: modules/nsx-uart
+  nsx-i2c:
+    name: nsx-i2c
+    url: https://github.com/AmbiqAI/nsx-i2c.git
+    revision: main
+    path: modules/nsx-i2c
+  nsx-spi:
+    name: nsx-spi
+    url: https://github.com/AmbiqAI/nsx-spi.git
+    revision: main
+    path: modules/nsx-spi
 
 modules:
   nsx-ambiqsuite-r3:
@@ -46,35 +126,35 @@ modules:
     revision: r5.3
     metadata: modules/nsx-ambiqsuite-r5/nsx-module.yaml
   nsx-ambiq-hal-r3:
-    project: neuralspotx
+    project: nsx-ambiq-hal-r3
     revision: main
     metadata: modules/nsx-ambiq-hal-r3/nsx-module.yaml
   nsx-ambiq-hal-r4:
-    project: neuralspotx
+    project: nsx-ambiq-hal-r4
     revision: main
     metadata: modules/nsx-ambiq-hal-r4/nsx-module.yaml
   nsx-ambiq-hal-r5:
-    project: neuralspotx
+    project: nsx-ambiq-hal-r5
     revision: main
     metadata: modules/nsx-ambiq-hal-r5/nsx-module.yaml
   nsx-ambiq-bsp-r3:
-    project: neuralspotx
+    project: nsx-ambiq-bsp-r3
     revision: main
     metadata: modules/nsx-ambiq-bsp-r3/nsx-module.yaml
   nsx-ambiq-bsp-r4:
-    project: neuralspotx
+    project: nsx-ambiq-bsp-r4
     revision: main
     metadata: modules/nsx-ambiq-bsp-r4/nsx-module.yaml
   nsx-ambiq-bsp-r5:
-    project: neuralspotx
+    project: nsx-ambiq-bsp-r5
     revision: main
     metadata: modules/nsx-ambiq-bsp-r5/nsx-module.yaml
   nsx-soc-hal:
-    project: neuralspotx
+    project: nsx-soc-hal
     revision: main
     metadata: modules/nsx-soc-hal/nsx-module.yaml
   nsx-cmsis-startup:
-    project: neuralspotx
+    project: nsx-cmsis-startup
     revision: main
     metadata: modules/nsx-cmsis-startup/nsx-module.yaml
   nsx-board-apollo3p-evb:
@@ -130,25 +210,41 @@ modules:
     revision: main
     metadata: src/neuralspotx/boards/apollo4p_blue_kxr_evb/nsx-module.yaml
   nsx-core:
-    project: neuralspotx
+    project: nsx-core
     revision: main
     metadata: modules/nsx-core/nsx-module.yaml
   nsx-harness:
-    project: neuralspotx
+    project: nsx-harness
     revision: main
     metadata: modules/nsx-harness/nsx-module.yaml
   nsx-utils:
-    project: neuralspotx
+    project: nsx-utils
     revision: main
     metadata: modules/nsx-utils/nsx-module.yaml
   nsx-peripherals:
-    project: neuralspotx
+    project: nsx-peripherals
     revision: main
     metadata: modules/nsx-peripherals/nsx-module.yaml
+  nsx-power:
+    project: nsx-power
+    revision: main
+    metadata: modules/nsx-power/nsx-module.yaml
   nsx-portable-api:
-    project: neuralspotx
+    project: nsx-portable-api
     revision: main
     metadata: modules/nsx-portable-api/nsx-module.yaml
+  nsx-uart:
+    project: nsx-uart
+    revision: main
+    metadata: modules/nsx-uart/nsx-module.yaml
+  nsx-i2c:
+    project: nsx-i2c
+    revision: main
+    metadata: modules/nsx-i2c/nsx-module.yaml
+  nsx-spi:
+    project: nsx-spi
+    revision: main
+    metadata: modules/nsx-spi/nsx-module.yaml
   nsx-tooling:
     project: neuralspotx
     revision: main
