@@ -73,7 +73,25 @@ def test_create_app_requires_initialized_workspace(tmp_path: Path) -> None:
         create_app(tmp_path, "hello_fail", board="apollo510_evb", no_bootstrap=True)
 
 
-def test_create_app_can_initialize_workspace(tmp_path: Path) -> None:
+def test_create_app_can_initialize_workspace(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    def fake_init_workspace_impl(
+        workspace: Path,
+        *,
+        nsx_repo_url: str | None = None,
+        nsx_revision: str = "main",
+        ambiqsuite_repo_url: str | None = None,
+        ambiqsuite_revision: str = "main",
+        skip_update: bool = False,
+    ) -> None:
+        del nsx_repo_url, nsx_revision, ambiqsuite_repo_url, ambiqsuite_revision, skip_update
+        (workspace / ".west").mkdir(parents=True, exist_ok=True)
+        (workspace / "manifest").mkdir(parents=True, exist_ok=True)
+        (workspace / "manifest" / "west.yml").write_text("manifest:\n  projects: []\n", encoding="utf-8")
+
+    monkeypatch.setattr(cli, "init_workspace_impl", fake_init_workspace_impl)
+
     create_app(
         AppCreateRequest(
             workspace=tmp_path,
