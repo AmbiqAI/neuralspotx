@@ -1,5 +1,37 @@
 """Canonical Python package for neuralspotx tooling."""
 
+from .api import (
+    NSXError,
+    add_module,
+    build_app,
+    clean_app,
+    configure_app,
+    create_app,
+    doctor,
+    flash_app,
+    init_workspace,
+    register_module,
+    remove_module,
+    sync_workspace,
+    update_modules,
+    view_app,
+)
 from .cli import main
 
-__all__ = ["main"]
+__all__ = [
+    "NSXError",
+    "add_module",
+    "build_app",
+    "clean_app",
+    "configure_app",
+    "create_app",
+    "doctor",
+    "flash_app",
+    "init_workspace",
+    "main",
+    "register_module",
+    "remove_module",
+    "sync_workspace",
+    "update_modules",
+    "view_app",
+]

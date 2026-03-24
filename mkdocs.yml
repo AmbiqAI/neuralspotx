@@ -32,6 +32,7 @@ nav:
       - Create an App: user-guide/create-app.md
       - App Layout: user-guide/app-layout.md
       - Modules: user-guide/modules.md
+      - Python API: user-guide/python-api.md
       - Build, Flash, and View: user-guide/build-flash-view.md
       - Boards and Targets: user-guide/boards-and-targets.md
       - SDK Provider Selection: user-guide/sdk-provider-selection.md
