@@ -81,6 +81,16 @@ projects:
     url: https://github.com/AmbiqAI/nsx-utils.git
     revision: main
     path: modules/nsx-utils
+  nsx-perf:
+    name: nsx-perf
+    url: https://github.com/AmbiqAI/nsx-perf.git
+    revision: main
+    path: modules/nsx-perf
+  nsx-pmu-armv8m:
+    name: nsx-pmu-armv8m
+    url: https://github.com/AmbiqAI/nsx-pmu-armv8m.git
+    revision: main
+    path: modules/nsx-pmu-armv8m
   nsx-peripherals:
     name: nsx-peripherals
     url: https://github.com/AmbiqAI/nsx-peripherals.git
@@ -221,6 +231,14 @@ modules:
     project: nsx-utils
     revision: main
     metadata: modules/nsx-utils/nsx-module.yaml
+  nsx-perf:
+    project: nsx-perf
+    revision: main
+    metadata: modules/nsx-perf/nsx-module.yaml
+  nsx-pmu-armv8m:
+    project: nsx-pmu-armv8m
+    revision: main
+    metadata: modules/nsx-pmu-armv8m/nsx-module.yaml
   nsx-peripherals:
     project: nsx-peripherals
     revision: main
