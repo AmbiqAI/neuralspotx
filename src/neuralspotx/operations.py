@@ -41,6 +41,7 @@ from .project_config import (
     _render_west_manifest,
     _require_initialized_workspace,
     _resolve_app_context,
+    _run_cmake_configure,
     _save_app_cfg,
     _unique_preserving_order,
     _workspace_for_app_dir,
@@ -72,14 +73,6 @@ def set_verbosity(level: int) -> None:
     global VERBOSE
     VERBOSE = level
     set_subprocess_verbosity(level)
-
-
-def _cli():
-    """Import the CLI module lazily for compatibility seams."""
-
-    from . import cli
-
-    return cli
 
 
 # Compatibility aliases for tests and incremental callers.
@@ -396,13 +389,12 @@ def configure_app_impl(
         The resolved build directory.
     """
 
-    cli = _cli()
     resolved_app_dir, _, resolved_board, resolved_build_dir = _resolve_build_context(
         app_dir,
         board=board,
         build_dir=build_dir,
     )
-    cli._run_cmake_configure(resolved_app_dir, resolved_build_dir, resolved_board)
+    _run_cmake_configure(resolved_app_dir, resolved_build_dir, resolved_board)
     print(f"Configured app at: {resolved_app_dir}")
     print(f"Build directory: {resolved_build_dir}")
     return resolved_build_dir
@@ -418,14 +410,13 @@ def build_app_impl(
 ) -> Path:
     """Build an app target and return the build directory."""
 
-    cli = _cli()
     resolved_app_dir, app_name, resolved_board, resolved_build_dir = _resolve_build_context(
         app_dir,
         board=board,
         build_dir=build_dir,
     )
     if not (resolved_build_dir / "build.ninja").exists():
-        cli._run_cmake_configure(resolved_app_dir, resolved_build_dir, resolved_board)
+        _run_cmake_configure(resolved_app_dir, resolved_build_dir, resolved_board)
     resolved_target = target or app_name
     _run(["cmake", "--build", str(resolved_build_dir), "--target", resolved_target, "-j", str(jobs)])
     return resolved_build_dir
@@ -440,14 +431,13 @@ def flash_app_impl(
 ) -> Path:
     """Flash an app using its generated CMake flash target."""
 
-    cli = _cli()
     resolved_app_dir, app_name, resolved_board, resolved_build_dir = _resolve_build_context(
         app_dir,
         board=board,
         build_dir=build_dir,
     )
     if not (resolved_build_dir / "build.ninja").exists():
-        cli._run_cmake_configure(resolved_app_dir, resolved_build_dir, resolved_board)
+        _run_cmake_configure(resolved_app_dir, resolved_build_dir, resolved_board)
     target = f"{app_name}_flash"
     cmd = ["cmake", "--build", str(resolved_build_dir), "--target", target, "-j", str(jobs)]
     if VERBOSE > 0:
@@ -469,14 +459,13 @@ def view_app_impl(
 ) -> Path:
     """Launch the SEGGER SWO viewer for an app."""
 
-    cli = _cli()
     resolved_app_dir, app_name, resolved_board, resolved_build_dir = _resolve_build_context(
         app_dir,
         board=board,
         build_dir=build_dir,
     )
     if not (resolved_build_dir / "build.ninja").exists():
-        cli._run_cmake_configure(resolved_app_dir, resolved_build_dir, resolved_board)
+        _run_cmake_configure(resolved_app_dir, resolved_build_dir, resolved_board)
     target = f"{app_name}_view"
     view_cmd = _extract_view_command(resolved_build_dir, target)
     try:
@@ -495,7 +484,6 @@ def clean_app_impl(
 ) -> Path:
     """Clean or fully remove an app build directory."""
 
-    cli = _cli()
     resolved_app_dir, _, resolved_board, resolved_build_dir = _resolve_build_context(
         app_dir,
         board=board,
@@ -508,7 +496,7 @@ def clean_app_impl(
         print(f"Removed build directory: {resolved_build_dir}")
         return resolved_build_dir
     if not (resolved_build_dir / "build.ninja").exists():
-        cli._run_cmake_configure(resolved_app_dir, resolved_build_dir, resolved_board)
+        _run_cmake_configure(resolved_app_dir, resolved_build_dir, resolved_board)
     _run(["cmake", "--build", str(resolved_build_dir), "--target", "clean"])
     return resolved_build_dir
 
