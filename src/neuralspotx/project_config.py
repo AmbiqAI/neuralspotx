@@ -138,6 +138,8 @@ def _write_app_module_file(
 def _vendored_metadata_relpath(metadata: str) -> Path:
     path = Path(metadata)
     parts = path.parts
+    if parts[:1] == ("modules",):
+        return path
     if "boards" in parts:
         idx = parts.index("boards")
         return Path(*parts[idx:])

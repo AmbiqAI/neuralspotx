@@ -25,6 +25,7 @@ from neuralspotx import (
     sync_workspace,
     update_modules,
 )
+from neuralspotx.project_config import _vendored_metadata_relpath, _vendored_target_dir
 
 
 def _load_yaml(path: Path) -> dict:
@@ -126,6 +127,14 @@ def test_init_workspace_and_create_app_round_trip(tmp_path: Path) -> None:
     assert "find_package(nsx_soc_apollo510 REQUIRED CONFIG)" in cmake_text
     assert "find_package(nsx_board_apollo510_evb REQUIRED CONFIG)" in cmake_text
     assert "uv run nsx create-app <workspace> hello_api --board apollo510_evb" in readme_text
+
+
+def test_vendored_module_metadata_path_stays_under_single_modules_root(tmp_path: Path) -> None:
+    relpath = _vendored_metadata_relpath("modules/nsx-core/nsx-module.yaml")
+    assert relpath == Path("modules") / "nsx-core" / "nsx-module.yaml"
+    assert _vendored_target_dir(tmp_path, "nsx-core", "modules/nsx-core/nsx-module.yaml") == (
+        tmp_path / "modules" / "nsx-core"
+    )
 
 
 def test_register_local_module_persists_relative_metadata_path(tmp_path: Path) -> None:
