@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import cli
+from . import operations
 
 PathLike = str | Path
 
@@ -127,7 +127,7 @@ def init_workspace(
         )
     )
     _invoke(
-        cli.init_workspace_impl,
+        operations.init_workspace_impl,
         Path(request.workspace).expanduser().resolve(),
         nsx_repo_url=request.nsx_repo_url,
         nsx_revision=request.nsx_revision,
@@ -165,7 +165,7 @@ def create_app(
     if not request.name:
         raise NSXError("create_app requires a non-empty app name")
     _invoke(
-        cli.create_app_impl,
+        operations.create_app_impl,
         Path(request.workspace).expanduser().resolve(),
         request.name,
         board=request.board,
@@ -183,11 +183,11 @@ def sync_workspace(workspace: PathLike | WorkspaceSyncRequest) -> None:
         if isinstance(workspace, WorkspaceSyncRequest)
         else WorkspaceSyncRequest(workspace=workspace)
     )
-    _invoke(cli.sync_workspace_impl, Path(request.workspace).expanduser().resolve())
+    _invoke(operations.sync_workspace_impl, Path(request.workspace).expanduser().resolve())
 
 
 def doctor() -> None:
-    _invoke(cli.doctor_impl)
+    _invoke(operations.doctor_impl)
 
 
 def configure_app(
@@ -202,7 +202,7 @@ def configure_app(
         else AppActionRequest(app_dir=app_dir, board=board, build_dir=build_dir)
     )
     _invoke(
-        cli.configure_app_impl,
+        operations.configure_app_impl,
         Path(request.app_dir).expanduser().resolve(),
         board=request.board,
         build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
@@ -229,7 +229,7 @@ def build_app(
         )
     )
     _invoke(
-        cli.build_app_impl,
+        operations.build_app_impl,
         Path(request.app_dir).expanduser().resolve(),
         board=request.board,
         build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
@@ -251,7 +251,7 @@ def flash_app(
         else AppFlashRequest(app_dir=app_dir, board=board, build_dir=build_dir, jobs=jobs)
     )
     _invoke(
-        cli.flash_app_impl,
+        operations.flash_app_impl,
         Path(request.app_dir).expanduser().resolve(),
         board=request.board,
         build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
@@ -271,7 +271,7 @@ def view_app(
         else AppActionRequest(app_dir=app_dir, board=board, build_dir=build_dir)
     )
     _invoke(
-        cli.view_app_impl,
+        operations.view_app_impl,
         Path(request.app_dir).expanduser().resolve(),
         board=request.board,
         build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
@@ -291,7 +291,7 @@ def clean_app(
         else AppCleanRequest(app_dir=app_dir, board=board, build_dir=build_dir, full=full)
     )
     _invoke(
-        cli.clean_app_impl,
+        operations.clean_app_impl,
         Path(request.app_dir).expanduser().resolve(),
         board=request.board,
         build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
@@ -319,7 +319,7 @@ def add_module(
     if not request.module:
         raise NSXError("add_module requires a module name")
     _invoke(
-        cli.add_module_impl,
+        operations.add_module_impl,
         Path(request.app_dir).expanduser().resolve(),
         request.module,
         dry_run=request.dry_run,
@@ -347,7 +347,7 @@ def remove_module(
     if not request.module:
         raise NSXError("remove_module requires a module name")
     _invoke(
-        cli.remove_module_impl,
+        operations.remove_module_impl,
         Path(request.app_dir).expanduser().resolve(),
         request.module,
         dry_run=request.dry_run,
@@ -373,7 +373,7 @@ def update_modules(
         )
     )
     _invoke(
-        cli.update_modules_impl,
+        operations.update_modules_impl,
         Path(request.app_dir).expanduser().resolve(),
         module_name=request.module,
         dry_run=request.dry_run,
@@ -415,7 +415,7 @@ def register_module(
     if not request.module or not request.metadata or not request.project:
         raise NSXError("register_module requires module, metadata, and project")
     _invoke(
-        cli.register_module_impl,
+        operations.register_module_impl,
         Path(request.app_dir).expanduser().resolve(),
         request.module,
         metadata=Path(request.metadata).expanduser(),

@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+import neuralspotx.operations as operations
 from neuralspotx import (
     AppBuildRequest,
     AppCleanRequest,
@@ -170,7 +171,7 @@ def test_sync_workspace_uses_shared_impl_without_shelling_from_api(
     def fake_run(cmd: list[str], cwd: Path | None = None) -> None:
         calls.append((cmd, cwd))
 
-    monkeypatch.setattr(cli, "_run", fake_run)
+    monkeypatch.setattr(operations, "_run", fake_run)
 
     sync_workspace(tmp_path)
 
@@ -262,7 +263,7 @@ def test_build_app_uses_shared_impl_and_triggers_configure_when_needed(
         build_calls.append(cmd)
 
     monkeypatch.setattr(cli, "_run_cmake_configure", fake_configure)
-    monkeypatch.setattr(cli, "_run", fake_run)
+    monkeypatch.setattr(operations, "_run", fake_run)
 
     build_app(AppBuildRequest(app_dir=app_dir, jobs=3))
 
