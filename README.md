@@ -72,8 +72,9 @@ uv run nsx create-app <workspace> hello_ap510 --board apollo510_evb
 Build the app:
 
 ```bash
-nsx configure --app-dir <workspace>/apps/hello_ap510
-nsx build --app-dir <workspace>/apps/hello_ap510
+cd <nsx-repo>
+uv run nsx configure --app-dir <workspace>/apps/hello_ap510
+uv run nsx build --app-dir <workspace>/apps/hello_ap510
 ```
 
 ## Repo Scope
