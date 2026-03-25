@@ -160,6 +160,41 @@ def test_register_local_module_persists_relative_metadata_path(tmp_path: Path) -
     assert not (app_dir / "modules" / "local-demo").exists()
 
 
+def test_register_module_defaults_missing_manifest_revision_to_main(tmp_path: Path) -> None:
+    init_workspace(WorkspaceInitRequest(workspace=tmp_path, skip_update=True))
+    create_app(tmp_path, "hello_manifest", board="apollo510_evb", no_bootstrap=True)
+
+    project_root = tmp_path / "modules" / "local-demo"
+    metadata_path = _write_local_module_project(project_root)
+
+    manifest_path = tmp_path / "manifest" / "west.yml"
+    manifest_data = _load_yaml(manifest_path)
+    manifest_projects = manifest_data["manifest"]["projects"]
+    manifest_projects.append(
+        {
+            "name": "local-demo-proj",
+            "url": "https://example.com/local-demo.git",
+            "path": str(Path("modules") / "local-demo"),
+        }
+    )
+    manifest_path.write_text(yaml.safe_dump(manifest_data, sort_keys=False), encoding="utf-8")
+
+    app_dir = tmp_path / "apps" / "hello_manifest"
+    register_module(
+        ModuleRegisterRequest(
+            app_dir=app_dir,
+            module="local-demo",
+            metadata=metadata_path,
+            project="local-demo-proj",
+            no_sync=True,
+        )
+    )
+
+    cfg = _load_yaml(app_dir / "nsx.yml")
+    assert cfg["module_registry"]["projects"]["local-demo-proj"]["revision"] == "main"
+    assert cfg["module_registry"]["modules"]["local-demo"]["revision"] == "main"
+
+
 def test_full_clean_removes_build_directory(tmp_path: Path) -> None:
     init_workspace(WorkspaceInitRequest(workspace=tmp_path, skip_update=True))
     create_app(tmp_path, "hello_clean", board="apollo510_evb", no_bootstrap=True)

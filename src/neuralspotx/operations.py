@@ -677,10 +677,13 @@ def register_module_impl(
     existing_project = manifest_projects.get(project_name)
     project_entry: dict[str, Any] = {}
     if existing_project is not None:
+        existing_revision = existing_project.get("revision")
+        if not isinstance(existing_revision, str) or not existing_revision:
+            existing_revision = "main"
         project_entry = {
             "name": project_name,
             "url": existing_project.get("url"),
-            "revision": existing_project.get("revision"),
+            "revision": existing_revision,
             "path": existing_project.get("path"),
         }
     else:
