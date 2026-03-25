@@ -10,12 +10,20 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
+from .constants import (
+    DEFAULT_REPO_NAME,
+    DEFAULT_SOC_FOR_BOARD,
+    DEFAULT_TOOLCHAIN,
+    WEST_MANIFEST_TEMPLATE,
+)
+from .metadata import validate_nsx_module_metadata
 from .module_registry import (
     _ensure_workspace_projects_for_modules,
     _generate_nsx_config,
     _load_module_metadata,
     _module_dependents,
     _module_names_from_nsx,
+    _remove_vendored_module_from_app,
     _resolve_module_closure,
     _update_nsx_cfg_modules,
     _vendor_modules_into_app,
@@ -27,6 +35,7 @@ from .project_config import (
     _load_app_cfg,
     _load_registry,
     _manifest_projects_by_name,
+    _metadata_storage_path,
     _read_yaml,
     _registry_project_entry,
     _render_west_manifest,
@@ -86,7 +95,6 @@ def init_workspace_impl(
     ambiqsuite_revision: str = "main",
     skip_update: bool = False,
 ) -> None:
-    cli = _cli()
     _require_tool("west")
 
     manifest_dir = workspace / "manifest"
@@ -95,9 +103,7 @@ def init_workspace_impl(
     workspace.mkdir(parents=True, exist_ok=True)
     manifest_dir.mkdir(parents=True, exist_ok=True)
 
-    default_nsx_url = _registry_project_entry(
-        _load_registry(), cli.DEFAULT_REPO_NAME
-    ).get("url")
+    default_nsx_url = _registry_project_entry(_load_registry(), DEFAULT_REPO_NAME).get("url")
     if not isinstance(default_nsx_url, str) or not default_nsx_url:
         raise SystemExit("Built-in registry is missing a default URL for the neuralspotx project.")
     effective_nsx_repo_url = nsx_repo_url or default_nsx_url
@@ -107,8 +113,8 @@ def init_workspace_impl(
         nsx_revision=nsx_revision,
         ambiqsuite_url=ambiqsuite_repo_url,
         ambiqsuite_revision=ambiqsuite_revision,
-        manifest_template=cli.WEST_MANIFEST_TEMPLATE,
-        repo_name=cli.DEFAULT_REPO_NAME,
+        manifest_template=WEST_MANIFEST_TEMPLATE,
+        repo_name=DEFAULT_REPO_NAME,
     )
     west_yml.write_text(manifest_text, encoding="utf-8")
 
@@ -119,7 +125,7 @@ def init_workspace_impl(
         _run(_tool_cmd("west", "update"), cwd=workspace)
 
     print(f"NSX workspace initialized at: {workspace}")
-    print(f"Root repo path in workspace: {workspace / cli.DEFAULT_REPO_NAME}")
+    print(f"Root repo path in workspace: {workspace / DEFAULT_REPO_NAME}")
     print(f"Manifest: {west_yml}")
 
 
@@ -134,7 +140,6 @@ def create_app_impl(
     no_bootstrap: bool = False,
     no_sync: bool = False,
 ) -> Path:
-    cli = _cli()
     base_registry = _load_registry()
     if init_workspace and not _workspace_has_manifest(workspace):
         init_workspace_impl(
@@ -143,7 +148,7 @@ def create_app_impl(
         )
     _require_initialized_workspace(workspace)
 
-    soc = soc or cli.DEFAULT_SOC_FOR_BOARD.get(board)
+    soc = soc or DEFAULT_SOC_FOR_BOARD.get(board)
     if soc is None:
         raise SystemExit(f"Unable to infer --soc for board '{board}'. Pass --soc explicitly.")
 
@@ -175,8 +180,8 @@ def create_app_impl(
         soc=soc,
         registry=base_registry,
         west_manifest_rel="../../manifest/west.yml",
-        default_toolchain=cli.DEFAULT_TOOLCHAIN,
-        default_repo_name=cli.DEFAULT_REPO_NAME,
+        default_toolchain=DEFAULT_TOOLCHAIN,
+        default_repo_name=DEFAULT_REPO_NAME,
     )
     if no_bootstrap:
         nsx_cfg["modules"] = []
@@ -197,7 +202,7 @@ def create_app_impl(
         registry,
         _module_names_from_nsx(nsx_cfg),
         sync=not no_sync,
-        default_repo_name=cli.DEFAULT_REPO_NAME,
+        default_repo_name=DEFAULT_REPO_NAME,
     )
     starter_modules = _resolve_module_closure(
         _module_names_from_nsx(nsx_cfg),
@@ -205,7 +210,7 @@ def create_app_impl(
         nsx_cfg=nsx_cfg,
         registry=registry,
         workspace=workspace,
-        default_toolchain=cli.DEFAULT_TOOLCHAIN,
+        default_toolchain=DEFAULT_TOOLCHAIN,
     )
     _ensure_workspace_projects_for_modules(
         workspace,
@@ -213,7 +218,7 @@ def create_app_impl(
         registry,
         starter_modules,
         sync=not no_sync,
-        default_repo_name=cli.DEFAULT_REPO_NAME,
+        default_repo_name=DEFAULT_REPO_NAME,
     )
     _update_nsx_cfg_modules(nsx_cfg, starter_modules, registry)
     _save_app_cfg(app_dir, nsx_cfg)
@@ -459,7 +464,6 @@ def add_module_impl(
     dry_run: bool = False,
     no_sync: bool = False,
 ) -> list[str]:
-    cli = _cli()
     workspace = _workspace_for_app_dir(app_dir)
     nsx_cfg = _load_app_cfg(app_dir)
     registry = _effective_registry(_load_registry(), nsx_cfg)
@@ -472,7 +476,7 @@ def add_module_impl(
         registry,
         desired_modules,
         sync=not no_sync,
-        default_repo_name=cli.DEFAULT_REPO_NAME,
+        default_repo_name=DEFAULT_REPO_NAME,
     )
     new_modules = _resolve_module_closure(
         desired_modules,
@@ -480,7 +484,7 @@ def add_module_impl(
         nsx_cfg=nsx_cfg,
         registry=registry,
         workspace=workspace,
-        default_toolchain=cli.DEFAULT_TOOLCHAIN,
+        default_toolchain=DEFAULT_TOOLCHAIN,
     )
     _ensure_workspace_projects_for_modules(
         workspace,
@@ -488,7 +492,7 @@ def add_module_impl(
         registry,
         new_modules,
         sync=not no_sync,
-        default_repo_name=cli.DEFAULT_REPO_NAME,
+        default_repo_name=DEFAULT_REPO_NAME,
     )
     if dry_run:
         print("[dry-run] modules to enable:", ", ".join(new_modules))
@@ -511,7 +515,6 @@ def remove_module_impl(
     dry_run: bool = False,
     no_sync: bool = False,
 ) -> tuple[list[str], list[str]]:
-    cli = _cli()
     del no_sync
     workspace = _workspace_for_app_dir(app_dir)
     nsx_cfg = _load_app_cfg(app_dir)
@@ -562,7 +565,7 @@ def remove_module_impl(
         nsx_cfg=nsx_cfg,
         registry=registry,
         workspace=workspace,
-        default_toolchain=cli.DEFAULT_TOOLCHAIN,
+        default_toolchain=DEFAULT_TOOLCHAIN,
     )
     if dry_run:
         print("[dry-run] modules to remove:", ", ".join(sorted(remove_set)))
@@ -573,7 +576,7 @@ def remove_module_impl(
     _save_app_cfg(app_dir, nsx_cfg)
     _write_app_module_file(app_dir, nsx_cfg)
     for removed_name in sorted(remove_set):
-        cli._remove_vendored_module_from_app(app_dir, removed_name, registry)
+        _remove_vendored_module_from_app(app_dir, removed_name, registry)
 
     print(f"Removed module '{module_name}'")
     print("Removed set:", ", ".join(sorted(remove_set)))
@@ -588,7 +591,6 @@ def update_modules_impl(
     dry_run: bool = False,
     no_sync: bool = False,
 ) -> list[str]:
-    cli = _cli()
     workspace = _workspace_for_app_dir(app_dir)
     nsx_cfg = _load_app_cfg(app_dir)
     registry = _effective_registry(_load_registry(), nsx_cfg)
@@ -608,7 +610,7 @@ def update_modules_impl(
         registry,
         sorted(current),
         sync=not no_sync,
-        default_repo_name=cli.DEFAULT_REPO_NAME,
+        default_repo_name=DEFAULT_REPO_NAME,
     )
 
     resolved_modules = _resolve_module_closure(
@@ -617,7 +619,7 @@ def update_modules_impl(
         nsx_cfg=nsx_cfg,
         registry=registry,
         workspace=workspace,
-        default_toolchain=cli.DEFAULT_TOOLCHAIN,
+        default_toolchain=DEFAULT_TOOLCHAIN,
     )
 
     if dry_run:
@@ -651,7 +653,6 @@ def register_module_impl(
     dry_run: bool = False,
     no_sync: bool = False,
 ) -> Path:
-    cli = _cli()
     workspace = _workspace_for_app_dir(app_dir)
     nsx_cfg = _load_app_cfg(app_dir)
     base_registry = _load_registry()
@@ -664,7 +665,7 @@ def register_module_impl(
         raise SystemExit(f"Metadata file does not exist: {metadata_path}")
 
     module_data = _read_yaml(metadata_path)
-    cli.validate_nsx_module_metadata(module_data, str(metadata_path))
+    validate_nsx_module_metadata(module_data, str(metadata_path))
     declared_name = module_data.get("module", {}).get("name")
     if declared_name != module_name:
         raise SystemExit(
@@ -728,7 +729,7 @@ def register_module_impl(
     modules[module_name] = {
         "project": project_name,
         "revision": project_entry.get("revision", "main"),
-        "metadata": cli._metadata_storage_path(app_dir, metadata_path, project_entry),
+        "metadata": _metadata_storage_path(app_dir, metadata_path, project_entry),
     }
 
     if dry_run:
@@ -738,8 +739,8 @@ def register_module_impl(
         print(f"  metadata={modules[module_name]['metadata']}")
         return metadata_path
 
-    cli._save_app_cfg(app_dir, target_cfg)
-    cli._write_app_module_file(app_dir, target_cfg)
+    _save_app_cfg(app_dir, target_cfg)
+    _write_app_module_file(app_dir, target_cfg)
     effective = _effective_registry(base_registry, target_cfg)
     _ensure_workspace_projects_for_modules(
         workspace,
@@ -747,7 +748,7 @@ def register_module_impl(
         effective,
         [module_name],
         sync=not no_sync,
-        default_repo_name=cli.DEFAULT_REPO_NAME,
+        default_repo_name=DEFAULT_REPO_NAME,
     )
     _vendor_modules_into_app(app_dir, [module_name], effective, workspace)
 

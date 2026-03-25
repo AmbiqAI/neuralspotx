@@ -7,6 +7,18 @@ import subprocess
 from pathlib import Path
 
 from . import operations
+from .constants import (
+    DEFAULT_REPO_NAME as _DEFAULT_REPO_NAME,
+)
+from .constants import (
+    DEFAULT_SOC_FOR_BOARD as _DEFAULT_SOC_FOR_BOARD,
+)
+from .constants import (
+    DEFAULT_TOOLCHAIN as _DEFAULT_TOOLCHAIN,
+)
+from .constants import (
+    WEST_MANIFEST_TEMPLATE as _WEST_MANIFEST_TEMPLATE,
+)
 from .metadata import validate_nsx_module_metadata as _validate_nsx_module_metadata
 from .module_registry import (
     _module_names_from_nsx,
@@ -34,42 +46,16 @@ from .project_config import (
 from .subprocess_utils import format_subprocess_error
 from .subprocess_utils import run as _run
 
-DEFAULT_SOC_FOR_BOARD = {
-    "apollo3_evb": "apollo3",
-    "apollo3_evb_cygnus": "apollo3",
-    "apollo3p_evb": "apollo3p",
-    "apollo3p_evb_cygnus": "apollo3p",
-    "apollo4l_evb": "apollo4l",
-    "apollo4l_blue_evb": "apollo4l",
-    "apollo4p_evb": "apollo4p",
-    "apollo4p_blue_kbr_evb": "apollo4p",
-    "apollo4p_blue_kxr_evb": "apollo4p",
-    "apollo5b_evb": "apollo5b",
-    "apollo510_evb": "apollo510",
-    "apollo510b_evb": "apollo510b",
-    "apollo330mP_evb": "apollo330P",
-}
-
-DEFAULT_TOOLCHAIN = "arm-none-eabi-gcc"
-DEFAULT_REPO_NAME = "neuralspotx"
+DEFAULT_SOC_FOR_BOARD = _DEFAULT_SOC_FOR_BOARD
+DEFAULT_TOOLCHAIN = _DEFAULT_TOOLCHAIN
+DEFAULT_REPO_NAME = _DEFAULT_REPO_NAME
+WEST_MANIFEST_TEMPLATE = _WEST_MANIFEST_TEMPLATE
 VERBOSE = 0
 validate_nsx_module_metadata = _validate_nsx_module_metadata
 _metadata_storage_path = _metadata_storage_path_impl
 _remove_vendored_module_from_app = _remove_vendored_module_from_app_impl
 _save_app_cfg = _save_app_cfg_impl
 _write_app_module_file = _write_app_module_file_impl
-
-WEST_MANIFEST_TEMPLATE = """manifest:
-  version: "0.13"
-
-  projects:
-    - name: "__NSX_REPO_NAME__"
-      url: "__NSX_REPO_URL__"
-      revision: "__NSX_REVISION__"
-      path: "__NSX_REPO_NAME__"
-__AMBIQ_PROJECT_BLOCK__  self:
-    path: manifest
-"""
 
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
