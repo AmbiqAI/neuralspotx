@@ -4,11 +4,40 @@ from __future__ import annotations
 
 import argparse
 import copy
+import importlib.resources as resources
 import shutil
 import subprocess
 from pathlib import Path
 from typing import Any
 
+from .module_registry import (
+    _ensure_workspace_projects_for_modules,
+    _generate_nsx_config,
+    _load_module_metadata,
+    _module_dependents,
+    _module_names_from_nsx,
+    _resolve_module_closure,
+    _update_nsx_cfg_modules,
+    _vendor_modules_into_app,
+)
+from .project_config import (
+    _copy_packaged_tree,
+    _default_build_dir,
+    _effective_registry,
+    _load_app_cfg,
+    _load_registry,
+    _manifest_projects_by_name,
+    _read_yaml,
+    _registry_project_entry,
+    _render_west_manifest,
+    _require_initialized_workspace,
+    _resolve_app_context,
+    _save_app_cfg,
+    _unique_preserving_order,
+    _workspace_for_app_dir,
+    _workspace_has_manifest,
+    _write_app_module_file,
+)
 from .subprocess_utils import (
     extract_view_command,
     format_subprocess_error,
@@ -66,18 +95,20 @@ def init_workspace_impl(
     workspace.mkdir(parents=True, exist_ok=True)
     manifest_dir.mkdir(parents=True, exist_ok=True)
 
-    default_nsx_url = cli._registry_project_entry(
-        cli._load_registry(), cli.DEFAULT_REPO_NAME
+    default_nsx_url = _registry_project_entry(
+        _load_registry(), cli.DEFAULT_REPO_NAME
     ).get("url")
     if not isinstance(default_nsx_url, str) or not default_nsx_url:
         raise SystemExit("Built-in registry is missing a default URL for the neuralspotx project.")
     effective_nsx_repo_url = nsx_repo_url or default_nsx_url
 
-    manifest_text = cli._render_west_manifest(
+    manifest_text = _render_west_manifest(
         nsx_repo_url=effective_nsx_repo_url,
         nsx_revision=nsx_revision,
         ambiqsuite_url=ambiqsuite_repo_url,
         ambiqsuite_revision=ambiqsuite_revision,
+        manifest_template=cli.WEST_MANIFEST_TEMPLATE,
+        repo_name=cli.DEFAULT_REPO_NAME,
     )
     west_yml.write_text(manifest_text, encoding="utf-8")
 
@@ -104,20 +135,20 @@ def create_app_impl(
     no_sync: bool = False,
 ) -> Path:
     cli = _cli()
-    base_registry = cli._load_registry()
-    if init_workspace and not cli._workspace_has_manifest(workspace):
-        cli.init_workspace_impl(
+    base_registry = _load_registry()
+    if init_workspace and not _workspace_has_manifest(workspace):
+        init_workspace_impl(
             workspace,
             skip_update=no_sync and no_bootstrap,
         )
-    cli._require_initialized_workspace(workspace)
+    _require_initialized_workspace(workspace)
 
     soc = soc or cli.DEFAULT_SOC_FOR_BOARD.get(board)
     if soc is None:
         raise SystemExit(f"Unable to infer --soc for board '{board}'. Pass --soc explicitly.")
 
-    template_root = cli.resources.files("neuralspotx.templates").joinpath("external_app")
-    with cli.resources.as_file(template_root) as src_template:
+    template_root = resources.files("neuralspotx.templates").joinpath("external_app")
+    with resources.as_file(template_root) as src_template:
         if not src_template.exists():
             raise SystemExit(f"Template directory not found: {src_template}")
 
@@ -136,19 +167,21 @@ def create_app_impl(
             },
         )
 
-    cli._copy_packaged_tree("neuralspotx", "cmake", app_dir / "cmake" / "nsx")
+    _copy_packaged_tree("neuralspotx", "cmake", app_dir / "cmake" / "nsx")
 
-    nsx_cfg = cli._generate_nsx_config(
+    nsx_cfg = _generate_nsx_config(
         app_name=app_name,
         board=board,
         soc=soc,
         registry=base_registry,
         west_manifest_rel="../../manifest/west.yml",
+        default_toolchain=cli.DEFAULT_TOOLCHAIN,
+        default_repo_name=cli.DEFAULT_REPO_NAME,
     )
     if no_bootstrap:
         nsx_cfg["modules"] = []
-        cli._save_app_cfg(app_dir, nsx_cfg)
-        cli._write_app_module_file(app_dir, nsx_cfg)
+        _save_app_cfg(app_dir, nsx_cfg)
+        _write_app_module_file(app_dir, nsx_cfg)
         print(f"Created app '{app_name}' at: {app_dir}")
         print("Starter modules were not bootstrapped (--no-bootstrap).")
         print("Next steps:")
@@ -157,32 +190,35 @@ def create_app_impl(
         print("  3) Add modules with `uv run nsx module add <module> --app-dir .`")
         return app_dir
 
-    registry = cli._effective_registry(base_registry, nsx_cfg)
-    cli._ensure_workspace_projects_for_modules(
+    registry = _effective_registry(base_registry, nsx_cfg)
+    _ensure_workspace_projects_for_modules(
         workspace,
         nsx_cfg,
         registry,
-        cli._module_names_from_nsx(nsx_cfg),
+        _module_names_from_nsx(nsx_cfg),
         sync=not no_sync,
+        default_repo_name=cli.DEFAULT_REPO_NAME,
     )
-    starter_modules = cli._resolve_module_closure(
-        cli._module_names_from_nsx(nsx_cfg),
+    starter_modules = _resolve_module_closure(
+        _module_names_from_nsx(nsx_cfg),
         app_dir=None,
         nsx_cfg=nsx_cfg,
         registry=registry,
         workspace=workspace,
+        default_toolchain=cli.DEFAULT_TOOLCHAIN,
     )
-    cli._ensure_workspace_projects_for_modules(
+    _ensure_workspace_projects_for_modules(
         workspace,
         nsx_cfg,
         registry,
         starter_modules,
         sync=not no_sync,
+        default_repo_name=cli.DEFAULT_REPO_NAME,
     )
-    cli._update_nsx_cfg_modules(nsx_cfg, starter_modules, registry)
-    cli._save_app_cfg(app_dir, nsx_cfg)
-    cli._write_app_module_file(app_dir, nsx_cfg)
-    cli._vendor_modules_into_app(app_dir, starter_modules, registry, workspace)
+    _update_nsx_cfg_modules(nsx_cfg, starter_modules, registry)
+    _save_app_cfg(app_dir, nsx_cfg)
+    _write_app_module_file(app_dir, nsx_cfg)
+    _vendor_modules_into_app(app_dir, starter_modules, registry, workspace)
     if nsx_cfg.get("profile_status") == "scaffold":
         print(
             f"NOTE: profile '{nsx_cfg.get('profile')}' is scaffold-only. "
@@ -200,9 +236,8 @@ def create_app_impl(
 
 
 def sync_workspace_impl(workspace: Path) -> None:
-    cli = _cli()
     _require_tool("west")
-    cli._require_initialized_workspace(workspace)
+    _require_initialized_workspace(workspace)
     _run(_tool_cmd("west", "update"), cwd=workspace)
 
 
@@ -295,11 +330,10 @@ def _resolve_build_context(
     board: str | None = None,
     build_dir: Path | None = None,
 ) -> tuple[Path, str, str, Path]:
-    cli = _cli()
-    resolved_app_dir, _, _, app_name, resolved_board = cli._resolve_app_context(
+    resolved_app_dir, _, _, app_name, resolved_board = _resolve_app_context(
         argparse.Namespace(app_dir=str(app_dir), board=board)
     )
-    resolved_build_dir = build_dir or cli._default_build_dir(resolved_app_dir, resolved_board)
+    resolved_build_dir = build_dir or _default_build_dir(resolved_app_dir, resolved_board)
     return resolved_app_dir, app_name, resolved_board, resolved_build_dir
 
 
@@ -426,41 +460,44 @@ def add_module_impl(
     no_sync: bool = False,
 ) -> list[str]:
     cli = _cli()
-    workspace = cli._workspace_for_app_dir(app_dir)
-    nsx_cfg = cli._load_app_cfg(app_dir)
-    registry = cli._effective_registry(cli._load_registry(), nsx_cfg)
+    workspace = _workspace_for_app_dir(app_dir)
+    nsx_cfg = _load_app_cfg(app_dir)
+    registry = _effective_registry(_load_registry(), nsx_cfg)
 
-    enabled = cli._module_names_from_nsx(nsx_cfg)
-    desired_modules = cli._unique_preserving_order(enabled + [module_name])
-    cli._ensure_workspace_projects_for_modules(
+    enabled = _module_names_from_nsx(nsx_cfg)
+    desired_modules = _unique_preserving_order(enabled + [module_name])
+    _ensure_workspace_projects_for_modules(
         workspace,
         nsx_cfg,
         registry,
         desired_modules,
         sync=not no_sync,
+        default_repo_name=cli.DEFAULT_REPO_NAME,
     )
-    new_modules = cli._resolve_module_closure(
+    new_modules = _resolve_module_closure(
         desired_modules,
         app_dir=app_dir,
         nsx_cfg=nsx_cfg,
         registry=registry,
         workspace=workspace,
+        default_toolchain=cli.DEFAULT_TOOLCHAIN,
     )
-    cli._ensure_workspace_projects_for_modules(
+    _ensure_workspace_projects_for_modules(
         workspace,
         nsx_cfg,
         registry,
         new_modules,
         sync=not no_sync,
+        default_repo_name=cli.DEFAULT_REPO_NAME,
     )
     if dry_run:
         print("[dry-run] modules to enable:", ", ".join(new_modules))
         return new_modules
 
-    cli._update_nsx_cfg_modules(nsx_cfg, new_modules, registry)
-    cli._save_app_cfg(app_dir, nsx_cfg)
-    cli._write_app_module_file(app_dir, nsx_cfg)
-    cli._vendor_modules_into_app(app_dir, new_modules, registry, workspace)
+    _update_nsx_cfg_modules(nsx_cfg, new_modules, registry)
+    _save_app_cfg(app_dir, nsx_cfg)
+    _write_app_module_file(app_dir, nsx_cfg)
+    _vendor_modules_into_app(app_dir, new_modules, registry, workspace)
 
     print(f"Enabled module '{module_name}'")
     print("Resolved module set:", ", ".join(new_modules))
@@ -476,10 +513,10 @@ def remove_module_impl(
 ) -> tuple[list[str], list[str]]:
     cli = _cli()
     del no_sync
-    workspace = cli._workspace_for_app_dir(app_dir)
-    nsx_cfg = cli._load_app_cfg(app_dir)
-    registry = cli._effective_registry(cli._load_registry(), nsx_cfg)
-    enabled = cli._module_names_from_nsx(nsx_cfg)
+    workspace = _workspace_for_app_dir(app_dir)
+    nsx_cfg = _load_app_cfg(app_dir)
+    registry = _effective_registry(_load_registry(), nsx_cfg)
+    enabled = _module_names_from_nsx(nsx_cfg)
     if module_name not in enabled:
         raise SystemExit(f"Module '{module_name}' is not enabled in nsx.yml")
 
@@ -494,7 +531,7 @@ def remove_module_impl(
 
     current = set(enabled)
     remove_set = {module_name}
-    dependents = cli._module_dependents(enabled, registry, workspace, app_dir=app_dir)
+    dependents = _module_dependents(enabled, registry, workspace, app_dir=app_dir)
 
     blockers = sorted(name for name in dependents.get(module_name, set()) if name in current)
     if blockers:
@@ -506,34 +543,35 @@ def remove_module_impl(
     while changed:
         changed = False
         remaining = current - remove_set
-        dependents = cli._module_dependents(sorted(remaining), registry, workspace, app_dir=app_dir)
+        dependents = _module_dependents(sorted(remaining), registry, workspace, app_dir=app_dir)
         for mod in list(remaining):
             if mod in protected:
                 continue
             if dependents.get(mod):
                 continue
-            metadata = cli._load_module_metadata(mod, registry, workspace, app_dir=app_dir)
+            metadata = _load_module_metadata(mod, registry, workspace, app_dir=app_dir)
             if metadata["module"]["type"] == "soc":
                 continue
             remove_set.add(mod)
             changed = True
 
     desired_modules = [name for name in enabled if name not in remove_set]
-    new_modules = cli._resolve_module_closure(
+    new_modules = _resolve_module_closure(
         desired_modules,
         app_dir=app_dir,
         nsx_cfg=nsx_cfg,
         registry=registry,
         workspace=workspace,
+        default_toolchain=cli.DEFAULT_TOOLCHAIN,
     )
     if dry_run:
         print("[dry-run] modules to remove:", ", ".join(sorted(remove_set)))
         print("[dry-run] remaining modules:", ", ".join(new_modules))
         return sorted(remove_set), new_modules
 
-    cli._update_nsx_cfg_modules(nsx_cfg, new_modules, registry)
-    cli._save_app_cfg(app_dir, nsx_cfg)
-    cli._write_app_module_file(app_dir, nsx_cfg)
+    _update_nsx_cfg_modules(nsx_cfg, new_modules, registry)
+    _save_app_cfg(app_dir, nsx_cfg)
+    _write_app_module_file(app_dir, nsx_cfg)
     for removed_name in sorted(remove_set):
         cli._remove_vendored_module_from_app(app_dir, removed_name, registry)
 
@@ -551,11 +589,11 @@ def update_modules_impl(
     no_sync: bool = False,
 ) -> list[str]:
     cli = _cli()
-    workspace = cli._workspace_for_app_dir(app_dir)
-    nsx_cfg = cli._load_app_cfg(app_dir)
-    registry = cli._effective_registry(cli._load_registry(), nsx_cfg)
+    workspace = _workspace_for_app_dir(app_dir)
+    nsx_cfg = _load_app_cfg(app_dir)
+    registry = _effective_registry(_load_registry(), nsx_cfg)
 
-    current_modules = cli._module_names_from_nsx(nsx_cfg)
+    current_modules = _module_names_from_nsx(nsx_cfg)
     current = set(current_modules)
     if module_name:
         if module_name not in current:
@@ -564,31 +602,33 @@ def update_modules_impl(
     else:
         to_update = set(current)
 
-    cli._ensure_workspace_projects_for_modules(
+    _ensure_workspace_projects_for_modules(
         workspace,
         nsx_cfg,
         registry,
         sorted(current),
         sync=not no_sync,
+        default_repo_name=cli.DEFAULT_REPO_NAME,
     )
 
-    resolved_modules = cli._resolve_module_closure(
+    resolved_modules = _resolve_module_closure(
         current_modules,
         app_dir=app_dir,
         nsx_cfg=nsx_cfg,
         registry=registry,
         workspace=workspace,
+        default_toolchain=cli.DEFAULT_TOOLCHAIN,
     )
 
     if dry_run:
         print("[dry-run] modules to refresh from registry:", ", ".join(sorted(to_update)))
         return sorted(to_update)
 
-    cli._update_nsx_cfg_modules(nsx_cfg, resolved_modules, registry)
-    cli._save_app_cfg(app_dir, nsx_cfg)
-    cli._write_app_module_file(app_dir, nsx_cfg)
+    _update_nsx_cfg_modules(nsx_cfg, resolved_modules, registry)
+    _save_app_cfg(app_dir, nsx_cfg)
+    _write_app_module_file(app_dir, nsx_cfg)
     vendored_modules = [name for name in resolved_modules if name in to_update]
-    cli._vendor_modules_into_app(app_dir, vendored_modules, registry, workspace)
+    _vendor_modules_into_app(app_dir, vendored_modules, registry, workspace)
 
     if module_name:
         print(f"Updated module '{module_name}' to lockfile revision")
@@ -612,10 +652,10 @@ def register_module_impl(
     no_sync: bool = False,
 ) -> Path:
     cli = _cli()
-    workspace = cli._workspace_for_app_dir(app_dir)
-    nsx_cfg = cli._load_app_cfg(app_dir)
-    base_registry = cli._load_registry()
-    registry = cli._effective_registry(base_registry, nsx_cfg)
+    workspace = _workspace_for_app_dir(app_dir)
+    nsx_cfg = _load_app_cfg(app_dir)
+    base_registry = _load_registry()
+    registry = _effective_registry(base_registry, nsx_cfg)
 
     metadata_path = metadata
     if not metadata_path.is_absolute():
@@ -623,7 +663,7 @@ def register_module_impl(
     if not metadata_path.exists():
         raise SystemExit(f"Metadata file does not exist: {metadata_path}")
 
-    module_data = cli._read_yaml(metadata_path)
+    module_data = _read_yaml(metadata_path)
     cli.validate_nsx_module_metadata(module_data, str(metadata_path))
     declared_name = module_data.get("module", {}).get("name")
     if declared_name != module_name:
@@ -631,7 +671,7 @@ def register_module_impl(
             f"Metadata module name mismatch: expected '{module_name}', found '{declared_name}'"
         )
 
-    manifest_projects = cli._manifest_projects_by_name(workspace)
+    manifest_projects = _manifest_projects_by_name(workspace)
     project_name = project
     existing_project = manifest_projects.get(project_name)
     project_entry: dict[str, Any] = {}
@@ -700,15 +740,16 @@ def register_module_impl(
 
     cli._save_app_cfg(app_dir, target_cfg)
     cli._write_app_module_file(app_dir, target_cfg)
-    effective = cli._effective_registry(base_registry, target_cfg)
-    cli._ensure_workspace_projects_for_modules(
+    effective = _effective_registry(base_registry, target_cfg)
+    _ensure_workspace_projects_for_modules(
         workspace,
         target_cfg,
         effective,
         [module_name],
         sync=not no_sync,
+        default_repo_name=cli.DEFAULT_REPO_NAME,
     )
-    cli._vendor_modules_into_app(app_dir, [module_name], effective, workspace)
+    _vendor_modules_into_app(app_dir, [module_name], effective, workspace)
 
     print(f"Registered module '{module_name}' for app {app_dir.name}")
     print(f"Project: {project_name}")
