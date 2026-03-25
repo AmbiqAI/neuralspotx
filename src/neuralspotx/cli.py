@@ -44,7 +44,6 @@ from .project_config import (
     _write_app_module_file as _write_app_module_file_impl,
 )
 from .subprocess_utils import format_subprocess_error
-from .subprocess_utils import run as _run
 
 DEFAULT_SOC_FOR_BOARD = _DEFAULT_SOC_FOR_BOARD
 DEFAULT_TOOLCHAIN = _DEFAULT_TOOLCHAIN
@@ -59,24 +58,6 @@ _write_app_module_file = _write_app_module_file_impl
 
 def _repo_root() -> Path:
     return Path(__file__).resolve().parents[2]
-
-
-def _run_cmake_configure(app_dir: Path, build_dir: Path, board: str) -> None:
-    toolchain_file = app_dir / "cmake" / "nsx" / "toolchains" / "arm-none-eabi-gcc.cmake"
-    _run(
-        [
-            "cmake",
-            "-S",
-            str(app_dir),
-            "-B",
-            str(build_dir),
-            "-G",
-            "Ninja",
-            f"-DCMAKE_TOOLCHAIN_FILE={toolchain_file}",
-            "-DCMAKE_BUILD_TYPE=Release",
-            f"-DNSX_BOARD={board}",
-        ]
-    )
 
 
 def cmd_init_workspace(args: argparse.Namespace) -> None:
