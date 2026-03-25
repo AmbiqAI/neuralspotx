@@ -4,12 +4,21 @@ from __future__ import annotations
 
 import argparse
 import copy
-import shlex
 import shutil
 import subprocess
-import sys
 from pathlib import Path
 from typing import Any
+
+from .subprocess_utils import (
+    extract_view_command,
+    format_subprocess_error,
+    jlink_failure_hint,
+    print_captured_output,
+    run,
+    run_capture,
+)
+from .subprocess_utils import set_verbosity as set_subprocess_verbosity
+from .tooling import doctor_check, require_tool, tool_cmd, tool_path
 
 VERBOSE = 0
 
@@ -17,6 +26,7 @@ VERBOSE = 0
 def set_verbosity(level: int) -> None:
     global VERBOSE
     VERBOSE = level
+    set_subprocess_verbosity(level)
 
 
 def _cli():
@@ -25,149 +35,16 @@ def _cli():
     return cli
 
 
-def _run(cmd: list[str], cwd: Path | None = None) -> None:
-    subprocess.run(cmd, cwd=str(cwd) if cwd else None, check=True)
-
-
-def _run_capture(cmd: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
-    return subprocess.run(
-        cmd,
-        cwd=str(cwd) if cwd else None,
-        check=True,
-        text=True,
-        capture_output=True,
-    )
-
-
-def _print_captured_output(result: subprocess.CompletedProcess[str]) -> None:
-    if result.stdout:
-        print(result.stdout, end="")
-    if result.stderr:
-        print(result.stderr, end="")
-
-
-def _jlink_failure_hint(output: str) -> str | None:
-    lowered = output.lower()
-    if "failed to open dll" in lowered:
-        return (
-            "SEGGER J-Link failed to load its runtime library.\n"
-            "Check that the J-Link tools are installed correctly and can run outside `nsx`."
-        )
-    if "connecting to j-link via usb...failed" in lowered or "cannot connect to j-link" in lowered:
-        return (
-            "SEGGER J-Link could not connect to the probe over USB.\n"
-            "Check the probe connection, power, and that no other tool is holding the J-Link."
-        )
-    if "cannot connect to target" in lowered or "failed to connect to target" in lowered:
-        return (
-            "SEGGER J-Link connected, but could not connect to the target device.\n"
-            "Check target power, SWD wiring, board selection, and reset state."
-        )
-    return None
-
-
-def format_subprocess_error(exc: subprocess.CalledProcessError, *, context: str) -> str:
-    output_parts: list[str] = []
-    stdout = getattr(exc, "stdout", None)
-    stderr = getattr(exc, "stderr", None)
-    if isinstance(stdout, str) and stdout.strip():
-        output_parts.append(stdout.strip())
-    if isinstance(stderr, str) and stderr.strip():
-        output_parts.append(stderr.strip())
-    combined_output = "\n".join(output_parts)
-
-    hint = _jlink_failure_hint(combined_output)
-    if hint:
-        message = f"{context} failed.\n{hint}"
-        if VERBOSE == 0:
-            message += "\nRe-run with `--verbose` for the full tool output."
-        return message
-
-    message = f"{context} failed with exit code {exc.returncode}."
-    if VERBOSE == 0:
-        message += "\nRe-run with `--verbose` for the full subprocess traceback."
-    return message
-
-
-def _tool_path(name: str) -> str | None:
-    resolved = shutil.which(name)
-    if resolved is not None:
-        return resolved
-
-    scripts_dir = Path(sys.executable).parent
-    candidates = [scripts_dir / name]
-    if sys.platform.startswith("win"):
-        candidates.extend(
-            [
-                scripts_dir / f"{name}.exe",
-                scripts_dir / f"{name}.bat",
-                scripts_dir / f"{name}.cmd",
-            ]
-        )
-
-    for candidate in candidates:
-        if candidate.exists():
-            return str(candidate)
-    return None
-
-
-def _require_tool(name: str) -> None:
-    if _tool_path(name) is None:
-        hint = ""
-        if name == "west":
-            hint = (
-                "\nHint: install `west` or use an NSX install that includes it in the same environment.\n"
-                "For `pipx`, reinstall `neuralspotx` so the bundled dependency entry points are available."
-            )
-        raise SystemExit(f"Required tool not found in PATH: {name}{hint}")
-
-
-def _tool_cmd(name: str, *args: str) -> list[str]:
-    tool = _tool_path(name)
-    if tool is None:
-        _require_tool(name)
-        raise AssertionError("unreachable")
-    return [tool, *args]
-
-
-def _doctor_check(
-    label: str,
-    ok: bool,
-    *,
-    detail: str | None = None,
-    hint: str | None = None,
-) -> bool:
-    status = "OK" if ok else "FAIL"
-    print(f"[{status}] {label}")
-    if detail:
-        print(f"  {detail}")
-    if hint and not ok:
-        print(f"  Hint: {hint}")
-    return ok
-
-
-def _extract_view_command(build_dir: Path, target: str) -> list[str]:
-    ninja_file = build_dir / "build.ninja"
-    if not ninja_file.exists():
-        raise SystemExit(f"Missing build.ninja in build directory: {build_dir}")
-
-    lines = ninja_file.read_text(encoding="utf-8").splitlines()
-    block_header = f"build CMakeFiles/{target}"
-    for idx, line in enumerate(lines):
-        if not line.strip().startswith(block_header):
-            continue
-        for follow in lines[idx + 1 : idx + 8]:
-            stripped = follow.strip()
-            if stripped.startswith("COMMAND = "):
-                command_text = stripped.removeprefix("COMMAND = ")
-                if " && " in command_text:
-                    _, command_text = command_text.split(" && ", 1)
-                return shlex.split(command_text)
-        break
-
-    raise SystemExit(
-        f"Unable to resolve the SEGGER SWO viewer command for target '{target}' from {ninja_file}"
-    )
+# Compatibility aliases for tests and incremental callers.
+_run = run
+_run_capture = run_capture
+_print_captured_output = print_captured_output
+_jlink_failure_hint = jlink_failure_hint
+_tool_path = tool_path
+_tool_cmd = tool_cmd
+_require_tool = require_tool
+_doctor_check = doctor_check
+_extract_view_command = extract_view_command
 
 
 def init_workspace_impl(
