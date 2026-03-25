@@ -60,6 +60,7 @@ nav:
       - SDK Upstream Plan: architecture/sdk-upstream-plan.md
   - Contributing:
       - Overview: contributing/index.md
+      - Agent Guidance: contributing/agent-guidance.md
       - Repo Layout: contributing/repo-layout.md
       - Docs Workflow: contributing/docs-workflow.md
       - Releases: contributing/releases.md

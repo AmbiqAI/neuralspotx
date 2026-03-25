@@ -5,6 +5,8 @@ from pathlib import Path
 import pytest
 import yaml
 
+import neuralspotx.module_registry as module_registry
+import neuralspotx.operations as operations
 from neuralspotx import (
     AppBuildRequest,
     AppCleanRequest,
@@ -23,6 +25,7 @@ from neuralspotx import (
     sync_workspace,
     update_modules,
 )
+from neuralspotx.project_config import _vendored_metadata_relpath, _vendored_target_dir
 
 
 def _load_yaml(path: Path) -> dict:
@@ -112,11 +115,26 @@ def test_init_workspace_and_create_app_round_trip(tmp_path: Path) -> None:
 
     app_dir = tmp_path / "apps" / "hello_api"
     cfg = _load_yaml(app_dir / "nsx.yml")
+    cmake_text = (app_dir / "CMakeLists.txt").read_text(encoding="utf-8")
+    readme_text = (app_dir / "README.md").read_text(encoding="utf-8")
 
     assert cfg["project"]["name"] == "hello_api"
     assert cfg["target"]["board"] == "apollo510_evb"
     assert cfg["modules"] == []
     assert (app_dir / "cmake" / "nsx").exists()
+    assert "__NSX_APP_NAME__" not in cmake_text
+    assert "project(hello_api LANGUAGES C CXX ASM)" in cmake_text
+    assert "find_package(nsx_soc_apollo510 REQUIRED CONFIG)" in cmake_text
+    assert "find_package(nsx_board_apollo510_evb REQUIRED CONFIG)" in cmake_text
+    assert "uv run nsx create-app <workspace> hello_api --board apollo510_evb" in readme_text
+
+
+def test_vendored_module_metadata_path_stays_under_single_modules_root(tmp_path: Path) -> None:
+    relpath = _vendored_metadata_relpath("modules/nsx-core/nsx-module.yaml")
+    assert relpath == Path("modules") / "nsx-core" / "nsx-module.yaml"
+    assert _vendored_target_dir(tmp_path, "nsx-core", "modules/nsx-core/nsx-module.yaml") == (
+        tmp_path / "modules" / "nsx-core"
+    )
 
 
 def test_register_local_module_persists_relative_metadata_path(tmp_path: Path) -> None:
@@ -140,6 +158,41 @@ def test_register_local_module_persists_relative_metadata_path(tmp_path: Path) -
     cfg = _load_yaml(app_dir / "nsx.yml")
     assert cfg["module_registry"]["modules"]["local-demo"]["metadata"] == "local-module.yaml"
     assert not (app_dir / "modules" / "local-demo").exists()
+
+
+def test_register_module_defaults_missing_manifest_revision_to_main(tmp_path: Path) -> None:
+    init_workspace(WorkspaceInitRequest(workspace=tmp_path, skip_update=True))
+    create_app(tmp_path, "hello_manifest", board="apollo510_evb", no_bootstrap=True)
+
+    project_root = tmp_path / "modules" / "local-demo"
+    metadata_path = _write_local_module_project(project_root)
+
+    manifest_path = tmp_path / "manifest" / "west.yml"
+    manifest_data = _load_yaml(manifest_path)
+    manifest_projects = manifest_data["manifest"]["projects"]
+    manifest_projects.append(
+        {
+            "name": "local-demo-proj",
+            "url": "https://example.com/local-demo.git",
+            "path": str(Path("modules") / "local-demo"),
+        }
+    )
+    manifest_path.write_text(yaml.safe_dump(manifest_data, sort_keys=False), encoding="utf-8")
+
+    app_dir = tmp_path / "apps" / "hello_manifest"
+    register_module(
+        ModuleRegisterRequest(
+            app_dir=app_dir,
+            module="local-demo",
+            metadata=metadata_path,
+            project="local-demo-proj",
+            no_sync=True,
+        )
+    )
+
+    cfg = _load_yaml(app_dir / "nsx.yml")
+    assert cfg["module_registry"]["projects"]["local-demo-proj"]["revision"] == "main"
+    assert cfg["module_registry"]["modules"]["local-demo"]["revision"] == "main"
 
 
 def test_full_clean_removes_build_directory(tmp_path: Path) -> None:
@@ -170,7 +223,7 @@ def test_sync_workspace_uses_shared_impl_without_shelling_from_api(
     def fake_run(cmd: list[str], cwd: Path | None = None) -> None:
         calls.append((cmd, cwd))
 
-    monkeypatch.setattr(cli, "_run", fake_run)
+    monkeypatch.setattr(operations, "_run", fake_run)
 
     sync_workspace(tmp_path)
 
@@ -190,9 +243,9 @@ def test_sync_projects_for_modules_invokes_west_update(
     def fake_run(cmd: list[str], cwd: Path | None = None) -> None:
         calls.append((cmd, cwd))
 
-    monkeypatch.setattr(cli, "_run", fake_run)
+    monkeypatch.setattr(module_registry, "_run", fake_run)
 
-    cli._sync_projects_for_modules(
+    module_registry._sync_projects_for_modules(
         tmp_path,
         ["nsx-core", "nsx-utils"],
         registry,
@@ -262,7 +315,7 @@ def test_build_app_uses_shared_impl_and_triggers_configure_when_needed(
         build_calls.append(cmd)
 
     monkeypatch.setattr(cli, "_run_cmake_configure", fake_configure)
-    monkeypatch.setattr(cli, "_run", fake_run)
+    monkeypatch.setattr(operations, "_run", fake_run)
 
     build_app(AppBuildRequest(app_dir=app_dir, jobs=3))
 

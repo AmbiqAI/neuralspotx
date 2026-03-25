@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.24)
-project(__NSX_APP_NAME__ LANGUAGES C CXX ASM)
+project({{ app_name }} LANGUAGES C CXX ASM)
 
-set(NSX_BOARD "apollo510_evb" CACHE STRING "Target board")
+set(NSX_BOARD "{{ board }}" CACHE STRING "Target board")
 
 option(FOO_USE_NSX_PORTABLE "Link nsx::portable_api in addition to runtime core" OFF)
 
@@ -14,16 +14,19 @@ nsx_bootstrap_app(
     MODULES ${NSX_APP_MODULES}
 )
 
-add_executable(__NSX_APP_NAME__
+find_package(nsx_soc_{{ soc }} REQUIRED CONFIG)
+find_package(nsx_board_{{ board }} REQUIRED CONFIG)
+
+add_executable({{ app_name }}
     src/main.c
 )
 
-target_link_libraries(__NSX_APP_NAME__ PRIVATE
-    nsx::board
+target_link_libraries({{ app_name }} PRIVATE
+    nsx::board_{{ board }}
     nsx::runtime_core
 )
 
 if(FOO_USE_NSX_PORTABLE)
-    target_link_libraries(__NSX_APP_NAME__ PRIVATE nsx::portable_api)
+    target_link_libraries({{ app_name }} PRIVATE nsx::portable_api)
 endif()
-nsx_finalize_app(__NSX_APP_NAME__)
+nsx_finalize_app({{ app_name }})

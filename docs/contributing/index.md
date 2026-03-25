@@ -8,6 +8,7 @@ Topics covered here:
 - repo layout
 - docs workflow
 - release workflow
+- agent guidance
 - adding boards
 - adding modules
 - internal module coverage

@@ -5,8 +5,8 @@ This template shows a standalone NSX app with vendored modules and board content
 ## Create
 
 ```bash
-uv run nsx create-app ~/ws my_app --board apollo510_evb
-cd ~/ws/apps/my_app
+uv run nsx create-app <workspace> {{ app_name }} --board {{ board }}
+cd <workspace>/apps/{{ app_name }}
 ```
 
 ## Build
