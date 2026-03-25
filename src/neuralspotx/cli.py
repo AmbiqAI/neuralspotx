@@ -161,7 +161,7 @@ def _tool_path(name: str) -> str | None:
     if resolved is not None:
         return resolved
 
-    scripts_dir = Path(sys.executable).resolve().parent
+    scripts_dir = Path(sys.executable).parent
     candidates = [scripts_dir / name]
     if sys.platform.startswith("win"):
         candidates.extend(
@@ -1237,7 +1237,7 @@ def doctor_impl() -> None:
         "west",
         _tool_path("west") is not None,
         detail=_tool_path("west"),
-        hint="Run `uv sync` in the neuralspotx repo if west is missing.",
+        hint="Install `west`, or use an NSX install that provides it in the same environment.",
     )
     all_ok &= _doctor_check(
         "arm-none-eabi-gcc",
