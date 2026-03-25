@@ -181,6 +181,31 @@ def test_sync_workspace_uses_shared_impl_without_shelling_from_api(
     assert cwd == tmp_path
 
 
+def test_sync_projects_for_modules_invokes_west_update(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    registry = cli._load_registry()
+    calls: list[tuple[list[str], Path | None]] = []
+
+    def fake_run(cmd: list[str], cwd: Path | None = None) -> None:
+        calls.append((cmd, cwd))
+
+    monkeypatch.setattr(cli, "_run", fake_run)
+
+    cli._sync_projects_for_modules(
+        tmp_path,
+        ["nsx-core", "nsx-utils"],
+        registry,
+    )
+
+    assert len(calls) == 1
+    cmd, cwd = calls[0]
+    assert Path(cmd[0]).name == "west"
+    assert cmd[1] == "update"
+    assert sorted(cmd[2:]) == ["nsx-core", "nsx-utils"]
+    assert cwd == tmp_path
+
+
 def test_local_module_round_trip_add_update_remove(tmp_path: Path) -> None:
     init_workspace(WorkspaceInitRequest(workspace=tmp_path, skip_update=True))
     create_app(tmp_path, "hello_modules", board="apollo510_evb", no_bootstrap=True)

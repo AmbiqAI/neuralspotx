@@ -933,7 +933,7 @@ def _sync_projects_for_modules(
     projects = sorted(set(projects))
     if not projects:
         return
-        _run(_tool_cmd("west", "update", *projects), cwd=workspace)
+    _run(_tool_cmd("west", "update", *projects), cwd=workspace)
 
 
 def _workspace_has_manifest(workspace: Path) -> bool:
