@@ -13,6 +13,7 @@ from .metadata import (
     registry_entry_for_module,
     validate_nsx_module_metadata,
 )
+from .models import ProjectEntry
 from .project_config import (
     _metadata_path_relative_to_project,
     _packaged_metadata_path,
@@ -55,7 +56,7 @@ def _module_metadata_path(
         return packaged
 
     project_entry = _registry_project_entry(registry, registry_entry.project)
-    project_path = project_entry.get("path") if isinstance(project_entry.get("path"), str) else None
+    project_path = project_entry.path
     metadata_rel = _metadata_path_relative_to_project(metadata, project_path)
     searched: list[Path] = []
 
@@ -101,7 +102,7 @@ def _vendor_module_into_app(
     destination_dir = _vendored_target_dir(app_dir, module_name, entry.metadata)
 
     project_entry = _registry_project_entry(registry, entry.project)
-    project_path = project_entry.get("path") if isinstance(project_entry.get("path"), str) else None
+    project_path = project_entry.path
     metadata_rel = _metadata_path_relative_to_project(Path(entry.metadata), project_path)
 
     source_dir = source_metadata.parent
@@ -422,14 +423,12 @@ def _update_workspace_manifest(
         project_name = entry.project
         if project_name in project_names:
             continue
-        project_meta = reg_projects.get(project_name, {})
-        if not isinstance(project_meta, dict):
+        project_meta = ProjectEntry.from_mapping(project_name, reg_projects.get(project_name))
+        if project_meta.local_path:
             continue
-        if isinstance(project_meta.get("local_path"), str):
-            continue
-        url = project_meta.get("url")
-        revision = project_meta.get("revision")
-        path = project_meta.get("path")
+        url = project_meta.url
+        revision = project_meta.revision
+        path = project_meta.path
         if (
             isinstance(url, str)
             and isinstance(revision, str)
@@ -455,12 +454,11 @@ def _sync_projects_for_modules(
     registry: dict[str, Any],
 ) -> None:
     _require_tool("west")
-    reg_projects = registry.get("projects", {})
     projects: list[str] = []
     for module_name in module_names:
         project = registry_entry_for_module(registry, module_name).project
-        project_meta = reg_projects.get(project, {})
-        if isinstance(project_meta, dict) and isinstance(project_meta.get("local_path"), str):
+        project_meta = _registry_project_entry(registry, project)
+        if project_meta.local_path:
             continue
         projects.append(project)
     projects = sorted(set(projects))

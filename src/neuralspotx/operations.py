@@ -8,7 +8,6 @@ import importlib.resources as resources
 import shutil
 import subprocess
 from pathlib import Path
-from typing import Any
 
 from .constants import (
     DEFAULT_REPO_NAME,
@@ -17,6 +16,7 @@ from .constants import (
     WEST_MANIFEST_TEMPLATE,
 )
 from .metadata import validate_nsx_module_metadata
+from .models import ModuleEntry, ProjectEntry
 from .module_registry import (
     _ensure_workspace_projects_for_modules,
     _generate_nsx_config,
@@ -103,8 +103,9 @@ def init_workspace_impl(
     workspace.mkdir(parents=True, exist_ok=True)
     manifest_dir.mkdir(parents=True, exist_ok=True)
 
-    default_nsx_url = _registry_project_entry(_load_registry(), DEFAULT_REPO_NAME).get("url")
-    if not isinstance(default_nsx_url, str) or not default_nsx_url:
+    default_nsx_project = _registry_project_entry(_load_registry(), DEFAULT_REPO_NAME)
+    default_nsx_url = default_nsx_project.url
+    if not default_nsx_url:
         raise SystemExit("Built-in registry is missing a default URL for the neuralspotx project.")
     effective_nsx_repo_url = nsx_repo_url or default_nsx_url
 
@@ -675,17 +676,14 @@ def register_module_impl(
     manifest_projects = _manifest_projects_by_name(workspace)
     project_name = project
     existing_project = manifest_projects.get(project_name)
-    project_entry: dict[str, Any] = {}
+    project_entry: ProjectEntry
     if existing_project is not None:
-        existing_revision = existing_project.get("revision")
-        if not isinstance(existing_revision, str) or not existing_revision:
-            existing_revision = "main"
-        project_entry = {
-            "name": project_name,
-            "url": existing_project.get("url"),
-            "revision": existing_revision,
-            "path": existing_project.get("path"),
-        }
+        project_entry = ProjectEntry(
+            name=project_name,
+            url=existing_project.url,
+            revision=existing_project.revision or "main",
+            path=existing_project.path,
+        )
     else:
         if project_local_path and (project_url or project_revision or project_path):
             raise SystemExit(
@@ -695,22 +693,19 @@ def register_module_impl(
             local_path = project_local_path.resolve()
             if not local_path.exists():
                 raise SystemExit(f"--project-local-path does not exist: {local_path}")
-            project_entry = {
-                "name": project_name,
-                "local_path": str(local_path),
-            }
+            project_entry = ProjectEntry(name=project_name, local_path=str(local_path))
         else:
             if not (project_url and project_revision and project_path):
                 raise SystemExit(
                     f"Project '{project_name}' is not in workspace manifest. "
                     "Provide --project-local-path OR --project-url + --project-revision + --project-path."
                 )
-            project_entry = {
-                "name": project_name,
-                "url": project_url,
-                "revision": project_revision,
-                "path": project_path,
-            }
+            project_entry = ProjectEntry(
+                name=project_name,
+                url=project_url,
+                revision=project_revision,
+                path=project_path,
+            )
 
     current_modules = registry.get("modules", {})
     if module_name in current_modules and not override:
@@ -728,12 +723,13 @@ def register_module_impl(
     if not isinstance(projects, dict) or not isinstance(modules, dict):
         raise SystemExit("nsx.yml: module_registry.projects/modules must be mappings")
 
-    projects[project_name] = project_entry
-    modules[module_name] = {
-        "project": project_name,
-        "revision": project_entry.get("revision", "main"),
-        "metadata": _metadata_storage_path(app_dir, metadata_path, project_entry),
-    }
+    projects[project_name] = project_entry.to_mapping()
+    modules[module_name] = ModuleEntry(
+        name=module_name,
+        project=project_name,
+        revision=project_entry.revision or "main",
+        metadata=_metadata_storage_path(app_dir, metadata_path, project_entry),
+    ).to_mapping()
 
     if dry_run:
         print("[dry-run] would register module:")

@@ -11,6 +11,7 @@ from typing import Any
 import yaml
 
 from .metadata import load_registry_lock
+from .models import ProjectEntry
 from .subprocess_utils import run
 
 
@@ -56,12 +57,11 @@ def _effective_registry(base_registry: dict[str, Any], nsx_cfg: dict[str, Any]) 
     return merged
 
 
-def _registry_project_entry(registry: dict[str, Any], project_name: str) -> dict[str, Any]:
+def _registry_project_entry(registry: dict[str, Any], project_name: str) -> ProjectEntry:
     projects = registry.get("projects", {})
     if not isinstance(projects, dict):
-        return {}
-    entry = projects.get(project_name, {})
-    return entry if isinstance(entry, dict) else {}
+        return ProjectEntry(name=project_name)
+    return ProjectEntry.from_mapping(project_name, projects.get(project_name))
 
 
 def _render_west_manifest(
@@ -180,15 +180,13 @@ def _project_checkout_candidates(
     workspace: Path,
 ) -> list[Path]:
     project_entry = _registry_project_entry(registry, project_name)
-    project_path = project_entry.get("path")
     candidates: list[Path] = []
 
-    local_path = project_entry.get("local_path")
-    if isinstance(local_path, str):
-        candidates.append(Path(local_path).expanduser())
+    if project_entry.local_path:
+        candidates.append(Path(project_entry.local_path).expanduser())
 
-    if isinstance(project_path, str):
-        candidates.append(workspace / project_path)
+    if project_entry.path:
+        candidates.append(workspace / project_entry.path)
 
     unique: list[Path] = []
     for candidate in candidates:
@@ -227,21 +225,19 @@ def _workspace_for_app_dir(app_dir: Path) -> Path:
     raise SystemExit(f"Unable to determine workspace root from app dir: {app_dir}")
 
 
-def _metadata_storage_path(app_dir: Path, metadata_path: Path, project_entry: dict[str, Any]) -> str:
-    local_path = project_entry.get("local_path")
-    if isinstance(local_path, str):
-        local_root = Path(local_path).expanduser().resolve()
+def _metadata_storage_path(app_dir: Path, metadata_path: Path, project_entry: ProjectEntry) -> str:
+    if project_entry.local_path:
+        local_root = Path(project_entry.local_path).expanduser().resolve()
         try:
             return str(metadata_path.resolve().relative_to(local_root))
         except ValueError:
             pass
 
-    project_path = project_entry.get("path")
-    if isinstance(project_path, str):
-        project_root = (_workspace_for_app_dir(app_dir) / project_path).resolve()
+    if project_entry.path:
+        project_root = (_workspace_for_app_dir(app_dir) / project_entry.path).resolve()
         try:
             metadata_rel = metadata_path.resolve().relative_to(project_root)
-            return str(Path(project_path) / metadata_rel)
+            return str(Path(project_entry.path) / metadata_rel)
         except ValueError:
             pass
 
@@ -332,20 +328,20 @@ def _save_app_cfg(app_dir: Path, cfg: dict[str, Any]) -> None:
     _write_yaml(app_dir / "nsx.yml", cfg)
 
 
-def _manifest_projects_by_name(workspace: Path) -> dict[str, dict[str, Any]]:
+def _manifest_projects_by_name(workspace: Path) -> dict[str, ProjectEntry]:
     manifest_path = workspace / "manifest" / "west.yml"
     data = _read_yaml(manifest_path)
     manifest = data.get("manifest", {})
     projects = manifest.get("projects", [])
     if not isinstance(projects, list):
         return {}
-    out: dict[str, dict[str, Any]] = {}
+    out: dict[str, ProjectEntry] = {}
     for proj in projects:
         if not isinstance(proj, dict):
             continue
         name = proj.get("name")
         if isinstance(name, str):
-            out[name] = proj
+            out[name] = ProjectEntry.from_mapping(name, proj)
     return out
 
 
