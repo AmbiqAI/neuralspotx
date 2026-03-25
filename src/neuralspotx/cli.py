@@ -8,6 +8,7 @@ import importlib.resources as resources
 import shlex
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -145,20 +146,44 @@ def _extract_view_command(build_dir: Path, target: str) -> list[str]:
 
 
 def _require_tool(name: str) -> None:
-    if shutil.which(name) is None:
+    if _tool_path(name) is None:
         hint = ""
         if name == "west":
             hint = (
-                "\nHint: from neuralspotx run:\n"
-                "  uv sync\n"
-                "  uv run west --version\n"
-                "  uv run nsx <command> ..."
+                "\nHint: install `west` or use an NSX install that includes it in the same environment.\n"
+                "For `pipx`, reinstall `neuralspotx` so the bundled dependency entry points are available."
             )
         raise SystemExit(f"Required tool not found in PATH: {name}{hint}")
 
 
 def _tool_path(name: str) -> str | None:
-    return shutil.which(name)
+    resolved = shutil.which(name)
+    if resolved is not None:
+        return resolved
+
+    scripts_dir = Path(sys.executable).resolve().parent
+    candidates = [scripts_dir / name]
+    if sys.platform.startswith("win"):
+        candidates.extend(
+            [
+                scripts_dir / f"{name}.exe",
+                scripts_dir / f"{name}.bat",
+                scripts_dir / f"{name}.cmd",
+            ]
+        )
+
+    for candidate in candidates:
+        if candidate.exists():
+            return str(candidate)
+    return None
+
+
+def _tool_cmd(name: str, *args: str) -> list[str]:
+    tool = _tool_path(name)
+    if tool is None:
+        _require_tool(name)
+        raise AssertionError("unreachable")
+    return [tool, *args]
 
 
 def _doctor_check(
@@ -908,7 +933,7 @@ def _sync_projects_for_modules(
     projects = sorted(set(projects))
     if not projects:
         return
-    _run(["west", "update", *projects], cwd=workspace)
+        _run(_tool_cmd("west", "update", *projects), cwd=workspace)
 
 
 def _workspace_has_manifest(workspace: Path) -> bool:
@@ -1015,10 +1040,10 @@ def init_workspace_impl(
     west_yml.write_text(manifest_text, encoding="utf-8")
 
     if not (workspace / ".west").exists():
-        _run(["west", "init", "-l", "manifest"], cwd=workspace)
+        _run(_tool_cmd("west", "init", "-l", "manifest"), cwd=workspace)
 
     if not skip_update:
-        _run(["west", "update"], cwd=workspace)
+        _run(_tool_cmd("west", "update"), cwd=workspace)
 
     print(f"NSX workspace initialized at: {workspace}")
     print(f"Root repo path in workspace: {workspace / DEFAULT_REPO_NAME}")
@@ -1193,7 +1218,7 @@ def cmd_sync(args: argparse.Namespace) -> None:
 def sync_workspace_impl(workspace: Path) -> None:
     _require_tool("west")
     _require_initialized_workspace(workspace)
-    _run(["west", "update"], cwd=workspace)
+    _run(_tool_cmd("west", "update"), cwd=workspace)
 
 
 def cmd_doctor(args: argparse.Namespace) -> None:
@@ -1241,7 +1266,7 @@ def doctor_impl() -> None:
     if jlink_ok:
         try:
             probe = subprocess.run(
-                ["JLinkExe", "-CommandFile", "-", "-NoGui", "1"],
+                _tool_cmd("JLinkExe", "-CommandFile", "-", "-NoGui", "1"),
                 check=True,
                 text=True,
                 capture_output=True,
