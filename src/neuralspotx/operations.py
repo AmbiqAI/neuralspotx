@@ -18,6 +18,7 @@ from .subprocess_utils import (
     run_capture,
 )
 from .subprocess_utils import set_verbosity as set_subprocess_verbosity
+from .templating import render_template_tree
 from .tooling import doctor_check, require_tool, tool_cmd, tool_path
 
 VERBOSE = 0
@@ -125,81 +126,17 @@ def create_app_impl(
             raise SystemExit(f"App directory already exists and is not empty: {app_dir}")
 
         app_dir.mkdir(parents=True, exist_ok=True)
-        shutil.copytree(src_template, app_dir, dirs_exist_ok=True)
+        render_template_tree(
+            src_template,
+            app_dir,
+            context={
+                "app_name": app_name,
+                "board": board,
+                "soc": soc,
+            },
+        )
 
     cli._copy_packaged_tree("neuralspotx", "cmake", app_dir / "cmake" / "nsx")
-
-    cmake_file = app_dir / "CMakeLists.txt"
-    lines = cmake_file.read_text(encoding="utf-8").splitlines()
-    lines = cli._replace_exact_line(
-        lines,
-        "project(__NSX_APP_NAME__ LANGUAGES C CXX ASM)",
-        f"project({app_name} LANGUAGES C CXX ASM)",
-    )
-    lines = cli._replace_exact_line(
-        lines, "add_executable(__NSX_APP_NAME__", f"add_executable({app_name}"
-    )
-    lines = cli._replace_exact_line(
-        lines,
-        "target_link_libraries(__NSX_APP_NAME__ PRIVATE",
-        f"target_link_libraries({app_name} PRIVATE",
-    )
-    lines = cli._replace_exact_line(
-        lines,
-        "target_link_options(__NSX_APP_NAME__ PRIVATE",
-        f"target_link_options({app_name} PRIVATE",
-    )
-    lines = cli._replace_exact_line(
-        lines,
-        "    target_link_libraries(__NSX_APP_NAME__ PRIVATE nsx::portable_api)",
-        f"    target_link_libraries({app_name} PRIVATE nsx::portable_api)",
-    )
-    lines = cli._replace_exact_line(
-        lines,
-        "    add_custom_command(TARGET __NSX_APP_NAME__ POST_BUILD",
-        f"    add_custom_command(TARGET {app_name} POST_BUILD",
-    )
-    lines = cli._replace_exact_line(
-        lines,
-        "        COMMAND ${CMAKE_OBJCOPY} -Obinary $<TARGET_FILE:__NSX_APP_NAME__> $<TARGET_FILE_DIR:__NSX_APP_NAME__>/__NSX_APP_NAME__.bin",
-        f"        COMMAND ${{CMAKE_OBJCOPY}} -Obinary $<TARGET_FILE:{app_name}> $<TARGET_FILE_DIR:{app_name}>/{app_name}.bin",
-    )
-    lines = cli._replace_exact_line(
-        lines,
-        '        COMMENT "Generating __NSX_APP_NAME__.bin")',
-        f'        COMMENT "Generating {app_name}.bin")',
-    )
-    lines = cli._replace_exact_line(
-        lines,
-        "        COMMAND ${CMAKE_SIZE} $<TARGET_FILE:__NSX_APP_NAME__>",
-        f"        COMMAND ${{CMAKE_SIZE}} $<TARGET_FILE:{app_name}>",
-    )
-    lines = cli._replace_exact_line(
-        lines, "nsx_finalize_app(__NSX_APP_NAME__)", f"nsx_finalize_app({app_name})"
-    )
-    lines = cli._replace_exact_line(
-        lines,
-        "    -Wl,-Map,$<TARGET_FILE_DIR:__NSX_APP_NAME__>/__NSX_APP_NAME__.map",
-        f"    -Wl,-Map,$<TARGET_FILE_DIR:{app_name}>/{app_name}.map",
-    )
-    lines = cli._replace_exact_line(
-        lines,
-        "find_package(nsx_soc_apollo510 REQUIRED CONFIG)",
-        f"find_package(nsx_soc_{soc} REQUIRED CONFIG)",
-    )
-    lines = cli._replace_exact_line(
-        lines,
-        "find_package(nsx_board_apollo510_evb REQUIRED CONFIG)",
-        f"find_package(nsx_board_{board} REQUIRED CONFIG)",
-    )
-    lines = cli._replace_exact_line(
-        lines, "    nsx::board_apollo510_evb", f"    nsx::board_{board}"
-    )
-
-    if board != "apollo510_evb":
-        lines = [line for line in lines if not line.startswith("set(NSX_SEGGER_")]
-
-    cmake_file.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
     nsx_cfg = cli._generate_nsx_config(
         app_name=app_name,

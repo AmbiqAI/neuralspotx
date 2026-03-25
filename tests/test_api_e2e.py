@@ -113,11 +113,18 @@ def test_init_workspace_and_create_app_round_trip(tmp_path: Path) -> None:
 
     app_dir = tmp_path / "apps" / "hello_api"
     cfg = _load_yaml(app_dir / "nsx.yml")
+    cmake_text = (app_dir / "CMakeLists.txt").read_text(encoding="utf-8")
+    readme_text = (app_dir / "README.md").read_text(encoding="utf-8")
 
     assert cfg["project"]["name"] == "hello_api"
     assert cfg["target"]["board"] == "apollo510_evb"
     assert cfg["modules"] == []
     assert (app_dir / "cmake" / "nsx").exists()
+    assert "__NSX_APP_NAME__" not in cmake_text
+    assert "project(hello_api LANGUAGES C CXX ASM)" in cmake_text
+    assert "find_package(nsx_soc_apollo510 REQUIRED CONFIG)" in cmake_text
+    assert "find_package(nsx_board_apollo510_evb REQUIRED CONFIG)" in cmake_text
+    assert "uv run nsx create-app <workspace> hello_api --board apollo510_evb" in readme_text
 
 
 def test_register_local_module_persists_relative_metadata_path(tmp_path: Path) -> None:
