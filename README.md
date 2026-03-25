@@ -50,7 +50,16 @@ uv run --group docs zensical build
 NSX currently uses a workspace-first flow. Start by creating a workspace, then
 generate apps inside it.
 
-Initialize a workspace and create an app:
+For app users, the cleanest install path is `pipx`:
+
+```bash
+pipx install git+https://github.com/AmbiqAI/neuralspotx.git
+nsx doctor
+nsx init-workspace <workspace>
+nsx create-app <workspace> hello_ap510 --board apollo510_evb
+```
+
+For contributors working from a source checkout:
 
 ```bash
 cd <nsx-repo>
