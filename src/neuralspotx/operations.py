@@ -63,12 +63,20 @@ VERBOSE = 0
 
 
 def set_verbosity(level: int) -> None:
+    """Set shared operation verbosity for subprocess-facing helpers.
+
+    Args:
+        level: Verbosity level from the CLI or programmatic caller.
+    """
+
     global VERBOSE
     VERBOSE = level
     set_subprocess_verbosity(level)
 
 
 def _cli():
+    """Import the CLI module lazily for compatibility seams."""
+
     from . import cli
 
     return cli
@@ -95,6 +103,17 @@ def init_workspace_impl(
     ambiqsuite_revision: str = "main",
     skip_update: bool = False,
 ) -> None:
+    """Initialize an NSX workspace and optionally sync its projects.
+
+    Args:
+        workspace: Workspace root directory.
+        nsx_repo_url: Optional override for the root NSX repo URL.
+        nsx_revision: Git revision for the root NSX repo checkout.
+        ambiqsuite_repo_url: Optional AmbiqSuite repo URL to add to the manifest.
+        ambiqsuite_revision: Git revision for the AmbiqSuite checkout.
+        skip_update: When ``True``, skip ``west update`` after initialization.
+    """
+
     _require_tool("west")
 
     manifest_dir = workspace / "manifest"
@@ -141,6 +160,22 @@ def create_app_impl(
     no_bootstrap: bool = False,
     no_sync: bool = False,
 ) -> Path:
+    """Create a new NSX app and optionally vendor its starter modules.
+
+    Args:
+        workspace: Workspace root directory.
+        app_name: New app name.
+        board: Target board identifier.
+        soc: Optional SoC override.
+        force: Allow writing into a non-empty app directory.
+        init_workspace: Initialize the workspace first if needed.
+        no_bootstrap: Skip starter-module vendoring.
+        no_sync: Skip syncing workspace projects for module sources.
+
+    Returns:
+        The created app directory.
+    """
+
     base_registry = _load_registry()
     if init_workspace and not _workspace_has_manifest(workspace):
         init_workspace_impl(
@@ -242,12 +277,16 @@ def create_app_impl(
 
 
 def sync_workspace_impl(workspace: Path) -> None:
+    """Run ``west update`` for an existing NSX workspace."""
+
     _require_tool("west")
     _require_initialized_workspace(workspace)
     _run(_tool_cmd("west", "update"), cwd=workspace)
 
 
 def doctor_impl() -> None:
+    """Run the NSX environment diagnostics and fail on missing prerequisites."""
+
     all_ok = True
 
     python_exe = shutil.which("python") or shutil.which("python3")
@@ -336,6 +375,8 @@ def _resolve_build_context(
     board: str | None = None,
     build_dir: Path | None = None,
 ) -> tuple[Path, str, str, Path]:
+    """Resolve the app, board, and build directory for a build-like action."""
+
     resolved_app_dir, _, _, app_name, resolved_board = _resolve_app_context(
         argparse.Namespace(app_dir=str(app_dir), board=board)
     )
@@ -349,6 +390,12 @@ def configure_app_impl(
     board: str | None = None,
     build_dir: Path | None = None,
 ) -> Path:
+    """Configure an app with CMake.
+
+    Returns:
+        The resolved build directory.
+    """
+
     cli = _cli()
     resolved_app_dir, _, resolved_board, resolved_build_dir = _resolve_build_context(
         app_dir,
@@ -369,6 +416,8 @@ def build_app_impl(
     target: str | None = None,
     jobs: int = 8,
 ) -> Path:
+    """Build an app target and return the build directory."""
+
     cli = _cli()
     resolved_app_dir, app_name, resolved_board, resolved_build_dir = _resolve_build_context(
         app_dir,
@@ -389,6 +438,8 @@ def flash_app_impl(
     build_dir: Path | None = None,
     jobs: int = 8,
 ) -> Path:
+    """Flash an app using its generated CMake flash target."""
+
     cli = _cli()
     resolved_app_dir, app_name, resolved_board, resolved_build_dir = _resolve_build_context(
         app_dir,
@@ -416,6 +467,8 @@ def view_app_impl(
     board: str | None = None,
     build_dir: Path | None = None,
 ) -> Path:
+    """Launch the SEGGER SWO viewer for an app."""
+
     cli = _cli()
     resolved_app_dir, app_name, resolved_board, resolved_build_dir = _resolve_build_context(
         app_dir,
@@ -440,6 +493,8 @@ def clean_app_impl(
     build_dir: Path | None = None,
     full: bool = False,
 ) -> Path:
+    """Clean or fully remove an app build directory."""
+
     cli = _cli()
     resolved_app_dir, _, resolved_board, resolved_build_dir = _resolve_build_context(
         app_dir,
@@ -465,6 +520,8 @@ def add_module_impl(
     dry_run: bool = False,
     no_sync: bool = False,
 ) -> list[str]:
+    """Enable a module for an app and vendor the resolved closure."""
+
     workspace = _workspace_for_app_dir(app_dir)
     nsx_cfg = _load_app_cfg(app_dir)
     registry = _effective_registry(_load_registry(), nsx_cfg)
@@ -516,6 +573,8 @@ def remove_module_impl(
     dry_run: bool = False,
     no_sync: bool = False,
 ) -> tuple[list[str], list[str]]:
+    """Remove a module and any no-longer-needed dependents from an app."""
+
     del no_sync
     workspace = _workspace_for_app_dir(app_dir)
     nsx_cfg = _load_app_cfg(app_dir)
@@ -592,6 +651,8 @@ def update_modules_impl(
     dry_run: bool = False,
     no_sync: bool = False,
 ) -> list[str]:
+    """Refresh enabled modules to the current registry revisions."""
+
     workspace = _workspace_for_app_dir(app_dir)
     nsx_cfg = _load_app_cfg(app_dir)
     registry = _effective_registry(_load_registry(), nsx_cfg)
@@ -654,6 +715,8 @@ def register_module_impl(
     dry_run: bool = False,
     no_sync: bool = False,
 ) -> Path:
+    """Register an app-local module override and vendor it into the app."""
+
     workspace = _workspace_for_app_dir(app_dir)
     nsx_cfg = _load_app_cfg(app_dir)
     base_registry = _load_registry()

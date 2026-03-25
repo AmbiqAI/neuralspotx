@@ -24,6 +24,17 @@ class ProjectEntry:
         *,
         default_revision: str | None = None,
     ) -> ProjectEntry:
+        """Build a typed project entry from a manifest or registry mapping.
+
+        Args:
+            name: Project name key.
+            data: Raw mapping loaded from YAML metadata.
+            default_revision: Default revision to apply when the mapping omits one.
+
+        Returns:
+            A normalized ``ProjectEntry`` instance.
+        """
+
         if not isinstance(data, dict):
             return cls(name=name, revision=default_revision)
         revision = data.get("revision")
@@ -41,6 +52,8 @@ class ProjectEntry:
         )
 
     def to_mapping(self) -> dict[str, str]:
+        """Serialize the project entry back to an app/manifest mapping."""
+
         out = {"name": self.name}
         if self.url:
             out["url"] = self.url
@@ -63,6 +76,8 @@ class ModuleEntry:
     metadata: str | None = None
 
     def to_mapping(self) -> dict[str, str]:
+        """Serialize the module entry back to an app-local registry mapping."""
+
         out = {
             "project": self.project,
             "revision": self.revision,

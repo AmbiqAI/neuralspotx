@@ -10,15 +10,21 @@ _VERBOSE = 0
 
 
 def set_verbosity(level: int) -> None:
+    """Set subprocess helper verbosity."""
+
     global _VERBOSE
     _VERBOSE = level
 
 
 def run(cmd: list[str], cwd: Path | None = None) -> None:
+    """Run a subprocess and raise on failure."""
+
     subprocess.run(cmd, cwd=str(cwd) if cwd else None, check=True)
 
 
 def run_capture(cmd: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+    """Run a subprocess and capture its text output."""
+
     return subprocess.run(
         cmd,
         cwd=str(cwd) if cwd else None,
@@ -29,6 +35,8 @@ def run_capture(cmd: list[str], cwd: Path | None = None) -> subprocess.Completed
 
 
 def print_captured_output(result: subprocess.CompletedProcess[str]) -> None:
+    """Echo captured subprocess output to stdout/stderr."""
+
     if result.stdout:
         print(result.stdout, end="")
     if result.stderr:
@@ -36,6 +44,8 @@ def print_captured_output(result: subprocess.CompletedProcess[str]) -> None:
 
 
 def jlink_failure_hint(output: str) -> str | None:
+    """Translate common SEGGER failures into clearer user-facing hints."""
+
     lowered = output.lower()
     if "failed to open dll" in lowered:
         return (
@@ -56,6 +66,8 @@ def jlink_failure_hint(output: str) -> str | None:
 
 
 def format_subprocess_error(exc: subprocess.CalledProcessError, *, context: str) -> str:
+    """Format a subprocess failure for user-facing CLI output."""
+
     output_parts: list[str] = []
     stdout = getattr(exc, "stdout", None)
     stderr = getattr(exc, "stderr", None)
@@ -79,6 +91,8 @@ def format_subprocess_error(exc: subprocess.CalledProcessError, *, context: str)
 
 
 def extract_view_command(build_dir: Path, target: str) -> list[str]:
+    """Extract the SWO viewer command for a Ninja target from ``build.ninja``."""
+
     ninja_file = build_dir / "build.ninja"
     if not ninja_file.exists():
         raise SystemExit(f"Missing build.ninja in build directory: {build_dir}")

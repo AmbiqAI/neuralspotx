@@ -15,7 +15,13 @@ def render_template_tree(
     *,
     context: dict[str, Any],
 ) -> None:
-    """Copy a template tree, rendering any ``*.j2`` files with Jinja."""
+    """Render a packaged template tree into a destination directory.
+
+    Args:
+        template_root: Root directory containing source templates.
+        destination_root: Destination directory to populate.
+        context: Template variables available to ``*.j2`` files.
+    """
     env = Environment(
         loader=FileSystemLoader(str(template_root)),
         undefined=StrictUndefined,

@@ -8,6 +8,15 @@ from pathlib import Path
 
 
 def tool_path(name: str) -> str | None:
+    """Resolve an executable path from PATH or the active Python scripts dir.
+
+    Args:
+        name: Executable base name.
+
+    Returns:
+        The resolved executable path, or ``None`` when it cannot be found.
+    """
+
     resolved = shutil.which(name)
     if resolved is not None:
         return resolved
@@ -30,6 +39,15 @@ def tool_path(name: str) -> str | None:
 
 
 def require_tool(name: str) -> None:
+    """Require that a named tool is available.
+
+    Args:
+        name: Executable base name.
+
+    Raises:
+        SystemExit: If the tool cannot be resolved.
+    """
+
     if tool_path(name) is None:
         hint = ""
         if name == "west":
@@ -41,6 +59,8 @@ def require_tool(name: str) -> None:
 
 
 def tool_cmd(name: str, *args: str) -> list[str]:
+    """Build a subprocess command with the resolved executable path."""
+
     tool = tool_path(name)
     if tool is None:
         require_tool(name)
@@ -55,6 +75,8 @@ def doctor_check(
     detail: str | None = None,
     hint: str | None = None,
 ) -> bool:
+    """Print one diagnostic check result in a consistent format."""
+
     status = "OK" if ok else "FAIL"
     print(f"[{status}] {label}")
     if detail:

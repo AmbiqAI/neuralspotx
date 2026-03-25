@@ -16,6 +16,17 @@ class NSXError(RuntimeError):
 
 @dataclass(slots=True)
 class WorkspaceInitRequest:
+    """Request parameters for initializing an NSX workspace.
+
+    Attributes:
+        workspace: Workspace directory to initialize.
+        nsx_repo_url: Optional override for the root NSX repo URL.
+        nsx_revision: Git revision for the NSX repo checkout.
+        ambiqsuite_repo_url: Optional AmbiqSuite repo URL to include in the manifest.
+        ambiqsuite_revision: Git revision for the AmbiqSuite checkout.
+        skip_update: When ``True``, write the manifest but skip ``west update``.
+    """
+
     workspace: PathLike
     nsx_repo_url: str | None = None
     nsx_revision: str = "main"
@@ -26,6 +37,19 @@ class WorkspaceInitRequest:
 
 @dataclass(slots=True)
 class AppCreateRequest:
+    """Request parameters for creating a new NSX app.
+
+    Attributes:
+        workspace: Target workspace root.
+        name: App name to create.
+        board: Target board identifier.
+        soc: Optional SoC override. When omitted, NSX infers it from ``board``.
+        force: Allow writing into a non-empty app directory.
+        init_workspace: Initialize the workspace first if needed.
+        no_bootstrap: Skip starter-module vendoring.
+        no_sync: Skip workspace project sync for module sources.
+    """
+
     workspace: PathLike
     name: str
     board: str = "apollo510_evb"
@@ -38,11 +62,21 @@ class AppCreateRequest:
 
 @dataclass(slots=True)
 class WorkspaceSyncRequest:
+    """Request parameters for syncing an existing NSX workspace."""
+
     workspace: PathLike
 
 
 @dataclass(slots=True)
 class AppActionRequest:
+    """Base request for app-scoped actions.
+
+    Attributes:
+        app_dir: App directory containing ``nsx.yml``.
+        board: Optional board override.
+        build_dir: Optional build directory override.
+    """
+
     app_dir: PathLike
     board: str | None = None
     build_dir: PathLike | None = None
@@ -50,22 +84,30 @@ class AppActionRequest:
 
 @dataclass(slots=True)
 class AppBuildRequest(AppActionRequest):
+    """Request parameters for building an app."""
+
     target: str | None = None
     jobs: int = 8
 
 
 @dataclass(slots=True)
 class AppFlashRequest(AppActionRequest):
+    """Request parameters for flashing an app."""
+
     jobs: int = 8
 
 
 @dataclass(slots=True)
 class AppCleanRequest(AppActionRequest):
+    """Request parameters for cleaning an app build."""
+
     full: bool = False
 
 
 @dataclass(slots=True)
 class ModuleChangeRequest:
+    """Request parameters for adding or removing a module."""
+
     app_dir: PathLike
     module: str
     dry_run: bool = False
@@ -74,6 +116,8 @@ class ModuleChangeRequest:
 
 @dataclass(slots=True)
 class ModuleUpdateRequest:
+    """Request parameters for updating one or more modules."""
+
     app_dir: PathLike
     module: str | None = None
     dry_run: bool = False
@@ -82,6 +126,8 @@ class ModuleUpdateRequest:
 
 @dataclass(slots=True)
 class ModuleRegisterRequest:
+    """Request parameters for registering an app-local module override."""
+
     app_dir: PathLike
     module: str
     metadata: PathLike
@@ -96,6 +142,8 @@ class ModuleRegisterRequest:
 
 
 def _invoke(func, *args, **kwargs) -> None:
+    """Invoke an NSX operation and normalize ``SystemExit`` into ``NSXError``."""
+
     try:
         func(*args, **kwargs)
     except SystemExit as exc:
@@ -114,6 +162,17 @@ def init_workspace(
     ambiqsuite_revision: str = "main",
     skip_update: bool = False,
 ) -> None:
+    """Initialize an NSX workspace.
+
+    Args:
+        workspace: Either a workspace path or a typed request object.
+        nsx_repo_url: Optional override for the NSX repo URL.
+        nsx_revision: Git revision for the NSX repo checkout.
+        ambiqsuite_repo_url: Optional AmbiqSuite repo URL.
+        ambiqsuite_revision: Git revision for the AmbiqSuite checkout.
+        skip_update: When ``True``, skip ``west update`` after initialization.
+    """
+
     request = (
         workspace
         if isinstance(workspace, WorkspaceInitRequest)
@@ -148,6 +207,19 @@ def create_app(
     no_bootstrap: bool = False,
     no_sync: bool = False,
 ) -> None:
+    """Create a new NSX app in a workspace.
+
+    Args:
+        workspace: Either a workspace path or a typed request object.
+        name: App name when not using a request object.
+        board: Target board identifier.
+        soc: Optional SoC override.
+        force: Allow writing into a non-empty app directory.
+        init_workspace: Initialize the workspace first if needed.
+        no_bootstrap: Skip starter-module vendoring.
+        no_sync: Skip workspace source sync.
+    """
+
     request = (
         workspace
         if isinstance(workspace, AppCreateRequest)
@@ -178,6 +250,8 @@ def create_app(
 
 
 def sync_workspace(workspace: PathLike | WorkspaceSyncRequest) -> None:
+    """Sync an existing NSX workspace with ``west update``."""
+
     request = (
         workspace
         if isinstance(workspace, WorkspaceSyncRequest)
@@ -187,6 +261,8 @@ def sync_workspace(workspace: PathLike | WorkspaceSyncRequest) -> None:
 
 
 def doctor() -> None:
+    """Run the NSX environment diagnostics."""
+
     _invoke(operations.doctor_impl)
 
 
@@ -196,6 +272,8 @@ def configure_app(
     board: str | None = None,
     build_dir: PathLike | None = None,
 ) -> None:
+    """Configure an app build directory with CMake."""
+
     request = (
         app_dir
         if isinstance(app_dir, AppActionRequest)
@@ -217,6 +295,8 @@ def build_app(
     target: str | None = None,
     jobs: int = 8,
 ) -> None:
+    """Build an NSX app."""
+
     request = (
         app_dir
         if isinstance(app_dir, AppBuildRequest)
@@ -245,6 +325,8 @@ def flash_app(
     build_dir: PathLike | None = None,
     jobs: int = 8,
 ) -> None:
+    """Build and flash an NSX app."""
+
     request = (
         app_dir
         if isinstance(app_dir, AppFlashRequest)
@@ -265,6 +347,8 @@ def view_app(
     board: str | None = None,
     build_dir: PathLike | None = None,
 ) -> None:
+    """Launch the SEGGER SWO viewer for an app."""
+
     request = (
         app_dir
         if isinstance(app_dir, AppActionRequest)
@@ -285,6 +369,8 @@ def clean_app(
     build_dir: PathLike | None = None,
     full: bool = False,
 ) -> None:
+    """Clean or fully remove an app build directory."""
+
     request = (
         app_dir
         if isinstance(app_dir, AppCleanRequest)
@@ -306,6 +392,8 @@ def add_module(
     dry_run: bool = False,
     no_sync: bool = False,
 ) -> None:
+    """Add a module to an app."""
+
     request = (
         app_dir
         if isinstance(app_dir, ModuleChangeRequest)
@@ -334,6 +422,8 @@ def remove_module(
     dry_run: bool = False,
     no_sync: bool = False,
 ) -> None:
+    """Remove a module from an app."""
+
     request = (
         app_dir
         if isinstance(app_dir, ModuleChangeRequest)
@@ -362,6 +452,8 @@ def update_modules(
     dry_run: bool = False,
     no_sync: bool = False,
 ) -> None:
+    """Refresh one or more enabled modules from the registry."""
+
     request = (
         app_dir
         if isinstance(app_dir, ModuleUpdateRequest)
@@ -395,6 +487,8 @@ def register_module(
     dry_run: bool = False,
     no_sync: bool = False,
 ) -> None:
+    """Register an app-local module override."""
+
     request = (
         app_dir
         if isinstance(app_dir, ModuleRegisterRequest)
