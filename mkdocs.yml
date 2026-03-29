@@ -32,6 +32,7 @@ nav:
       - Create an App: user-guide/create-app.md
       - App Layout: user-guide/app-layout.md
       - Modules: user-guide/modules.md
+      - First-Class Modules: user-guide/first-class-modules.md
       - Python API: user-guide/python-api.md
       - Build, Flash, and View: user-guide/build-flash-view.md
       - Boards and Targets: user-guide/boards-and-targets.md
@@ -51,6 +52,7 @@ nav:
       - module: reference/module.md
   - Architecture:
       - Overview: architecture/overview.md
+      - Migration From neuralSPOT: architecture/migration-from-neuralspot.md
       - App Generation Flow: architecture/app-generation-flow.md
       - Design Decisions: architecture/design-decisions.md
       - Module Model: architecture/module-model.md

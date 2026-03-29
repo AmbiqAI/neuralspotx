@@ -6,6 +6,9 @@ Built-in modules come from the packaged NSX registry. Their default source is
 the upstream repo and revision recorded there. Custom modules are registered
 explicitly per app.
 
+For a high-level overview of the current first-class module catalog, see
+[First-Class Modules](first-class-modules.md).
+
 ## List Modules
 
 ```bash

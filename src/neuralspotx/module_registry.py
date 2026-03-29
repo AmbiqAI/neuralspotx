@@ -490,8 +490,13 @@ def _ensure_workspace_projects_for_modules(
         _sync_projects_for_modules(workspace, module_names, registry)
 
 
-def _print_module_table(registry: dict[str, Any], enabled: set[str]) -> None:
-    print("Available NSX modules:")
+def _print_module_table(
+    registry: dict[str, Any],
+    enabled: set[str],
+    *,
+    heading: str = "NSX modules in the active registry (* = enabled for this app):",
+) -> None:
+    print(heading)
     for name in sorted(registry["modules"].keys()):
         marker = "*" if name in enabled else " "
         entry = registry_entry_for_module(registry, name)

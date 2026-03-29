@@ -261,11 +261,23 @@ def clean_app_impl(
 
 
 def cmd_module_list(args: argparse.Namespace) -> None:
+    base_registry = _load_registry()
+    if args.registry_only:
+        _print_module_table(base_registry, set(), heading="NSX modules in the packaged registry:")
+        return
+
+    if args.app_dir is None:
+        raise SystemExit("nsx module list requires --app-dir unless --registry-only is used")
+
     app_dir = Path(args.app_dir).expanduser().resolve()
     nsx_cfg = _load_app_cfg(app_dir)
-    registry = _effective_registry(_load_registry(), nsx_cfg)
+    registry = _effective_registry(base_registry, nsx_cfg)
     enabled = set(_module_names_from_nsx(nsx_cfg))
-    _print_module_table(registry, enabled)
+    _print_module_table(
+        registry,
+        enabled,
+        heading="NSX modules in the active registry (* = enabled for this app):",
+    )
 
 
 def cmd_module_add(args: argparse.Namespace) -> None:
@@ -474,42 +486,77 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p_clean.set_defaults(func=cmd_clean)
 
-    p_mod = sub.add_parser("module", help="Manage app-local NSX modules")
+    p_mod = sub.add_parser(
+        "module",
+        help="Manage app-local NSX modules",
+        description="List, enable, update, and register app-local NSX modules.",
+    )
     mod_sub = p_mod.add_subparsers(dest="module_command", required=True)
 
-    p_mod_list = mod_sub.add_parser("list", help="List available modules and mark enabled ones")
-    p_mod_list.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
+    p_mod_list = mod_sub.add_parser(
+        "list",
+        help="List modules from the packaged or app-effective registry",
+        description=(
+            "List modules from the packaged registry, or from the effective registry for an app and mark enabled ones."
+        ),
+    )
+    p_mod_list.add_argument(
+        "--app-dir",
+        default=None,
+        help="App directory containing nsx.yml; required unless --registry-only is used",
+    )
+    p_mod_list.add_argument(
+        "--registry-only",
+        action="store_true",
+        help="List all modules in the packaged registry without app-specific overrides",
+    )
     p_mod_list.set_defaults(func=cmd_module_list)
 
-    p_mod_add = mod_sub.add_parser("add", help="Enable a module for an app")
+    p_mod_add = mod_sub.add_parser(
+        "add",
+        help="Enable a registry module for an app",
+        description="Enable a module for an app and vendor its resolved dependency closure.",
+    )
     p_mod_add.add_argument("module", help="Module name to enable")
     p_mod_add.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
     p_mod_add.add_argument("--dry-run", action="store_true", help="Show changes without writing")
     p_mod_add.add_argument("--no-sync", action="store_true", help="Skip west update after manifest changes")
     p_mod_add.set_defaults(func=cmd_module_add)
 
-    p_mod_remove = mod_sub.add_parser("remove", help="Disable a module for an app")
+    p_mod_remove = mod_sub.add_parser(
+        "remove",
+        help="Disable a module for an app",
+        description="Disable a module for an app and remove vendored files that are no longer needed.",
+    )
     p_mod_remove.add_argument("module", help="Module name to remove")
     p_mod_remove.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
     p_mod_remove.add_argument("--dry-run", action="store_true", help="Show changes without writing")
     p_mod_remove.add_argument("--no-sync", action="store_true", help="Skip west update after manifest changes")
     p_mod_remove.set_defaults(func=cmd_module_remove)
 
-    p_mod_update = mod_sub.add_parser("update", help="Refresh enabled modules to current registry revisions")
+    p_mod_update = mod_sub.add_parser(
+        "update",
+        help="Refresh enabled modules to current registry revisions",
+        description="Refresh vendored modules for an app using the current active registry revisions.",
+    )
     p_mod_update.add_argument("module", nargs="?", default=None, help="Optional single module to refresh")
     p_mod_update.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
     p_mod_update.add_argument("--dry-run", action="store_true", help="Show changes without writing")
     p_mod_update.add_argument("--no-sync", action="store_true", help="Skip west update after manifest changes")
     p_mod_update.set_defaults(func=cmd_module_update)
 
-    p_mod_register = mod_sub.add_parser("register", help="Register an external module for a single app")
+    p_mod_register = mod_sub.add_parser(
+        "register",
+        help="Register and vendor an external module for one app",
+        description="Register an external module override for a single app and vendor it into that app.",
+    )
     p_mod_register.add_argument("module", help="Module name")
-    p_mod_register.add_argument("--metadata", required=True, help="Path to nsx-module.yaml")
-    p_mod_register.add_argument("--project", required=True, help="Project/repo key")
-    p_mod_register.add_argument("--project-url", default=None, help="west project URL")
-    p_mod_register.add_argument("--project-revision", default=None, help="west project revision")
-    p_mod_register.add_argument("--project-path", default=None, help="west project path")
-    p_mod_register.add_argument("--project-local-path", default=None, help="Local filesystem module path")
+    p_mod_register.add_argument("--metadata", required=True, help="Path to the module's nsx-module.yaml")
+    p_mod_register.add_argument("--project", required=True, help="Registry project key for this module")
+    p_mod_register.add_argument("--project-url", default=None, help="Override west project URL")
+    p_mod_register.add_argument("--project-revision", default=None, help="Override west project revision")
+    p_mod_register.add_argument("--project-path", default=None, help="Override west project path")
+    p_mod_register.add_argument("--project-local-path", default=None, help="Local filesystem path to vendor from")
     p_mod_register.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
     p_mod_register.add_argument("--override", action="store_true", help="Override existing module entry")
     p_mod_register.add_argument("--dry-run", action="store_true", help="Show changes without writing")
