@@ -1,0 +1,12 @@
+# nanopb options file for nsx_rpc.proto
+# Sets static buffer sizes for all bytes/string fields so no dynamic
+# memory allocation is needed on device.
+
+# Inference input payload — max 256 bytes (one typical inference frame)
+NsxInferRequest.input           max_size:256
+
+# Inference output label — short ASCII class name
+NsxInferResponse.label          max_size:32
+
+# Board name string
+NsxStatusResponse.board_name    max_size:32
