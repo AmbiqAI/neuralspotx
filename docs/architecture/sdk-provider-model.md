@@ -66,8 +66,7 @@ Provider selection sets:
 Resolution order:
 
 1. vendored app-local SDK root under `app/modules/nsx-ambiqsuite-r*/sdk`
-2. fetched workspace repo roots under `modules/nsx-ambiqsuite-r*/sdk`
-3. explicit override variables when provided
+2. explicit override variables when provided
 
 ## Decomposition Policy
 

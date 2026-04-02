@@ -19,16 +19,7 @@ DEFAULT_SOC_FOR_BOARD = {
 }
 
 DEFAULT_TOOLCHAIN = "arm-none-eabi-gcc"
-DEFAULT_REPO_NAME = "neuralspotx"
 
-WEST_MANIFEST_TEMPLATE = """manifest:
-  version: "0.13"
-
-  projects:
-    - name: "__NSX_REPO_NAME__"
-      url: "__NSX_REPO_URL__"
-      revision: "__NSX_REVISION__"
-      path: "__NSX_REPO_NAME__"
-__AMBIQ_PROJECT_BLOCK__  self:
-    path: manifest
-"""
+# The project name used to identify modules that ship packaged with neuralspotx
+# (boards, cmake helpers) vs external git-hosted modules.
+PACKAGED_PROJECT_NAME = "neuralspotx"

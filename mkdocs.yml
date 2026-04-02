@@ -13,7 +13,11 @@ markdown_extensions:
   - tables
   - toc:
       permalink: true
-  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
   - pymdownx.inlinehilite
   - pymdownx.tabbed:
       alternate_style: true
@@ -25,13 +29,14 @@ nav:
       - Overview: getting-started/index.md
       - Install and Setup: getting-started/install.md
       - First App: getting-started/first-app.md
-      - Apollo510 Smoke Test: getting-started/ap510-smoke-test.md
-      - Other Smoke Targets: getting-started/other-smoke-targets.md
+      - Examples: getting-started/examples.md
   - User Guide:
-      - Workspace Model: user-guide/workspace-model.md
+      - App Model: user-guide/app-model.md
       - Create an App: user-guide/create-app.md
       - App Layout: user-guide/app-layout.md
       - Modules: user-guide/modules.md
+      - Custom Modules: user-guide/custom-modules.md
+      - First-Class Modules: user-guide/first-class-modules.md
       - Python API: user-guide/python-api.md
       - Build, Flash, and View: user-guide/build-flash-view.md
       - Boards and Targets: user-guide/boards-and-targets.md
@@ -39,9 +44,8 @@ nav:
       - Troubleshooting: user-guide/troubleshooting.md
   - Command Reference:
       - CLI Overview: reference/cli-overview.md
-      - init-workspace: reference/init-workspace.md
+      - commands: reference/commands.md
       - create-app and new: reference/create-app.md
-      - sync: reference/sync.md
       - doctor: reference/doctor.md
       - configure: reference/configure.md
       - build: reference/build.md
@@ -51,6 +55,7 @@ nav:
       - module: reference/module.md
   - Architecture:
       - Overview: architecture/overview.md
+      - Migration From neuralSPOT: architecture/migration-from-neuralspot.md
       - App Generation Flow: architecture/app-generation-flow.md
       - Design Decisions: architecture/design-decisions.md
       - Module Model: architecture/module-model.md

@@ -1,0 +1,48 @@
+schema_version: 1
+project:
+  name: usb_serial
+target:
+  board: apollo510_evb
+  soc: apollo510
+toolchain: arm-none-eabi-gcc
+channel: stable
+profile: apollo510_evb_minimal
+profile_status: active
+modules:
+- name: nsx-ambiqsuite-r5
+  revision: r5.3
+  project: nsx-ambiqsuite-r5
+- name: nsx-ambiq-hal-r5
+  revision: main
+  project: nsx-ambiq-hal-r5
+- name: nsx-ambiq-bsp-r5
+  revision: main
+  project: nsx-ambiq-bsp-r5
+- name: nsx-soc-hal
+  revision: main
+  project: nsx-soc-hal
+- name: nsx-cmsis-startup
+  revision: main
+  project: nsx-cmsis-startup
+- name: nsx-board-apollo510-evb
+  revision: main
+  project: neuralspotx
+- name: nsx-core
+  revision: main
+  project: nsx-core
+- name: nsx-harness
+  revision: main
+  project: nsx-harness
+- name: nsx-utils
+  revision: main
+  project: nsx-utils
+- name: nsx-usb
+  revision: main
+  project: nsx-usb
+- name: nsx-tooling
+  revision: main
+  project: neuralspotx
+features: {}
+module_registry:
+  projects: {}
+  modules: {}

@@ -36,6 +36,14 @@ Generated apps receive:
 
 ## Current Layering
 
+```mermaid
+flowchart BT
+    SDK["SDK Provider\nnsx-ambiqsuite-r3 / r4 / r5"] --> HAL["HAL + BSP Wrappers\nnsx-ambiq-hal-r* / nsx-ambiq-bsp-r*"]
+    HAL --> INT["Integration\nnsx-soc-hal / nsx-cmsis-startup"]
+    INT --> RT["Runtime\nnsx-core / nsx-harness / nsx-utils / nsx-peripherals"]
+    RT --> APP["App"]
+```
+
 1. raw SDK provider modules such as `nsx-ambiqsuite-r3`, `nsx-ambiqsuite-r4`,
    and `nsx-ambiqsuite-r5`
 2. release-specific wrapper modules such as `nsx-ambiq-hal-r*` and

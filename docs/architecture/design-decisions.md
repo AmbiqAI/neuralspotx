@@ -16,17 +16,21 @@ The Python repo owns:
 
 Firmware modules remain separate repos.
 
-## 2. Workspace Shape
+## 2. App Shape
 
-The intended working layout is:
+The intended working layout after `nsx create-app` is:
 
-1. `neuralspotx/`: Python tooling repo
-2. `nsx-modules/`: independent module repos
-3. `nsx-apps/`: generated or hand-owned app repos
+1. `nsx.yml`: app metadata and module state
+2. `modules/`: vendored module content resolved from the packaged registry
+3. `boards/`: vendored board definitions for the selected target
+4. `cmake/nsx/`: copied NSX build helpers
+5. `src/`: app-owned source code
 
 ## 3. App Model
 
 NSX apps are lightweight, bare-metal, single-target applications.
+
+From the product perspective, the app is the primary user-facing unit.
 
 Each app targets:
 
@@ -44,19 +48,20 @@ The lifecycle is:
    packaged `cmake/nsx` support
 2. dependency resolution: determine the required board/module closure for the
    selected target
-3. source materialization: obtain module sources from curated locations
+3. source materialization: obtain module sources from curated registry-backed locations
 4. vendoring: copy required module and board sources into the app
 5. `nsx configure/build/flash/view`: run the CMake-driven app lifecycle
 
 Generated apps remain understandable as ordinary CMake projects.
 
-## 5. Role of West
+## 5. Module Source Resolution
 
-`west` is a dependency and source management tool, not the build authority.
+Module sources are resolved from the packaged registry and cloned from their
+upstream git repos on demand.
 
-Role of `west`:
+Role of git:
 
-1. fetch or update module source repos
+1. clone or fetch module source repos
 2. provide deterministic source material for vendoring
 
 Role of `nsx`:

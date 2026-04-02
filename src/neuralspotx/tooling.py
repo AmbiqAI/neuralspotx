@@ -49,13 +49,7 @@ def require_tool(name: str) -> None:
     """
 
     if tool_path(name) is None:
-        hint = ""
-        if name == "west":
-            hint = (
-                "\nHint: install `west` or use an NSX install that includes it in the same environment.\n"
-                "For `pipx`, reinstall `neuralspotx` so the bundled dependency entry points are available."
-            )
-        raise SystemExit(f"Required tool not found in PATH: {name}{hint}")
+        raise SystemExit(f"Required tool not found in PATH: {name}")
 
 
 def tool_cmd(name: str, *args: str) -> list[str]:

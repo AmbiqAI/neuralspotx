@@ -13,9 +13,7 @@ This is useful when building higher-level tools on top of NSX, such as:
 
 The `neuralspotx` package exports a small API that mirrors the CLI workflow:
 
-- `init_workspace(...)`
 - `create_app(...)`
-- `sync_workspace(...)`
 - `doctor()`
 - `configure_app(...)`
 - `build_app(...)`
@@ -41,17 +39,22 @@ That means:
 - higher-level Python tools can call NSX directly without shelling out
 - API tests and CLI behavior exercise the same workflow logic
 
+## Module Management From Python
+
+The Python API exposes the same two module flows as the CLI:
+
+- `add_module(...)` for built-in first-class modules from the packaged registry
+- `register_module(...)` for app-local custom modules from a local path or a git-backed project definition
+
 ## Example: Direct Calls
 
 ```python
-from neuralspotx import NSXError, build_app, configure_app, create_app, init_workspace
+from neuralspotx import NSXError, build_app, configure_app, create_app
 
-workspace = "demo-workspace"
-app_dir = f"{workspace}/apps/hello_ap510"
+app_dir = "hello_ap510"
 
 try:
-    init_workspace(workspace, skip_update=True)
-    create_app(workspace, "hello_ap510", board="apollo510_evb", no_bootstrap=True)
+    create_app(app_dir, board="apollo510_evb", no_bootstrap=True)
     configure_app(app_dir)
     build_app(app_dir)
 except NSXError as exc:
@@ -64,26 +67,60 @@ except NSXError as exc:
 from neuralspotx import (
     AppBuildRequest,
     AppCreateRequest,
-    WorkspaceInitRequest,
     build_app,
     create_app,
-    init_workspace,
 )
 
-init_workspace(WorkspaceInitRequest(workspace="demo-workspace", skip_update=True))
 create_app(
     AppCreateRequest(
-        workspace="demo-workspace",
-        name="hello_ap510",
+        app_dir="hello_ap510",
         board="apollo510_evb",
         no_bootstrap=True,
     )
 )
 build_app(
     AppBuildRequest(
-        app_dir="demo-workspace/apps/hello_ap510",
+        app_dir="hello_ap510",
         jobs=4,
     )
+)
+```
+
+## Example: Add A Built-In Module
+
+```python
+from neuralspotx import add_module
+
+add_module("hello_ap510", "nsx-peripherals")
+```
+
+## Example: Register A Local Custom Module
+
+```python
+from neuralspotx import register_module
+
+register_module(
+    app_dir="hello_ap510",
+    module="my-custom-module",
+    metadata="/path/to/my-custom-module/nsx-module.yaml",
+    project="my_custom_repo",
+    project_local_path="/path/to/my-custom-module",
+)
+```
+
+## Example: Register A Git-Backed Custom Module
+
+```python
+from neuralspotx import register_module
+
+register_module(
+    app_dir="hello_ap510",
+    module="my-custom-module",
+    metadata="/path/to/my-custom-module/nsx-module.yaml",
+    project="my_custom_repo",
+    project_url="https://github.com/myorg/my_custom_repo.git",
+    project_revision="main",
+    project_path="modules/my_custom_repo",
 )
 ```
 

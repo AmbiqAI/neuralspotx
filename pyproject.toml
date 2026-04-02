@@ -1,12 +1,11 @@
 [project]
 name = "neuralspotx"
 version = "0.1.0"
-description = "Python tooling and workspace bootstrap for neuralspotx"
+description = "Python tooling and app bootstrap for neuralspotx"
 requires-python = ">=3.10"
 dependencies = [
     "Jinja2>=3.1",
     "PyYAML>=6.0",
-    "west==1.2.0",
 ]
 
 [project.scripts]
@@ -14,6 +13,7 @@ nsx = "neuralspotx.cli:main"
 
 [dependency-groups]
 docs = [
+    "mkdocs-material>=9.0",
     "pymdown-extensions>=10.15",
     "zensical>=0.0.11",
 ]

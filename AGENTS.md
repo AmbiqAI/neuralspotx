@@ -9,8 +9,7 @@ should stay stable unless there is a deliberate design change.
 `neuralspotx` is the tooling, templating, metadata, and workflow layer for NSX.
 It is not just a CLI wrapper. It is the source of truth for:
 
-- workspace creation and synchronization
-- app generation
+- app generation and module management
 - built-in board and module registry metadata
 - configure/build/flash/view workflows
 - the public Python API used by future standalone tools
@@ -20,25 +19,21 @@ second.
 
 ## Current Architectural Choices
 
-### Workspace-First Model
+### App-First Model
 
-NSX is workspace-first today.
+NSX is app-first today.
 
-- A workspace is the shared source-management environment.
-- A workspace contains a `west` manifest and checked-out source repos.
-- A workspace can contain multiple apps.
+- Each app is a self-contained project directory.
+- Apps vendor their own modules and board content locally.
+- Module sources are resolved from the packaged registry and cloned as needed.
 - An app is the build unit.
-- Each app vendors its own modules and board content locally.
 
-Do not silently switch the product model to standalone-first. Standalone app
-support may come later, but the current design assumes an initialized
-workspace.
+Do not silently reintroduce legacy shared source-pool assumptions.
 
 ### App-Local Vendoring
 
 Generated apps vendor their dependencies.
 
-- Workspace repos are shared source-of-truth checkouts.
 - App-local `modules/` content is the dependency snapshot the app actually
   builds with.
 - App-local board content should remain explicit and understandable.
@@ -59,7 +54,7 @@ Normal resolution order should remain:
 
 1. app-local vendored content
 2. app-local registry overrides
-3. built-in packaged registry + workspace checkouts
+3. built-in packaged registry + git-cloned module sources
 4. explicit local/custom registrations
 
 Do not reintroduce implicit sibling repo fallback as a default behavior.
@@ -95,7 +90,7 @@ For definitions NSX owns, prefer dataclasses over ad hoc dictionaries.
 
 Use dataclasses for:
 
-- app/workspace request types
+- app request types
 - registry project/module entries
 - other internal schemas we control
 
@@ -119,10 +114,9 @@ Supported external flow:
 
 1. install `neuralspotx` with `pipx`
 2. run `nsx doctor`
-3. run `nsx init-workspace`
-4. run `nsx create-app`
-5. run `nsx configure`
-6. run `nsx build`
+3. run `nsx create-app`
+4. run `nsx configure`
+5. run `nsx build`
 
 Changes that only work in a local developer checkout but break the public
 install path are regressions.

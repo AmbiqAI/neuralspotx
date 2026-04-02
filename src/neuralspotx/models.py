@@ -8,7 +8,7 @@ from typing import Any
 
 @dataclass(frozen=True)
 class ProjectEntry:
-    """A project entry from the packaged registry, app overrides, or west manifest."""
+    """A project entry from the packaged registry or app overrides."""
 
     name: str
     url: str | None = None

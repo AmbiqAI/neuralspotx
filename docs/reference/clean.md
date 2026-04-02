@@ -17,6 +17,5 @@ nsx clean [--app-dir APP_DIR] [--board BOARD] [--build-dir BUILD_DIR]
 ## Example
 
 ```bash
-cd <nsx-repo>
-uv run nsx clean --app-dir <app-dir>
+nsx clean --app-dir <app-dir>
 ```

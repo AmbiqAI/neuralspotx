@@ -1,4 +1,4 @@
-"""Helpers for module metadata resolution, dependency closure, and vendoring."""
+"""Helpers for module metadata resolution, dependency closure, and git-based management."""
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ import shutil
 from pathlib import Path
 from typing import Any
 
+from .constants import PACKAGED_PROJECT_NAME
 from .metadata import (
     RegistryModuleEntry,
     is_compatible,
@@ -15,18 +16,23 @@ from .metadata import (
 )
 from .models import ProjectEntry
 from .project_config import (
+    _is_packaged_module,
     _metadata_path_relative_to_project,
+    _module_clone_dir,
     _packaged_metadata_path,
-    _project_checkout_candidates,
     _read_yaml,
     _registry_project_entry,
     _unique_preserving_order,
     _vendored_metadata_relpath,
     _vendored_target_dir,
-    _workspace_has_manifest,
     _write_yaml,
 )
-from .subprocess_utils import run as _run
+from .subprocess_utils import (
+    git_checkout,
+    git_clone,
+    git_current_sha,
+    git_fetch,
+)
 from .tooling import require_tool as _require_tool
 from .tooling import tool_cmd as _tool_cmd
 
@@ -35,14 +41,16 @@ def _module_metadata_path(
     module_name: str,
     registry_entry: RegistryModuleEntry,
     registry: dict[str, Any],
-    workspace: Path,
     app_dir: Path | None = None,
 ) -> Path:
     metadata = Path(registry_entry.metadata)
+
+    # 1. Check app-local vendored / cloned path
     if app_dir is not None and not metadata.is_absolute():
         vendored_path = app_dir / _vendored_metadata_relpath(registry_entry.metadata)
         if vendored_path.exists():
             return vendored_path
+
     if metadata.is_absolute():
         if metadata.exists():
             return metadata
@@ -51,67 +59,169 @@ def _module_metadata_path(
             f"absolute path '{metadata}'"
         )
 
+    # 2. Check packaged content (boards, cmake shipped with neuralspotx)
     packaged = _packaged_metadata_path(metadata)
     if packaged is not None:
         return packaged
 
-    project_entry = _registry_project_entry(registry, registry_entry.project)
-    project_path = project_entry.path
-    metadata_rel = _metadata_path_relative_to_project(metadata, project_path)
-    searched: list[Path] = []
-
-    for checkout_root in _project_checkout_candidates(registry_entry.project, registry, workspace):
-        candidate = checkout_root / metadata_rel
-        searched.append(candidate)
+    # 3. Check app-local module clone directory
+    if app_dir is not None:
+        project_entry = _registry_project_entry(registry, registry_entry.project)
+        project_path = project_entry.path
+        metadata_rel = _metadata_path_relative_to_project(metadata, project_path)
+        clone_dir = _module_clone_dir(app_dir, registry_entry.project, registry)
+        candidate = clone_dir / metadata_rel
         if candidate.exists():
             return candidate
 
-    workspace_path = (workspace / metadata).resolve()
-    searched.append(workspace_path)
-    if workspace_path.exists():
-        return workspace_path
+    # 4. Check user-registered local path
+    project_entry = _registry_project_entry(registry, registry_entry.project)
+    if project_entry.local_path:
+        local_root = Path(project_entry.local_path).expanduser()
+        metadata_rel = _metadata_path_relative_to_project(metadata, project_entry.path)
+        candidate = local_root / metadata_rel
+        if candidate.exists():
+            return candidate
 
+    searched = [str(metadata)]
+    if app_dir:
+        searched.append(str(_module_clone_dir(app_dir, registry_entry.project, registry)))
     raise SystemExit(
         f"Unable to locate nsx-module.yaml for module '{module_name}'. "
-        f"Searched metadata path '{registry_entry.metadata}' under: "
-        + ", ".join(str(p) for p in searched)
+        f"Searched: {', '.join(searched)}"
     )
 
 
 def _load_module_metadata(
     module_name: str,
     registry: dict[str, Any],
-    workspace: Path,
     app_dir: Path | None = None,
 ) -> dict[str, Any]:
     entry = registry_entry_for_module(registry, module_name)
-    metadata_path = _module_metadata_path(module_name, entry, registry, workspace, app_dir=app_dir)
+    metadata_path = _module_metadata_path(module_name, entry, registry, app_dir=app_dir)
     data = _read_yaml(metadata_path)
     validate_nsx_module_metadata(data, str(metadata_path))
     return data
 
 
-def _vendor_module_into_app(
+def _ensure_module_cloned(
     app_dir: Path,
     module_name: str,
     registry: dict[str, Any],
-    workspace: Path,
 ) -> None:
+    """Ensure a git-hosted module's project is present in the app.
+
+    The module is cloned from its registry URL, then the ``.git``
+    directory is removed so the result is a plain copy — not a nested
+    git repository.  This keeps the ``modules/`` directory safely
+    gitignored: ``nsx configure`` will re-clone any missing modules.
+    """
+
+    if _is_packaged_module(registry, module_name):
+        return  # packaged modules are copied, not cloned
+
     entry = registry_entry_for_module(registry, module_name)
-    source_metadata = _module_metadata_path(module_name, entry, registry, workspace)
+    project_entry = _registry_project_entry(registry, entry.project)
+
+    if project_entry.local_path:
+        _vendor_local_module_into_app(app_dir, module_name, registry)
+        return  # user-registered local module, vendor instead of clone
+
+    clone_dir = _module_clone_dir(app_dir, entry.project, registry)
+    if clone_dir.exists():
+        return  # already present
+
+    url = project_entry.url
+    if not url:
+        raise SystemExit(
+            f"Module '{module_name}' project '{entry.project}' has no URL in registry. "
+            "Cannot clone."
+        )
+
+    _require_tool("git")
+    git_clone(url, clone_dir, revision=entry.revision)
+
+    # Remove .git so the module is a plain copy, not a nested repo.
+    git_dir = clone_dir / ".git"
+    if git_dir.exists():
+        shutil.rmtree(git_dir)
+
+
+def _update_module_clone(
+    app_dir: Path,
+    module_name: str,
+    registry: dict[str, Any],
+) -> None:
+    """Re-acquire a module at the registry revision.
+
+    Since cloned modules have their ``.git`` directory removed (they are
+    plain copies), an update deletes the existing copy and re-clones at
+    the desired revision.
+    """
+
+    if _is_packaged_module(registry, module_name):
+        return
+
+    entry = registry_entry_for_module(registry, module_name)
+    project_entry = _registry_project_entry(registry, entry.project)
+    if project_entry.local_path:
+        _vendor_local_module_into_app(app_dir, module_name, registry)
+        return
+
+    clone_dir = _module_clone_dir(app_dir, entry.project, registry)
+    if clone_dir.exists():
+        shutil.rmtree(clone_dir)
+    _ensure_module_cloned(app_dir, module_name, registry)
+
+
+def _vendor_local_module_into_app(
+    app_dir: Path,
+    module_name: str,
+    registry: dict[str, Any],
+) -> None:
+    """Copy a user-registered local module into the app's modules/ directory."""
+
+    entry = registry_entry_for_module(registry, module_name)
+    project_entry = _registry_project_entry(registry, entry.project)
+    if not project_entry.local_path:
+        return
+
+    source_dir = Path(project_entry.local_path).expanduser().resolve()
+    destination_dir = _module_clone_dir(app_dir, entry.project, registry)
+
+    if destination_dir.resolve() == source_dir.resolve():
+        return
+    if destination_dir.resolve().is_relative_to(source_dir.resolve()):
+        return
+    if source_dir.resolve().is_relative_to(destination_dir.resolve()):
+        return
+
+    if destination_dir.exists():
+        shutil.rmtree(destination_dir)
+    destination_dir.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(
+        source_dir,
+        destination_dir,
+        dirs_exist_ok=True,
+        ignore=shutil.ignore_patterns(".git", "__pycache__"),
+    )
+
+
+def _vendor_packaged_module_into_app(
+    app_dir: Path,
+    module_name: str,
+    registry: dict[str, Any],
+) -> None:
+    """Copy a packaged module (board/cmake) from the neuralspotx package into the app."""
+
+    if not _is_packaged_module(registry, module_name):
+        return  # git-hosted modules are cloned, not copied
+
+    entry = registry_entry_for_module(registry, module_name)
+    source_metadata = _module_metadata_path(module_name, entry, registry, app_dir=app_dir)
     destination_dir = _vendored_target_dir(app_dir, module_name, entry.metadata)
 
-    project_entry = _registry_project_entry(registry, entry.project)
-    project_path = project_entry.path
-    metadata_rel = _metadata_path_relative_to_project(Path(entry.metadata), project_path)
-
     source_dir = source_metadata.parent
-    if project_path is not None:
-        for checkout_root in _project_checkout_candidates(entry.project, registry, workspace):
-            candidate_dir = checkout_root / metadata_rel.parent
-            if candidate_dir.exists():
-                source_dir = candidate_dir
-                break
 
     if destination_dir.resolve() == source_dir.resolve():
         return
@@ -135,22 +245,41 @@ def _remove_vendored_module_from_app(
     module_name: str,
     registry: dict[str, Any],
 ) -> None:
-    entry = registry_entry_for_module(registry, module_name)
-    destination_dir = _vendored_target_dir(app_dir, module_name, entry.metadata)
-    if destination_dir == app_dir / "cmake" / "nsx":
-        return
-    if destination_dir.exists():
-        shutil.rmtree(destination_dir)
+    if _is_packaged_module(registry, module_name):
+        entry = registry_entry_for_module(registry, module_name)
+        destination_dir = _vendored_target_dir(app_dir, module_name, entry.metadata)
+        if destination_dir == app_dir / "cmake" / "nsx":
+            return
+        if destination_dir.exists():
+            shutil.rmtree(destination_dir)
+    else:
+        entry = registry_entry_for_module(registry, module_name)
+        clone_dir = _module_clone_dir(app_dir, entry.project, registry)
+        if clone_dir.exists():
+            shutil.rmtree(clone_dir)
 
 
-def _vendor_modules_into_app(
+def _acquire_modules_for_app(
     app_dir: Path,
     module_names: list[str],
     registry: dict[str, Any],
-    workspace: Path,
+    *,
+    local_modules: set[str] | None = None,
 ) -> None:
+    """Clone or copy all modules needed by an app.
+
+    Modules whose names appear in *local_modules* are skipped — they
+    live inside the app tree and are source-controlled by the user.
+    """
+
+    skip = local_modules or set()
     for module_name in module_names:
-        _vendor_module_into_app(app_dir, module_name, registry, workspace)
+        if module_name in skip:
+            continue
+        if _is_packaged_module(registry, module_name):
+            _vendor_packaged_module_into_app(app_dir, module_name, registry)
+        else:
+            _ensure_module_cloned(app_dir, module_name, registry)
 
 
 def _starter_profile_name(board: str) -> str:
@@ -185,10 +314,10 @@ def _generate_nsx_config(
     board: str,
     soc: str,
     registry: dict[str, Any],
-    west_manifest_rel: str,
     *,
     default_toolchain: str,
-    default_repo_name: str,
+    nsx_version: str | None,
+    nsx_major: int | None,
 ) -> dict[str, Any]:
     profile = _resolve_profile(registry, board)
     profile_modules = profile.get("modules", [])
@@ -211,11 +340,11 @@ def _generate_nsx_config(
         "profile_status": profile.get("status", "active"),
         "modules": [_module_record(name, registry) for name in profile_modules],
         "features": profile.get("features", {}),
-        "west": {"manifest": west_manifest_rel},
-        "workspace": {
-            "layout": "split-root",
-            "root_repo": default_repo_name,
-            "module_dir": "modules",
+        "tooling": {
+            "nsx": {
+                "version": nsx_version,
+                "major": nsx_major,
+            }
         },
         "module_registry": {
             "projects": copy.deepcopy(profile_project_overrides),
@@ -237,6 +366,28 @@ def _module_names_from_nsx(nsx_cfg: dict[str, Any]) -> list[str]:
             raise SystemExit(f"nsx.yml: modules[{idx}].name must be a string")
         names.append(name)
     return names
+
+
+def _is_local_module(nsx_cfg: dict[str, Any], module_name: str) -> bool:
+    """Return True if *module_name* is marked ``local: true`` in nsx.yml.
+
+    Local modules live inside the app tree (typically ``modules/<name>/``),
+    are source-controlled with the app, and are NOT acquired from a registry
+    or git remote.
+    """
+    for item in nsx_cfg.get("modules", []):
+        if isinstance(item, dict) and item.get("name") == module_name:
+            return bool(item.get("local"))
+    return False
+
+
+def _local_module_names(nsx_cfg: dict[str, Any]) -> set[str]:
+    """Return the set of module names marked ``local: true``."""
+    return {
+        item["name"]
+        for item in nsx_cfg.get("modules", [])
+        if isinstance(item, dict) and isinstance(item.get("name"), str) and item.get("local")
+    }
 
 
 def _validate_board_module_dep_policy(
@@ -291,7 +442,6 @@ def _resolve_module_closure(
     app_dir: Path | None,
     nsx_cfg: dict[str, Any],
     registry: dict[str, Any],
-    workspace: Path,
     default_toolchain: str,
 ) -> list[str]:
     target = nsx_cfg.get("target", {})
@@ -303,6 +453,8 @@ def _resolve_module_closure(
     if not isinstance(toolchain, str):
         raise SystemExit("nsx.yml toolchain must be a string")
 
+    local_names = _local_module_names(nsx_cfg)
+
     visited: set[str] = set()
     visiting: set[str] = set()
     resolved: list[str] = []
@@ -311,11 +463,16 @@ def _resolve_module_closure(
     def dfs(module_name: str) -> None:
         if module_name in visited:
             return
+        # Local modules are opaque — skip registry metadata lookup.
+        if module_name in local_names:
+            visited.add(module_name)
+            resolved.append(module_name)
+            return
         if module_name in visiting:
             raise SystemExit(f"Dependency cycle detected at module '{module_name}'")
         visiting.add(module_name)
 
-        module_meta = _load_module_metadata(module_name, registry, workspace, app_dir=app_dir)
+        module_meta = _load_module_metadata(module_name, registry, app_dir=app_dir)
         metadata_cache[module_name] = module_meta
 
         if not module_meta["support"]["ambiqsuite"]:
@@ -362,11 +519,18 @@ def _resolve_module_closure(
 
 
 def _module_dependents(
-    module_names: list[str], registry: dict[str, Any], workspace: Path, app_dir: Path | None = None
+    module_names: list[str],
+    registry: dict[str, Any],
+    app_dir: Path | None = None,
+    *,
+    local_modules: set[str] | None = None,
 ) -> dict[str, set[str]]:
+    skip = local_modules or set()
     dependents = {name: set() for name in module_names}
     for name in module_names:
-        metadata = _load_module_metadata(name, registry, workspace, app_dir=app_dir)
+        if name in skip:
+            continue
+        metadata = _load_module_metadata(name, registry, app_dir=app_dir)
         for dep in metadata["depends"]["required"]:
             if dep in dependents:
                 dependents[dep].add(name)
@@ -378,121 +542,103 @@ def _update_nsx_cfg_modules(
     module_names: list[str],
     registry: dict[str, Any],
 ) -> None:
-    nsx_cfg["modules"] = [
-        _module_record(name, registry) for name in _unique_preserving_order(module_names)
-    ]
-
-
-def _update_workspace_manifest(
-    workspace: Path,
-    nsx_cfg: dict[str, Any],
-    registry: dict[str, Any],
-    *,
-    default_repo_name: str,
-) -> None:
-    manifest_path = workspace / "manifest" / "west.yml"
-    if not manifest_path.exists():
-        raise SystemExit(f"Cannot update west manifest; file not found: {manifest_path}")
-    data = _read_yaml(manifest_path)
-    manifest = data.get("manifest")
-    if not isinstance(manifest, dict):
-        raise SystemExit(f"Invalid west manifest format in {manifest_path}")
-
-    module_names = sorted(_module_names_from_nsx(nsx_cfg))
-    data["x-nsx"] = {
-        "schema_version": 1,
-        "channel": nsx_cfg.get("channel", "stable"),
-        "modules": module_names,
-        "profile": nsx_cfg.get("profile"),
-        "root_repo": default_repo_name,
-    }
-
-    projects = manifest.get("projects")
-    if not isinstance(projects, list):
-        raise SystemExit(f"west.yml manifest.projects must be a list in {manifest_path}")
-
-    project_names = {proj.get("name") for proj in projects if isinstance(proj, dict)}
-    reg_projects = registry.get("projects", {})
+    # Preserve existing local module entries — they don't come from
+    # the registry and must keep their ``local: true`` flag.
+    existing_local: dict[str, dict[str, Any]] = {}
     for item in nsx_cfg.get("modules", []):
-        if not isinstance(item, dict):
-            continue
-        name = item.get("name")
-        if not isinstance(name, str):
-            continue
-        entry = registry_entry_for_module(registry, name)
-        project_name = entry.project
-        if project_name in project_names:
-            continue
-        project_meta = ProjectEntry.from_mapping(project_name, reg_projects.get(project_name))
-        if project_meta.local_path:
-            continue
-        url = project_meta.url
-        revision = project_meta.revision
-        path = project_meta.path
-        if (
-            isinstance(url, str)
-            and isinstance(revision, str)
-            and isinstance(path, str)
-            and not url.startswith("local://")
-        ):
-            projects.append(
-                {
-                    "name": project_name,
-                    "url": url,
-                    "revision": revision,
-                    "path": path,
-                }
-            )
-            project_names.add(project_name)
+        if isinstance(item, dict) and item.get("local"):
+            existing_local[item["name"]] = item
 
-    _write_yaml(manifest_path, data)
+    new_modules: list[dict[str, Any]] = []
+    for name in _unique_preserving_order(module_names):
+        if name in existing_local:
+            new_modules.append(existing_local[name])
+        else:
+            new_modules.append(_module_record(name, registry))
+    nsx_cfg["modules"] = new_modules
 
 
-def _sync_projects_for_modules(
-    workspace: Path,
-    module_names: list[str],
+def _print_module_table(
     registry: dict[str, Any],
-) -> None:
-    _require_tool("west")
-    projects: list[str] = []
-    for module_name in module_names:
-        project = registry_entry_for_module(registry, module_name).project
-        project_meta = _registry_project_entry(registry, project)
-        if project_meta.local_path:
-            continue
-        projects.append(project)
-    projects = sorted(set(projects))
-    if not projects:
-        return
-    _run(_tool_cmd("west", "update", *projects), cwd=workspace)
-
-
-def _ensure_workspace_projects_for_modules(
-    workspace: Path,
-    nsx_cfg: dict[str, Any],
-    registry: dict[str, Any],
-    module_names: list[str],
+    enabled: set[str],
     *,
-    sync: bool,
-    default_repo_name: str,
+    heading: str = "NSX modules in the active registry (* = enabled for this app):",
 ) -> None:
-    if not _workspace_has_manifest(workspace):
-        return
-    temp_cfg = copy.deepcopy(nsx_cfg)
-    _update_nsx_cfg_modules(temp_cfg, module_names, registry)
-    _update_workspace_manifest(
-        workspace,
-        temp_cfg,
-        registry,
-        default_repo_name=default_repo_name,
-    )
-    if sync:
-        _sync_projects_for_modules(workspace, module_names, registry)
-
-
-def _print_module_table(registry: dict[str, Any], enabled: set[str]) -> None:
-    print("Available NSX modules:")
+    print(heading)
     for name in sorted(registry["modules"].keys()):
         marker = "*" if name in enabled else " "
         entry = registry_entry_for_module(registry, name)
         print(f"  {marker} {name}  (project={entry.project}, revision={entry.revision})")
+
+
+def _module_discovery_record(
+    module_name: str,
+    registry: dict[str, Any],
+    *,
+    app_dir: Path | None = None,
+    enabled: bool = False,
+    include_metadata: bool = True,
+) -> dict[str, Any]:
+    entry = registry_entry_for_module(registry, module_name)
+    record: dict[str, Any] = {
+        "name": module_name,
+        "project": entry.project,
+        "revision": entry.revision,
+        "metadata": entry.metadata,
+        "enabled": enabled,
+    }
+    if not include_metadata:
+        return record
+
+    try:
+        metadata = _load_module_metadata(module_name, registry, app_dir=app_dir)
+    except SystemExit as exc:
+        record["metadata_available"] = False
+        if app_dir is None:
+            record["metadata_error"] = (
+                f"{exc} Provide --app-dir to resolve external module metadata."
+            )
+        else:
+            record["metadata_error"] = str(exc)
+        return record
+
+    record["metadata_available"] = True
+    record["module"] = copy.deepcopy(metadata["module"])
+    record["support"] = copy.deepcopy(metadata["support"])
+    record["build"] = copy.deepcopy(metadata["build"])
+    record["depends"] = copy.deepcopy(metadata["depends"])
+    record["compatibility"] = copy.deepcopy(metadata["compatibility"])
+    for key in (
+        "summary",
+        "capabilities",
+        "use_cases",
+        "anti_use_cases",
+        "agent_keywords",
+        "example_refs",
+        "composition_hints",
+    ):
+        if key in metadata:
+            record[key] = copy.deepcopy(metadata[key])
+    for key in ("provides", "constraints", "integrations"):
+        if key in metadata:
+            record[key] = copy.deepcopy(metadata[key])
+    return record
+
+
+def _module_discovery_records(
+    registry: dict[str, Any],
+    enabled: set[str],
+    *,
+    app_dir: Path | None = None,
+    include_metadata: bool = True,
+) -> list[dict[str, Any]]:
+    return [
+        _module_discovery_record(
+            name,
+            registry,
+            app_dir=app_dir,
+            enabled=name in enabled,
+            include_metadata=include_metadata,
+        )
+        for name in sorted(registry["modules"].keys())
+    ]

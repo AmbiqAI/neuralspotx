@@ -47,16 +47,15 @@ uv run --group docs zensical build
 
 ## Quick Start
 
-NSX currently uses a workspace-first flow. Start by creating a workspace, then
-generate apps inside it.
+NSX uses an app-first flow. Each app is a self-contained project directory with
+vendored modules, board definitions, and build helpers.
 
 For app users, the cleanest install path is `pipx`:
 
 ```bash
 pipx install git+https://github.com/AmbiqAI/neuralspotx.git
 nsx doctor
-nsx init-workspace <workspace>
-nsx create-app <workspace> hello_ap510 --board apollo510_evb
+nsx create-app hello_ap510 --board apollo510_evb
 ```
 
 For contributors working from a source checkout:
@@ -64,17 +63,16 @@ For contributors working from a source checkout:
 ```bash
 cd <nsx-repo>
 uv sync
-uv run nsx doctor
-uv run nsx init-workspace <workspace>
-uv run nsx create-app <workspace> hello_ap510 --board apollo510_evb
+source .venv/bin/activate
+nsx doctor
+nsx create-app hello_ap510 --board apollo510_evb
 ```
 
 Build the app:
 
 ```bash
-cd <nsx-repo>
-uv run nsx configure --app-dir <workspace>/apps/hello_ap510
-uv run nsx build --app-dir <workspace>/apps/hello_ap510
+nsx configure --app-dir hello_ap510
+nsx build --app-dir hello_ap510
 ```
 
 ## Repo Scope
@@ -87,5 +85,6 @@ This repo owns:
 - CMake helper assets used by generated apps
 
 Built-in firmware modules are described by the packaged registry and fetched
-from their default upstream repos as needed. Generated and reference apps live
-in `nsx-apps/`.
+from their default upstream repos as needed. Normal app users create standalone
+app directories and let NSX manage module resolution, vendoring, configuration,
+build, flash, and view flows.

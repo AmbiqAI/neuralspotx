@@ -1,151 +1,312 @@
-"""NSX west-backed workspace helper and module metadata orchestrator."""
+"""NSX CLI — create and manage bare-metal Ambiq applications."""
 
 from __future__ import annotations
 
 import argparse
+import json
 import subprocess
 from pathlib import Path
+from typing import Any
 
 from . import operations
-from .constants import (
-    DEFAULT_REPO_NAME as _DEFAULT_REPO_NAME,
+from .constants import DEFAULT_SOC_FOR_BOARD, DEFAULT_TOOLCHAIN
+from .metadata import load_yaml, validate_nsx_module_metadata
+from .module_discovery import (
+    resolve_module_context,
+    resolve_target_context,
+    search_modules,
 )
-from .constants import (
-    DEFAULT_SOC_FOR_BOARD as _DEFAULT_SOC_FOR_BOARD,
-)
-from .constants import (
-    DEFAULT_TOOLCHAIN as _DEFAULT_TOOLCHAIN,
-)
-from .constants import (
-    WEST_MANIFEST_TEMPLATE as _WEST_MANIFEST_TEMPLATE,
-)
-from .metadata import validate_nsx_module_metadata as _validate_nsx_module_metadata
 from .module_registry import (
-    _module_names_from_nsx,
+    _module_discovery_record,
+    _module_discovery_records,
     _print_module_table,
-)
-from .module_registry import (
-    _remove_vendored_module_from_app as _remove_vendored_module_from_app_impl,
 )
 from .project_config import (
     _default_build_dir,
-    _effective_registry,
-    _load_app_cfg,
-    _load_registry,
     _resolve_app_context,
-)
-from .project_config import (
-    _metadata_storage_path as _metadata_storage_path_impl,
-)
-from .project_config import (
-    _save_app_cfg as _save_app_cfg_impl,
-)
-from .project_config import (
-    _write_app_module_file as _write_app_module_file_impl,
+    resolve_app_dir,
 )
 from .subprocess_utils import format_subprocess_error
 
-DEFAULT_SOC_FOR_BOARD = _DEFAULT_SOC_FOR_BOARD
-DEFAULT_TOOLCHAIN = _DEFAULT_TOOLCHAIN
-DEFAULT_REPO_NAME = _DEFAULT_REPO_NAME
-WEST_MANIFEST_TEMPLATE = _WEST_MANIFEST_TEMPLATE
 VERBOSE = 0
-validate_nsx_module_metadata = _validate_nsx_module_metadata
-_metadata_storage_path = _metadata_storage_path_impl
-_remove_vendored_module_from_app = _remove_vendored_module_from_app_impl
-_save_app_cfg = _save_app_cfg_impl
-_write_app_module_file = _write_app_module_file_impl
-
-def _repo_root() -> Path:
-    return Path(__file__).resolve().parents[2]
 
 
-def cmd_init_workspace(args: argparse.Namespace) -> None:
-    workspace = Path(args.workspace).expanduser().resolve()
-    operations.init_workspace_impl(
-        workspace,
-        nsx_repo_url=args.nsx_repo_url,
-        nsx_revision=args.nsx_revision,
-        ambiqsuite_repo_url=args.ambiqsuite_repo_url,
-        ambiqsuite_revision=args.ambiqsuite_revision,
-        skip_update=args.skip_update,
-    )
+_COMMAND_GRAPH_HINTS: dict[str, dict[str, Any]] = {
+    "": {
+        "category": "entrypoint",
+        "scope": "global",
+        "next_commands": ["nsx doctor", "nsx create-app"],
+    },
+    "commands": {
+        "category": "discovery",
+        "scope": "global",
+        "next_commands": ["nsx module list --json", "nsx module describe <module> --json"],
+    },
+    "create-app": {
+        "category": "app-creation",
+        "scope": "app",
+        "next_commands": ["nsx configure", "nsx module list", "nsx module add"],
+    },
+    "new": {
+        "category": "app-creation",
+        "scope": "app",
+        "alias_for": "nsx create-app",
+        "next_commands": ["nsx configure", "nsx module list", "nsx module add"],
+    },
+    "doctor": {
+        "category": "diagnostics",
+        "scope": "environment",
+        "next_commands": ["nsx create-app", "nsx configure"],
+    },
+    "configure": {
+        "category": "build",
+        "scope": "app",
+        "next_commands": ["nsx build", "nsx flash", "nsx view", "nsx module list"],
+    },
+    "build": {
+        "category": "build",
+        "scope": "app",
+        "next_commands": ["nsx flash", "nsx view", "nsx clean"],
+    },
+    "flash": {
+        "category": "deploy",
+        "scope": "app",
+        "next_commands": ["nsx view"],
+    },
+    "view": {
+        "category": "deploy",
+        "scope": "app",
+        "next_commands": ["nsx build", "nsx flash"],
+    },
+    "clean": {
+        "category": "build",
+        "scope": "app",
+        "next_commands": ["nsx configure", "nsx build"],
+    },
+    "module": {
+        "category": "modules",
+        "scope": "app",
+        "next_commands": ["nsx module list", "nsx module describe", "nsx module add"],
+    },
+    "module list": {
+        "category": "modules",
+        "scope": "app",
+        "next_commands": [
+            "nsx module describe <module>",
+            "nsx module add <module>",
+            "nsx module register <module>",
+        ],
+    },
+    "module describe": {
+        "category": "modules",
+        "scope": "app",
+        "next_commands": ["nsx module add <module>", "nsx configure", "nsx build"],
+    },
+    "module search": {
+        "category": "modules",
+        "scope": "app",
+        "next_commands": [
+            "nsx module describe <module>",
+            "nsx module add <module>",
+            "nsx configure",
+        ],
+    },
+    "module add": {
+        "category": "modules",
+        "scope": "app",
+        "next_commands": ["nsx configure", "nsx build", "nsx flash"],
+    },
+    "module remove": {
+        "category": "modules",
+        "scope": "app",
+        "next_commands": ["nsx configure", "nsx build"],
+    },
+    "module update": {
+        "category": "modules",
+        "scope": "app",
+        "next_commands": ["nsx configure", "nsx build"],
+    },
+    "module register": {
+        "category": "modules",
+        "scope": "app",
+        "next_commands": ["nsx module add <module>", "nsx configure", "nsx build"],
+    },
+    "module validate": {
+        "category": "modules",
+        "scope": "global",
+        "next_commands": ["nsx module register <module>", "nsx module add <module>"],
+    },
+}
 
 
-def init_workspace_impl(
-    workspace: Path,
+def _json_safe(value: Any) -> Any:
+    if isinstance(value, (str, int, float, bool)) or value is None:
+        return value
+    if isinstance(value, (list, tuple)):
+        return [_json_safe(item) for item in value]
+    if isinstance(value, dict):
+        return {str(key): _json_safe(item) for key, item in value.items()}
+    return str(value)
+
+
+def _command_hint(path: list[str]) -> dict[str, Any]:
+    key = " ".join(path)
+    return dict(_COMMAND_GRAPH_HINTS.get(key, {}))
+
+
+def _argument_record(action: argparse.Action) -> dict[str, Any]:
+    record: dict[str, Any] = {
+        "dest": action.dest,
+        "required": bool(getattr(action, "required", False)),
+    }
+    if getattr(action, "help", None) not in (None, argparse.SUPPRESS):
+        record["help"] = action.help
+    if getattr(action, "metavar", None) is not None:
+        record["metavar"] = _json_safe(action.metavar)
+    if getattr(action, "choices", None) is not None:
+        record["choices"] = _json_safe(list(action.choices))
+    if getattr(action, "default", argparse.SUPPRESS) is not argparse.SUPPRESS:
+        record["default"] = _json_safe(action.default)
+    if getattr(action, "nargs", None) is not None:
+        record["nargs"] = _json_safe(action.nargs)
+    if action.option_strings:
+        record["kind"] = "option"
+        record["flags"] = list(action.option_strings)
+    else:
+        record["kind"] = "positional"
+        record["name"] = action.dest
+    return record
+
+
+def _subparsers_action(parser: argparse.ArgumentParser) -> argparse._SubParsersAction | None:
+    for action in parser._actions:
+        if isinstance(action, argparse._SubParsersAction):
+            return action
+    return None
+
+
+def _command_record(
+    parser: argparse.ArgumentParser,
     *,
-    nsx_repo_url: str | None = None,
-    nsx_revision: str = "main",
-    ambiqsuite_repo_url: str | None = None,
-    ambiqsuite_revision: str = "main",
-    skip_update: bool = False,
-) -> None:
-    operations.init_workspace_impl(
-        workspace,
-        nsx_repo_url=nsx_repo_url,
-        nsx_revision=nsx_revision,
-        ambiqsuite_repo_url=ambiqsuite_repo_url,
-        ambiqsuite_revision=ambiqsuite_revision,
-        skip_update=skip_update,
-    )
+    path: list[str],
+    summary: str | None = None,
+) -> dict[str, Any]:
+    options: list[dict[str, Any]] = []
+    positionals: list[dict[str, Any]] = []
+    subcommands: list[dict[str, Any]] = []
+
+    subparsers = _subparsers_action(parser)
+    help_lookup: dict[str, str | None] = {}
+    if subparsers is not None:
+        for choice_action in subparsers._choices_actions:
+            help_lookup[choice_action.dest] = choice_action.help
+
+    for action in parser._actions:
+        if isinstance(action, argparse._HelpAction):
+            continue
+        if isinstance(action, argparse._SubParsersAction):
+            continue
+        record = _argument_record(action)
+        if record["kind"] == "option":
+            options.append(record)
+        else:
+            positionals.append(record)
+
+    if subparsers is not None:
+        for name in sorted(subparsers.choices.keys()):
+            subcommands.append(
+                _command_record(
+                    subparsers.choices[name],
+                    path=path + [name],
+                    summary=help_lookup.get(name),
+                )
+            )
+
+    record = {
+        "name": path[-1] if path else "nsx",
+        "command": "nsx" if not path else f"nsx {' '.join(path)}",
+        "path": path,
+        "summary": summary,
+        "description": parser.description,
+        "usage": parser.format_usage().strip(),
+        "arguments": {
+            "positionals": positionals,
+            "options": options,
+        },
+        "subcommands": subcommands,
+    }
+    record.update(_command_hint(path))
+    return record
+
+
+def _command_graph(parser: argparse.ArgumentParser) -> dict[str, Any]:
+    subparsers = _subparsers_action(parser)
+    commands: list[dict[str, Any]] = []
+    help_lookup: dict[str, str | None] = {}
+    if subparsers is not None:
+        for choice_action in subparsers._choices_actions:
+            help_lookup[choice_action.dest] = choice_action.help
+        for name in sorted(subparsers.choices.keys()):
+            commands.append(
+                _command_record(
+                    subparsers.choices[name],
+                    path=[name],
+                    summary=help_lookup.get(name),
+                )
+            )
+
+    graph = {
+        "command": "nsx",
+        "summary": parser.description,
+        "workflow": {
+            "recommended_start": ["nsx doctor", "nsx create-app"],
+            "typical_lifecycle": [
+                "nsx create-app",
+                "nsx configure",
+                "nsx build",
+                "nsx flash",
+                "nsx view",
+                "nsx module add",
+            ],
+        },
+        "commands": commands,
+    }
+    graph.update(_command_hint([]))
+    return graph
+
+
+def cmd_commands(args: argparse.Namespace) -> None:
+    graph = _command_graph(_build_parser())
+    if args.json:
+        print(json.dumps(graph, indent=2, sort_keys=True))
+        return
+
+    print("NSX command graph")
+    for record in graph["commands"]:
+        summary = record.get("summary") or ""
+        print(f"- {record['command']}: {summary}")
+        next_commands = record.get("next_commands", [])
+        if next_commands:
+            print(f"  next: {', '.join(next_commands)}")
 
 
 def cmd_create_app(args: argparse.Namespace) -> None:
     operations.create_app_impl(
-        Path(args.workspace).expanduser().resolve(),
-        args.name,
+        Path(args.app_dir).expanduser().resolve(),
         board=args.board,
         soc=args.soc,
         force=args.force,
-        init_workspace=args.init_workspace,
         no_bootstrap=args.no_bootstrap,
-        no_sync=args.no_sync,
     )
-
-
-def create_app_impl(
-    workspace: Path,
-    app_name: str,
-    *,
-    board: str = "apollo510_evb",
-    soc: str | None = None,
-    force: bool = False,
-    init_workspace: bool = False,
-    no_bootstrap: bool = False,
-    no_sync: bool = False,
-) -> Path:
-    return operations.create_app_impl(
-        workspace,
-        app_name,
-        board=board,
-        soc=soc,
-        force=force,
-        init_workspace=init_workspace,
-        no_bootstrap=no_bootstrap,
-        no_sync=no_sync,
-    )
-
-
-def cmd_sync(args: argparse.Namespace) -> None:
-    operations.sync_workspace_impl(Path(args.workspace).expanduser().resolve())
-
-
-def sync_workspace_impl(workspace: Path) -> None:
-    operations.sync_workspace_impl(workspace)
 
 
 def cmd_doctor(args: argparse.Namespace) -> None:
     operations.doctor_impl()
 
 
-def doctor_impl() -> None:
-    operations.doctor_impl()
-
-
 def cmd_configure(args: argparse.Namespace) -> None:
     operations.configure_app_impl(
-        Path(args.app_dir).expanduser().resolve(),
+        resolve_app_dir(args.app_dir),
         board=args.board,
         build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
     )
@@ -153,7 +314,7 @@ def cmd_configure(args: argparse.Namespace) -> None:
 
 def cmd_build(args: argparse.Namespace) -> None:
     operations.build_app_impl(
-        Path(args.app_dir).expanduser().resolve(),
+        resolve_app_dir(args.app_dir),
         board=args.board,
         build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
         target=args.target,
@@ -163,176 +324,219 @@ def cmd_build(args: argparse.Namespace) -> None:
 
 def cmd_flash(args: argparse.Namespace) -> None:
     operations.flash_app_impl(
-        Path(args.app_dir).expanduser().resolve(),
+        resolve_app_dir(args.app_dir),
         board=args.board,
         build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
         jobs=args.jobs,
     )
 
 
-def _resolve_build_context(
-    app_dir: Path,
-    *,
-    board: str | None = None,
-    build_dir: Path | None = None,
-) -> tuple[Path, str, str, Path]:
-    resolved_app_dir, _, _, app_name, resolved_board = _resolve_app_context(
-        argparse.Namespace(app_dir=str(app_dir), board=board)
-    )
-    resolved_build_dir = build_dir or _default_build_dir(resolved_app_dir, resolved_board)
-    return resolved_app_dir, app_name, resolved_board, resolved_build_dir
-
-
-def configure_app_impl(
-    app_dir: Path,
-    *,
-    board: str | None = None,
-    build_dir: Path | None = None,
-) -> Path:
-    return operations.configure_app_impl(app_dir, board=board, build_dir=build_dir)
-
-
-def build_app_impl(
-    app_dir: Path,
-    *,
-    board: str | None = None,
-    build_dir: Path | None = None,
-    target: str | None = None,
-    jobs: int = 8,
-) -> Path:
-    return operations.build_app_impl(
-        app_dir,
-        board=board,
-        build_dir=build_dir,
-        target=target,
-        jobs=jobs,
-    )
-
-
-def flash_app_impl(
-    app_dir: Path,
-    *,
-    board: str | None = None,
-    build_dir: Path | None = None,
-    jobs: int = 8,
-) -> Path:
-    return operations.flash_app_impl(
-        app_dir,
-        board=board,
-        build_dir=build_dir,
-        jobs=jobs,
-    )
-
-
 def cmd_view(args: argparse.Namespace) -> None:
     operations.view_app_impl(
-        Path(args.app_dir).expanduser().resolve(),
+        resolve_app_dir(args.app_dir),
         board=args.board,
         build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
+        reset_on_open=not args.no_reset_on_open,
+        reset_delay_ms=args.reset_delay_ms,
     )
-
-
-def view_app_impl(
-    app_dir: Path,
-    *,
-    board: str | None = None,
-    build_dir: Path | None = None,
-) -> Path:
-    return operations.view_app_impl(app_dir, board=board, build_dir=build_dir)
 
 
 def cmd_clean(args: argparse.Namespace) -> None:
     operations.clean_app_impl(
-        Path(args.app_dir).expanduser().resolve(),
+        resolve_app_dir(args.app_dir),
         board=args.board,
         build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
         full=args.full,
     )
 
 
-def clean_app_impl(
-    app_dir: Path,
-    *,
-    board: str | None = None,
-    build_dir: Path | None = None,
-    full: bool = False,
-) -> Path:
-    return operations.clean_app_impl(app_dir, board=board, build_dir=build_dir, full=full)
+def _resolve_cli_app_dir(app_dir_arg: str | None) -> Path | None:
+    """Resolve CLI --app-dir to a Path, or None when not supplied."""
+
+    if app_dir_arg is None:
+        return None
+    return resolve_app_dir(app_dir_arg)
+
+
+def _print_module_detail(record: dict) -> None:
+    print(f"Module: {record['name']}")
+    print(f"Project: {record['project']}")
+    print(f"Revision: {record['revision']}")
+    print(f"Metadata: {record['metadata']}")
+    print(f"Enabled: {'yes' if record['enabled'] else 'no'}")
+    if not record.get("metadata_available"):
+        if "metadata_error" in record:
+            print(f"Metadata available: no ({record['metadata_error']})")
+        return
+
+    module = record["module"]
+    print(f"Type: {module['type']}")
+    print(f"Version: {module['version']}")
+    if "category" in module:
+        print(f"Category: {module['category']}")
+    if "provider" in module:
+        print(f"Provider: {module['provider']}")
+    if "summary" in record:
+        print(f"Summary: {record['summary']}")
+    if "capabilities" in record:
+        print(f"Capabilities: {', '.join(record['capabilities'])}")
+    if "use_cases" in record:
+        print(f"Use cases: {', '.join(record['use_cases'])}")
+    print(f"Targets: {', '.join(record['build']['cmake']['targets'])}")
+    print(f"Required deps: {', '.join(record['depends']['required']) or '(none)'}")
+    print(f"Optional deps: {', '.join(record['depends']['optional']) or '(none)'}")
+    print(f"Boards: {', '.join(record['compatibility']['boards'])}")
+    print(f"SoCs: {', '.join(record['compatibility']['socs'])}")
+    print(f"Toolchains: {', '.join(record['compatibility']['toolchains'])}")
+    if "provides" in record:
+        print("Provides:")
+        print(json.dumps(record["provides"], indent=2, sort_keys=True))
+
+
+def _print_module_search_results(results: list[dict[str, Any]], target_context: dict[str, str] | None) -> None:
+    if target_context:
+        print(
+            "Target context: "
+            + ", ".join(f"{key}={value}" for key, value in target_context.items())
+        )
+    if not results:
+        print("No modules matched the query.")
+        return
+
+    for result in results:
+        compat = result.get("compatible")
+        compat_text = "compatible" if compat is True else "incompatible" if compat is False else "compatibility-unknown"
+        print(f"- {result['name']} (score={result['score']}, {compat_text})")
+        if result.get("metadata_available"):
+            module = result["module"]
+            print(f"  type={module['type']} project={result['project']} targets={', '.join(result['build']['cmake']['targets'])}")
+        if result["matches"]:
+            preview = ", ".join(f"{item['field']}={item['value']}" for item in result["matches"][:4])
+            print(f"  matched: {preview}")
+
+
+def cmd_module_search(args: argparse.Namespace) -> None:
+    app_dir = _resolve_cli_app_dir(args.app_dir)
+    results = search_modules(
+        args.query,
+        app_dir=app_dir,
+        board=args.board,
+        soc=args.soc,
+        toolchain=args.toolchain,
+        include_incompatible=args.include_incompatible,
+    )
+    if args.json:
+        target_ctx = resolve_target_context(
+            app_dir=app_dir,
+            board=args.board,
+            soc=args.soc,
+            toolchain=args.toolchain,
+        )
+        _, _, resolved_app, scope = resolve_module_context(app_dir=app_dir)
+        payload = {
+            "scope": scope,
+            "app_dir": str(resolved_app) if resolved_app else None,
+            "query": args.query,
+            "target_context": target_ctx,
+            "results": results,
+        }
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return
+
+    target_ctx = resolve_target_context(
+        app_dir=app_dir,
+        board=args.board,
+        soc=args.soc,
+        toolchain=args.toolchain,
+    )
+    _print_module_search_results(results, target_ctx)
 
 
 def cmd_module_list(args: argparse.Namespace) -> None:
-    app_dir = Path(args.app_dir).expanduser().resolve()
-    nsx_cfg = _load_app_cfg(app_dir)
-    registry = _effective_registry(_load_registry(), nsx_cfg)
-    enabled = set(_module_names_from_nsx(nsx_cfg))
-    _print_module_table(registry, enabled)
+    if args.app_dir is None and not args.registry_only:
+        raise SystemExit("nsx module list requires --app-dir unless --registry-only is used")
+
+    app_dir = None if args.registry_only else _resolve_cli_app_dir(args.app_dir)
+    registry, enabled, resolved_app, scope = resolve_module_context(app_dir=app_dir)
+    if args.json:
+        payload = {
+            "scope": scope,
+            "app_dir": str(resolved_app) if resolved_app else None,
+            "modules": _module_discovery_records(
+                registry,
+                enabled,
+                app_dir=resolved_app,
+                include_metadata=True,
+            ),
+        }
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return
+
+    _print_module_table(
+        registry,
+        enabled,
+        heading=(
+            "NSX modules in the packaged registry:"
+            if scope == "packaged"
+            else "NSX modules in the active registry (* = enabled for this app):"
+        ),
+    )
+
+
+def cmd_module_describe(args: argparse.Namespace) -> None:
+    app_dir = _resolve_cli_app_dir(args.app_dir)
+    registry, enabled, resolved_app, scope = resolve_module_context(app_dir=app_dir)
+    try:
+        record = _module_discovery_record(
+            args.module,
+            registry,
+            app_dir=resolved_app,
+            enabled=args.module in enabled,
+            include_metadata=True,
+        )
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from None
+
+    if args.json:
+        payload = {
+            "scope": scope,
+            "app_dir": str(resolved_app) if resolved_app else None,
+            "module": record,
+        }
+        print(json.dumps(payload, indent=2, sort_keys=True))
+        return
+
+    _print_module_detail(record)
 
 
 def cmd_module_add(args: argparse.Namespace) -> None:
     operations.add_module_impl(
-        Path(args.app_dir).expanduser().resolve(),
+        resolve_app_dir(args.app_dir),
         args.module,
+        local=getattr(args, "local", False),
         dry_run=args.dry_run,
-        no_sync=args.no_sync,
     )
-
-
-def add_module_impl(
-    app_dir: Path,
-    module_name: str,
-    *,
-    dry_run: bool = False,
-    no_sync: bool = False,
-) -> list[str]:
-    return operations.add_module_impl(app_dir, module_name, dry_run=dry_run, no_sync=no_sync)
 
 
 def cmd_module_remove(args: argparse.Namespace) -> None:
     operations.remove_module_impl(
-        Path(args.app_dir).expanduser().resolve(),
+        resolve_app_dir(args.app_dir),
         args.module,
         dry_run=args.dry_run,
-        no_sync=args.no_sync,
     )
-
-
-def remove_module_impl(
-    app_dir: Path,
-    module_name: str,
-    *,
-    dry_run: bool = False,
-    no_sync: bool = False,
-) -> tuple[list[str], list[str]]:
-    return operations.remove_module_impl(app_dir, module_name, dry_run=dry_run, no_sync=no_sync)
 
 
 def cmd_module_update(args: argparse.Namespace) -> None:
     operations.update_modules_impl(
-        Path(args.app_dir).expanduser().resolve(),
+        resolve_app_dir(args.app_dir),
         module_name=args.module,
         dry_run=args.dry_run,
-        no_sync=args.no_sync,
-    )
-
-
-def update_modules_impl(
-    app_dir: Path,
-    *,
-    module_name: str | None = None,
-    dry_run: bool = False,
-    no_sync: bool = False,
-) -> list[str]:
-    return operations.update_modules_impl(
-        app_dir,
-        module_name=module_name,
-        dry_run=dry_run,
-        no_sync=no_sync,
     )
 
 
 def cmd_module_register(args: argparse.Namespace) -> None:
     operations.register_module_impl(
-        Path(args.app_dir).expanduser().resolve(),
+        resolve_app_dir(args.app_dir),
         args.module,
         metadata=Path(args.metadata).expanduser(),
         project=args.project,
@@ -344,42 +548,30 @@ def cmd_module_register(args: argparse.Namespace) -> None:
         else None,
         override=args.override,
         dry_run=args.dry_run,
-        no_sync=args.no_sync,
     )
 
 
-def register_module_impl(
-    app_dir: Path,
-    module_name: str,
-    *,
-    metadata: Path,
-    project: str,
-    project_url: str | None = None,
-    project_revision: str | None = None,
-    project_path: str | None = None,
-    project_local_path: Path | None = None,
-    override: bool = False,
-    dry_run: bool = False,
-    no_sync: bool = False,
-) -> Path:
-    return operations.register_module_impl(
-        app_dir,
-        module_name,
-        metadata=metadata,
-        project=project,
-        project_url=project_url,
-        project_revision=project_revision,
-        project_path=project_path,
-        project_local_path=project_local_path,
-        override=override,
-        dry_run=dry_run,
-        no_sync=no_sync,
-    )
+def cmd_module_validate(args: argparse.Namespace) -> None:
+    metadata_path = Path(args.metadata).expanduser().resolve()
+    try:
+        data = load_yaml(metadata_path)
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from None
+    try:
+        validate_nsx_module_metadata(data, str(metadata_path))
+    except ValueError as exc:
+        raise SystemExit(f"Validation failed: {exc}") from None
+
+    if args.json:
+        print(json.dumps({"valid": True, "path": str(metadata_path), "module": data.get("module", {}).get("name")}, indent=2))
+    else:
+        module_name = data.get("module", {}).get("name", "(unknown)")
+        print(f"Valid: {metadata_path} (module: {module_name})")
 
 
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="NSX workspace-first helper for creating and building bare-metal Ambiq apps"
+        description="NSX helper for creating and building bare-metal Ambiq apps"
     )
     parser.add_argument(
         "-v",
@@ -390,51 +582,36 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
-    p_init = sub.add_parser("init-workspace", help="Create west manifest + init/update workspace")
-    p_init.add_argument("workspace", help="Workspace directory to initialize")
-    p_init.add_argument("--nsx-repo-url", default=None, help="NSX repo URL (default: packaged registry upstream URL)")
-    p_init.add_argument("--nsx-revision", default="main", help="NSX revision/branch/tag")
-    p_init.add_argument("--ambiqsuite-repo-url", default=None, help="Optional AmbiqSuite repo URL")
-    p_init.add_argument("--ambiqsuite-revision", default="main", help="Optional AmbiqSuite revision")
-    p_init.add_argument("--skip-update", action="store_true", help="Initialize manifest but skip west update")
-    p_init.set_defaults(func=cmd_init_workspace)
-
-    p_new = sub.add_parser("create-app", help="Create a new app in an initialized NSX workspace")
-    p_new.add_argument("workspace", help="Workspace root")
-    p_new.add_argument("name", help="Application name")
+    p_new = sub.add_parser("create-app", help="Create a new standalone NSX app project")
+    p_new.add_argument("app_dir", help="App directory to create")
     p_new.add_argument("--board", default="apollo510_evb", help="Target board package suffix")
     p_new.add_argument("--soc", default=None, help="Target SoC package suffix (default inferred from board)")
     p_new.add_argument("--force", action="store_true", help="Allow writing into a non-empty app directory")
-    p_new.add_argument(
-        "--init-workspace",
-        action="store_true",
-        help="Initialize the workspace first if it has not been set up yet",
-    )
-    p_new.add_argument("--no-bootstrap", action="store_true", help="Create the app without vendoring starter modules")
-    p_new.add_argument("--no-sync", action="store_true", help="Skip west update for built-in module projects during app creation")
+    p_new.add_argument("--no-bootstrap", action="store_true", help="Create the app without initializing starter modules")
     p_new.set_defaults(func=cmd_create_app)
 
     p_new_alias = sub.add_parser("new", help="Alias for create-app")
-    p_new_alias.add_argument("workspace", help="Workspace root")
-    p_new_alias.add_argument("name", help="Application name")
+    p_new_alias.add_argument("app_dir", help="App directory to create")
     p_new_alias.add_argument("--board", default="apollo510_evb", help="Target board package suffix")
     p_new_alias.add_argument("--soc", default=None, help="Target SoC package suffix (default inferred from board)")
     p_new_alias.add_argument("--force", action="store_true", help="Allow writing into a non-empty app directory")
-    p_new_alias.add_argument(
-        "--init-workspace",
-        action="store_true",
-        help="Initialize the workspace first if it has not been set up yet",
-    )
-    p_new_alias.add_argument("--no-bootstrap", action="store_true", help="Create the app without vendoring starter modules")
-    p_new_alias.add_argument("--no-sync", action="store_true", help="Skip west update for built-in module projects during app creation")
+    p_new_alias.add_argument("--no-bootstrap", action="store_true", help="Create the app without initializing starter modules")
     p_new_alias.set_defaults(func=cmd_create_app)
-
-    p_sync = sub.add_parser("sync", help="Run west update in an existing workspace")
-    p_sync.add_argument("workspace", help="Workspace root")
-    p_sync.set_defaults(func=cmd_sync)
 
     p_doctor = sub.add_parser("doctor", help="Check the local NSX toolchain environment")
     p_doctor.set_defaults(func=cmd_doctor)
+
+    p_commands = sub.add_parser(
+        "commands",
+        help="Show the NSX command graph for users and agents",
+        description="Show the NSX command tree, arguments, and workflow hints.",
+    )
+    p_commands.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit the full command graph as machine-readable JSON",
+    )
+    p_commands.set_defaults(func=cmd_commands)
 
     p_configure = sub.add_parser("configure", help="Configure a generated NSX app with CMake")
     p_configure.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
@@ -461,6 +638,17 @@ def _build_parser() -> argparse.ArgumentParser:
     p_view.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
     p_view.add_argument("--board", default=None, help="Override board from nsx.yml")
     p_view.add_argument("--build-dir", default=None, help="Build directory override")
+    p_view.add_argument(
+        "--no-reset-on-open",
+        action="store_true",
+        help="Open the SWO viewer without issuing the app reset target after attach",
+    )
+    p_view.add_argument(
+        "--reset-delay-ms",
+        type=int,
+        default=400,
+        help="Milliseconds to wait after opening the SWO viewer before issuing reset",
+    )
     p_view.set_defaults(func=cmd_view)
 
     p_clean = sub.add_parser("clean", help="Clean a generated NSX app build directory")
@@ -474,47 +662,145 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p_clean.set_defaults(func=cmd_clean)
 
-    p_mod = sub.add_parser("module", help="Manage app-local NSX modules")
+    p_mod = sub.add_parser(
+        "module",
+        help="Manage app-local NSX modules",
+        description="List, enable, update, and register app-local NSX modules.",
+    )
     mod_sub = p_mod.add_subparsers(dest="module_command", required=True)
 
-    p_mod_list = mod_sub.add_parser("list", help="List available modules and mark enabled ones")
-    p_mod_list.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
+    p_mod_list = mod_sub.add_parser(
+        "list",
+        help="List modules from the packaged or app-effective registry",
+        description=(
+            "List modules from the packaged registry, or from the effective registry for an app and mark enabled ones."
+        ),
+    )
+    p_mod_list.add_argument(
+        "--app-dir",
+        default=None,
+        help="App directory containing nsx.yml; required unless --registry-only is used",
+    )
+    p_mod_list.add_argument(
+        "--registry-only",
+        action="store_true",
+        help="List all modules in the packaged registry without app-specific overrides",
+    )
+    p_mod_list.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit machine-readable JSON instead of a table",
+    )
     p_mod_list.set_defaults(func=cmd_module_list)
 
-    p_mod_add = mod_sub.add_parser("add", help="Enable a module for an app")
+    p_mod_describe = mod_sub.add_parser(
+        "describe",
+        help="Show detailed metadata for one module",
+        description="Describe one module from the packaged or app-effective registry.",
+    )
+    p_mod_describe.add_argument("module", help="Module name to describe")
+    p_mod_describe.add_argument(
+        "--app-dir",
+        default=None,
+        help="Optional app directory containing nsx.yml; when provided, use the app-effective registry",
+    )
+    p_mod_describe.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit machine-readable JSON instead of human-readable text",
+    )
+    p_mod_describe.set_defaults(func=cmd_module_describe)
+
+    p_mod_search = mod_sub.add_parser(
+        "search",
+        help="Search modules by intent, capability, or keyword",
+        description="Search the packaged or app-effective registry using module metadata and optional target-compatibility filters.",
+    )
+    p_mod_search.add_argument("query", help="Search query such as pmu, profiling, uart, or logging")
+    p_mod_search.add_argument(
+        "--app-dir",
+        default=None,
+        help="Optional app directory containing nsx.yml; when provided, use the app-effective registry and app target context",
+    )
+    p_mod_search.add_argument("--board", default=None, help="Optional board compatibility filter")
+    p_mod_search.add_argument("--soc", default=None, help="Optional SoC compatibility filter")
+    p_mod_search.add_argument("--toolchain", default=None, help="Optional toolchain compatibility filter")
+    p_mod_search.add_argument(
+        "--include-incompatible",
+        action="store_true",
+        help="Include matches that fail the active compatibility filters",
+    )
+    p_mod_search.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit machine-readable JSON instead of human-readable text",
+    )
+    p_mod_search.set_defaults(func=cmd_module_search)
+
+    p_mod_add = mod_sub.add_parser(
+        "add",
+        help="Enable a registry module for an app",
+        description="Enable a module for an app and vendor its resolved dependency closure.",
+    )
     p_mod_add.add_argument("module", help="Module name to enable")
     p_mod_add.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
+    p_mod_add.add_argument(
+        "--local",
+        action="store_true",
+        help="Mark the module as local (source-controlled with the app, not fetched from registry)",
+    )
     p_mod_add.add_argument("--dry-run", action="store_true", help="Show changes without writing")
-    p_mod_add.add_argument("--no-sync", action="store_true", help="Skip west update after manifest changes")
     p_mod_add.set_defaults(func=cmd_module_add)
 
-    p_mod_remove = mod_sub.add_parser("remove", help="Disable a module for an app")
+    p_mod_remove = mod_sub.add_parser(
+        "remove",
+        help="Disable a module for an app",
+        description="Disable a module for an app and remove vendored files that are no longer needed.",
+    )
     p_mod_remove.add_argument("module", help="Module name to remove")
     p_mod_remove.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
     p_mod_remove.add_argument("--dry-run", action="store_true", help="Show changes without writing")
-    p_mod_remove.add_argument("--no-sync", action="store_true", help="Skip west update after manifest changes")
     p_mod_remove.set_defaults(func=cmd_module_remove)
 
-    p_mod_update = mod_sub.add_parser("update", help="Refresh enabled modules to current registry revisions")
+    p_mod_update = mod_sub.add_parser(
+        "update",
+        help="Refresh enabled modules to current registry revisions",
+        description="Refresh vendored modules for an app using the current active registry revisions.",
+    )
     p_mod_update.add_argument("module", nargs="?", default=None, help="Optional single module to refresh")
     p_mod_update.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
     p_mod_update.add_argument("--dry-run", action="store_true", help="Show changes without writing")
-    p_mod_update.add_argument("--no-sync", action="store_true", help="Skip west update after manifest changes")
     p_mod_update.set_defaults(func=cmd_module_update)
 
-    p_mod_register = mod_sub.add_parser("register", help="Register an external module for a single app")
+    p_mod_register = mod_sub.add_parser(
+        "register",
+        help="Register and vendor an external module for one app",
+        description="Register an external module override for a single app and vendor it into that app.",
+    )
     p_mod_register.add_argument("module", help="Module name")
-    p_mod_register.add_argument("--metadata", required=True, help="Path to nsx-module.yaml")
-    p_mod_register.add_argument("--project", required=True, help="Project/repo key")
-    p_mod_register.add_argument("--project-url", default=None, help="west project URL")
-    p_mod_register.add_argument("--project-revision", default=None, help="west project revision")
-    p_mod_register.add_argument("--project-path", default=None, help="west project path")
-    p_mod_register.add_argument("--project-local-path", default=None, help="Local filesystem module path")
+    p_mod_register.add_argument("--metadata", required=True, help="Path to the module's nsx-module.yaml")
+    p_mod_register.add_argument("--project", required=True, help="Registry project key for this module")
+    p_mod_register.add_argument("--project-url", default=None, help="Override git project URL")
+    p_mod_register.add_argument("--project-revision", default=None, help="Override git project revision")
+    p_mod_register.add_argument("--project-path", default=None, help="Override git project path")
+    p_mod_register.add_argument("--project-local-path", default=None, help="Local filesystem path to vendor from")
     p_mod_register.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
     p_mod_register.add_argument("--override", action="store_true", help="Override existing module entry")
     p_mod_register.add_argument("--dry-run", action="store_true", help="Show changes without writing")
-    p_mod_register.add_argument("--no-sync", action="store_true", help="Skip west update after manifest changes")
     p_mod_register.set_defaults(func=cmd_module_register)
+
+    p_mod_validate = mod_sub.add_parser(
+        "validate",
+        help="Validate an nsx-module.yaml file",
+        description="Check that an nsx-module.yaml file has all required fields and valid values.",
+    )
+    p_mod_validate.add_argument("metadata", help="Path to the nsx-module.yaml file to validate")
+    p_mod_validate.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit machine-readable JSON instead of human-readable text",
+    )
+    p_mod_validate.set_defaults(func=cmd_module_validate)
 
     return parser
 

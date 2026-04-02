@@ -8,39 +8,26 @@ Creates a new NSX app from the external app template.
 
 ```text
 nsx create-app [--board BOARD] [--soc SOC] [--force]
-               [--init-workspace]
-               [--no-bootstrap] [--no-sync]
-               workspace name
+               [--no-bootstrap]
+               app_dir
 ```
 
 ## Main Arguments
 
-- `workspace`: workspace root
-- `name`: application name
+- `app_dir`: app directory to create
 - `--board`: target board package suffix
-- `--soc`: target SoC package suffix
+- `--soc`: target SoC package suffix (default inferred from board)
 - `--force`: allow writing into a non-empty app directory
-- `--init-workspace`: initialize the workspace first if needed
 - `--no-bootstrap`: create the app without vendoring starter modules
-- `--no-sync`: skip `west update` for built-in module repos during app creation
 
 ## Example
 
 ```bash
-cd <nsx-repo>
-uv run nsx create-app <workspace> hello_ap510 --board apollo510_evb
-```
-
-If the workspace does not exist yet:
-
-```bash
-cd <nsx-repo>
-uv run nsx create-app <workspace> hello_ap510 --board apollo510_evb --init-workspace
+nsx create-app hello_ap510 --board apollo510_evb
 ```
 
 ## Notes
 
 - `--soc` is normally inferred from `--board`
-- `--init-workspace` keeps the workspace-first model but removes one manual step
 - by default NSX bootstraps the starter module set for the selected board
 - `--no-bootstrap` creates the app shell without vendoring any starter modules

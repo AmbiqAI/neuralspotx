@@ -1,5 +1,8 @@
 # Internal Module Coverage
 
+For the higher-level migration plan and module matrix, see
+[Migrating from neuralSPOT](../architecture/migration-from-neuralspot.md).
+
 This page tracks how the major internal `neuralSPOT` module areas map into the
 current NSX module set.
 
@@ -14,7 +17,9 @@ These major internal areas already have clear NSX coverage.
 | --- | --- | --- |
 | `ns-core` | `nsx-core` | Core runtime init and common bring-up surface are migrated. |
 | `ns-harness` | `nsx-harness` | Print, debug-log bridge, and micro-profiler support are present. |
-| `ns-utils` | `nsx-utils` | Timer, malloc, energy, PMU, and perf-profile helpers are present. |
+| `ns-utils` | `nsx-utils` | Timer, malloc, and energy helpers are present. |
+| `ns_perf_profile` | `nsx-perf` | Generic DWT/cache/PC-sampling performance capture is split into its own module. |
+| `ns_pmu_*` | `nsx-pmu-armv8m` | Arm PMU configuration, presets, and accumulation are split into a dedicated module. |
 | `ns-peripherals` generic helpers | `nsx-peripherals` | Button, PSRAM, and NVM support are present. |
 | `ns-power` | `nsx-power` | Power policy, block shutdown, retention, and sleep helpers are present as a first-class module. |
 | `ns-uart` | `nsx-uart` | Optional UART wrapper migrated with current shim dependencies. |
@@ -32,7 +37,7 @@ represented as first-class NSX modules.
 | --- | --- | --- |
 | `ns-peripherals` extended features | partial | PSRAM, NVM, and some SoC-specific peripheral pieces still need tighter normalization. |
 | migrated bus modules | partial | The wrappers are present, but deeper API cleanup and hardware-assumption trimming are still future work. |
-| profiling helpers spread across `ns-utils` and `ns-harness` | partial | The major power/perf pieces are present, but the exact legacy grouping has changed. |
+| profiling helpers spread across `ns-utils` and `ns-harness` | partial | Generic perf and PMU helpers now have dedicated modules; legacy TFLM-oriented profiling glue remains in `nsx-harness`. |
 | print and low-power print behavior | partial | Basic print paths exist; deeper legacy power-aware print behavior is not fully split out yet. |
 
 ## Major Legacy Areas Still Missing

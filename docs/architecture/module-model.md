@@ -13,6 +13,27 @@ NSX modules are classified as:
 7. `tooling`: helpers for build/deploy/view workflows.
 8. `backend_specific`: modules tied to a specific backend/board class.
 
+```mermaid
+block-beta
+  columns 4
+  block:app:4
+    columns 4
+    A["App source code"]:4
+  end
+  block:runtime:4
+    columns 4
+    B1["runtime"] B2["algorithm"] B3["portable_api"] B4["backend_specific"]
+  end
+  block:platform:4
+    columns 4
+    C1["board"]:2 C2["tooling"]:2
+  end
+  block:hw:4
+    columns 3
+    D1["soc"] D2["sdk_provider"] D3["CMSIS startup"]
+  end
+```
+
 ## Backend Policy
 
 1. NSX module eligibility requires `support.ambiqsuite=true`.
@@ -48,6 +69,25 @@ Rationale:
 3. NSX CLI resolves dependency closure before mutation.
 4. Cycles are rejected.
 5. Board modules must depend on exactly one SoC module.
+
+## Semantic Metadata For Discovery
+
+`nsx-module.yaml` may also carry optional semantic fields used by agents and
+discovery tooling.
+
+Current optional fields:
+
+1. `summary`: one-sentence plain-language description of the module
+2. `capabilities`: flat capability tags such as `profiling`, `pmu`, `logging`, or `i2c`
+3. `use_cases`: concrete tasks this module is a good fit for
+4. `anti_use_cases`: cases where this module is the wrong choice
+5. `agent_keywords`: extra search terms that help intent mapping
+6. `example_refs`: references to example apps or docs
+7. `composition_hints`: pairing or composition notes for planning tools
+
+These fields do not change build behavior. They exist so command-discovery and
+module-discovery surfaces can support LLM and agent workflows without forcing
+freeform inference from repo names or prose docs.
 
 ## Compatibility Rules
 

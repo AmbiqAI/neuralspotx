@@ -9,13 +9,16 @@ The NSX tooling repo owns:
 - packaged CMake helpers
 - built-in board definitions
 
-Sibling areas commonly used during development:
+After `nsx create-app`, a generated app contains:
 
-- `nsx-modules/` for module repos
-- `nsx-apps/` for generated and smoke-test apps
+- `nsx.yml` for app metadata and module state
+- `modules/` for vendored module content
+- `boards/` for vendored board definitions
+- `cmake/nsx/` for copied build helpers
+- `src/` for app-owned source code
 
 ## Important Boundaries
 
 - tooling and docs live in the NSX repo
-- firmware modules live in separate repos
+- built-in module source repos are cloned on demand from their upstream URLs
 - generated apps are treated as independent buildable artifacts
