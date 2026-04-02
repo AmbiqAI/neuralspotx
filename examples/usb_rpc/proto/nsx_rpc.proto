@@ -1,0 +1,61 @@
+syntax = "proto2";
+
+// NSX USB RPC protocol — designed for zero dynamic memory on device.
+// All variable-length fields have explicit static size limits in nsx_rpc.options.
+
+enum NsxRpcMsgType {
+    NSX_MSG_PING_REQ    = 0;
+    NSX_MSG_PING_RESP   = 1;
+    NSX_MSG_INFER_REQ   = 2;
+    NSX_MSG_INFER_RESP  = 3;
+    NSX_MSG_STATUS_REQ  = 4;
+    NSX_MSG_STATUS_RESP = 5;
+}
+
+// Ping — round-trip latency test.
+message NsxPingRequest {
+    required uint32 seq = 1;
+}
+
+message NsxPingResponse {
+    required uint32 seq       = 1;
+    required uint32 uptime_ms = 2;
+}
+
+// Inference — host sends raw input bytes, device runs the model stub,
+// returns predicted class + confidence.
+message NsxInferRequest {
+    required uint32 model_id = 1;
+    required bytes  input    = 2;   // max_size set in .options
+}
+
+message NsxInferResponse {
+    required uint32 model_id   = 1;
+    required uint32 class_id   = 2;
+    required float  confidence = 3;
+    required bytes  label      = 4; // max_size set in .options
+}
+
+// Status — device reports identity and runtime stats.
+message NsxStatusRequest {
+    required uint32 reserved = 1;
+}
+
+message NsxStatusResponse {
+    required uint32 firmware_version = 1;
+    required uint32 free_heap_bytes  = 2;
+    required bytes  board_name       = 3; // max_size set in .options
+}
+
+// Top-level envelope — one of the above nested as a oneof.
+message NsxRpcMessage {
+    required NsxRpcMsgType type = 1;
+    oneof payload {
+        NsxPingRequest    ping_req    = 2;
+        NsxPingResponse   ping_resp   = 3;
+        NsxInferRequest   infer_req   = 4;
+        NsxInferResponse  infer_resp  = 5;
+        NsxStatusRequest  status_req  = 6;
+        NsxStatusResponse status_resp = 7;
+    }
+}

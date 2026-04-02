@@ -131,6 +131,11 @@ projects:
     url: https://github.com/AmbiqAI/nsx-usb.git
     revision: main
     path: modules/nsx-usb
+  nsx-nanopb:
+    name: nsx-nanopb
+    url: https://github.com/AmbiqAI/nsx-nanopb.git
+    revision: main
+    path: modules/nsx-nanopb
 
 modules:
   nsx-ambiqsuite-r3:
@@ -281,6 +286,10 @@ modules:
     project: nsx-usb
     revision: main
     metadata: modules/nsx-usb/nsx-module.yaml
+  nsx-nanopb:
+    project: nsx-nanopb
+    revision: main
+    metadata: modules/nsx-nanopb/nsx-module.yaml
   nsx-tooling:
     project: neuralspotx
     revision: main
