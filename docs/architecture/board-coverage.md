@@ -38,5 +38,5 @@ provide a clean BSP and library bundle for the board.
   `nsx-ambiqsuite-r5`
 - board definitions are built into the tooling repo and vendored into generated
   apps
-- modules remain external to the tooling repo and are vendored into apps from
-  `nsx-modules`
+- modules are resolved from the packaged registry, cloned from their upstream
+  repos, and vendored into generated apps by NSX

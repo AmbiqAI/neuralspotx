@@ -9,15 +9,13 @@ Generate a new single-target app for a specific board.
 ## Command
 
 ```bash
-cd <nsx-repo>
-uv run nsx create-app <workspace> <app-name> --board <board>
+nsx create-app <app-dir> --board <board>
 ```
 
 Example:
 
 ```bash
-cd <nsx-repo>
-uv run nsx create-app <workspace> hello_ap510 --board apollo510_evb
+nsx create-app hello_ap510 --board apollo510_evb
 ```
 
 ## What Happens
@@ -33,10 +31,13 @@ NSX:
 
 ## Result
 
-You get a standalone app under:
+You get a standalone app at:
 
 ```text
-<workspace>/apps/<app-name>
+<app-dir>
 ```
+
+If you are working from a source checkout, activate the `uv` environment first
+and then run the same `nsx ...` command.
 
 See **App Layout** for the resulting structure.

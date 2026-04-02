@@ -1,119 +1,58 @@
 # First App
 
-This page walks through the standard NSX workspace-first app creation flow.
+This page walks through the standard NSX app creation flow.
 
-The commands below work with either:
+Use plain `nsx` commands throughout this guide.
 
-- a source checkout using `uv run nsx ...`
-- a `pipx` install using `nsx ...`
+If you installed with `pipx`, `nsx` is already on your `PATH`.
+If you are working from a source checkout, activate the `uv` environment first:
+
+```bash
+cd <nsx-repo>
+source .venv/bin/activate
+```
 
 ## Goal
 
 Create a minimal app, configure it, and build it successfully.
 
-## Step 1: Initialize a Workspace
+```mermaid
+flowchart LR
+    A["nsx doctor"] --> B["nsx create-app"]
+    B --> C["nsx configure"]
+    C --> D["nsx build"]
+    D --> E["nsx flash"]
+    E --> F["nsx view"]
+```
 
-Check the local environment first.
-
-With `pipx`:
+## Step 1: Check the Environment
 
 ```bash
 nsx doctor
 ```
 
-With a source checkout:
-
-```bash
-cd <nsx-repo>
-uv run nsx doctor
-```
-
-Then initialize a workspace.
-
-With `pipx`:
-
-```bash
-nsx init-workspace <workspace>
-```
-
-With a source checkout:
-
-```bash
-cd <nsx-repo>
-uv run nsx init-workspace <workspace>
-```
-
-If you prefer, `create-app` can also initialize the workspace for you.
-
-With `pipx`:
-
-```bash
-nsx create-app <workspace> hello_ap510 --board apollo510_evb --init-workspace
-```
-
-With a source checkout:
-
-```bash
-cd <nsx-repo>
-uv run nsx create-app <workspace> hello_ap510 --board apollo510_evb --init-workspace
-```
-
-This creates a workspace with:
-
-- `manifest/`
-- `neuralspotx/`
-- `modules/`
-- `apps/`
-
 ## Step 2: Create an App
 
-With `pipx`:
-
 ```bash
-nsx create-app <workspace> hello_ap510 --board apollo510_evb
-```
-
-With a source checkout:
-
-```bash
-cd <nsx-repo>
-uv run nsx create-app <workspace> hello_ap510 --board apollo510_evb
+nsx create-app hello_ap510 --board apollo510_evb
 ```
 
 This creates a generated app at:
 
 ```text
-<workspace>/apps/hello_ap510
+hello_ap510
 ```
 
 ## Step 3: Configure the App
 
-With `pipx`:
-
 ```bash
-nsx configure --app-dir <workspace>/apps/hello_ap510
-```
-
-With a source checkout:
-
-```bash
-cd <nsx-repo>
-uv run nsx configure --app-dir <workspace>/apps/hello_ap510
+nsx configure --app-dir hello_ap510
 ```
 
 ## Step 4: Build the App
 
-With `pipx`:
-
 ```bash
-nsx build --app-dir <workspace>/apps/hello_ap510
-```
-
-With a source checkout:
-
-```bash
-cd <nsx-repo>
-uv run nsx build --app-dir <workspace>/apps/hello_ap510
+nsx build --app-dir hello_ap510
 ```
 
 ## What to Expect
@@ -132,5 +71,5 @@ At this point you have a standalone app with vendored board and module content.
 ## Next Steps
 
 - See **App Layout** for a breakdown of the generated structure
-- See **Apollo510 Smoke Test** for hardware flashing and SWO output
+- See **Examples** for full working apps with flash and SWO output
 - See **Modules** if you want to add or remove app dependencies

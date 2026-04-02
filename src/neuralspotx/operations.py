@@ -7,46 +7,49 @@ import copy
 import importlib.resources as resources
 import shutil
 import subprocess
+import time
 from pathlib import Path
 
 from .constants import (
-    DEFAULT_REPO_NAME,
     DEFAULT_SOC_FOR_BOARD,
     DEFAULT_TOOLCHAIN,
-    WEST_MANIFEST_TEMPLATE,
+    PACKAGED_PROJECT_NAME,
 )
 from .metadata import validate_nsx_module_metadata
 from .models import ModuleEntry, ProjectEntry
 from .module_registry import (
-    _ensure_workspace_projects_for_modules,
+    _acquire_modules_for_app,
     _generate_nsx_config,
+    _is_local_module,
     _load_module_metadata,
+    _local_module_names,
     _module_dependents,
     _module_names_from_nsx,
     _remove_vendored_module_from_app,
     _resolve_module_closure,
+    _update_module_clone,
     _update_nsx_cfg_modules,
-    _vendor_modules_into_app,
 )
 from .project_config import (
     _copy_packaged_tree,
     _default_build_dir,
     _effective_registry,
+    _is_packaged_module,
     _load_app_cfg,
     _load_registry,
-    _manifest_projects_by_name,
     _metadata_storage_path,
+    _module_clone_dir,
+    _nsx_tool_major,
+    _nsx_tool_version,
     _read_yaml,
     _registry_project_entry,
-    _render_west_manifest,
-    _require_initialized_workspace,
+    _require_app_config,
     _resolve_app_context,
     _run_cmake_configure,
     _save_app_cfg,
     _unique_preserving_order,
-    _workspace_for_app_dir,
-    _workspace_has_manifest,
     _write_app_module_file,
+    _write_modules_gitignore,
 )
 from .subprocess_utils import (
     extract_view_command,
@@ -87,95 +90,29 @@ _doctor_check = doctor_check
 _extract_view_command = extract_view_command
 
 
-def init_workspace_impl(
-    workspace: Path,
-    *,
-    nsx_repo_url: str | None = None,
-    nsx_revision: str = "main",
-    ambiqsuite_repo_url: str | None = None,
-    ambiqsuite_revision: str = "main",
-    skip_update: bool = False,
-) -> None:
-    """Initialize an NSX workspace and optionally sync its projects.
-
-    Args:
-        workspace: Workspace root directory.
-        nsx_repo_url: Optional override for the root NSX repo URL.
-        nsx_revision: Git revision for the root NSX repo checkout.
-        ambiqsuite_repo_url: Optional AmbiqSuite repo URL to add to the manifest.
-        ambiqsuite_revision: Git revision for the AmbiqSuite checkout.
-        skip_update: When ``True``, skip ``west update`` after initialization.
-    """
-
-    _require_tool("west")
-
-    manifest_dir = workspace / "manifest"
-    west_yml = manifest_dir / "west.yml"
-
-    workspace.mkdir(parents=True, exist_ok=True)
-    manifest_dir.mkdir(parents=True, exist_ok=True)
-
-    default_nsx_project = _registry_project_entry(_load_registry(), DEFAULT_REPO_NAME)
-    default_nsx_url = default_nsx_project.url
-    if not default_nsx_url:
-        raise SystemExit("Built-in registry is missing a default URL for the neuralspotx project.")
-    effective_nsx_repo_url = nsx_repo_url or default_nsx_url
-
-    manifest_text = _render_west_manifest(
-        nsx_repo_url=effective_nsx_repo_url,
-        nsx_revision=nsx_revision,
-        ambiqsuite_url=ambiqsuite_repo_url,
-        ambiqsuite_revision=ambiqsuite_revision,
-        manifest_template=WEST_MANIFEST_TEMPLATE,
-        repo_name=DEFAULT_REPO_NAME,
-    )
-    west_yml.write_text(manifest_text, encoding="utf-8")
-
-    if not (workspace / ".west").exists():
-        _run(_tool_cmd("west", "init", "-l", "manifest"), cwd=workspace)
-
-    if not skip_update:
-        _run(_tool_cmd("west", "update"), cwd=workspace)
-
-    print(f"NSX workspace initialized at: {workspace}")
-    print(f"Root repo path in workspace: {workspace / DEFAULT_REPO_NAME}")
-    print(f"Manifest: {west_yml}")
-
-
 def create_app_impl(
-    workspace: Path,
-    app_name: str,
+    app_dir: Path,
     *,
     board: str = "apollo510_evb",
     soc: str | None = None,
     force: bool = False,
-    init_workspace: bool = False,
     no_bootstrap: bool = False,
-    no_sync: bool = False,
 ) -> Path:
-    """Create a new NSX app and optionally vendor its starter modules.
+    """Create a new NSX app and clone its starter modules.
 
     Args:
-        workspace: Workspace root directory.
-        app_name: New app name.
+        app_dir: App root directory to create.
         board: Target board identifier.
         soc: Optional SoC override.
         force: Allow writing into a non-empty app directory.
-        init_workspace: Initialize the workspace first if needed.
-        no_bootstrap: Skip starter-module vendoring.
-        no_sync: Skip syncing workspace projects for module sources.
+        no_bootstrap: Skip starter-module cloning.
 
     Returns:
         The created app directory.
     """
 
     base_registry = _load_registry()
-    if init_workspace and not _workspace_has_manifest(workspace):
-        init_workspace_impl(
-            workspace,
-            skip_update=no_sync and no_bootstrap,
-        )
-    _require_initialized_workspace(workspace)
+    app_name = app_dir.name
 
     soc = soc or DEFAULT_SOC_FOR_BOARD.get(board)
     if soc is None:
@@ -186,7 +123,6 @@ def create_app_impl(
         if not src_template.exists():
             raise SystemExit(f"Template directory not found: {src_template}")
 
-        app_dir = workspace / "apps" / app_name
         if app_dir.exists() and any(app_dir.iterdir()) and not force:
             raise SystemExit(f"App directory already exists and is not empty: {app_dir}")
 
@@ -203,56 +139,44 @@ def create_app_impl(
 
     _copy_packaged_tree("neuralspotx", "cmake", app_dir / "cmake" / "nsx")
 
+    current_nsx_version = _nsx_tool_version()
+    current_nsx_major = _nsx_tool_major(current_nsx_version)
+
     nsx_cfg = _generate_nsx_config(
         app_name=app_name,
         board=board,
         soc=soc,
         registry=base_registry,
-        west_manifest_rel="../../manifest/west.yml",
         default_toolchain=DEFAULT_TOOLCHAIN,
-        default_repo_name=DEFAULT_REPO_NAME,
+        nsx_version=current_nsx_version,
+        nsx_major=current_nsx_major,
     )
     if no_bootstrap:
         nsx_cfg["modules"] = []
         _save_app_cfg(app_dir, nsx_cfg)
         _write_app_module_file(app_dir, nsx_cfg)
+        _write_modules_gitignore(app_dir, nsx_cfg)
         print(f"Created app '{app_name}' at: {app_dir}")
         print("Starter modules were not bootstrapped (--no-bootstrap).")
         print("Next steps:")
         print(f"  1) cd {app_dir}")
-        print("  2) Run `uv run nsx module list --app-dir .`")
-        print("  3) Add modules with `uv run nsx module add <module> --app-dir .`")
+        print("  2) Run `nsx module list --app-dir .`")
+        print("  3) Add modules with `nsx module add <module> --app-dir .`")
         return app_dir
 
     registry = _effective_registry(base_registry, nsx_cfg)
-    _ensure_workspace_projects_for_modules(
-        workspace,
-        nsx_cfg,
-        registry,
-        _module_names_from_nsx(nsx_cfg),
-        sync=not no_sync,
-        default_repo_name=DEFAULT_REPO_NAME,
-    )
     starter_modules = _resolve_module_closure(
         _module_names_from_nsx(nsx_cfg),
         app_dir=None,
         nsx_cfg=nsx_cfg,
         registry=registry,
-        workspace=workspace,
         default_toolchain=DEFAULT_TOOLCHAIN,
-    )
-    _ensure_workspace_projects_for_modules(
-        workspace,
-        nsx_cfg,
-        registry,
-        starter_modules,
-        sync=not no_sync,
-        default_repo_name=DEFAULT_REPO_NAME,
     )
     _update_nsx_cfg_modules(nsx_cfg, starter_modules, registry)
     _save_app_cfg(app_dir, nsx_cfg)
     _write_app_module_file(app_dir, nsx_cfg)
-    _vendor_modules_into_app(app_dir, starter_modules, registry, workspace)
+    _acquire_modules_for_app(app_dir, starter_modules, registry)
+    _write_modules_gitignore(app_dir, nsx_cfg)
     if nsx_cfg.get("profile_status") == "scaffold":
         print(
             f"NOTE: profile '{nsx_cfg.get('profile')}' is scaffold-only. "
@@ -262,19 +186,11 @@ def create_app_impl(
     print(f"Created app '{app_name}' at: {app_dir}")
     print("Next steps:")
     print(f"  1) cd {app_dir}")
-    print("  2) Run `uv run nsx configure --app-dir .`")
+    print("  2) Run `nsx configure --app-dir .`")
     print(
-        "  3) Run `uv run nsx build --app-dir .`, `uv run nsx flash --app-dir .`, or `uv run nsx view --app-dir .`"
+        "  3) Run `nsx build --app-dir .`, `nsx flash --app-dir .`, or `nsx view --app-dir .`"
     )
     return app_dir
-
-
-def sync_workspace_impl(workspace: Path) -> None:
-    """Run ``west update`` for an existing NSX workspace."""
-
-    _require_tool("west")
-    _require_initialized_workspace(workspace)
-    _run(_tool_cmd("west", "update"), cwd=workspace)
 
 
 def doctor_impl() -> None:
@@ -288,10 +204,10 @@ def doctor_impl() -> None:
     all_ok &= _doctor_check("cmake", _tool_path("cmake") is not None, detail=_tool_path("cmake"))
     all_ok &= _doctor_check("ninja", _tool_path("ninja") is not None, detail=_tool_path("ninja"))
     all_ok &= _doctor_check(
-        "west",
-        _tool_path("west") is not None,
-        detail=_tool_path("west"),
-        hint="Install `west`, or use an NSX install that provides it in the same environment.",
+        "git",
+        _tool_path("git") is not None,
+        detail=_tool_path("git"),
+        hint="Install git.",
     )
     all_ok &= _doctor_check(
         "arm-none-eabi-gcc",
@@ -362,6 +278,32 @@ def doctor_impl() -> None:
         raise SystemExit("One or more required tools are missing or misconfigured.")
 
 
+def _ensure_app_modules(app_dir: Path) -> None:
+    """Ensure all modules declared in nsx.yml are present on disk.
+
+    This is called during ``nsx configure`` so that a freshly-cloned app
+    (whose registry modules are gitignored) can be configured without
+    a separate ``nsx module add`` or ``nsx module update`` step.
+
+    Only missing modules are acquired — existing vendored or cloned
+    modules are left untouched.  Modules marked ``local: true`` are
+    skipped entirely (they are source-controlled with the app).
+    """
+
+    nsx_cfg = _load_app_cfg(app_dir)
+    base_registry = _load_registry()
+    registry = _effective_registry(base_registry, nsx_cfg)
+    module_names = _module_names_from_nsx(nsx_cfg)
+    local_names = _local_module_names(nsx_cfg)
+    _acquire_modules_for_app(app_dir, module_names, registry, local_modules=local_names)
+    # Re-copy packaged cmake tree in case it was gitignored, then
+    # regenerate the app-specific modules.cmake that _copy_packaged_tree
+    # would have removed (it does an rmtree before copying).
+    _copy_packaged_tree("neuralspotx", "cmake", app_dir / "cmake" / "nsx")
+    _write_app_module_file(app_dir, nsx_cfg)
+    _write_modules_gitignore(app_dir, nsx_cfg)
+
+
 def _resolve_build_context(
     app_dir: Path,
     *,
@@ -370,7 +312,7 @@ def _resolve_build_context(
 ) -> tuple[Path, str, str, Path]:
     """Resolve the app, board, and build directory for a build-like action."""
 
-    resolved_app_dir, _, _, app_name, resolved_board = _resolve_app_context(
+    resolved_app_dir, _, app_name, resolved_board = _resolve_app_context(
         argparse.Namespace(app_dir=str(app_dir), board=board)
     )
     resolved_build_dir = build_dir or _default_build_dir(resolved_app_dir, resolved_board)
@@ -385,6 +327,10 @@ def configure_app_impl(
 ) -> Path:
     """Configure an app with CMake.
 
+    Automatically acquires any missing modules (git clone or packaged
+    copy) before running CMake so that a freshly cloned app whose
+    ``modules/`` directory is gitignored works out of the box.
+
     Returns:
         The resolved build directory.
     """
@@ -394,6 +340,7 @@ def configure_app_impl(
         board=board,
         build_dir=build_dir,
     )
+    _ensure_app_modules(resolved_app_dir)
     _run_cmake_configure(resolved_app_dir, resolved_build_dir, resolved_board)
     print(f"Configured app at: {resolved_app_dir}")
     print(f"Build directory: {resolved_build_dir}")
@@ -416,6 +363,7 @@ def build_app_impl(
         build_dir=build_dir,
     )
     if not (resolved_build_dir / "build.ninja").exists():
+        _ensure_app_modules(resolved_app_dir)
         _run_cmake_configure(resolved_app_dir, resolved_build_dir, resolved_board)
     resolved_target = target or app_name
     _run(["cmake", "--build", str(resolved_build_dir), "--target", resolved_target, "-j", str(jobs)])
@@ -437,6 +385,7 @@ def flash_app_impl(
         build_dir=build_dir,
     )
     if not (resolved_build_dir / "build.ninja").exists():
+        _ensure_app_modules(resolved_app_dir)
         _run_cmake_configure(resolved_app_dir, resolved_build_dir, resolved_board)
     target = f"{app_name}_flash"
     cmd = ["cmake", "--build", str(resolved_build_dir), "--target", target, "-j", str(jobs)]
@@ -456,8 +405,14 @@ def view_app_impl(
     *,
     board: str | None = None,
     build_dir: Path | None = None,
+    reset_on_open: bool = True,
+    reset_delay_ms: int = 400,
 ) -> Path:
-    """Launch the SEGGER SWO viewer for an app."""
+    """Launch the SEGGER SWO viewer for an app.
+
+    By default, the viewer is attached first and then the target is reset once.
+    This avoids a common race where SWO stays silent until the next reset.
+    """
 
     resolved_app_dir, app_name, resolved_board, resolved_build_dir = _resolve_build_context(
         app_dir,
@@ -465,11 +420,40 @@ def view_app_impl(
         build_dir=build_dir,
     )
     if not (resolved_build_dir / "build.ninja").exists():
+        _ensure_app_modules(resolved_app_dir)
         _run_cmake_configure(resolved_app_dir, resolved_build_dir, resolved_board)
     target = f"{app_name}_view"
     view_cmd = _extract_view_command(resolved_build_dir, target)
+    viewer_proc: subprocess.Popen[bytes] | None = None
     try:
-        subprocess.run(view_cmd, cwd=str(resolved_build_dir), check=True)
+        viewer_proc = subprocess.Popen(view_cmd, cwd=str(resolved_build_dir))
+        if reset_on_open:
+            if reset_delay_ms > 0:
+                time.sleep(reset_delay_ms / 1000.0)
+            reset_cmd = [
+                "cmake",
+                "--build",
+                str(resolved_build_dir),
+                "--target",
+                f"{app_name}_reset",
+                "-j",
+                "1",
+            ]
+            if VERBOSE > 0:
+                _run(reset_cmd)
+            else:
+                try:
+                    result = _run_capture(reset_cmd)
+                except subprocess.CalledProcessError as exc:
+                    if viewer_proc.poll() is None:
+                        viewer_proc.terminate()
+                        try:
+                            viewer_proc.wait(timeout=2)
+                        except subprocess.TimeoutExpired:
+                            viewer_proc.kill()
+                    raise SystemExit(format_subprocess_error(exc, context="Reset")) from None
+                _print_captured_output(result)
+        viewer_proc.wait()
     except subprocess.CalledProcessError as exc:
         raise SystemExit(format_subprocess_error(exc, context="View")) from None
     return resolved_build_dir
@@ -505,49 +489,57 @@ def add_module_impl(
     app_dir: Path,
     module_name: str,
     *,
+    local: bool = False,
     dry_run: bool = False,
-    no_sync: bool = False,
 ) -> list[str]:
-    """Enable a module for an app and vendor the resolved closure."""
+    """Enable a module for an app and clone/copy the resolved closure.
 
-    workspace = _workspace_for_app_dir(app_dir)
+    If *local* is True the module is marked ``local: true`` in nsx.yml.
+    Local modules live inside the app tree (``modules/<name>/``), are
+    source-controlled with the app, and are not acquired from a registry
+    or git remote.
+    """
+
     nsx_cfg = _load_app_cfg(app_dir)
+
+    if local:
+        # Local modules bypass registry resolution entirely.
+        existing = _module_names_from_nsx(nsx_cfg)
+        if module_name in existing:
+            raise SystemExit(f"Module '{module_name}' is already enabled in nsx.yml")
+        if dry_run:
+            print(f"[dry-run] would add local module: {module_name}")
+            return existing + [module_name]
+        modules_list = nsx_cfg.setdefault("modules", [])
+        modules_list.append({"name": module_name, "local": True})
+        _save_app_cfg(app_dir, nsx_cfg)
+        _write_app_module_file(app_dir, nsx_cfg)
+        _write_modules_gitignore(app_dir, nsx_cfg)
+        print(f"Registered local module '{module_name}'")
+        print("The module directory should be at: modules/" + module_name + "/")
+        return _module_names_from_nsx(nsx_cfg)
+
     registry = _effective_registry(_load_registry(), nsx_cfg)
 
     enabled = _module_names_from_nsx(nsx_cfg)
     desired_modules = _unique_preserving_order(enabled + [module_name])
-    _ensure_workspace_projects_for_modules(
-        workspace,
-        nsx_cfg,
-        registry,
-        desired_modules,
-        sync=not no_sync,
-        default_repo_name=DEFAULT_REPO_NAME,
-    )
     new_modules = _resolve_module_closure(
         desired_modules,
         app_dir=app_dir,
         nsx_cfg=nsx_cfg,
         registry=registry,
-        workspace=workspace,
         default_toolchain=DEFAULT_TOOLCHAIN,
-    )
-    _ensure_workspace_projects_for_modules(
-        workspace,
-        nsx_cfg,
-        registry,
-        new_modules,
-        sync=not no_sync,
-        default_repo_name=DEFAULT_REPO_NAME,
     )
     if dry_run:
         print("[dry-run] modules to enable:", ", ".join(new_modules))
         return new_modules
 
+    local_names = _local_module_names(nsx_cfg)
     _update_nsx_cfg_modules(nsx_cfg, new_modules, registry)
     _save_app_cfg(app_dir, nsx_cfg)
     _write_app_module_file(app_dir, nsx_cfg)
-    _vendor_modules_into_app(app_dir, new_modules, registry, workspace)
+    _acquire_modules_for_app(app_dir, new_modules, registry, local_modules=local_names)
+    _write_modules_gitignore(app_dir, nsx_cfg)
 
     print(f"Enabled module '{module_name}'")
     print("Resolved module set:", ", ".join(new_modules))
@@ -559,17 +551,35 @@ def remove_module_impl(
     module_name: str,
     *,
     dry_run: bool = False,
-    no_sync: bool = False,
 ) -> tuple[list[str], list[str]]:
     """Remove a module and any no-longer-needed dependents from an app."""
 
-    del no_sync
-    workspace = _workspace_for_app_dir(app_dir)
     nsx_cfg = _load_app_cfg(app_dir)
     registry = _effective_registry(_load_registry(), nsx_cfg)
     enabled = _module_names_from_nsx(nsx_cfg)
     if module_name not in enabled:
         raise SystemExit(f"Module '{module_name}' is not enabled in nsx.yml")
+
+    local_names = _local_module_names(nsx_cfg)
+
+    # Local modules are simply removed from nsx.yml — their on-disk
+    # directory is left untouched since it is source-controlled.
+    if module_name in local_names:
+        if dry_run:
+            print(f"[dry-run] would remove local module: {module_name}")
+            remaining = [n for n in enabled if n != module_name]
+            return [module_name], remaining
+        nsx_cfg["modules"] = [
+            m for m in nsx_cfg.get("modules", [])
+            if not (isinstance(m, dict) and m.get("name") == module_name)
+        ]
+        _save_app_cfg(app_dir, nsx_cfg)
+        _write_app_module_file(app_dir, nsx_cfg)
+        _write_modules_gitignore(app_dir, nsx_cfg)
+        remaining = _module_names_from_nsx(nsx_cfg)
+        print(f"Removed local module '{module_name}' from nsx.yml")
+        print("(Module directory was NOT deleted — remove it manually if desired.)")
+        return [module_name], remaining
 
     profile_name = nsx_cfg.get("profile")
     protected: set[str] = set()
@@ -582,7 +592,7 @@ def remove_module_impl(
 
     current = set(enabled)
     remove_set = {module_name}
-    dependents = _module_dependents(enabled, registry, workspace, app_dir=app_dir)
+    dependents = _module_dependents(enabled, registry, app_dir=app_dir, local_modules=local_names)
 
     blockers = sorted(name for name in dependents.get(module_name, set()) if name in current)
     if blockers:
@@ -594,13 +604,15 @@ def remove_module_impl(
     while changed:
         changed = False
         remaining = current - remove_set
-        dependents = _module_dependents(sorted(remaining), registry, workspace, app_dir=app_dir)
+        dependents = _module_dependents(sorted(remaining), registry, app_dir=app_dir, local_modules=local_names)
         for mod in list(remaining):
             if mod in protected:
                 continue
+            if mod in local_names:
+                continue
             if dependents.get(mod):
                 continue
-            metadata = _load_module_metadata(mod, registry, workspace, app_dir=app_dir)
+            metadata = _load_module_metadata(mod, registry, app_dir=app_dir)
             if metadata["module"]["type"] == "soc":
                 continue
             remove_set.add(mod)
@@ -612,7 +624,6 @@ def remove_module_impl(
         app_dir=app_dir,
         nsx_cfg=nsx_cfg,
         registry=registry,
-        workspace=workspace,
         default_toolchain=DEFAULT_TOOLCHAIN,
     )
     if dry_run:
@@ -623,6 +634,7 @@ def remove_module_impl(
     _update_nsx_cfg_modules(nsx_cfg, new_modules, registry)
     _save_app_cfg(app_dir, nsx_cfg)
     _write_app_module_file(app_dir, nsx_cfg)
+    _write_modules_gitignore(app_dir, nsx_cfg)
     for removed_name in sorted(remove_set):
         _remove_vendored_module_from_app(app_dir, removed_name, registry)
 
@@ -637,38 +649,31 @@ def update_modules_impl(
     *,
     module_name: str | None = None,
     dry_run: bool = False,
-    no_sync: bool = False,
 ) -> list[str]:
     """Refresh enabled modules to the current registry revisions."""
 
-    workspace = _workspace_for_app_dir(app_dir)
     nsx_cfg = _load_app_cfg(app_dir)
     registry = _effective_registry(_load_registry(), nsx_cfg)
 
+    local_names = _local_module_names(nsx_cfg)
     current_modules = _module_names_from_nsx(nsx_cfg)
     current = set(current_modules)
     if module_name:
         if module_name not in current:
             raise SystemExit(f"Module '{module_name}' is not enabled in nsx.yml")
+        if module_name in local_names:
+            raise SystemExit(
+                f"Module '{module_name}' is a local module and cannot be updated from registry"
+            )
         to_update = {module_name}
     else:
-        to_update = set(current)
-
-    _ensure_workspace_projects_for_modules(
-        workspace,
-        nsx_cfg,
-        registry,
-        sorted(current),
-        sync=not no_sync,
-        default_repo_name=DEFAULT_REPO_NAME,
-    )
+        to_update = current - local_names
 
     resolved_modules = _resolve_module_closure(
         current_modules,
         app_dir=app_dir,
         nsx_cfg=nsx_cfg,
         registry=registry,
-        workspace=workspace,
         default_toolchain=DEFAULT_TOOLCHAIN,
     )
 
@@ -679,8 +684,9 @@ def update_modules_impl(
     _update_nsx_cfg_modules(nsx_cfg, resolved_modules, registry)
     _save_app_cfg(app_dir, nsx_cfg)
     _write_app_module_file(app_dir, nsx_cfg)
-    vendored_modules = [name for name in resolved_modules if name in to_update]
-    _vendor_modules_into_app(app_dir, vendored_modules, registry, workspace)
+    for name in resolved_modules:
+        if name in to_update:
+            _update_module_clone(app_dir, name, registry)
 
     if module_name:
         print(f"Updated module '{module_name}' to lockfile revision")
@@ -701,11 +707,9 @@ def register_module_impl(
     project_local_path: Path | None = None,
     override: bool = False,
     dry_run: bool = False,
-    no_sync: bool = False,
 ) -> Path:
-    """Register an app-local module override and vendor it into the app."""
+    """Register an app-local module override and acquire it into the app."""
 
-    workspace = _workspace_for_app_dir(app_dir)
     nsx_cfg = _load_app_cfg(app_dir)
     base_registry = _load_registry()
     registry = _effective_registry(base_registry, nsx_cfg)
@@ -724,38 +728,37 @@ def register_module_impl(
             f"Metadata module name mismatch: expected '{module_name}', found '{declared_name}'"
         )
 
-    manifest_projects = _manifest_projects_by_name(workspace)
     project_name = project
-    existing_project = manifest_projects.get(project_name)
     project_entry: ProjectEntry
-    if existing_project is not None:
+    if project_local_path and (project_url or project_revision or project_path):
+        raise SystemExit(
+            "Use either --project-local-path OR (--project-url --project-revision --project-path), not both."
+        )
+    if project_local_path:
+        local_path = project_local_path.resolve()
+        if not local_path.exists():
+            raise SystemExit(f"--project-local-path does not exist: {local_path}")
         project_entry = ProjectEntry(
             name=project_name,
-            url=existing_project.url,
-            revision=existing_project.revision or "main",
-            path=existing_project.path,
+            local_path=str(local_path),
+            path=f"modules/{module_name}",
+        )
+    elif project_url:
+        project_entry = ProjectEntry(
+            name=project_name,
+            url=project_url,
+            revision=project_revision or "main",
+            path=project_path or f"modules/{project_name}",
         )
     else:
-        if project_local_path and (project_url or project_revision or project_path):
-            raise SystemExit(
-                "Use either --project-local-path OR (--project-url --project-revision --project-path), not both."
-            )
-        if project_local_path:
-            local_path = project_local_path.resolve()
-            if not local_path.exists():
-                raise SystemExit(f"--project-local-path does not exist: {local_path}")
-            project_entry = ProjectEntry(name=project_name, local_path=str(local_path))
+        # Check if project already exists in registry
+        existing = _registry_project_entry(registry, project_name)
+        if existing.url:
+            project_entry = existing
         else:
-            if not (project_url and project_revision and project_path):
-                raise SystemExit(
-                    f"Project '{project_name}' is not in workspace manifest. "
-                    "Provide --project-local-path OR --project-url + --project-revision + --project-path."
-                )
-            project_entry = ProjectEntry(
-                name=project_name,
-                url=project_url,
-                revision=project_revision,
-                path=project_path,
+            raise SystemExit(
+                f"Project '{project_name}' is not in registry. "
+                "Provide --project-local-path OR --project-url."
             )
 
     current_modules = registry.get("modules", {})
@@ -792,15 +795,8 @@ def register_module_impl(
     _save_app_cfg(app_dir, target_cfg)
     _write_app_module_file(app_dir, target_cfg)
     effective = _effective_registry(base_registry, target_cfg)
-    _ensure_workspace_projects_for_modules(
-        workspace,
-        target_cfg,
-        effective,
-        [module_name],
-        sync=not no_sync,
-        default_repo_name=DEFAULT_REPO_NAME,
-    )
-    _vendor_modules_into_app(app_dir, [module_name], effective, workspace)
+    _acquire_modules_for_app(app_dir, [module_name], effective)
+    _write_modules_gitignore(app_dir, target_cfg)
 
     print(f"Registered module '{module_name}' for app {app_dir.name}")
     print(f"Project: {project_name}")

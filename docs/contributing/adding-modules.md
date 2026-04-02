@@ -18,3 +18,21 @@ NSX modules are separate repos with `nsx-module.yaml` and a CMake surface.
 - keep dependency closure clean
 - avoid pass-through wrapper modules unless they provide a real stable surface
 - prefer wrapper-based SDK consumption over copying arbitrary low-level SDK code
+
+## Semantic Metadata
+
+First-class modules should also provide a small amount of semantic metadata in
+`nsx-module.yaml` so discovery tooling and agents can reason about them.
+
+Recommended fields:
+
+- `summary`
+- `capabilities`
+- `use_cases`
+- `anti_use_cases`
+- `agent_keywords`
+- `example_refs`
+- `composition_hints`
+
+Keep these fields short and literal. They are intended for machine-readable
+discovery and planning, not for long narrative documentation.

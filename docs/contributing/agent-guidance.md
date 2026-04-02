@@ -10,8 +10,7 @@ file aligned when the architecture changes.
 
 `neuralspotx` is the tooling and workflow layer for NSX. It owns:
 
-- workspace creation and synchronization
-- app generation
+- app generation and module management
 - built-in board and module metadata
 - configure/build/flash/view orchestration
 - the public Python API used by future standalone tools
@@ -20,23 +19,20 @@ Changes should preserve the architecture first and the CLI surface second.
 
 ## Architectural Rules
 
-### Keep NSX Workspace-First
+### Keep NSX App-First
 
-NSX is workspace-first today.
+NSX is app-first today.
 
-- A workspace is the shared source-management environment.
-- A workspace contains the `west` manifest and checked-out source repos.
-- A workspace may contain multiple apps.
+- Each app is a self-contained project directory.
+- Module sources are resolved from the packaged registry and cloned as needed.
 - Each app is the real build unit.
 
-Standalone app support may come later, but the current product model assumes an
-initialized workspace.
+Do not silently reintroduce legacy shared source-pool assumptions.
 
 ### Keep Apps Self-Contained
 
 Apps vendor their own board and module content.
 
-- Workspace repos are shared source-of-truth checkouts.
 - App-local vendored content is the dependency snapshot the app actually builds
   with.
 
@@ -56,7 +52,7 @@ Normal behavior should prefer:
 
 1. app-local vendored content
 2. app-local registry overrides
-3. built-in packaged registry plus workspace checkouts
+3. built-in packaged registry + git-cloned module sources
 4. explicit custom registrations
 
 Do not reintroduce implicit sibling-repo fallback as a normal path.
@@ -110,10 +106,9 @@ The public onboarding flow must keep working:
 
 1. install with `pipx`
 2. run `nsx doctor`
-3. run `nsx init-workspace`
-4. run `nsx create-app`
-5. run `nsx configure`
-6. run `nsx build`
+3. run `nsx create-app`
+4. run `nsx configure`
+5. run `nsx build`
 
 A change that only works in a local developer checkout but breaks the public
 install path is a regression.

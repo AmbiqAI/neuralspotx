@@ -4,61 +4,14 @@ set(NSX_APP_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}")
 get_filename_component(NSX_APP_ROOT "${NSX_APP_CMAKE_DIR}/../.." ABSOLUTE)
 
 function(nsx_module_dir_for_name out_var module_name)
-    if(module_name STREQUAL "nsx-ambiqsuite-r3")
-        set(result "modules/nsx-ambiqsuite-r3")
-    elseif(module_name STREQUAL "nsx-ambiqsuite-r4")
-        set(result "modules/nsx-ambiqsuite-r4")
-    elseif(module_name STREQUAL "nsx-ambiqsuite-r5")
-        set(result "modules/nsx-ambiqsuite-r5")
-    elseif(module_name STREQUAL "nsx-ambiq-hal-r3")
-        set(result "modules/nsx-ambiq-hal-r3")
-    elseif(module_name STREQUAL "nsx-ambiq-hal-r4")
-        set(result "modules/nsx-ambiq-hal-r4")
-    elseif(module_name STREQUAL "nsx-ambiq-hal-r5")
-        set(result "modules/nsx-ambiq-hal-r5")
-    elseif(module_name STREQUAL "nsx-ambiq-bsp-r3")
-        set(result "modules/nsx-ambiq-bsp-r3")
-    elseif(module_name STREQUAL "nsx-ambiq-bsp-r4")
-        set(result "modules/nsx-ambiq-bsp-r4")
-    elseif(module_name STREQUAL "nsx-ambiq-bsp-r5")
-        set(result "modules/nsx-ambiq-bsp-r5")
-    elseif(module_name STREQUAL "nsx-soc-hal")
-        set(result "modules/nsx-soc-hal")
-    elseif(module_name STREQUAL "nsx-cmsis-startup")
-        set(result "modules/nsx-cmsis-startup")
-    elseif(module_name STREQUAL "nsx-core")
-        set(result "modules/nsx-core")
-    elseif(module_name STREQUAL "nsx-harness")
-        set(result "modules/nsx-harness")
-    elseif(module_name STREQUAL "nsx-utils")
-        set(result "modules/nsx-utils")
-    elseif(module_name STREQUAL "nsx-perf")
-        set(result "modules/nsx-perf")
-    elseif(module_name STREQUAL "nsx-pmu-armv8m")
-        set(result "modules/nsx-pmu-armv8m")
-    elseif(module_name STREQUAL "nsx-peripherals")
-        set(result "modules/nsx-peripherals")
-    elseif(module_name STREQUAL "nsx-power")
-        set(result "modules/nsx-power")
-    elseif(module_name STREQUAL "nsx-portable-api")
-        set(result "modules/nsx-portable-api")
-    elseif(module_name STREQUAL "nsx-uart")
-        set(result "modules/nsx-uart")
-    elseif(module_name STREQUAL "nsx-i2c")
-        set(result "modules/nsx-i2c")
-    elseif(module_name STREQUAL "nsx-spi")
-        set(result "modules/nsx-spi")
-    else()
-        set(result "")
-    endif()
-
-    set(${out_var} "${result}" PARENT_SCOPE)
+    set(${out_var} "modules/${module_name}" PARENT_SCOPE)
 endfunction()
 
 
 function(nsx_add_module_subdirectory nsx_app_root module_name)
     nsx_module_dir_for_name(module_dir "${module_name}")
-    if(module_dir STREQUAL "")
+
+    if(NOT EXISTS "${nsx_app_root}/${module_dir}")
         return()
     endif()
 
@@ -87,7 +40,6 @@ function(nsx_bootstrap_app)
     endif()
 
     get_filename_component(NSX_ROOT "${NSX_APP_ROOT}" ABSOLUTE)
-    get_filename_component(NSX_WORKSPACE_ROOT "${NSX_ROOT}/.." ABSOLUTE)
     set(NSX_CMAKE_DIR "${NSX_APP_CMAKE_DIR}")
     set(NSX_BOARD "${NSX_BOARD}")
     set(NSX_ROOT "${NSX_ROOT}" PARENT_SCOPE)
@@ -137,13 +89,20 @@ function(nsx_finalize_app app_target)
 
     target_link_options(${app_target} PRIVATE
         -Wl,-Map,$<TARGET_FILE_DIR:${app_target}>/${app_target}.map
-        -Wl,--start-group
-        -lm
-        -lc
-        -lgcc
-        -lnosys
-        -lstdc++
-        -Wl,--end-group
+    )
+
+    # Ensure system libraries (-lm, -lc, etc.) appear AFTER all project
+    # archives in the link command.  Pre-built static libraries such as
+    # libam_hal.a contain object files that were not compiled with
+    # -ffunction-sections, so the linker may pull in sections that
+    # reference math symbols like fmodf.  Placing -lm before the
+    # archives causes the reference to go unresolved.
+    #
+    # CMAKE_C_STANDARD_LIBRARIES is appended at the very end of the
+    # linker invocation, after all target_link_libraries contributions.
+    set(CMAKE_C_STANDARD_LIBRARIES
+        "-Wl,--start-group -lm -lc -lgcc -lnosys -lstdc++ -Wl,--end-group"
+        PARENT_SCOPE
     )
 
     if(CMAKE_OBJCOPY)

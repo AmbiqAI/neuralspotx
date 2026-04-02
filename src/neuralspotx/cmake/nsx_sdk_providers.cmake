@@ -50,12 +50,10 @@ function(nsx_select_sdk_provider board_name)
     if(NSX_SDK_PROVIDER STREQUAL "ambiqsuite-r3")
         set(version "R3.1.1")
         set(module_default_root "${NSX_ROOT}/modules/nsx-ambiqsuite-r3/sdk")
-        set(sibling_module_root "${NSX_WORKSPACE_ROOT}/nsx-modules/nsx-ambiqsuite-r3/sdk")
         if(NSX_AMBIQSUITE_R3_ROOT STREQUAL "")
-            set(candidates "${module_default_root}" "${sibling_module_root}")
             _nsx_pick_first_existing(
                 NSX_AMBIQSUITE_R3_ROOT_CANDIDATE
-                ${candidates}
+                "${module_default_root}"
             )
             if(NOT NSX_AMBIQSUITE_R3_ROOT_CANDIDATE STREQUAL "")
                 set(NSX_AMBIQSUITE_R3_ROOT "${NSX_AMBIQSUITE_R3_ROOT_CANDIDATE}" CACHE PATH "Path to AmbiqSuite R3 root" FORCE)
@@ -66,12 +64,10 @@ function(nsx_select_sdk_provider board_name)
     elseif(NSX_SDK_PROVIDER STREQUAL "ambiqsuite-r4")
         set(version "R4.5.0")
         set(module_default_root "${NSX_ROOT}/modules/nsx-ambiqsuite-r4/sdk")
-        set(sibling_module_root "${NSX_WORKSPACE_ROOT}/nsx-modules/nsx-ambiqsuite-r4/sdk")
         if(NSX_AMBIQSUITE_R4_ROOT STREQUAL "")
-            set(candidates "${module_default_root}" "${sibling_module_root}")
             _nsx_pick_first_existing(
                 NSX_AMBIQSUITE_R4_ROOT_CANDIDATE
-                ${candidates}
+                "${module_default_root}"
             )
             if(NOT NSX_AMBIQSUITE_R4_ROOT_CANDIDATE STREQUAL "")
                 set(NSX_AMBIQSUITE_R4_ROOT "${NSX_AMBIQSUITE_R4_ROOT_CANDIDATE}" CACHE PATH "Path to AmbiqSuite R4 root" FORCE)
@@ -82,12 +78,10 @@ function(nsx_select_sdk_provider board_name)
     elseif(NSX_SDK_PROVIDER STREQUAL "ambiqsuite-r5")
         set(version "R5.3.0")
         set(module_default_root "${NSX_ROOT}/modules/nsx-ambiqsuite-r5/sdk")
-        set(sibling_module_root "${NSX_WORKSPACE_ROOT}/nsx-modules/nsx-ambiqsuite-r5/sdk")
         if(NSX_AMBIQSUITE_R5_ROOT STREQUAL "")
-            set(candidates "${module_default_root}" "${sibling_module_root}")
             _nsx_pick_first_existing(
                 NSX_AMBIQSUITE_R5_ROOT_CANDIDATE
-                ${candidates}
+                "${module_default_root}"
             )
             if(NOT NSX_AMBIQSUITE_R5_ROOT_CANDIDATE STREQUAL "")
                 set(NSX_AMBIQSUITE_R5_ROOT "${NSX_AMBIQSUITE_R5_ROOT_CANDIDATE}" CACHE PATH "Path to AmbiqSuite R5 root" FORCE)

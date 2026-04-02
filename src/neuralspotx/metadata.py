@@ -41,6 +41,21 @@ def _expect_type(container: dict[str, Any], key: str, expected: type, ctx: str) 
     return value
 
 
+def _expect_optional_str(container: dict[str, Any], key: str, ctx: str) -> None:
+    if key in container and not isinstance(container[key], str):
+        raise ValueError(f"{ctx}: key '{key}' must be string when provided")
+
+
+def _expect_optional_str_list(container: dict[str, Any], key: str, ctx: str) -> None:
+    if key not in container:
+        return
+    value = container[key]
+    if not isinstance(value, list):
+        raise ValueError(f"{ctx}: key '{key}' must be list when provided")
+    if not all(isinstance(item, str) for item in value):
+        raise ValueError(f"{ctx}: key '{key}' must contain only strings")
+
+
 def load_yaml(path: Path) -> dict[str, Any]:
     if not path.exists():
         raise ValueError(f"YAML file does not exist: {path}")
@@ -144,6 +159,17 @@ def validate_nsx_module_metadata(data: dict[str, Any], module_path: str) -> None
         raise ValueError(
             f"{module_path}: board module '{module_name}' must have required dependencies"
         )
+
+    _expect_optional_str(data, "summary", module_path)
+    for key in (
+        "capabilities",
+        "use_cases",
+        "anti_use_cases",
+        "agent_keywords",
+        "example_refs",
+        "composition_hints",
+    ):
+        _expect_optional_str_list(data, key, module_path)
 
     constraints = data.get("constraints", {})
     if constraints:

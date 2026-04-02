@@ -2,7 +2,7 @@
 
 Checks the local NSX development environment.
 
-This command is useful before creating a workspace, and it is the first command
+This command is useful before creating an app, and it is the first command
 to run when flash or view problems suggest a local tool issue rather than an app
 issue.
 
@@ -18,7 +18,6 @@ nsx doctor
 - `uv`
 - CMake
 - Ninja
-- `west`
 - Arm GNU toolchain
 - `JLinkExe`
 - `JLinkSWOViewerCL`
@@ -27,8 +26,7 @@ nsx doctor
 ## Example
 
 ```bash
-cd <nsx-repo>
-uv run nsx doctor
+nsx doctor
 ```
 
 ## Notes

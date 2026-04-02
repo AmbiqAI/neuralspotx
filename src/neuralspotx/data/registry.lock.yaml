@@ -121,6 +121,16 @@ projects:
     url: https://github.com/AmbiqAI/nsx-spi.git
     revision: main
     path: modules/nsx-spi
+  nsx-audio:
+    name: nsx-audio
+    url: https://github.com/AmbiqAI/nsx-audio.git
+    revision: main
+    path: modules/nsx-audio
+  nsx-usb:
+    name: nsx-usb
+    url: https://github.com/AmbiqAI/nsx-usb.git
+    revision: main
+    path: modules/nsx-usb
 
 modules:
   nsx-ambiqsuite-r3:
@@ -263,6 +273,14 @@ modules:
     project: nsx-spi
     revision: main
     metadata: modules/nsx-spi/nsx-module.yaml
+  nsx-audio:
+    project: nsx-audio
+    revision: main
+    metadata: modules/nsx-audio/nsx-module.yaml
+  nsx-usb:
+    project: nsx-usb
+    revision: main
+    metadata: modules/nsx-usb/nsx-module.yaml
   nsx-tooling:
     project: neuralspotx
     revision: main

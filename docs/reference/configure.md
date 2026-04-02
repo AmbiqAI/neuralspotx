@@ -17,8 +17,7 @@ nsx configure [--app-dir APP_DIR] [--board BOARD] [--build-dir BUILD_DIR]
 ## Example
 
 ```bash
-cd <nsx-repo>
-uv run nsx configure --app-dir <app-dir>
+nsx configure --app-dir <app-dir>
 ```
 
 ## Notes

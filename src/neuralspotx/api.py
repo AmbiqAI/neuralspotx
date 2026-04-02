@@ -4,8 +4,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from . import operations
+from .metadata import load_yaml, validate_nsx_module_metadata
+from .module_discovery import (
+    describe_module,
+    list_modules,
+    search_modules,
+)
+from .project_config import find_app_root, resolve_app_dir
 
 PathLike = str | Path
 
@@ -15,56 +23,22 @@ class NSXError(RuntimeError):
 
 
 @dataclass(slots=True)
-class WorkspaceInitRequest:
-    """Request parameters for initializing an NSX workspace.
-
-    Attributes:
-        workspace: Workspace directory to initialize.
-        nsx_repo_url: Optional override for the root NSX repo URL.
-        nsx_revision: Git revision for the NSX repo checkout.
-        ambiqsuite_repo_url: Optional AmbiqSuite repo URL to include in the manifest.
-        ambiqsuite_revision: Git revision for the AmbiqSuite checkout.
-        skip_update: When ``True``, write the manifest but skip ``west update``.
-    """
-
-    workspace: PathLike
-    nsx_repo_url: str | None = None
-    nsx_revision: str = "main"
-    ambiqsuite_repo_url: str | None = None
-    ambiqsuite_revision: str = "main"
-    skip_update: bool = False
-
-
-@dataclass(slots=True)
 class AppCreateRequest:
     """Request parameters for creating a new NSX app.
 
     Attributes:
-        workspace: Target workspace root.
-        name: App name to create.
+        app_dir: Target app root.
         board: Target board identifier.
         soc: Optional SoC override. When omitted, NSX infers it from ``board``.
         force: Allow writing into a non-empty app directory.
-        init_workspace: Initialize the workspace first if needed.
-        no_bootstrap: Skip starter-module vendoring.
-        no_sync: Skip workspace project sync for module sources.
+        no_bootstrap: Skip starter-module initialization.
     """
 
-    workspace: PathLike
-    name: str
+    app_dir: PathLike
     board: str = "apollo510_evb"
     soc: str | None = None
     force: bool = False
-    init_workspace: bool = False
     no_bootstrap: bool = False
-    no_sync: bool = False
-
-
-@dataclass(slots=True)
-class WorkspaceSyncRequest:
-    """Request parameters for syncing an existing NSX workspace."""
-
-    workspace: PathLike
 
 
 @dataclass(slots=True)
@@ -111,7 +85,6 @@ class ModuleChangeRequest:
     app_dir: PathLike
     module: str
     dry_run: bool = False
-    no_sync: bool = False
 
 
 @dataclass(slots=True)
@@ -121,7 +94,6 @@ class ModuleUpdateRequest:
     app_dir: PathLike
     module: str | None = None
     dry_run: bool = False
-    no_sync: bool = False
 
 
 @dataclass(slots=True)
@@ -138,7 +110,6 @@ class ModuleRegisterRequest:
     project_local_path: PathLike | None = None
     override: bool = False
     dry_run: bool = False
-    no_sync: bool = False
 
 
 def _invoke(func, *args, **kwargs) -> None:
@@ -153,111 +124,43 @@ def _invoke(func, *args, **kwargs) -> None:
         raise NSXError(str(code)) from None
 
 
-def init_workspace(
-    workspace: PathLike | WorkspaceInitRequest,
-    *,
-    nsx_repo_url: str | None = None,
-    nsx_revision: str = "main",
-    ambiqsuite_repo_url: str | None = None,
-    ambiqsuite_revision: str = "main",
-    skip_update: bool = False,
-) -> None:
-    """Initialize an NSX workspace.
-
-    Args:
-        workspace: Either a workspace path or a typed request object.
-        nsx_repo_url: Optional override for the NSX repo URL.
-        nsx_revision: Git revision for the NSX repo checkout.
-        ambiqsuite_repo_url: Optional AmbiqSuite repo URL.
-        ambiqsuite_revision: Git revision for the AmbiqSuite checkout.
-        skip_update: When ``True``, skip ``west update`` after initialization.
-    """
-
-    request = (
-        workspace
-        if isinstance(workspace, WorkspaceInitRequest)
-        else WorkspaceInitRequest(
-            workspace=workspace,
-            nsx_repo_url=nsx_repo_url,
-            nsx_revision=nsx_revision,
-            ambiqsuite_repo_url=ambiqsuite_repo_url,
-            ambiqsuite_revision=ambiqsuite_revision,
-            skip_update=skip_update,
-        )
-    )
-    _invoke(
-        operations.init_workspace_impl,
-        Path(request.workspace).expanduser().resolve(),
-        nsx_repo_url=request.nsx_repo_url,
-        nsx_revision=request.nsx_revision,
-        ambiqsuite_repo_url=request.ambiqsuite_repo_url,
-        ambiqsuite_revision=request.ambiqsuite_revision,
-        skip_update=request.skip_update,
-    )
-
-
 def create_app(
-    workspace: PathLike | AppCreateRequest,
-    name: str | None = None,
+    app_dir: PathLike | AppCreateRequest,
     *,
     board: str = "apollo510_evb",
     soc: str | None = None,
     force: bool = False,
-    init_workspace: bool = False,
     no_bootstrap: bool = False,
-    no_sync: bool = False,
 ) -> None:
-    """Create a new NSX app in a workspace.
+    """Create a new NSX app project.
 
     Args:
-        workspace: Either a workspace path or a typed request object.
-        name: App name when not using a request object.
+        app_dir: Either an app-root path or a typed request object.
         board: Target board identifier.
         soc: Optional SoC override.
         force: Allow writing into a non-empty app directory.
-        init_workspace: Initialize the workspace first if needed.
-        no_bootstrap: Skip starter-module vendoring.
-        no_sync: Skip workspace source sync.
+        no_bootstrap: Skip starter-module initialization.
     """
 
     request = (
-        workspace
-        if isinstance(workspace, AppCreateRequest)
+        app_dir
+        if isinstance(app_dir, AppCreateRequest)
         else AppCreateRequest(
-            workspace=workspace,
-            name=name or "",
+            app_dir=app_dir,
             board=board,
             soc=soc,
             force=force,
-            init_workspace=init_workspace,
             no_bootstrap=no_bootstrap,
-            no_sync=no_sync,
         )
     )
-    if not request.name:
-        raise NSXError("create_app requires a non-empty app name")
     _invoke(
         operations.create_app_impl,
-        Path(request.workspace).expanduser().resolve(),
-        request.name,
+        Path(request.app_dir).expanduser().resolve(),
         board=request.board,
         soc=request.soc,
         force=request.force,
-        init_workspace=request.init_workspace,
         no_bootstrap=request.no_bootstrap,
-        no_sync=request.no_sync,
     )
-
-
-def sync_workspace(workspace: PathLike | WorkspaceSyncRequest) -> None:
-    """Sync an existing NSX workspace with ``west update``."""
-
-    request = (
-        workspace
-        if isinstance(workspace, WorkspaceSyncRequest)
-        else WorkspaceSyncRequest(workspace=workspace)
-    )
-    _invoke(operations.sync_workspace_impl, Path(request.workspace).expanduser().resolve())
 
 
 def doctor() -> None:
@@ -390,7 +293,6 @@ def add_module(
     module: str | None = None,
     *,
     dry_run: bool = False,
-    no_sync: bool = False,
 ) -> None:
     """Add a module to an app."""
 
@@ -401,7 +303,6 @@ def add_module(
             app_dir=app_dir,
             module=module or "",
             dry_run=dry_run,
-            no_sync=no_sync,
         )
     )
     if not request.module:
@@ -411,7 +312,6 @@ def add_module(
         Path(request.app_dir).expanduser().resolve(),
         request.module,
         dry_run=request.dry_run,
-        no_sync=request.no_sync,
     )
 
 
@@ -420,7 +320,6 @@ def remove_module(
     module: str | None = None,
     *,
     dry_run: bool = False,
-    no_sync: bool = False,
 ) -> None:
     """Remove a module from an app."""
 
@@ -431,7 +330,6 @@ def remove_module(
             app_dir=app_dir,
             module=module or "",
             dry_run=dry_run,
-            no_sync=no_sync,
         )
     )
     if not request.module:
@@ -441,7 +339,6 @@ def remove_module(
         Path(request.app_dir).expanduser().resolve(),
         request.module,
         dry_run=request.dry_run,
-        no_sync=request.no_sync,
     )
 
 
@@ -450,7 +347,6 @@ def update_modules(
     *,
     module: str | None = None,
     dry_run: bool = False,
-    no_sync: bool = False,
 ) -> None:
     """Refresh one or more enabled modules from the registry."""
 
@@ -461,7 +357,6 @@ def update_modules(
             app_dir=app_dir,
             module=module,
             dry_run=dry_run,
-            no_sync=no_sync,
         )
     )
     _invoke(
@@ -469,7 +364,6 @@ def update_modules(
         Path(request.app_dir).expanduser().resolve(),
         module_name=request.module,
         dry_run=request.dry_run,
-        no_sync=request.no_sync,
     )
 
 
@@ -485,7 +379,6 @@ def register_module(
     project_local_path: PathLike | None = None,
     override: bool = False,
     dry_run: bool = False,
-    no_sync: bool = False,
 ) -> None:
     """Register an app-local module override."""
 
@@ -503,7 +396,6 @@ def register_module(
             project_local_path=project_local_path,
             override=override,
             dry_run=dry_run,
-            no_sync=no_sync,
         )
     )
     if not request.module or not request.metadata or not request.project:
@@ -522,5 +414,22 @@ def register_module(
         ),
         override=request.override,
         dry_run=request.dry_run,
-        no_sync=request.no_sync,
     )
+
+
+def validate_module_metadata(
+    metadata: PathLike,
+) -> dict[str, Any]:
+    """Validate an ``nsx-module.yaml`` file and return the parsed data.
+
+    Raises ``NSXError`` when the file is missing, malformed, or fails
+    required-field checks.
+    """
+
+    path = Path(metadata).expanduser().resolve()
+    try:
+        data = load_yaml(path)
+        validate_nsx_module_metadata(data, str(path))
+    except (ValueError, SystemExit) as exc:
+        raise NSXError(str(exc)) from None
+    return data

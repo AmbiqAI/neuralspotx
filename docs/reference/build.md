@@ -20,8 +20,7 @@ nsx build [--app-dir APP_DIR] [--board BOARD]
 ## Example
 
 ```bash
-cd <nsx-repo>
-uv run nsx build --app-dir <app-dir> --jobs 8
+nsx build --app-dir <app-dir> --jobs 8
 ```
 
 ## Notes

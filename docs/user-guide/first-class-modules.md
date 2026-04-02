@@ -13,23 +13,27 @@ In NSX, a first-class module is a module that is:
 These are different from:
 
 1. app-local custom modules registered only for one app
-2. local repos that exist in a workspace but are not yet in the packaged
-   registry
+2. local repos that are not yet in the packaged registry
 3. experimental module candidates that have not been promoted into the standard
    catalog yet
+
+First-class status answers: "Is this part of the supported NSX catalog?"
+
+It does not answer: "Where does this app build it from?"
+Apps still build from vendored copies in `app/modules/`.
 
 ## Useful Commands
 
 List the packaged first-class catalog:
 
 ```bash
-uv run nsx module list --registry-only
+nsx module list --registry-only
 ```
 
 List the effective catalog for a specific app and mark enabled modules:
 
 ```bash
-uv run nsx module list --app-dir <app-dir>
+nsx module list --app-dir <app-dir>
 ```
 
 ## How to Read the Catalog
@@ -43,9 +47,9 @@ The current first-class catalog is organized around a few roles:
 5. profiling and instrumentation modules
 6. peripheral access modules
 
-Not every repository under `nsx-modules/` is automatically first-class.
-First-class status means the module is present in the packaged registry and is
-available through the standard CLI workflows.
+Not every module candidate is automatically first-class. First-class status
+means the module is present in the packaged registry and is available through
+the standard CLI workflows.
 
 ## First-Class Module Families
 
@@ -138,18 +142,22 @@ those helpers into the baseline runtime core.
 
 ## What Is Not First-Class Yet
 
-Some module candidates exist in the wider workspace but are not yet part of the
+Some module candidates are not yet part of the
 packaged first-class catalog.
 
 Examples can include:
 
-1. modules that exist locally under `nsx-modules/` but are not yet in the
-   packaged registry
+1. modules that are available only through custom registration or local
+   development workflows and are not yet in the packaged registry
 2. app-local registered modules
 3. future migration targets from legacy `neuralSPOT`
 
 This distinction is important because first-class status is about discoverable,
 supported registry membership, not just repository existence.
+
+For normal app development, NSX handles source resolution and vendoring for
+built-in modules. Users do not need to maintain a separate module-repo checkout
+to use first-class modules.
 
 ## Related Docs
 

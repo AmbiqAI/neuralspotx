@@ -19,8 +19,7 @@ nsx flash [--app-dir APP_DIR] [--board BOARD]
 ## Example
 
 ```bash
-cd <nsx-repo>
-uv run nsx flash --app-dir <app-dir>
+nsx flash --app-dir <app-dir>
 ```
 
 ## Notes

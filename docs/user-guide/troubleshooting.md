@@ -35,7 +35,7 @@ Check:
 - the app prints through the expected SWO path
 - the board-specific SWO settings match the target
 
-The Apollo510 smoke app is a good baseline because it prints periodically.
+A minimal generated app is a good baseline because it prints periodically.
 
 ## The app structure looks wrong
 
@@ -47,4 +47,4 @@ Regenerate or inspect:
 - `app/cmake/nsx/`
 
 If those are inconsistent, re-run module update or regenerate the app from a
-clean workspace.
+clean directory.

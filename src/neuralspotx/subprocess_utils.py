@@ -90,6 +90,40 @@ def format_subprocess_error(exc: subprocess.CalledProcessError, *, context: str)
     return message
 
 
+def git_clone(url: str, dest: Path, *, revision: str | None = None, depth: int = 1) -> None:
+    """Clone a git repo into *dest*, optionally checking out a specific revision."""
+
+    cmd = ["git", "clone", "--single-branch"]
+    if revision:
+        cmd += ["--branch", revision]
+    if depth:
+        cmd += ["--depth", str(depth)]
+    cmd += [url, str(dest)]
+    run(cmd)
+
+
+def git_fetch(repo: Path, *, remote: str = "origin") -> None:
+    """Fetch updates from the remote in an existing clone."""
+
+    run(["git", "fetch", remote], cwd=repo)
+
+
+def git_checkout(repo: Path, revision: str) -> None:
+    """Check out a specific revision in an existing clone."""
+
+    run(["git", "checkout", revision], cwd=repo)
+
+
+def git_current_sha(repo: Path) -> str | None:
+    """Return the HEAD SHA of *repo*, or ``None`` on failure."""
+
+    try:
+        result = run_capture(["git", "rev-parse", "HEAD"], cwd=repo)
+        return result.stdout.strip()
+    except subprocess.CalledProcessError:
+        return None
+
+
 def extract_view_command(build_dir: Path, target: str) -> list[str]:
     """Extract the SWO viewer command for a Ninja target from ``build.ninja``."""
 
