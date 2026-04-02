@@ -23,6 +23,14 @@ lint = [
 test = [
     "pytest>=8.0",
 ]
+examples = [
+    # Host-side tools for example apps (e.g. usb_rpc rpc_host.py).
+    # grpcio-tools bundles protoc + a matching protobuf, eliminating
+    # version-mismatch errors between system protoc and the Python package.
+    # Run: uv sync --group examples
+    "pyserial>=3.5",
+    "grpcio-tools>=1.70",
+]
 
 [build-system]
 requires = ["setuptools>=61.0", "wheel"]

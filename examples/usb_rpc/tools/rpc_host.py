@@ -39,34 +39,38 @@ PROTO_DIR = Path(__file__).parent.parent / "proto"
 PB2_PATH  = Path(__file__).parent / "nsx_rpc_pb2.py"
 
 def _ensure_pb2() -> None:
+    """Generate nsx_rpc_pb2.py if missing or stale (import fails)."""
     if PB2_PATH.exists():
-        return
+        # Validate that the existing file is importable — a stale file
+        # generated against a different protobuf version will fail here.
+        try:
+            import importlib.util as _ilu
+            spec = _ilu.spec_from_file_location("_pb2_probe", PB2_PATH)
+            mod  = _ilu.module_from_spec(spec)   # type: ignore[arg-type]
+            spec.loader.exec_module(mod)          # type: ignore[union-attr]
+            return  # all good
+        except Exception:
+            print(f"Stale {PB2_PATH.name} detected — regenerating ...", flush=True)
+            PB2_PATH.unlink(missing_ok=True)
+
     print(f"Generating {PB2_PATH.name} from proto ...", flush=True)
     import subprocess
+    # grpcio-tools bundles its own protoc that always matches the installed
+    # protobuf Python package — no system-protoc version mismatch possible.
     res = subprocess.run(
-        ["python3", "-m", "grpc_tools.protoc",
+        [sys.executable, "-m", "grpc_tools.protoc",
          f"--proto_path={PROTO_DIR}",
          f"--python_out={PB2_PATH.parent}",
          str(PROTO_DIR / "nsx_rpc.proto")],
         capture_output=True, text=True
     )
     if res.returncode != 0:
-        # Fall back to plain protoc
-        res2 = subprocess.run(
-            ["protoc",
-             f"--proto_path={PROTO_DIR}",
-             f"--python_out={PB2_PATH.parent}",
-             str(PROTO_DIR / "nsx_rpc.proto")],
-            capture_output=True, text=True
-        )
-        if res2.returncode != 0:
-            print("ERROR: could not generate nsx_rpc_pb2.py")
-            print(res2.stderr)
-            sys.exit(1)
-    # Rename the generated file to our canonical path
-    raw = PB2_PATH.parent / "nsx_rpc_pb2.py"
-    if not raw.exists():
-        print("ERROR: protoc ran but nsx_rpc_pb2.py was not created")
+        print("ERROR: could not generate nsx_rpc_pb2.py")
+        print(res.stderr)
+        print("Run: uv sync --group examples   (from the neuralspotx root)")
+        sys.exit(1)
+    if not PB2_PATH.exists():
+        print("ERROR: grpc_tools.protoc ran but nsx_rpc_pb2.py was not created")
         sys.exit(1)
 
 _ensure_pb2()
