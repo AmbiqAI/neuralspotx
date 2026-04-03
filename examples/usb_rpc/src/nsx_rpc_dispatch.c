@@ -19,6 +19,14 @@
 #include "am_mcu_apollo.h"  /* am_hal_timer_count64 for uptime */
 #include "ns_core.h"        /* ns_printf */
 
+/* Shorthand aliases for nanopb-generated enum values. */
+#define NSX_MSG_PING_REQ     NsxRpcMsgType_NSX_MSG_PING_REQ
+#define NSX_MSG_PING_RESP    NsxRpcMsgType_NSX_MSG_PING_RESP
+#define NSX_MSG_INFER_REQ    NsxRpcMsgType_NSX_MSG_INFER_REQ
+#define NSX_MSG_INFER_RESP   NsxRpcMsgType_NSX_MSG_INFER_RESP
+#define NSX_MSG_STATUS_REQ   NsxRpcMsgType_NSX_MSG_STATUS_REQ
+#define NSX_MSG_STATUS_RESP  NsxRpcMsgType_NSX_MSG_STATUS_RESP
+
 /* ------------------------------------------------------------------ */
 /* Configuration                                                       */
 /* ------------------------------------------------------------------ */
