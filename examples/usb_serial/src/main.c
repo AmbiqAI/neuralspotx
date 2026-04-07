@@ -1,14 +1,16 @@
 #include <string.h>
 #include "ns_core.h"
 #include "ns_ambiqsuite_harness.h"
+#include "nsx_mem.h"
 #include "nsx_usb.h"
 
 #define USB_TX_BUF_SIZE  2048
 #define USB_RX_BUF_SIZE  1024   /* >= NSX_USB_MIN_CDC_RX_BUFSIZE */
 #define ECHO_BUF_SIZE    256
 
-static uint8_t g_usb_tx_buf[USB_TX_BUF_SIZE];
-static uint8_t g_usb_rx_buf[USB_RX_BUF_SIZE];
+/* USB DMA buffers — place in SRAM for DMA engine access. */
+static NSX_MEM_SRAM_BSS uint8_t g_usb_tx_buf[USB_TX_BUF_SIZE];
+static NSX_MEM_SRAM_BSS uint8_t g_usb_rx_buf[USB_RX_BUF_SIZE];
 static uint8_t g_echo_buf[ECHO_BUF_SIZE];
 
 int main(void)
@@ -19,6 +21,7 @@ int main(void)
     (void)ns_core_init(&core_cfg);
 
     ns_itm_printf_enable();
+    nsx_cache_enable();
 
     nsx_usb_config_t usb = {
         .tx_buffer       = g_usb_tx_buf,

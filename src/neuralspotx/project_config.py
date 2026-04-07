@@ -396,7 +396,11 @@ def _resolve_app_context(args: argparse.Namespace) -> tuple[Path, dict[str, Any]
 def _load_app_cfg(app_dir: Path) -> dict[str, Any]:
     cfg_path = app_dir / "nsx.yml"
     if not cfg_path.exists():
-        raise SystemExit(f"App config not found: {cfg_path}")
+        raise SystemExit(
+            f"App config not found: {cfg_path}\n"
+            "Run this command from an NSX app directory (containing nsx.yml),\n"
+            "or use 'nsx create-app <app-dir>' to create a new app."
+        )
     cfg = _read_yaml(cfg_path)
     if cfg.get("schema_version") != 1:
         raise SystemExit(f"{cfg_path}: unsupported schema_version={cfg.get('schema_version')}")

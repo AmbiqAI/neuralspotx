@@ -41,6 +41,9 @@ nav:
       - Build, Flash, and View: user-guide/build-flash-view.md
       - Boards and Targets: user-guide/boards-and-targets.md
       - SDK Provider Selection: user-guide/sdk-provider-selection.md
+      - System Initialization: user-guide/system-init.md
+      - Memory Placement: user-guide/memory-placement.md
+      - Startup and Linker Scripts: user-guide/startup-and-linker.md
       - Troubleshooting: user-guide/troubleshooting.md
   - Command Reference:
       - CLI Overview: reference/cli-overview.md

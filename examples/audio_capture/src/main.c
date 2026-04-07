@@ -1,13 +1,15 @@
 #include <string.h>
 #include "ns_core.h"
 #include "ns_ambiqsuite_harness.h"
+#include "nsx_mem.h"
 #include "nsx_audio.h"
 
 #define SAMPLE_RATE   16000
 #define NUM_CHANNELS  1
 #define NUM_SAMPLES   480          /* 30 ms at 16 kHz */
 
-static uint32_t __attribute__((aligned(32)))
+/* DMA buffer must be in SRAM (DMA engine cannot access TCM on Apollo5). */
+static NSX_MEM_SRAM_BSS uint32_t __attribute__((aligned(32)))
     g_dma_buf[NUM_SAMPLES * NUM_CHANNELS * 2];
 
 static int16_t g_pcm_buf[NUM_SAMPLES * NUM_CHANNELS];
@@ -32,6 +34,7 @@ int main(void)
     (void)ns_core_init(&core_cfg);
 
     ns_itm_printf_enable();
+    nsx_cache_enable();
 
     nsx_audio_config_t audio = {
         .source       = NSX_AUDIO_SOURCE_PDM,

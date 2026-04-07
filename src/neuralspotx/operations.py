@@ -165,9 +165,15 @@ def create_app_impl(
         return app_dir
 
     registry = _effective_registry(base_registry, nsx_cfg)
+
+    # Pre-acquire seed modules so their nsx-module.yaml metadata is
+    # available for dependency resolution below.
+    seed_modules = _module_names_from_nsx(nsx_cfg)
+    _acquire_modules_for_app(app_dir, seed_modules, registry)
+
     starter_modules = _resolve_module_closure(
-        _module_names_from_nsx(nsx_cfg),
-        app_dir=None,
+        seed_modules,
+        app_dir=app_dir,
         nsx_cfg=nsx_cfg,
         registry=registry,
         default_toolchain=DEFAULT_TOOLCHAIN,
@@ -175,6 +181,7 @@ def create_app_impl(
     _update_nsx_cfg_modules(nsx_cfg, starter_modules, registry)
     _save_app_cfg(app_dir, nsx_cfg)
     _write_app_module_file(app_dir, nsx_cfg)
+    # Acquire any transitive dependencies discovered during resolution.
     _acquire_modules_for_app(app_dir, starter_modules, registry)
     _write_modules_gitignore(app_dir, nsx_cfg)
     if nsx_cfg.get("profile_status") == "scaffold":
