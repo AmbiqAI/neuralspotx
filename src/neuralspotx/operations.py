@@ -13,14 +13,12 @@ from pathlib import Path
 from .constants import (
     DEFAULT_SOC_FOR_BOARD,
     DEFAULT_TOOLCHAIN,
-    PACKAGED_PROJECT_NAME,
 )
 from .metadata import validate_nsx_module_metadata
 from .models import ModuleEntry, ProjectEntry
 from .module_registry import (
     _acquire_modules_for_app,
     _generate_nsx_config,
-    _is_local_module,
     _load_module_metadata,
     _local_module_names,
     _module_dependents,
@@ -34,16 +32,13 @@ from .project_config import (
     _copy_packaged_tree,
     _default_build_dir,
     _effective_registry,
-    _is_packaged_module,
     _load_app_cfg,
     _load_registry,
     _metadata_storage_path,
-    _module_clone_dir,
     _nsx_tool_major,
     _nsx_tool_version,
     _read_yaml,
     _registry_project_entry,
-    _require_app_config,
     _resolve_app_context,
     _run_cmake_configure,
     _save_app_cfg,

@@ -6,10 +6,10 @@ import argparse
 import copy
 import importlib.resources as resources
 import os
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as package_version
 from pathlib import Path
 from typing import Any
-
-from importlib.metadata import PackageNotFoundError, version as package_version
 
 import yaml
 

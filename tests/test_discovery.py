@@ -2,22 +2,20 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
 import yaml
 
-from neuralspotx.project_config import find_app_root, resolve_app_dir
 from neuralspotx.module_discovery import (
+    compatibility_matches,
+    describe_module,
+    list_modules,
     resolve_module_context,
     resolve_target_context,
-    compatibility_matches,
-    list_modules,
-    describe_module,
     search_modules,
 )
-
+from neuralspotx.project_config import find_app_root, resolve_app_dir
 
 # ------------------------------------------------------------------
 # find_app_root
@@ -293,7 +291,7 @@ class TestValidateModuleMetadata:
         assert data["module"]["name"] == "test-mod"
 
     def test_missing_required_field_raises(self, tmp_path: Path) -> None:
-        from neuralspotx import validate_module_metadata, NSXError
+        from neuralspotx import NSXError, validate_module_metadata
 
         metadata = tmp_path / "nsx-module.yaml"
         metadata.write_text(
@@ -304,13 +302,14 @@ class TestValidateModuleMetadata:
             validate_module_metadata(metadata)
 
     def test_nonexistent_file_raises(self, tmp_path: Path) -> None:
-        from neuralspotx import validate_module_metadata, NSXError
+        from neuralspotx import NSXError, validate_module_metadata
 
         with pytest.raises(NSXError):
             validate_module_metadata(tmp_path / "does-not-exist.yaml")
 
     def test_cli_validate_valid(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
         import argparse
+
         from neuralspotx.cli import cmd_module_validate
 
         metadata = tmp_path / "nsx-module.yaml"
@@ -348,6 +347,7 @@ class TestValidateModuleMetadata:
 
     def test_cli_validate_invalid(self, tmp_path: Path) -> None:
         import argparse
+
         from neuralspotx.cli import cmd_module_validate
 
         metadata = tmp_path / "nsx-module.yaml"

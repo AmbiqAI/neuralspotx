@@ -25,11 +25,13 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import logging
-import os
 import struct
 import sys
 import time
 from pathlib import Path
+
+import serial
+import serial.tools.list_ports
 
 # ---------------------------------------------------------------------------
 # Regenerate the Python protobuf bindings from the .proto if they're missing
@@ -84,16 +86,21 @@ def _ensure_pb2() -> None:
 
 _ensure_pb2()
 
-# Add tools dir so we can import the generated pb2
-sys.path.insert(0, str(PB2_PATH.parent))
-import nsx_rpc_pb2 as pb2  # type: ignore
+
+def _load_pb2():
+    spec = importlib.util.spec_from_file_location("nsx_rpc_pb2", PB2_PATH)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Unable to load protobuf bindings from {PB2_PATH}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+pb2 = _load_pb2()
 
 # ---------------------------------------------------------------------------
 # Serial transport
 # ---------------------------------------------------------------------------
-
-import serial
-import serial.tools.list_ports
 
 LOG = logging.getLogger(__name__)
 

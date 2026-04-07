@@ -7,14 +7,13 @@ from pathlib import Path
 import pytest
 import yaml
 
-import neuralspotx.operations as operations
 import neuralspotx.module_discovery as module_discovery
+import neuralspotx.operations as operations
 from neuralspotx import (
     AppBuildRequest,
     AppCleanRequest,
     AppCreateRequest,
     ModuleRegisterRequest,
-    NSXError,
     add_module,
     build_app,
     clean_app,
@@ -28,8 +27,6 @@ from neuralspotx.project_config import (
     _load_app_cfg,
     _vendored_metadata_relpath,
     _vendored_target_dir,
-    _nsx_tool_major,
-    _nsx_tool_version,
 )
 
 

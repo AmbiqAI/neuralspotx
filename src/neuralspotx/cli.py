@@ -9,7 +9,6 @@ from pathlib import Path
 from typing import Any
 
 from . import operations
-from .constants import DEFAULT_SOC_FOR_BOARD, DEFAULT_TOOLCHAIN
 from .metadata import load_yaml, validate_nsx_module_metadata
 from .module_discovery import (
     resolve_module_context,
@@ -22,8 +21,6 @@ from .module_registry import (
     _print_module_table,
 )
 from .project_config import (
-    _default_build_dir,
-    _resolve_app_context,
     resolve_app_dir,
 )
 from .subprocess_utils import format_subprocess_error

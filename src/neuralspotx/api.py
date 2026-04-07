@@ -8,12 +8,6 @@ from typing import Any
 
 from . import operations
 from .metadata import load_yaml, validate_nsx_module_metadata
-from .module_discovery import (
-    describe_module,
-    list_modules,
-    search_modules,
-)
-from .project_config import find_app_root, resolve_app_dir
 
 PathLike = str | Path
 
