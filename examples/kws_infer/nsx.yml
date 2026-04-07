@@ -30,15 +30,15 @@ modules:
 - name: nsx-core
   revision: main
   project: nsx-core
-- name: nsx-power
-  revision: main
-  project: nsx-power
 - name: nsx-harness
   revision: main
   project: nsx-harness
 - name: nsx-utils
   revision: main
   project: nsx-utils
+- name: nsx-power
+  revision: main
+  project: nsx-power
 - name: nsx-perf
   revision: main
   project: nsx-perf
@@ -50,9 +50,5 @@ modules:
   project: neuralspotx
 features: {}
 module_registry:
-  projects:
-    nsx-power:
-      local_path: /Users/adampage/Ambiq/neuralspot/nsx-modules/nsx-power
-    nsx-pmu-armv8m:
-      local_path: /Users/adampage/Ambiq/neuralspot/nsx-modules/nsx-pmu-armv8m
+  projects: {}
   modules: {}
