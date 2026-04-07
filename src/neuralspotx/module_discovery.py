@@ -93,9 +93,7 @@ def resolve_target_context(
 # ------------------------------------------------------------------
 
 
-def compatibility_matches(
-    record: dict, target_context: dict[str, str] | None
-) -> bool | None:
+def compatibility_matches(record: dict, target_context: dict[str, str] | None) -> bool | None:
     """Check whether *record* is compatible with *target_context*."""
 
     if not record.get("metadata_available"):
@@ -136,11 +134,13 @@ def _search_haystacks(record: dict) -> list[tuple[str, str]]:
         return haystacks
 
     module = record["module"]
-    haystacks.extend([
-        ("module.name", module["name"]),
-        ("module.type", module["type"]),
-        ("module.version", module["version"]),
-    ])
+    haystacks.extend(
+        [
+            ("module.name", module["name"]),
+            ("module.type", module["type"]),
+            ("module.version", module["version"]),
+        ]
+    )
     for field in ("category", "provider"):
         if field in module:
             haystacks.append((f"module.{field}", module[field]))
@@ -299,7 +299,10 @@ def search_modules(
 
     results: list[dict[str, Any]] = []
     for record in _module_discovery_records(
-        registry, enabled, app_dir=resolved_app, include_metadata=True,
+        registry,
+        enabled,
+        app_dir=resolved_app,
+        include_metadata=True,
     ):
         score, matches = _search_score(record, query)
         if score <= 0:

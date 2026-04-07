@@ -72,9 +72,7 @@ def load_registry_lock(path: Path) -> dict[str, Any]:
     data = load_yaml(path)
     schema_version = _expect_type(data, "schema_version", int, "registry.lock")
     if schema_version != 1:
-        raise ValueError(
-            f"registry.lock: unsupported schema_version={schema_version}, expected 1"
-        )
+        raise ValueError(f"registry.lock: unsupported schema_version={schema_version}, expected 1")
     _expect_type(data, "channels", dict, "registry.lock")
     _expect_type(data, "projects", dict, "registry.lock")
     _expect_type(data, "modules", dict, "registry.lock")
@@ -86,9 +84,7 @@ def load_registry_lock(path: Path) -> dict[str, Any]:
 def validate_nsx_module_metadata(data: dict[str, Any], module_path: str) -> None:
     schema_version = _expect_type(data, "schema_version", int, module_path)
     if schema_version != 1:
-        raise ValueError(
-            f"{module_path}: unsupported schema_version={schema_version}, expected 1"
-        )
+        raise ValueError(f"{module_path}: unsupported schema_version={schema_version}, expected 1")
 
     module = _expect_type(data, "module", dict, module_path)
     module_name = _expect_type(module, "name", str, f"{module_path}.module")
@@ -108,9 +104,7 @@ def validate_nsx_module_metadata(data: dict[str, Any], module_path: str) -> None
     ambiqsuite = _expect_type(support, "ambiqsuite", bool, f"{module_path}.support")
     zephyr = _expect_type(support, "zephyr", bool, f"{module_path}.support")
     if not ambiqsuite:
-        raise ValueError(
-            f"{module_path}: support.ambiqsuite=false is invalid for NSX modules"
-        )
+        raise ValueError(f"{module_path}: support.ambiqsuite=false is invalid for NSX modules")
 
     build = _expect_type(data, "build", dict, module_path)
     build_cmake = _expect_type(build, "cmake", dict, f"{module_path}.build")
@@ -124,16 +118,12 @@ def validate_nsx_module_metadata(data: dict[str, Any], module_path: str) -> None
     _expect_type(depends, "optional", list, f"{module_path}.depends")
     for idx, dep_name in enumerate(required):
         if not isinstance(dep_name, str):
-            raise ValueError(
-                f"{module_path}: depends.required[{idx}] must be string module name"
-            )
+            raise ValueError(f"{module_path}: depends.required[{idx}] must be string module name")
 
     compatibility = _expect_type(data, "compatibility", dict, module_path)
     boards = _expect_type(compatibility, "boards", list, f"{module_path}.compatibility")
     socs = _expect_type(compatibility, "socs", list, f"{module_path}.compatibility")
-    toolchains = _expect_type(
-        compatibility, "toolchains", list, f"{module_path}.compatibility"
-    )
+    toolchains = _expect_type(compatibility, "toolchains", list, f"{module_path}.compatibility")
     for field_name, values in (
         ("boards", boards),
         ("socs", socs),
@@ -142,15 +132,11 @@ def validate_nsx_module_metadata(data: dict[str, Any], module_path: str) -> None
         if not values:
             raise ValueError(f"{module_path}: compatibility.{field_name} must not be empty")
         if not all(isinstance(item, str) for item in values):
-            raise ValueError(
-                f"{module_path}: compatibility.{field_name} must contain only strings"
-            )
+            raise ValueError(f"{module_path}: compatibility.{field_name} must contain only strings")
 
     if zephyr:
         integrations = _expect_type(data, "integrations", dict, module_path)
-        zephyr_cfg = _expect_type(
-            integrations, "zephyr", dict, f"{module_path}.integrations"
-        )
+        zephyr_cfg = _expect_type(integrations, "zephyr", dict, f"{module_path}.integrations")
         _expect_type(zephyr_cfg, "path", str, f"{module_path}.integrations.zephyr")
         _expect_type(zephyr_cfg, "module_yml", str, f"{module_path}.integrations.zephyr")
         _expect_type(zephyr_cfg, "kconfig", str, f"{module_path}.integrations.zephyr")
@@ -178,9 +164,7 @@ def validate_nsx_module_metadata(data: dict[str, Any], module_path: str) -> None
         if "required_sdk_provider" in constraints and not isinstance(
             constraints["required_sdk_provider"], str
         ):
-            raise ValueError(
-                f"{module_path}: constraints.required_sdk_provider must be string"
-            )
+            raise ValueError(f"{module_path}: constraints.required_sdk_provider must be string")
 
 
 def registry_entry_for_module(registry: dict[str, Any], module_name: str) -> RegistryModuleEntry:

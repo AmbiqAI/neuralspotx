@@ -291,8 +291,7 @@ def _resolve_profile(registry: dict[str, Any], board: str) -> dict[str, Any]:
     profiles = registry["starter_profiles"]
     if name not in profiles:
         raise SystemExit(
-            f"No starter profile for board '{board}' in registry.lock "
-            f"(expected profile '{name}')."
+            f"No starter profile for board '{board}' in registry.lock (expected profile '{name}')."
         )
     profile = profiles[name]
     if not isinstance(profile, dict):
@@ -511,8 +510,7 @@ def _resolve_module_closure(
     ]
     if len(sdk_providers) > 1:
         raise SystemExit(
-            "Multiple SDK providers resolved in module closure: "
-            + ", ".join(sorted(sdk_providers))
+            "Multiple SDK providers resolved in module closure: " + ", ".join(sorted(sdk_providers))
         )
 
     return resolved

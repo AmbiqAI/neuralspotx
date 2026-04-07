@@ -78,7 +78,6 @@ def _nsx_tool_major(version_text: str | None) -> int | None:
     return int(head) if head.isdigit() else None
 
 
-
 def _check_nsx_version_compatibility(cfg: dict[str, Any], cfg_path: Path) -> None:
     tooling = cfg.get("tooling", {})
     if not isinstance(tooling, dict):

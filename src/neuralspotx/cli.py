@@ -393,7 +393,9 @@ def _print_module_detail(record: dict) -> None:
         print(json.dumps(record["provides"], indent=2, sort_keys=True))
 
 
-def _print_module_search_results(results: list[dict[str, Any]], target_context: dict[str, str] | None) -> None:
+def _print_module_search_results(
+    results: list[dict[str, Any]], target_context: dict[str, str] | None
+) -> None:
     if target_context:
         print(
             "Target context: "
@@ -405,13 +407,23 @@ def _print_module_search_results(results: list[dict[str, Any]], target_context: 
 
     for result in results:
         compat = result.get("compatible")
-        compat_text = "compatible" if compat is True else "incompatible" if compat is False else "compatibility-unknown"
+        compat_text = (
+            "compatible"
+            if compat is True
+            else "incompatible"
+            if compat is False
+            else "compatibility-unknown"
+        )
         print(f"- {result['name']} (score={result['score']}, {compat_text})")
         if result.get("metadata_available"):
             module = result["module"]
-            print(f"  type={module['type']} project={result['project']} targets={', '.join(result['build']['cmake']['targets'])}")
+            print(
+                f"  type={module['type']} project={result['project']} targets={', '.join(result['build']['cmake']['targets'])}"
+            )
         if result["matches"]:
-            preview = ", ".join(f"{item['field']}={item['value']}" for item in result["matches"][:4])
+            preview = ", ".join(
+                f"{item['field']}={item['value']}" for item in result["matches"][:4]
+            )
             print(f"  matched: {preview}")
 
 
@@ -563,7 +575,16 @@ def cmd_module_validate(args: argparse.Namespace) -> None:
         raise SystemExit(f"Validation failed: {exc}") from None
 
     if args.json:
-        print(json.dumps({"valid": True, "path": str(metadata_path), "module": data.get("module", {}).get("name")}, indent=2))
+        print(
+            json.dumps(
+                {
+                    "valid": True,
+                    "path": str(metadata_path),
+                    "module": data.get("module", {}).get("name"),
+                },
+                indent=2,
+            )
+        )
     else:
         module_name = data.get("module", {}).get("name", "(unknown)")
         print(f"Valid: {metadata_path} (module: {module_name})")
@@ -585,17 +606,33 @@ def _build_parser() -> argparse.ArgumentParser:
     p_new = sub.add_parser("create-app", help="Create a new standalone NSX app project")
     p_new.add_argument("app_dir", help="App directory to create")
     p_new.add_argument("--board", default="apollo510_evb", help="Target board package suffix")
-    p_new.add_argument("--soc", default=None, help="Target SoC package suffix (default inferred from board)")
-    p_new.add_argument("--force", action="store_true", help="Allow writing into a non-empty app directory")
-    p_new.add_argument("--no-bootstrap", action="store_true", help="Create the app without initializing starter modules")
+    p_new.add_argument(
+        "--soc", default=None, help="Target SoC package suffix (default inferred from board)"
+    )
+    p_new.add_argument(
+        "--force", action="store_true", help="Allow writing into a non-empty app directory"
+    )
+    p_new.add_argument(
+        "--no-bootstrap",
+        action="store_true",
+        help="Create the app without initializing starter modules",
+    )
     p_new.set_defaults(func=cmd_create_app)
 
     p_new_alias = sub.add_parser("new", help="Alias for create-app")
     p_new_alias.add_argument("app_dir", help="App directory to create")
     p_new_alias.add_argument("--board", default="apollo510_evb", help="Target board package suffix")
-    p_new_alias.add_argument("--soc", default=None, help="Target SoC package suffix (default inferred from board)")
-    p_new_alias.add_argument("--force", action="store_true", help="Allow writing into a non-empty app directory")
-    p_new_alias.add_argument("--no-bootstrap", action="store_true", help="Create the app without initializing starter modules")
+    p_new_alias.add_argument(
+        "--soc", default=None, help="Target SoC package suffix (default inferred from board)"
+    )
+    p_new_alias.add_argument(
+        "--force", action="store_true", help="Allow writing into a non-empty app directory"
+    )
+    p_new_alias.add_argument(
+        "--no-bootstrap",
+        action="store_true",
+        help="Create the app without initializing starter modules",
+    )
     p_new_alias.set_defaults(func=cmd_create_app)
 
     p_doctor = sub.add_parser("doctor", help="Check the local NSX toolchain environment")
@@ -724,7 +761,9 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p_mod_search.add_argument("--board", default=None, help="Optional board compatibility filter")
     p_mod_search.add_argument("--soc", default=None, help="Optional SoC compatibility filter")
-    p_mod_search.add_argument("--toolchain", default=None, help="Optional toolchain compatibility filter")
+    p_mod_search.add_argument(
+        "--toolchain", default=None, help="Optional toolchain compatibility filter"
+    )
     p_mod_search.add_argument(
         "--include-incompatible",
         action="store_true",
@@ -767,7 +806,9 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Refresh enabled modules to current registry revisions",
         description="Refresh vendored modules for an app using the current active registry revisions.",
     )
-    p_mod_update.add_argument("module", nargs="?", default=None, help="Optional single module to refresh")
+    p_mod_update.add_argument(
+        "module", nargs="?", default=None, help="Optional single module to refresh"
+    )
     p_mod_update.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
     p_mod_update.add_argument("--dry-run", action="store_true", help="Show changes without writing")
     p_mod_update.set_defaults(func=cmd_module_update)
@@ -778,15 +819,27 @@ def _build_parser() -> argparse.ArgumentParser:
         description="Register an external module override for a single app and vendor it into that app.",
     )
     p_mod_register.add_argument("module", help="Module name")
-    p_mod_register.add_argument("--metadata", required=True, help="Path to the module's nsx-module.yaml")
-    p_mod_register.add_argument("--project", required=True, help="Registry project key for this module")
+    p_mod_register.add_argument(
+        "--metadata", required=True, help="Path to the module's nsx-module.yaml"
+    )
+    p_mod_register.add_argument(
+        "--project", required=True, help="Registry project key for this module"
+    )
     p_mod_register.add_argument("--project-url", default=None, help="Override git project URL")
-    p_mod_register.add_argument("--project-revision", default=None, help="Override git project revision")
+    p_mod_register.add_argument(
+        "--project-revision", default=None, help="Override git project revision"
+    )
     p_mod_register.add_argument("--project-path", default=None, help="Override git project path")
-    p_mod_register.add_argument("--project-local-path", default=None, help="Local filesystem path to vendor from")
+    p_mod_register.add_argument(
+        "--project-local-path", default=None, help="Local filesystem path to vendor from"
+    )
     p_mod_register.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
-    p_mod_register.add_argument("--override", action="store_true", help="Override existing module entry")
-    p_mod_register.add_argument("--dry-run", action="store_true", help="Show changes without writing")
+    p_mod_register.add_argument(
+        "--override", action="store_true", help="Override existing module entry"
+    )
+    p_mod_register.add_argument(
+        "--dry-run", action="store_true", help="Show changes without writing"
+    )
     p_mod_register.set_defaults(func=cmd_module_register)
 
     p_mod_validate = mod_sub.add_parser(

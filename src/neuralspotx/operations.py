@@ -194,9 +194,7 @@ def create_app_impl(
     print("Next steps:")
     print(f"  1) cd {app_dir}")
     print("  2) Run `nsx configure --app-dir .`")
-    print(
-        "  3) Run `nsx build --app-dir .`, `nsx flash --app-dir .`, or `nsx view --app-dir .`"
-    )
+    print("  3) Run `nsx build --app-dir .`, `nsx flash --app-dir .`, or `nsx view --app-dir .`")
     return app_dir
 
 
@@ -373,7 +371,9 @@ def build_app_impl(
         _ensure_app_modules(resolved_app_dir)
         _run_cmake_configure(resolved_app_dir, resolved_build_dir, resolved_board)
     resolved_target = target or app_name
-    _run(["cmake", "--build", str(resolved_build_dir), "--target", resolved_target, "-j", str(jobs)])
+    _run(
+        ["cmake", "--build", str(resolved_build_dir), "--target", resolved_target, "-j", str(jobs)]
+    )
     return resolved_build_dir
 
 
@@ -577,7 +577,8 @@ def remove_module_impl(
             remaining = [n for n in enabled if n != module_name]
             return [module_name], remaining
         nsx_cfg["modules"] = [
-            m for m in nsx_cfg.get("modules", [])
+            m
+            for m in nsx_cfg.get("modules", [])
             if not (isinstance(m, dict) and m.get("name") == module_name)
         ]
         _save_app_cfg(app_dir, nsx_cfg)
@@ -611,7 +612,9 @@ def remove_module_impl(
     while changed:
         changed = False
         remaining = current - remove_set
-        dependents = _module_dependents(sorted(remaining), registry, app_dir=app_dir, local_modules=local_names)
+        dependents = _module_dependents(
+            sorted(remaining), registry, app_dir=app_dir, local_modules=local_names
+        )
         for mod in list(remaining):
             if mod in protected:
                 continue
