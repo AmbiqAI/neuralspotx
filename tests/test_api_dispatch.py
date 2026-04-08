@@ -39,7 +39,9 @@ def test_invoke_wraps_nonzero_system_exit() -> None:
         _invoke(fail)
 
 
-def test_create_app_dispatches_to_operations(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_create_app_dispatches_to_operations(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
     calls: list[tuple[Path, str, str | None, bool, bool]] = []
 
     def fake_create(
@@ -86,10 +88,14 @@ def test_configure_view_and_clean_dispatch(tmp_path: Path, monkeypatch: pytest.M
     view_calls: list[tuple[Path, str | None, Path | None]] = []
     clean_calls: list[tuple[Path, str | None, Path | None, bool]] = []
 
-    def fake_configure(app_dir: Path, *, board: str | None = None, build_dir: Path | None = None) -> None:
+    def fake_configure(
+        app_dir: Path, *, board: str | None = None, build_dir: Path | None = None
+    ) -> None:
         configure_calls.append((app_dir, board, build_dir))
 
-    def fake_view(app_dir: Path, *, board: str | None = None, build_dir: Path | None = None) -> None:
+    def fake_view(
+        app_dir: Path, *, board: str | None = None, build_dir: Path | None = None
+    ) -> None:
         view_calls.append((app_dir, board, build_dir))
 
     def fake_clean(
@@ -171,9 +177,7 @@ def test_module_change_dispatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
     def fake_add(app_dir: Path, module: str, *, dry_run: bool = False) -> None:
         add_calls.append((app_dir, module, dry_run))
 
-    def fake_remove(
-        app_dir: Path, module: str, *, dry_run: bool = False
-    ) -> None:
+    def fake_remove(app_dir: Path, module: str, *, dry_run: bool = False) -> None:
         remove_calls.append((app_dir, module, dry_run))
 
     def fake_update(

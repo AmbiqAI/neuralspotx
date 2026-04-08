@@ -25,18 +25,21 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import logging
-import os
 import struct
 import sys
 import time
 from pathlib import Path
+
+import serial
+import serial.tools.list_ports
 
 # ---------------------------------------------------------------------------
 # Regenerate the Python protobuf bindings from the .proto if they're missing
 # ---------------------------------------------------------------------------
 
 PROTO_DIR = Path(__file__).parent.parent / "proto"
-PB2_PATH  = Path(__file__).parent / "nsx_rpc_pb2.py"
+PB2_PATH = Path(__file__).parent / "nsx_rpc_pb2.py"
+
 
 def _ensure_pb2() -> None:
     """Generate nsx_rpc_pb2.py if missing or stale (import fails)."""
@@ -45,9 +48,10 @@ def _ensure_pb2() -> None:
         # generated against a different protobuf version will fail here.
         try:
             import importlib.util as _ilu
+
             spec = _ilu.spec_from_file_location("_pb2_probe", PB2_PATH)
-            mod  = _ilu.module_from_spec(spec)   # type: ignore[arg-type]
-            spec.loader.exec_module(mod)          # type: ignore[union-attr]
+            mod = _ilu.module_from_spec(spec)  # type: ignore[arg-type]
+            spec.loader.exec_module(mod)  # type: ignore[union-attr]
             return  # all good
         except Exception:
             print(f"Stale {PB2_PATH.name} detected — regenerating ...", flush=True)
@@ -55,14 +59,20 @@ def _ensure_pb2() -> None:
 
     print(f"Generating {PB2_PATH.name} from proto ...", flush=True)
     import subprocess
+
     # grpcio-tools bundles its own protoc that always matches the installed
     # protobuf Python package — no system-protoc version mismatch possible.
     res = subprocess.run(
-        [sys.executable, "-m", "grpc_tools.protoc",
-         f"--proto_path={PROTO_DIR}",
-         f"--python_out={PB2_PATH.parent}",
-         str(PROTO_DIR / "nsx_rpc.proto")],
-        capture_output=True, text=True
+        [
+            sys.executable,
+            "-m",
+            "grpc_tools.protoc",
+            f"--proto_path={PROTO_DIR}",
+            f"--python_out={PB2_PATH.parent}",
+            str(PROTO_DIR / "nsx_rpc.proto"),
+        ],
+        capture_output=True,
+        text=True,
     )
     if res.returncode != 0:
         print("ERROR: could not generate nsx_rpc_pb2.py")
@@ -73,18 +83,24 @@ def _ensure_pb2() -> None:
         print("ERROR: grpc_tools.protoc ran but nsx_rpc_pb2.py was not created")
         sys.exit(1)
 
+
 _ensure_pb2()
 
-# Add tools dir so we can import the generated pb2
-sys.path.insert(0, str(PB2_PATH.parent))
-import nsx_rpc_pb2 as pb2  # type: ignore
+
+def _load_pb2():
+    spec = importlib.util.spec_from_file_location("nsx_rpc_pb2", PB2_PATH)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Unable to load protobuf bindings from {PB2_PATH}")
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    return module
+
+
+pb2 = _load_pb2()
 
 # ---------------------------------------------------------------------------
 # Serial transport
 # ---------------------------------------------------------------------------
-
-import serial
-import serial.tools.list_ports
 
 LOG = logging.getLogger(__name__)
 
@@ -94,7 +110,7 @@ def _find_port() -> str:
     candidates = serial.tools.list_ports.comports()
     for p in candidates:
         desc = (p.description or "").lower()
-        mfr  = (p.manufacturer or "").lower()
+        mfr = (p.manufacturer or "").lower()
         if "ambiq" in desc or "ambiq" in mfr or "nsx" in desc:
             return p.device
     # Fallback to first usbmodem / ttyACM
@@ -111,8 +127,8 @@ class RpcTransport:
 
     def __init__(self, port: str, baudrate: int = 115200, timeout: float = 5.0) -> None:
         self._ser = serial.Serial(port, baudrate=baudrate, timeout=timeout)
-        self._ser.dtr = True   # Required: device checks DTR for CDC connected
-        time.sleep(0.3)        # Let DTR propagate
+        self._ser.dtr = True  # Required: device checks DTR for CDC connected
+        time.sleep(0.3)  # Let DTR propagate
 
     def close(self) -> None:
         self._ser.close()
@@ -146,6 +162,7 @@ class RpcTransport:
 # RPC helpers
 # ---------------------------------------------------------------------------
 
+
 def ping(t: RpcTransport, seq: int = 0) -> pb2.NsxRpcMessage:  # type: ignore
     req = pb2.NsxRpcMessage(
         type=pb2.NSX_MSG_PING_REQ,
@@ -174,6 +191,7 @@ def status(t: RpcTransport) -> pb2.NsxRpcMessage:  # type: ignore
 # Demo main
 # ---------------------------------------------------------------------------
 
+
 def demo(port: str) -> None:
     print(f"Connecting to {port} ...", flush=True)
     t = RpcTransport(port)
@@ -185,8 +203,7 @@ def demo(port: str) -> None:
         t0 = time.monotonic()
         r = ping(t, seq=i)
         rtt_ms = (time.monotonic() - t0) * 1000
-        print(f"  seq={r.ping_resp.seq}  uptime={r.ping_resp.uptime_ms} ms  "
-              f"RTT={rtt_ms:.1f} ms")
+        print(f"  seq={r.ping_resp.seq}  uptime={r.ping_resp.uptime_ms} ms  RTT={rtt_ms:.1f} ms")
 
     print()
 
@@ -196,19 +213,22 @@ def demo(port: str) -> None:
     s = r.status_resp
     ver = s.firmware_version
     print(f"  board       : {s.board_name.decode()}")
-    print(f"  fw_version  : {(ver>>16)&0xFF}.{(ver>>8)&0xFF}.{ver&0xFF}")
+    print(f"  fw_version  : {(ver >> 16) & 0xFF}.{(ver >> 8) & 0xFF}.{ver & 0xFF}")
     print(f"  free_heap   : {s.free_heap_bytes} bytes")
     print()
 
     # --- Inference ---
     print("=== INFERENCE ===")
     import random
+
     for trial in range(5):
         payload = bytes([random.randint(0, 255) for _ in range(32)])
         r = infer(t, model_id=0, data=payload)
         ir = r.infer_resp
-        print(f"  trial {trial}: class={ir.class_id}  "
-              f"label={ir.label.decode()!r}  conf={ir.confidence:.3f}")
+        print(
+            f"  trial {trial}: class={ir.class_id}  "
+            f"label={ir.label.decode()!r}  conf={ir.confidence:.3f}"
+        )
 
     print()
     t.close()

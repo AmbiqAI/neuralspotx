@@ -6,14 +6,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from . import operations
+from . import module_discovery, operations, project_config
 from .metadata import load_yaml, validate_nsx_module_metadata
-from .module_discovery import (
-    describe_module,
-    list_modules,
-    search_modules,
-)
-from .project_config import find_app_root, resolve_app_dir
 
 PathLike = str | Path
 
@@ -433,3 +427,66 @@ def validate_module_metadata(
     except (ValueError, SystemExit) as exc:
         raise NSXError(str(exc)) from None
     return data
+
+
+def find_app_root(start: PathLike | None = None) -> Path | None:
+    """Find the nearest app root containing ``nsx.yml``."""
+
+    return project_config.find_app_root(
+        Path(start).expanduser().resolve() if start is not None else None
+    )
+
+
+def resolve_app_dir(explicit: PathLike | None) -> Path:
+    """Resolve an app directory from an explicit path or upward search."""
+
+    return project_config.resolve_app_dir(explicit)
+
+
+def list_modules(
+    *,
+    app_dir: PathLike | None = None,
+    registry_only: bool = False,
+    include_metadata: bool = True,
+) -> list[dict[str, Any]]:
+    """List available modules from the effective registry context."""
+
+    return module_discovery.list_modules(
+        app_dir=Path(app_dir).expanduser().resolve() if app_dir is not None else None,
+        registry_only=registry_only,
+        include_metadata=include_metadata,
+    )
+
+
+def describe_module(
+    module: str,
+    *,
+    app_dir: PathLike | None = None,
+) -> dict[str, Any]:
+    """Describe a single module from the effective registry context."""
+
+    return module_discovery.describe_module(
+        module,
+        app_dir=Path(app_dir).expanduser().resolve() if app_dir is not None else None,
+    )
+
+
+def search_modules(
+    query: str,
+    *,
+    app_dir: PathLike | None = None,
+    board: str | None = None,
+    soc: str | None = None,
+    toolchain: str | None = None,
+    include_incompatible: bool = False,
+) -> list[dict[str, Any]]:
+    """Search modules by keyword and target compatibility context."""
+
+    return module_discovery.search_modules(
+        query,
+        app_dir=Path(app_dir).expanduser().resolve() if app_dir is not None else None,
+        board=board,
+        soc=soc,
+        toolchain=toolchain,
+        include_incompatible=include_incompatible,
+    )

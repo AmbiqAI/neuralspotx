@@ -6,10 +6,10 @@ import argparse
 import copy
 import importlib.resources as resources
 import os
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as package_version
 from pathlib import Path
 from typing import Any
-
-from importlib.metadata import PackageNotFoundError, version as package_version
 
 import yaml
 
@@ -76,7 +76,6 @@ def _nsx_tool_major(version_text: str | None) -> int | None:
         return None
     head = version_text.split(".", 1)[0]
     return int(head) if head.isdigit() else None
-
 
 
 def _check_nsx_version_compatibility(cfg: dict[str, Any], cfg_path: Path) -> None:

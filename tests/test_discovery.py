@@ -2,22 +2,20 @@
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pytest
 import yaml
 
-from neuralspotx.project_config import find_app_root, resolve_app_dir
 from neuralspotx.module_discovery import (
+    compatibility_matches,
+    describe_module,
+    list_modules,
     resolve_module_context,
     resolve_target_context,
-    compatibility_matches,
-    list_modules,
-    describe_module,
     search_modules,
 )
-
+from neuralspotx.project_config import find_app_root, resolve_app_dir
 
 # ------------------------------------------------------------------
 # find_app_root
@@ -60,7 +58,9 @@ class TestFindAppRoot:
         # nsx.yml is at the .git level — should be found
         assert find_app_root(tmp_path) == tmp_path
 
-    def test_defaults_to_cwd_when_start_is_none(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_defaults_to_cwd_when_start_is_none(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         (tmp_path / "nsx.yml").write_text("target:\n  board: apollo510_evb\n")
         monkeypatch.chdir(tmp_path)
         assert find_app_root() == tmp_path
@@ -81,7 +81,9 @@ class TestResolveAppDir:
         result = resolve_app_dir(str(target))
         assert result == target.resolve()
 
-    def test_dot_triggers_upward_walk(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_dot_triggers_upward_walk(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         (tmp_path / "nsx.yml").write_text("target:\n  board: apollo510_evb\n")
         child = tmp_path / "src"
         child.mkdir()
@@ -89,13 +91,17 @@ class TestResolveAppDir:
         result = resolve_app_dir(".")
         assert result == tmp_path
 
-    def test_none_triggers_upward_walk(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_none_triggers_upward_walk(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         (tmp_path / "nsx.yml").write_text("target:\n  board: apollo510_evb\n")
         monkeypatch.chdir(tmp_path)
         result = resolve_app_dir(None)
         assert result == tmp_path
 
-    def test_falls_back_to_dot_when_not_found(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    def test_falls_back_to_dot_when_not_found(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         monkeypatch.chdir(tmp_path)
         # No nsx.yml anywhere reachable — should fall back to "."
         result = resolve_app_dir(".")
@@ -255,34 +261,37 @@ class TestValidateModuleMetadata:
 
         metadata = tmp_path / "nsx-module.yaml"
         metadata.write_text(
-            "\n".join([
-                "schema_version: 1",
-                "module:",
-                "  name: test-mod",
-                "  type: runtime",
-                '  version: "0.1.0"',
-                "support:",
-                "  ambiqsuite: true",
-                "  zephyr: false",
-                "build:",
-                "  cmake:",
-                "    package: test_mod",
-                "    targets: [test_mod]",
-                "depends:",
-                "  required: []",
-                "  optional: []",
-                "compatibility:",
-                '  boards: ["*"]',
-                '  socs: ["*"]',
-                '  toolchains: ["arm-none-eabi-gcc"]',
-            ]) + "\n",
+            "\n".join(
+                [
+                    "schema_version: 1",
+                    "module:",
+                    "  name: test-mod",
+                    "  type: runtime",
+                    '  version: "0.1.0"',
+                    "support:",
+                    "  ambiqsuite: true",
+                    "  zephyr: false",
+                    "build:",
+                    "  cmake:",
+                    "    package: test_mod",
+                    "    targets: [test_mod]",
+                    "depends:",
+                    "  required: []",
+                    "  optional: []",
+                    "compatibility:",
+                    '  boards: ["*"]',
+                    '  socs: ["*"]',
+                    '  toolchains: ["arm-none-eabi-gcc"]',
+                ]
+            )
+            + "\n",
             encoding="utf-8",
         )
         data = validate_module_metadata(metadata)
         assert data["module"]["name"] == "test-mod"
 
     def test_missing_required_field_raises(self, tmp_path: Path) -> None:
-        from neuralspotx import validate_module_metadata, NSXError
+        from neuralspotx import NSXError, validate_module_metadata
 
         metadata = tmp_path / "nsx-module.yaml"
         metadata.write_text(
@@ -293,38 +302,42 @@ class TestValidateModuleMetadata:
             validate_module_metadata(metadata)
 
     def test_nonexistent_file_raises(self, tmp_path: Path) -> None:
-        from neuralspotx import validate_module_metadata, NSXError
+        from neuralspotx import NSXError, validate_module_metadata
 
         with pytest.raises(NSXError):
             validate_module_metadata(tmp_path / "does-not-exist.yaml")
 
     def test_cli_validate_valid(self, tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> None:
         import argparse
+
         from neuralspotx.cli import cmd_module_validate
 
         metadata = tmp_path / "nsx-module.yaml"
         metadata.write_text(
-            "\n".join([
-                "schema_version: 1",
-                "module:",
-                "  name: cli-test",
-                "  type: runtime",
-                '  version: "1.0.0"',
-                "support:",
-                "  ambiqsuite: true",
-                "  zephyr: false",
-                "build:",
-                "  cmake:",
-                "    package: cli_test",
-                "    targets: [cli_test]",
-                "depends:",
-                "  required: []",
-                "  optional: []",
-                "compatibility:",
-                '  boards: ["*"]',
-                '  socs: ["*"]',
-                '  toolchains: ["arm-none-eabi-gcc"]',
-            ]) + "\n",
+            "\n".join(
+                [
+                    "schema_version: 1",
+                    "module:",
+                    "  name: cli-test",
+                    "  type: runtime",
+                    '  version: "1.0.0"',
+                    "support:",
+                    "  ambiqsuite: true",
+                    "  zephyr: false",
+                    "build:",
+                    "  cmake:",
+                    "    package: cli_test",
+                    "    targets: [cli_test]",
+                    "depends:",
+                    "  required: []",
+                    "  optional: []",
+                    "compatibility:",
+                    '  boards: ["*"]',
+                    '  socs: ["*"]',
+                    '  toolchains: ["arm-none-eabi-gcc"]',
+                ]
+            )
+            + "\n",
             encoding="utf-8",
         )
         cmd_module_validate(argparse.Namespace(metadata=str(metadata), json=False))
@@ -334,6 +347,7 @@ class TestValidateModuleMetadata:
 
     def test_cli_validate_invalid(self, tmp_path: Path) -> None:
         import argparse
+
         from neuralspotx.cli import cmd_module_validate
 
         metadata = tmp_path / "nsx-module.yaml"

@@ -7,14 +7,13 @@ from pathlib import Path
 import pytest
 import yaml
 
-import neuralspotx.operations as operations
 import neuralspotx.module_discovery as module_discovery
+import neuralspotx.operations as operations
 from neuralspotx import (
     AppBuildRequest,
     AppCleanRequest,
     AppCreateRequest,
     ModuleRegisterRequest,
-    NSXError,
     add_module,
     build_app,
     clean_app,
@@ -28,8 +27,6 @@ from neuralspotx.project_config import (
     _load_app_cfg,
     _vendored_metadata_relpath,
     _vendored_target_dir,
-    _nsx_tool_major,
-    _nsx_tool_version,
 )
 
 
@@ -114,9 +111,11 @@ def _write_searchable_module_metadata(
         '  toolchains: ["arm-none-eabi-gcc"]',
     ]
     if summary:
-        lines.extend([
-            f"summary: {summary}",
-        ])
+        lines.extend(
+            [
+                f"summary: {summary}",
+            ]
+        )
     if capabilities:
         lines.extend(
             [
@@ -167,7 +166,11 @@ def _fake_registry_for_module(metadata_path: Path, module_name: str = "local-dem
 def test_app_major_version_mismatch_requires_bypass(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    create_app(AppCreateRequest(app_dir=tmp_path / "hello_version", board="apollo510_evb", no_bootstrap=True))
+    create_app(
+        AppCreateRequest(
+            app_dir=tmp_path / "hello_version", board="apollo510_evb", no_bootstrap=True
+        )
+    )
 
     app_dir = tmp_path / "hello_version"
     cfg_path = app_dir / "nsx.yml"
@@ -196,7 +199,9 @@ def test_vendored_module_metadata_path_stays_under_single_modules_root(tmp_path:
 
 
 def test_register_local_module_persists_relative_metadata_path(tmp_path: Path) -> None:
-    create_app(AppCreateRequest(app_dir=tmp_path / "hello_local", board="apollo510_evb", no_bootstrap=True))
+    create_app(
+        AppCreateRequest(app_dir=tmp_path / "hello_local", board="apollo510_evb", no_bootstrap=True)
+    )
 
     app_dir = tmp_path / "hello_local"
     metadata_path = app_dir / "local-module.yaml"
@@ -221,7 +226,9 @@ def test_cmd_module_list_json_outputs_structured_records(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     metadata_path = _write_local_module_project(tmp_path / "modules" / "local-demo")
-    monkeypatch.setattr(module_discovery, "_load_registry", lambda: _fake_registry_for_module(metadata_path))
+    monkeypatch.setattr(
+        module_discovery, "_load_registry", lambda: _fake_registry_for_module(metadata_path)
+    )
 
     cli.cmd_module_list(
         argparse.Namespace(
@@ -245,7 +252,9 @@ def test_cmd_module_describe_json_uses_app_effective_registry(
     app_dir = tmp_path / "apps" / "demo"
     app_dir.mkdir(parents=True)
 
-    monkeypatch.setattr(module_discovery, "_load_registry", lambda: _fake_registry_for_module(metadata_path))
+    monkeypatch.setattr(
+        module_discovery, "_load_registry", lambda: _fake_registry_for_module(metadata_path)
+    )
     monkeypatch.setattr(
         module_discovery,
         "_load_app_cfg",
@@ -291,9 +300,7 @@ def test_cmd_commands_json_outputs_command_graph(
     assert top_level["nsx create-app"]["category"] == "app-creation"
     assert "nsx configure" in top_level["nsx create-app"]["next_commands"]
 
-    module_subcommands = {
-        item["command"]: item for item in top_level["nsx module"]["subcommands"]
-    }
+    module_subcommands = {item["command"]: item for item in top_level["nsx module"]["subcommands"]}
     assert "nsx module describe" in module_subcommands
     assert any(
         option["flags"] == ["--json"]
@@ -371,7 +378,9 @@ def test_cmd_module_search_json_matches_capability_terms(
     )
 
     payload = json.loads(capsys.readouterr().out)
-    assert [item["name"] for item in payload["results"]] == ["perf-demo", "pmu-demo"] or [item["name"] for item in payload["results"]] == ["pmu-demo", "perf-demo"]
+    assert [item["name"] for item in payload["results"]] == ["perf-demo", "pmu-demo"] or [
+        item["name"] for item in payload["results"]
+    ] == ["pmu-demo", "perf-demo"]
     assert all(item["score"] > 0 for item in payload["results"])
     assert any(
         match["field"] in {"capabilities", "provides.features", "summary", "use_cases"}
@@ -471,7 +480,9 @@ def test_validate_nsx_module_metadata_accepts_semantic_fields(tmp_path: Path) ->
 
 
 def test_full_clean_removes_build_directory(tmp_path: Path) -> None:
-    create_app(AppCreateRequest(app_dir=tmp_path / "hello_clean", board="apollo510_evb", no_bootstrap=True))
+    create_app(
+        AppCreateRequest(app_dir=tmp_path / "hello_clean", board="apollo510_evb", no_bootstrap=True)
+    )
 
     build_dir = tmp_path / "hello_clean" / "build" / "apollo510_evb"
     build_dir.mkdir(parents=True)
@@ -488,7 +499,11 @@ def test_full_clean_removes_build_directory(tmp_path: Path) -> None:
 
 
 def test_local_module_round_trip_add_update_remove(tmp_path: Path) -> None:
-    create_app(AppCreateRequest(app_dir=tmp_path / "hello_modules", board="apollo510_evb", no_bootstrap=True))
+    create_app(
+        AppCreateRequest(
+            app_dir=tmp_path / "hello_modules", board="apollo510_evb", no_bootstrap=True
+        )
+    )
 
     app_dir = tmp_path / "hello_modules"
     project_root = tmp_path / "local-projects" / "local-demo"
@@ -524,7 +539,9 @@ def test_local_module_round_trip_add_update_remove(tmp_path: Path) -> None:
 def test_build_app_uses_shared_impl_and_triggers_configure_when_needed(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    create_app(AppCreateRequest(app_dir=tmp_path / "hello_build", board="apollo510_evb", no_bootstrap=True))
+    create_app(
+        AppCreateRequest(app_dir=tmp_path / "hello_build", board="apollo510_evb", no_bootstrap=True)
+    )
 
     app_dir = tmp_path / "hello_build"
     build_dir = app_dir / "build" / "apollo510_evb"

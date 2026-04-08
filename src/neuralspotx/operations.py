@@ -13,14 +13,12 @@ from pathlib import Path
 from .constants import (
     DEFAULT_SOC_FOR_BOARD,
     DEFAULT_TOOLCHAIN,
-    PACKAGED_PROJECT_NAME,
 )
 from .metadata import validate_nsx_module_metadata
 from .models import ModuleEntry, ProjectEntry
 from .module_registry import (
     _acquire_modules_for_app,
     _generate_nsx_config,
-    _is_local_module,
     _load_module_metadata,
     _local_module_names,
     _module_dependents,
@@ -34,16 +32,13 @@ from .project_config import (
     _copy_packaged_tree,
     _default_build_dir,
     _effective_registry,
-    _is_packaged_module,
     _load_app_cfg,
     _load_registry,
     _metadata_storage_path,
-    _module_clone_dir,
     _nsx_tool_major,
     _nsx_tool_version,
     _read_yaml,
     _registry_project_entry,
-    _require_app_config,
     _resolve_app_context,
     _run_cmake_configure,
     _save_app_cfg,
@@ -194,9 +189,7 @@ def create_app_impl(
     print("Next steps:")
     print(f"  1) cd {app_dir}")
     print("  2) Run `nsx configure --app-dir .`")
-    print(
-        "  3) Run `nsx build --app-dir .`, `nsx flash --app-dir .`, or `nsx view --app-dir .`"
-    )
+    print("  3) Run `nsx build --app-dir .`, `nsx flash --app-dir .`, or `nsx view --app-dir .`")
     return app_dir
 
 
@@ -373,7 +366,9 @@ def build_app_impl(
         _ensure_app_modules(resolved_app_dir)
         _run_cmake_configure(resolved_app_dir, resolved_build_dir, resolved_board)
     resolved_target = target or app_name
-    _run(["cmake", "--build", str(resolved_build_dir), "--target", resolved_target, "-j", str(jobs)])
+    _run(
+        ["cmake", "--build", str(resolved_build_dir), "--target", resolved_target, "-j", str(jobs)]
+    )
     return resolved_build_dir
 
 
@@ -577,7 +572,8 @@ def remove_module_impl(
             remaining = [n for n in enabled if n != module_name]
             return [module_name], remaining
         nsx_cfg["modules"] = [
-            m for m in nsx_cfg.get("modules", [])
+            m
+            for m in nsx_cfg.get("modules", [])
             if not (isinstance(m, dict) and m.get("name") == module_name)
         ]
         _save_app_cfg(app_dir, nsx_cfg)
@@ -611,7 +607,9 @@ def remove_module_impl(
     while changed:
         changed = False
         remaining = current - remove_set
-        dependents = _module_dependents(sorted(remaining), registry, app_dir=app_dir, local_modules=local_names)
+        dependents = _module_dependents(
+            sorted(remaining), registry, app_dir=app_dir, local_modules=local_names
+        )
         for mod in list(remaining):
             if mod in protected:
                 continue

@@ -7,14 +7,12 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-from .constants import PACKAGED_PROJECT_NAME
 from .metadata import (
     RegistryModuleEntry,
     is_compatible,
     registry_entry_for_module,
     validate_nsx_module_metadata,
 )
-from .models import ProjectEntry
 from .project_config import (
     _is_packaged_module,
     _metadata_path_relative_to_project,
@@ -25,16 +23,11 @@ from .project_config import (
     _unique_preserving_order,
     _vendored_metadata_relpath,
     _vendored_target_dir,
-    _write_yaml,
 )
 from .subprocess_utils import (
-    git_checkout,
     git_clone,
-    git_current_sha,
-    git_fetch,
 )
 from .tooling import require_tool as _require_tool
-from .tooling import tool_cmd as _tool_cmd
 
 
 def _module_metadata_path(
@@ -291,8 +284,7 @@ def _resolve_profile(registry: dict[str, Any], board: str) -> dict[str, Any]:
     profiles = registry["starter_profiles"]
     if name not in profiles:
         raise SystemExit(
-            f"No starter profile for board '{board}' in registry.lock "
-            f"(expected profile '{name}')."
+            f"No starter profile for board '{board}' in registry.lock (expected profile '{name}')."
         )
     profile = profiles[name]
     if not isinstance(profile, dict):
@@ -511,8 +503,7 @@ def _resolve_module_closure(
     ]
     if len(sdk_providers) > 1:
         raise SystemExit(
-            "Multiple SDK providers resolved in module closure: "
-            + ", ".join(sorted(sdk_providers))
+            "Multiple SDK providers resolved in module closure: " + ", ".join(sorted(sdk_providers))
         )
 
     return resolved
