@@ -31,17 +31,18 @@ except ImportError:
 
 # ── Accumulation state ──────────────────────────────────────
 
+
 class PhaseStats:
     """Accumulate Joulescope statistics for a named phase."""
 
     def __init__(self, name: str):
         self.name = name
         self.samples = 0
-        self.current_sum = 0.0   # amps
-        self.voltage_sum = 0.0   # volts
-        self.power_sum = 0.0     # watts
-        self.charge = 0.0        # coulombs
-        self.energy = 0.0        # joules
+        self.current_sum = 0.0  # amps
+        self.voltage_sum = 0.0  # volts
+        self.power_sum = 0.0  # watts
+        self.charge = 0.0  # coulombs
+        self.energy = 0.0  # joules
         self.start_time = None
         self.total_seconds = 0.0
 
@@ -86,7 +87,7 @@ class PhaseStats:
 
 active_stats = PhaseStats("ACTIVE")
 sleep_stats = PhaseStats("SLEEP")
-current_phase = None        # "active", "sleep", or None
+current_phase = None  # "active", "sleep", or None
 last_gpi = None
 
 
@@ -98,6 +99,7 @@ stats_queue = queue.Queue()
 def stats_callback_factory(device):
     def cbk(data, indicator=None):
         stats_queue.put(data)
+
     return cbk
 
 
@@ -147,20 +149,29 @@ def drain_queue():
 
 # ── Main ────────────────────────────────────────────────────
 
+
 def main():
     parser = argparse.ArgumentParser(description="Joulescope capture for NSX benchmarks")
-    parser.add_argument("--duration", type=float, default=0,
-                        help="Capture duration in seconds (0 = until Ctrl-C)")
-    parser.add_argument("--io-voltage", default="1.8V", choices=["1.8V", "3.3V"],
-                        help="Joulescope GPIO voltage level (default: 1.8V)")
-    parser.add_argument("--reduction-freq", default="50 Hz",
-                        help="Statistics reduction frequency (default: 50 Hz)")
+    parser.add_argument(
+        "--duration", type=float, default=0, help="Capture duration in seconds (0 = until Ctrl-C)"
+    )
+    parser.add_argument(
+        "--io-voltage",
+        default="1.8V",
+        choices=["1.8V", "3.3V"],
+        help="Joulescope GPIO voltage level (default: 1.8V)",
+    )
+    parser.add_argument(
+        "--reduction-freq", default="50 Hz", help="Statistics reduction frequency (default: 50 Hz)"
+    )
     args = parser.parse_args()
 
     quit_flag = False
+
     def on_sigint(*_):
         nonlocal quit_flag
         quit_flag = True
+
     signal.signal(signal.SIGINT, on_sigint)
 
     devices = scan(config="auto")

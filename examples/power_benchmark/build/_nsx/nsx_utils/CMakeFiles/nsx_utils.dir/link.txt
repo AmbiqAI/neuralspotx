@@ -1,2 +1,0 @@
-/usr/bin/ar qc libnsx_utils.a CMakeFiles/nsx_utils.dir/src/ns_energy_monitor.c.o CMakeFiles/nsx_utils.dir/src/ns_ring_buffer.c.o CMakeFiles/nsx_utils.dir/src/ns_timer.c.o CMakeFiles/nsx_utils.dir/src/apollo5/ns_power_profile.c.o CMakeFiles/nsx_utils.dir/src/apollo5/ns_timer_ap5.c.o
-/usr/bin/ranlib libnsx_utils.a

@@ -1,2 +1,0 @@
-/usr/bin/ar qc libnsx_harness.a "CMakeFiles/nsx_harness.dir/src/ns-ambiqsuite-harness.c.o"
-/usr/bin/ranlib libnsx_harness.a

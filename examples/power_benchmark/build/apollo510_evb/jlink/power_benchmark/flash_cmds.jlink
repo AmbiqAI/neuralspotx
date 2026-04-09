@@ -1,6 +1,0 @@
-ExitOnError 1
-Reset
-LoadFile /Users/adampage/Ambiq/neuralspot/neuralspotx/examples/power_benchmark/build/apollo510_evb/power_benchmark.bin, 0x00410000
-Reset
-Go
-Exit
