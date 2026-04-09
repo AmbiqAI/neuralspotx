@@ -1,0 +1,16 @@
+{
+	"InstallScripts" : 
+	[
+		"/Users/adampage/Ambiq/neuralspot/neuralspotx/examples/power_benchmark/build/apollo510_evb/cmake_install.cmake",
+		"/Users/adampage/Ambiq/neuralspot/neuralspotx/examples/power_benchmark/build/apollo510_evb/_nsx/nsx_ambiqsuite_r5/cmake_install.cmake",
+		"/Users/adampage/Ambiq/neuralspot/neuralspotx/examples/power_benchmark/build/apollo510_evb/_nsx/nsx_ambiq_hal_r5/cmake_install.cmake",
+		"/Users/adampage/Ambiq/neuralspot/neuralspotx/examples/power_benchmark/build/apollo510_evb/_nsx/nsx_ambiq_bsp_r5/cmake_install.cmake",
+		"/Users/adampage/Ambiq/neuralspot/neuralspotx/examples/power_benchmark/build/apollo510_evb/_nsx/nsx_soc_hal/cmake_install.cmake",
+		"/Users/adampage/Ambiq/neuralspot/neuralspotx/examples/power_benchmark/build/apollo510_evb/_nsx/nsx_cmsis_startup/cmake_install.cmake",
+		"/Users/adampage/Ambiq/neuralspot/neuralspotx/examples/power_benchmark/build/apollo510_evb/_nsx/nsx_core/cmake_install.cmake",
+		"/Users/adampage/Ambiq/neuralspot/neuralspotx/examples/power_benchmark/build/apollo510_evb/_nsx/nsx_harness/cmake_install.cmake",
+		"/Users/adampage/Ambiq/neuralspot/neuralspotx/examples/power_benchmark/build/apollo510_evb/_nsx/nsx_utils/cmake_install.cmake",
+		"/Users/adampage/Ambiq/neuralspot/neuralspotx/examples/power_benchmark/build/apollo510_evb/_nsx/nsx_power/cmake_install.cmake"
+	],
+	"Parallel" : false
+}

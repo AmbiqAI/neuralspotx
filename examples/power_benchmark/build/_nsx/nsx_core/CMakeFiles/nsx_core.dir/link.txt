@@ -1,0 +1,2 @@
+/usr/bin/ar qc libnsx_core.a CMakeFiles/nsx_core.dir/src/ns_core.c.o CMakeFiles/nsx_core.dir/src/nsx_system.c.o CMakeFiles/nsx_core.dir/src/apollo510/nsx_system_platform.c.o
+/usr/bin/ranlib libnsx_core.a

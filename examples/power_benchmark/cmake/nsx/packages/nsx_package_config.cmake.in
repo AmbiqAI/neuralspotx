@@ -1,0 +1,12 @@
+@PACKAGE_INIT@
+
+set(NSX_ROOT "${PACKAGE_PREFIX_DIR}")
+set(NSX_CMAKE_DIR "${PACKAGE_PREFIX_DIR}/@NSX_INSTALL_CMAKE_DIR@")
+
+if(EXISTS "${PACKAGE_PREFIX_DIR}/@CMAKE_INSTALL_LIBDIR@/cmake/nsx/nsxTargets.cmake")
+    include("${PACKAGE_PREFIX_DIR}/@CMAKE_INSTALL_LIBDIR@/cmake/nsx/nsxTargets.cmake")
+endif()
+
+if(EXISTS "${NSX_CMAKE_DIR}/nsx_helpers.cmake")
+    include("${NSX_CMAKE_DIR}/nsx_helpers.cmake")
+endif()

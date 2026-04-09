@@ -1,0 +1,2 @@
+/usr/bin/ar qc libnsx_ambiq_hal.a "CMakeFiles/nsx_ambiq_hal.dir/__/nsx-ambiqsuite-r5/sdk/src/am_util_stdio.c.o" "CMakeFiles/nsx_ambiq_hal.dir/__/nsx-ambiqsuite-r5/sdk/src/am_util_delay.c.o" "CMakeFiles/nsx_ambiq_hal.dir/__/nsx-ambiqsuite-r5/sdk/src/am_util_pmu.c.o"
+/usr/bin/ranlib libnsx_ambiq_hal.a

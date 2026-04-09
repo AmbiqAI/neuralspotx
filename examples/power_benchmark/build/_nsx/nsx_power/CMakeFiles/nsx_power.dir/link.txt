@@ -1,0 +1,2 @@
+/usr/bin/ar qc libnsx_power.a CMakeFiles/nsx_power.dir/src/ns_power.c.o CMakeFiles/nsx_power.dir/src/apollo5/ns_power.c.o
+/usr/bin/ranlib libnsx_power.a

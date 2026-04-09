@@ -1,0 +1,2 @@
+/usr/bin/ar qc libnsx_startup.a "CMakeFiles/nsx_startup.dir/__/nsx-core/src/apollo510/gcc/startup_gcc.c.o" "CMakeFiles/nsx_startup.dir/__/nsx-ambiqsuite-r5/sdk/src/apollo510/system_apollo510.c.o"
+/usr/bin/ranlib libnsx_startup.a

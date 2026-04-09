@@ -1,0 +1,49 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint C sources
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clang-format
+        run: sudo apt-get install -y clang-format-18
+
+      - name: Check formatting (advisory)
+        continue-on-error: true
+        run: |
+          find includes-api src \
+            -name '*.c' -o -name '*.h' \
+          | xargs clang-format-18 --dry-run --Werror --style=file:.clang-format 2>&1 \
+          || echo "::warning::Some files need formatting. Run: clang-format -i <files>"
+
+  version-check:
+    name: Validate version consistency
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check nsx-module.yaml version field exists
+        run: |
+          version=$(grep '^  version:' nsx-module.yaml | head -1 | sed 's/.*"\(.*\)"/\1/')
+          if [ -z "$version" ]; then
+            echo "ERROR: No version field in nsx-module.yaml"
+            exit 1
+          fi
+          echo "Module version: $version"
+          echo "MODULE_VERSION=$version" >> "$GITHUB_ENV"
+
+      - name: Verify semver format
+        run: |
+          echo "$MODULE_VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?$' \
+            || { echo "Version '$MODULE_VERSION' is not valid semver"; exit 1; }

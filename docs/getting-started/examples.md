@@ -10,9 +10,13 @@ app — clone the repo and you can configure, build, and flash straight away.
 | Directory | Extra modules | What it shows |
 |---|---|---|
 | [`hello_world`](https://github.com/AmbiqAI/neuralspotx/tree/main/examples/hello_world) | *(base profile only)* | Minimal app — SWO printf loop |
+| [`power_benchmark`](https://github.com/AmbiqAI/neuralspotx/tree/main/examples/power_benchmark) | `nsx-power` | Power measurement: CoreMark, while(1), deep sleep |
+| [`coremark`](https://github.com/AmbiqAI/neuralspotx/tree/main/examples/coremark) | `nsx-power` | EEMBC CoreMark with ITCM + NVM shutdown |
+| [`kws_infer`](https://github.com/AmbiqAI/neuralspotx/tree/main/examples/kws_infer) | `cmsis-nn` | Keyword-spotting TFLite Micro inference |
 | [`pmu_profiling`](https://github.com/AmbiqAI/neuralspotx/tree/main/examples/pmu_profiling) | `nsx-pmu-armv8m` | PMU cycle / event counting |
 | [`audio_capture`](https://github.com/AmbiqAI/neuralspotx/tree/main/examples/audio_capture) | `nsx-audio` | PDM microphone capture + SWO stats |
 | [`usb_serial`](https://github.com/AmbiqAI/neuralspotx/tree/main/examples/usb_serial) | `nsx-usb` | USB CDC echo |
+| [`usb_rpc`](https://github.com/AmbiqAI/neuralspotx/tree/main/examples/usb_rpc) | `nsx-usb`, `nsx-nanopb` | USB RPC with protobuf serialization |
 
 All examples target the **Apollo510 EVB** (`apollo510_evb` profile).
 
