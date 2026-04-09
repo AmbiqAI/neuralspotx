@@ -17,13 +17,10 @@ Requires:  pip install joulescope
 """
 
 import argparse
-import datetime
 import queue
 import signal
 import sys
 import time
-
-import numpy as np
 
 try:
     from joulescope import scan
@@ -223,7 +220,7 @@ def main():
 
     if active_stats.avg_power_mw > 0:
         print(f"\n  CoreMark/mW = CoreMark_score / {active_stats.avg_power_mw:.3f} mW")
-        print(f"  (plug in your CoreMark score from SWO output)")
+        print("  (plug in your CoreMark score from SWO output)")
 
     print("=" * 72)
     return 0
