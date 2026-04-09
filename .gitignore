@@ -1,4 +1,5 @@
 /build/
+**/build/
 .venv/
 /site/
 *.egg-info/

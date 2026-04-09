@@ -25,8 +25,3 @@ PB_BIND(NsxStatusResponse, NsxStatusResponse, AUTO)
 
 
 PB_BIND(NsxRpcMessage, NsxRpcMessage, 2)
-
-
-
-
-
