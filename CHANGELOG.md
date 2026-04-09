@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.2.1](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.2.0...neuralspotx-v0.2.1) (2026-04-09)
+
+
+### Bug Fixes
+
+* **ci:** handle unquoted version in nsx-module-ci template ([0f29fae](https://github.com/AmbiqAI/neuralspotx/commit/0f29faeea78027477b8526fac4c5a88a4924626c))
+
 ## [0.2.0](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.1.0...neuralspotx-v0.2.0) (2026-04-09)
 
 
