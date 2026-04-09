@@ -35,7 +35,7 @@ jobs:
 
       - name: Check nsx-module.yaml version field exists
         run: |
-          version=$(grep '^  version:' nsx-module.yaml | head -1 | sed 's/.*"\(.*\)"/\1/')
+          version=$(grep '^  version:' nsx-module.yaml | head -1 | awk '{print $2}' | tr -d '"')
           if [ -z "$version" ]; then
             echo "ERROR: No version field in nsx-module.yaml"
             exit 1
