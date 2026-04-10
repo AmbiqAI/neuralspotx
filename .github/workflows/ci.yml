@@ -123,13 +123,11 @@ jobs:
         if: runner.os == 'Windows'
         run: |
           curl -fsSL -o arm-gcc.zip \
-            "https://developer.arm.com/-/media/Files/downloads/gnu/14.2.rel1/binrel/arm-gnu-toolchain-14.2.rel1-mingw-w64-x86_64-arm-none-eabi.zip"
-          echo "Downloaded $(stat -c%s arm-gcc.zip 2>/dev/null || stat -f%z arm-gcc.zip) bytes"
+            "https://developer.arm.com/-/media/Files/downloads/gnu/14.2.rel1/binrel/arm-gnu-toolchain-14.2.rel1-mingw-w64-i686-arm-none-eabi.zip"
           7z x arm-gcc.zip -oC:/arm-gcc-tmp -y > /dev/null
           inner=$(find C:/arm-gcc-tmp -maxdepth 1 -mindepth 1 -type d | head -1)
-          echo "Inner dir: $inner"
+          echo "Toolchain root: $inner"
           mv "$inner" C:/arm-gcc
-          ls C:/arm-gcc/bin/arm-none-eabi-gcc* || echo "WARNING: gcc binary not found"
           echo "C:/arm-gcc/bin" >> "$GITHUB_PATH"
 
       - name: Verify toolchain
