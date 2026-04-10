@@ -364,8 +364,26 @@ def _default_build_dir(app_dir: Path, board: str) -> Path:
     return app_dir / "build" / board
 
 
-def _run_cmake_configure(app_dir: Path, build_dir: Path, board: str) -> None:
-    toolchain_file = app_dir / "cmake" / "nsx" / "toolchains" / "arm-none-eabi-gcc.cmake"
+def _run_cmake_configure(
+    app_dir: Path, build_dir: Path, board: str, toolchain: str | None = None
+) -> None:
+    from .constants import DEFAULT_TOOLCHAIN, SUPPORTED_TOOLCHAINS
+
+    # Resolve toolchain: explicit arg > nsx.yml > default
+    tc = toolchain
+    if tc is None:
+        cfg_path = app_dir / "nsx.yml"
+        if cfg_path.exists():
+            cfg = _read_yaml(cfg_path)
+            tc = cfg.get("toolchain")
+    tc = tc or DEFAULT_TOOLCHAIN
+
+    tc_file = SUPPORTED_TOOLCHAINS.get(tc)
+    if tc_file is None:
+        supported = ", ".join(sorted(SUPPORTED_TOOLCHAINS.keys()))
+        raise SystemExit(f"Unknown toolchain '{tc}'. Supported: {supported}")
+
+    toolchain_file = app_dir / "cmake" / "nsx" / "toolchains" / tc_file
     run(
         [
             "cmake",

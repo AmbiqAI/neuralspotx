@@ -36,7 +36,7 @@ def example_app(request: pytest.FixtureRequest, tmp_path: Path) -> Path:
     name: str = request.param
     src = EXAMPLES_DIR / name
     dst = tmp_path / name
-    shutil.copytree(src, dst)
+    shutil.copytree(src, dst, ignore=shutil.ignore_patterns("build"))
     return dst
 
 
@@ -57,5 +57,12 @@ def test_example_configures_and_builds(example_app: Path) -> None:
     # The build target name matches the directory / project name.
     app_name = example_app.name
     build_dir = example_app / "build" / "apollo510_evb"
-    elf = build_dir / app_name
-    assert elf.exists(), f"Expected ELF at {elf}"
+    # The executable suffix depends on toolchain (.axf for GCC, .elf for armclang)
+    # and may be absent depending on CMake configuration.
+    candidates = [
+        build_dir / f"{app_name}.axf",
+        build_dir / f"{app_name}.elf",
+        build_dir / app_name,
+    ]
+    elf = next((c for c in candidates if c.exists()), None)
+    assert elf is not None, f"Expected ELF at {build_dir}/{app_name}[.axf|.elf]"

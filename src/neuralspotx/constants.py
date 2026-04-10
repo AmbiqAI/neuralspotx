@@ -20,6 +20,12 @@ DEFAULT_SOC_FOR_BOARD = {
 
 DEFAULT_TOOLCHAIN = "arm-none-eabi-gcc"
 
+SUPPORTED_TOOLCHAINS = {
+    "arm-none-eabi-gcc": "arm-none-eabi-gcc.cmake",
+    "gcc": "arm-none-eabi-gcc.cmake",
+    "armclang": "armclang.cmake",
+}
+
 # The project name used to identify modules that ship packaged with neuralspotx
 # (boards, cmake helpers) vs external git-hosted modules.
 PACKAGED_PROJECT_NAME = "neuralspotx"

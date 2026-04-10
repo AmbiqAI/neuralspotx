@@ -306,6 +306,7 @@ def cmd_configure(args: argparse.Namespace) -> None:
         resolve_app_dir(args.app_dir),
         board=args.board,
         build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
+        toolchain=args.toolchain,
     )
 
 
@@ -314,6 +315,7 @@ def cmd_build(args: argparse.Namespace) -> None:
         resolve_app_dir(args.app_dir),
         board=args.board,
         build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
+        toolchain=args.toolchain,
         target=args.target,
         jobs=args.jobs,
     )
@@ -324,6 +326,7 @@ def cmd_flash(args: argparse.Namespace) -> None:
         resolve_app_dir(args.app_dir),
         board=args.board,
         build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
+        toolchain=args.toolchain,
         jobs=args.jobs,
     )
 
@@ -333,6 +336,7 @@ def cmd_view(args: argparse.Namespace) -> None:
         resolve_app_dir(args.app_dir),
         board=args.board,
         build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
+        toolchain=args.toolchain,
         reset_on_open=not args.no_reset_on_open,
         reset_delay_ms=args.reset_delay_ms,
     )
@@ -343,6 +347,7 @@ def cmd_clean(args: argparse.Namespace) -> None:
         resolve_app_dir(args.app_dir),
         board=args.board,
         build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
+        toolchain=args.toolchain,
         full=args.full,
     )
 
@@ -651,12 +656,14 @@ def _build_parser() -> argparse.ArgumentParser:
     p_configure.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
     p_configure.add_argument("--board", default=None, help="Override board from nsx.yml")
     p_configure.add_argument("--build-dir", default=None, help="Build directory override")
+    p_configure.add_argument("--toolchain", default=None, help="Toolchain override (gcc, armclang)")
     p_configure.set_defaults(func=cmd_configure)
 
     p_build = sub.add_parser("build", help="Build a generated NSX app")
     p_build.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
     p_build.add_argument("--board", default=None, help="Override board from nsx.yml")
     p_build.add_argument("--build-dir", default=None, help="Build directory override")
+    p_build.add_argument("--toolchain", default=None, help="Toolchain override (gcc, armclang)")
     p_build.add_argument("--target", default=None, help="Optional explicit build target")
     p_build.add_argument("--jobs", type=int, default=8, help="Parallel build jobs")
     p_build.set_defaults(func=cmd_build)
@@ -665,6 +672,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p_flash.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
     p_flash.add_argument("--board", default=None, help="Override board from nsx.yml")
     p_flash.add_argument("--build-dir", default=None, help="Build directory override")
+    p_flash.add_argument("--toolchain", default=None, help="Toolchain override (gcc, armclang)")
     p_flash.add_argument("--jobs", type=int, default=8, help="Parallel build jobs")
     p_flash.set_defaults(func=cmd_flash)
 
@@ -672,6 +680,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p_view.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
     p_view.add_argument("--board", default=None, help="Override board from nsx.yml")
     p_view.add_argument("--build-dir", default=None, help="Build directory override")
+    p_view.add_argument("--toolchain", default=None, help="Toolchain override (gcc, armclang)")
     p_view.add_argument(
         "--no-reset-on-open",
         action="store_true",
@@ -689,6 +698,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p_clean.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
     p_clean.add_argument("--board", default=None, help="Override board from nsx.yml")
     p_clean.add_argument("--build-dir", default=None, help="Build directory override")
+    p_clean.add_argument("--toolchain", default=None, help="Toolchain override (gcc, armclang)")
     p_clean.add_argument(
         "--full",
         action="store_true",

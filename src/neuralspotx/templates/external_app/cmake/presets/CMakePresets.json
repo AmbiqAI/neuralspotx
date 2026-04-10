@@ -14,6 +14,15 @@
         "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/nsx/toolchains/arm-none-eabi-gcc.cmake",
         "CMAKE_BUILD_TYPE": "Release"
       }
+    },
+    {
+      "name": "armclang-ninja",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/armclang-ninja",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/nsx/toolchains/armclang.cmake",
+        "CMAKE_BUILD_TYPE": "Release"
+      }
     }
   ]
 }

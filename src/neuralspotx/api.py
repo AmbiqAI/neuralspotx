@@ -43,11 +43,13 @@ class AppActionRequest:
         app_dir: App directory containing ``nsx.yml``.
         board: Optional board override.
         build_dir: Optional build directory override.
+        toolchain: Optional toolchain override (``gcc``, ``armclang``).
     """
 
     app_dir: PathLike
     board: str | None = None
     build_dir: PathLike | None = None
+    toolchain: str | None = None
 
 
 @dataclass(slots=True)
@@ -168,19 +170,23 @@ def configure_app(
     *,
     board: str | None = None,
     build_dir: PathLike | None = None,
+    toolchain: str | None = None,
 ) -> None:
     """Configure an app build directory with CMake."""
 
     request = (
         app_dir
         if isinstance(app_dir, AppActionRequest)
-        else AppActionRequest(app_dir=app_dir, board=board, build_dir=build_dir)
+        else AppActionRequest(
+            app_dir=app_dir, board=board, build_dir=build_dir, toolchain=toolchain
+        )
     )
     _invoke(
         operations.configure_app_impl,
         Path(request.app_dir).expanduser().resolve(),
         board=request.board,
         build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
+        toolchain=request.toolchain,
     )
 
 
@@ -189,6 +195,7 @@ def build_app(
     *,
     board: str | None = None,
     build_dir: PathLike | None = None,
+    toolchain: str | None = None,
     target: str | None = None,
     jobs: int = 8,
 ) -> None:
@@ -201,6 +208,7 @@ def build_app(
             app_dir=app_dir,
             board=board,
             build_dir=build_dir,
+            toolchain=toolchain,
             target=target,
             jobs=jobs,
         )
@@ -210,6 +218,7 @@ def build_app(
         Path(request.app_dir).expanduser().resolve(),
         board=request.board,
         build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
+        toolchain=request.toolchain,
         target=request.target,
         jobs=request.jobs,
     )
@@ -220,6 +229,7 @@ def flash_app(
     *,
     board: str | None = None,
     build_dir: PathLike | None = None,
+    toolchain: str | None = None,
     jobs: int = 8,
 ) -> None:
     """Build and flash an NSX app."""
@@ -227,13 +237,16 @@ def flash_app(
     request = (
         app_dir
         if isinstance(app_dir, AppFlashRequest)
-        else AppFlashRequest(app_dir=app_dir, board=board, build_dir=build_dir, jobs=jobs)
+        else AppFlashRequest(
+            app_dir=app_dir, board=board, build_dir=build_dir, toolchain=toolchain, jobs=jobs
+        )
     )
     _invoke(
         operations.flash_app_impl,
         Path(request.app_dir).expanduser().resolve(),
         board=request.board,
         build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
+        toolchain=request.toolchain,
         jobs=request.jobs,
     )
 
@@ -243,19 +256,23 @@ def view_app(
     *,
     board: str | None = None,
     build_dir: PathLike | None = None,
+    toolchain: str | None = None,
 ) -> None:
     """Launch the SEGGER SWO viewer for an app."""
 
     request = (
         app_dir
         if isinstance(app_dir, AppActionRequest)
-        else AppActionRequest(app_dir=app_dir, board=board, build_dir=build_dir)
+        else AppActionRequest(
+            app_dir=app_dir, board=board, build_dir=build_dir, toolchain=toolchain
+        )
     )
     _invoke(
         operations.view_app_impl,
         Path(request.app_dir).expanduser().resolve(),
         board=request.board,
         build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
+        toolchain=request.toolchain,
     )
 
 
@@ -264,6 +281,7 @@ def clean_app(
     *,
     board: str | None = None,
     build_dir: PathLike | None = None,
+    toolchain: str | None = None,
     full: bool = False,
 ) -> None:
     """Clean or fully remove an app build directory."""
@@ -271,13 +289,16 @@ def clean_app(
     request = (
         app_dir
         if isinstance(app_dir, AppCleanRequest)
-        else AppCleanRequest(app_dir=app_dir, board=board, build_dir=build_dir, full=full)
+        else AppCleanRequest(
+            app_dir=app_dir, board=board, build_dir=build_dir, toolchain=toolchain, full=full
+        )
     )
     _invoke(
         operations.clean_app_impl,
         Path(request.app_dir).expanduser().resolve(),
         board=request.board,
         build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
+        toolchain=request.toolchain,
         full=request.full,
     )
 

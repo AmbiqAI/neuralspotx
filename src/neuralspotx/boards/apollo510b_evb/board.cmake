@@ -1,5 +1,4 @@
 set(NSX_SOC_FAMILY "apollo510b")
-set(NSX_TOOLCHAIN_FAMILY "gcc")
 set(NSX_CPU "cortex-m55")
 set(NSX_FLOAT_ABI "hard")
 set(NSX_ABI_FLAGS "thumbv8.1m-fpv5-hard")
@@ -17,9 +16,17 @@ set(NSX_AMBIQ_MCU_DIR "${NSX_AMBIQSUITE_ROOT}/mcu/apollo510")
 set(NSX_AMBIQ_HAL_DIR "${NSX_AMBIQ_MCU_DIR}/hal")
 set(NSX_AMBIQ_HAL_MCU_DIR "${NSX_AMBIQ_HAL_DIR}/mcu")
 
-set(NSX_STARTUP_SOURCE "${NSX_ROOT}/modules/nsx-core/src/apollo510/gcc/startup_gcc.c")
-set(NSX_SYSTEM_SOURCE "${NSX_AMBIQSUITE_ROOT}/src/apollo510/system_apollo510.c")
-set(NSX_LINKER_SCRIPT "${NSX_ROOT}/modules/nsx-core/src/apollo510b/gcc/linker_script_sbl.ld")
+include("${NSX_CMAKE_DIR}/nsx_toolchain_flags.cmake")
+
+if(NSX_TOOLCHAIN_FAMILY STREQUAL "armclang")
+    set(NSX_STARTUP_SOURCE "${NSX_ROOT}/modules/nsx-core/src/apollo510/armclang/startup_keil6.c")
+    set(NSX_SYSTEM_SOURCE "${NSX_AMBIQSUITE_ROOT}/src/apollo510/system_apollo510.c")
+    set(NSX_LINKER_SCRIPT "${NSX_ROOT}/modules/nsx-core/src/apollo510b/armclang/linker_script_sbl.sct")
+else()
+    set(NSX_STARTUP_SOURCE "${NSX_ROOT}/modules/nsx-core/src/apollo510/gcc/startup_gcc.c")
+    set(NSX_SYSTEM_SOURCE "${NSX_AMBIQSUITE_ROOT}/src/apollo510/system_apollo510.c")
+    set(NSX_LINKER_SCRIPT "${NSX_ROOT}/modules/nsx-core/src/apollo510b/gcc/linker_script_sbl.ld")
+endif()
 
 include("${NSX_CMAKE_DIR}/segger/socs/apollo5.cmake")
 
@@ -53,44 +60,14 @@ target_compile_definitions(${NSX_BOARD_FLAGS_TARGET} INTERFACE
     ARMCM55
     AM_PACKAGE_BGA
     __FPU_PRESENT
-    gcc
     STACK_SIZE=4096
 )
 
-target_compile_options(${NSX_BOARD_FLAGS_TARGET} INTERFACE
-    -mthumb
-    -mcpu=${NSX_CPU}
-    -mfloat-abi=${NSX_FLOAT_ABI}
-    -ffunction-sections
-    -fdata-sections
-    -fomit-frame-pointer
-    -fno-exceptions
-    -MMD
-    -MP
-    -Wall
-    -g
-    -O3
-    -ffast-math
-)
+# Compile options set by nsx_apply_toolchain_flags() below
 
-target_link_options(${NSX_BOARD_FLAGS_TARGET} INTERFACE
-    -mthumb
-    -mcpu=${NSX_CPU}
-    -mfloat-abi=${NSX_FLOAT_ABI}
-    -nostartfiles
-    -static
-    -fno-exceptions
-    -Wl,--gc-sections,--entry,Reset_Handler
-    -Wl,--wrap=_write_r
-    -Wl,--wrap=_close_r
-    -Wl,--wrap=_lseek_r
-    -Wl,--wrap=_read_r
-    -Wl,--wrap=_kill_r
-    -Wl,--wrap=_getpid_r
-    -Wl,--wrap=_fstat_r
-    -Wl,--wrap=_isatty_r
-    -T${NSX_LINKER_SCRIPT}
-)
+# Link options set by nsx_apply_toolchain_flags() below
+
+nsx_apply_toolchain_flags(${NSX_BOARD_FLAGS_TARGET})
 
 target_link_libraries(${NSX_BOARD_TARGET} INTERFACE ${NSX_BOARD_FLAGS_TARGET})
 

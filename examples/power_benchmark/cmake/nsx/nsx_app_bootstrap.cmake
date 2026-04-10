@@ -52,6 +52,9 @@ function(nsx_bootstrap_app)
     include("${NSX_ROOT}/boards/${NSX_BOARD}/board.cmake")
 
     foreach(var
+        NSX_TOOLCHAIN_FAMILY
+        NSX_STARTUP_SOURCE
+        NSX_SYSTEM_SOURCE
         NSX_SEGGER_DEVICE
         NSX_SEGGER_IF_SPEED
         NSX_SEGGER_PF_ADDR
@@ -87,9 +90,18 @@ function(nsx_finalize_app app_target)
         message(FATAL_ERROR "nsx_finalize_app target does not exist: ${app_target}")
     endif()
 
-    target_link_options(${app_target} PRIVATE
-        -Wl,-Map,$<TARGET_FILE_DIR:${app_target}>/${app_target}.map
-    )
+    # armlink does not pull objects from STATIC archives when the only
+    # reference is a scatter-file section selector (e.g. RESET).  Add the
+    # startup sources directly to the executable so their objects appear on
+    # the armlink command line.
+    if(NSX_TOOLCHAIN_FAMILY STREQUAL "armclang")
+        if(DEFINED NSX_STARTUP_SOURCE)
+            target_sources(${app_target} PRIVATE ${NSX_STARTUP_SOURCE})
+        endif()
+        if(DEFINED NSX_SYSTEM_SOURCE AND NOT NSX_SYSTEM_SOURCE STREQUAL "")
+            target_sources(${app_target} PRIVATE ${NSX_SYSTEM_SOURCE})
+        endif()
+    endif()
 
     # Ensure system libraries (-lm, -lc, etc.) appear AFTER all project
     # archives in the link command.  Pre-built static libraries such as
@@ -100,21 +112,45 @@ function(nsx_finalize_app app_target)
     #
     # CMAKE_C_STANDARD_LIBRARIES is appended at the very end of the
     # linker invocation, after all target_link_libraries contributions.
-    set(CMAKE_C_STANDARD_LIBRARIES
-        "-Wl,--start-group -lm -lc -lgcc -lnosys -lstdc++ -Wl,--end-group"
-        PARENT_SCOPE
-    )
-
-    if(CMAKE_OBJCOPY)
-        add_custom_command(TARGET ${app_target} POST_BUILD
-            COMMAND ${CMAKE_OBJCOPY} -Obinary $<TARGET_FILE:${app_target}> $<TARGET_FILE_DIR:${app_target}>/${app_target}.bin
-            COMMENT "Generating ${app_target}.bin")
+    # armclang bundles its own runtime — no explicit stdlib linking needed.
+    if(NSX_TOOLCHAIN_FAMILY STREQUAL "gcc")
+        set(CMAKE_C_STANDARD_LIBRARIES
+            "-Wl,--start-group -lm -lc -lgcc -lnosys -lstdc++ -Wl,--end-group"
+            PARENT_SCOPE
+        )
     endif()
 
-    if(CMAKE_SIZE)
-        add_custom_command(TARGET ${app_target} POST_BUILD
-            COMMAND ${CMAKE_SIZE} $<TARGET_FILE:${app_target}>
-            COMMENT "Printing image size")
+    if(NSX_TOOLCHAIN_FAMILY STREQUAL "armclang")
+        # armclang: use fromelf to generate .bin and print size
+        find_program(NSX_FROMELF fromelf)
+        if(NSX_FROMELF)
+            add_custom_command(TARGET ${app_target} POST_BUILD
+                COMMAND ${NSX_FROMELF} --bin --output $<TARGET_FILE_DIR:${app_target}>/${app_target}.bin $<TARGET_FILE:${app_target}>
+                COMMENT "Generating ${app_target}.bin (fromelf)")
+            add_custom_command(TARGET ${app_target} POST_BUILD
+                COMMAND ${NSX_FROMELF} --text -z $<TARGET_FILE:${app_target}>
+                COMMENT "Printing image size (fromelf)")
+        endif()
+    else()
+        if(CMAKE_OBJCOPY)
+            add_custom_command(TARGET ${app_target} POST_BUILD
+                COMMAND ${CMAKE_OBJCOPY} -Obinary $<TARGET_FILE:${app_target}> $<TARGET_FILE_DIR:${app_target}>/${app_target}.bin
+                COMMENT "Generating ${app_target}.bin")
+        endif()
+
+        if(CMAKE_SIZE)
+            add_custom_command(TARGET ${app_target} POST_BUILD
+                COMMAND ${CMAKE_SIZE} $<TARGET_FILE:${app_target}>
+                COMMENT "Printing image size")
+        endif()
+    endif()
+
+    # Map file — armclang generates it via --map in link flags;
+    # GCC needs an explicit -Wl,-Map option.
+    if(NSX_TOOLCHAIN_FAMILY STREQUAL "gcc")
+        target_link_options(${app_target} PRIVATE
+            -Wl,-Map,$<TARGET_FILE_DIR:${app_target}>/${app_target}.map
+        )
     endif()
 
     nsx_add_segger_targets(${app_target})

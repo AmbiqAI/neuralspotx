@@ -545,11 +545,11 @@ def test_build_app_uses_shared_impl_and_triggers_configure_when_needed(
 
     app_dir = tmp_path / "hello_build"
     build_dir = app_dir / "build" / "apollo510_evb"
-    configure_calls: list[tuple[Path, Path, str]] = []
+    configure_calls: list[tuple[Path, Path, str, str | None]] = []
     build_calls: list[list[str]] = []
 
-    def fake_configure(app: Path, build: Path, board: str) -> None:
-        configure_calls.append((app, build, board))
+    def fake_configure(app: Path, build: Path, board: str, toolchain: str | None = None) -> None:
+        configure_calls.append((app, build, board, toolchain))
         build.mkdir(parents=True, exist_ok=True)
         (build / "build.ninja").write_text("# fake\n", encoding="utf-8")
 
@@ -562,7 +562,7 @@ def test_build_app_uses_shared_impl_and_triggers_configure_when_needed(
 
     build_app(AppBuildRequest(app_dir=app_dir, jobs=3))
 
-    assert configure_calls == [(app_dir, build_dir, "apollo510_evb")]
+    assert configure_calls == [(app_dir, build_dir, "apollo510_evb", None)]
     assert build_calls == [
         ["cmake", "--build", str(build_dir), "--target", "hello_build", "-j", "3"]
     ]

@@ -84,28 +84,37 @@ def test_doctor_dispatch(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_configure_view_and_clean_dispatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    configure_calls: list[tuple[Path, str | None, Path | None]] = []
-    view_calls: list[tuple[Path, str | None, Path | None]] = []
-    clean_calls: list[tuple[Path, str | None, Path | None, bool]] = []
+    configure_calls: list[tuple[Path, str | None, Path | None, str | None]] = []
+    view_calls: list[tuple[Path, str | None, Path | None, str | None]] = []
+    clean_calls: list[tuple[Path, str | None, Path | None, str | None, bool]] = []
 
     def fake_configure(
-        app_dir: Path, *, board: str | None = None, build_dir: Path | None = None
+        app_dir: Path,
+        *,
+        board: str | None = None,
+        build_dir: Path | None = None,
+        toolchain: str | None = None,
     ) -> None:
-        configure_calls.append((app_dir, board, build_dir))
+        configure_calls.append((app_dir, board, build_dir, toolchain))
 
     def fake_view(
-        app_dir: Path, *, board: str | None = None, build_dir: Path | None = None
+        app_dir: Path,
+        *,
+        board: str | None = None,
+        build_dir: Path | None = None,
+        toolchain: str | None = None,
     ) -> None:
-        view_calls.append((app_dir, board, build_dir))
+        view_calls.append((app_dir, board, build_dir, toolchain))
 
     def fake_clean(
         app_dir: Path,
         *,
         board: str | None = None,
         build_dir: Path | None = None,
+        toolchain: str | None = None,
         full: bool = False,
     ) -> None:
-        clean_calls.append((app_dir, board, build_dir, full))
+        clean_calls.append((app_dir, board, build_dir, toolchain, full))
 
     monkeypatch.setattr(operations, "configure_app_impl", fake_configure)
     monkeypatch.setattr(operations, "view_app_impl", fake_view)
@@ -118,33 +127,35 @@ def test_configure_view_and_clean_dispatch(tmp_path: Path, monkeypatch: pytest.M
     view_app(app_dir, board="apollo3p_evb", build_dir=build_dir)
     clean_app(AppCleanRequest(app_dir=app_dir, build_dir=build_dir, full=True))
 
-    assert configure_calls == [(app_dir.resolve(), "apollo510_evb", build_dir.resolve())]
-    assert view_calls == [(app_dir.resolve(), "apollo3p_evb", build_dir.resolve())]
-    assert clean_calls == [(app_dir.resolve(), None, build_dir.resolve(), True)]
+    assert configure_calls == [(app_dir.resolve(), "apollo510_evb", build_dir.resolve(), None)]
+    assert view_calls == [(app_dir.resolve(), "apollo3p_evb", build_dir.resolve(), None)]
+    assert clean_calls == [(app_dir.resolve(), None, build_dir.resolve(), None, True)]
 
 
 def test_build_and_flash_dispatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    build_calls: list[tuple[Path, str | None, Path | None, str | None, int]] = []
-    flash_calls: list[tuple[Path, str | None, Path | None, int]] = []
+    build_calls: list[tuple[Path, str | None, Path | None, str | None, str | None, int]] = []
+    flash_calls: list[tuple[Path, str | None, Path | None, str | None, int]] = []
 
     def fake_build(
         app_dir: Path,
         *,
         board: str | None = None,
         build_dir: Path | None = None,
+        toolchain: str | None = None,
         target: str | None = None,
         jobs: int = 8,
     ) -> None:
-        build_calls.append((app_dir, board, build_dir, target, jobs))
+        build_calls.append((app_dir, board, build_dir, toolchain, target, jobs))
 
     def fake_flash(
         app_dir: Path,
         *,
         board: str | None = None,
         build_dir: Path | None = None,
+        toolchain: str | None = None,
         jobs: int = 8,
     ) -> None:
-        flash_calls.append((app_dir, board, build_dir, jobs))
+        flash_calls.append((app_dir, board, build_dir, toolchain, jobs))
 
     monkeypatch.setattr(operations, "build_app_impl", fake_build)
     monkeypatch.setattr(operations, "flash_app_impl", fake_flash)
@@ -164,9 +175,9 @@ def test_build_and_flash_dispatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     flash_app(AppFlashRequest(app_dir=app_dir, build_dir=build_dir, jobs=2))
 
     assert build_calls == [
-        (app_dir.resolve(), "apollo4l_evb", build_dir.resolve(), "custom-target", 3)
+        (app_dir.resolve(), "apollo4l_evb", build_dir.resolve(), None, "custom-target", 3)
     ]
-    assert flash_calls == [(app_dir.resolve(), None, build_dir.resolve(), 2)]
+    assert flash_calls == [(app_dir.resolve(), None, build_dir.resolve(), None, 2)]
 
 
 def test_module_change_dispatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

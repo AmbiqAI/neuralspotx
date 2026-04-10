@@ -1,5 +1,4 @@
 set(NSX_SOC_FAMILY "apollo4l")
-set(NSX_TOOLCHAIN_FAMILY "gcc")
 set(NSX_CPU "cortex-m4")
 set(NSX_FPU "fpv4-sp-d16")
 set(NSX_FLOAT_ABI "hard")
@@ -18,9 +17,17 @@ set(NSX_AMBIQ_MCU_DIR "${NSX_AMBIQSUITE_ROOT}/mcu/${NSX_AMBIQ_PART_NAME}")
 set(NSX_AMBIQ_HAL_DIR "${NSX_AMBIQ_MCU_DIR}/hal")
 set(NSX_AMBIQ_HAL_MCU_DIR "${NSX_AMBIQ_HAL_DIR}/mcu")
 
-set(NSX_STARTUP_SOURCE "${NSX_ROOT}/modules/nsx-core/src/apollo4l/gcc/startup_gcc.c")
-set(NSX_SYSTEM_SOURCE "")
-set(NSX_LINKER_SCRIPT "${NSX_ROOT}/modules/nsx-core/src/apollo4l/gcc/linker_script.ld")
+include("${NSX_CMAKE_DIR}/nsx_toolchain_flags.cmake")
+
+if(NSX_TOOLCHAIN_FAMILY STREQUAL "armclang")
+    set(NSX_STARTUP_SOURCE "${NSX_ROOT}/modules/nsx-core/src/apollo4l/armclang/startup_keil6.s")
+    set(NSX_SYSTEM_SOURCE "")
+    set(NSX_LINKER_SCRIPT "${NSX_ROOT}/modules/nsx-core/src/apollo4l/armclang/linker_script.sct")
+else()
+    set(NSX_STARTUP_SOURCE "${NSX_ROOT}/modules/nsx-core/src/apollo4l/gcc/startup_gcc.c")
+    set(NSX_SYSTEM_SOURCE "")
+    set(NSX_LINKER_SCRIPT "${NSX_ROOT}/modules/nsx-core/src/apollo4l/gcc/linker_script.ld")
+endif()
 include("${NSX_CMAKE_DIR}/segger/socs/apollo4p.cmake")
 
 set(NSX_BOARD_TARGET nsx_board_apollo4l_blue_evb)
@@ -50,46 +57,14 @@ target_compile_definitions(${NSX_BOARD_FLAGS_TARGET} INTERFACE
     APOLLO4L_PRE_SDK
     AM_PACKAGE_BGA
     __FPU_PRESENT
-    gcc
     STACK_SIZE=4096
 )
 
-target_compile_options(${NSX_BOARD_FLAGS_TARGET} INTERFACE
-    -mthumb
-    -mcpu=${NSX_CPU}
-    -mfpu=${NSX_FPU}
-    -mfloat-abi=${NSX_FLOAT_ABI}
-    -ffunction-sections
-    -fdata-sections
-    -fomit-frame-pointer
-    -fno-exceptions
-    -MMD
-    -MP
-    -Wall
-    -g
-    -O3
-    -ffast-math
-)
+# Compile options set by nsx_apply_toolchain_flags() below
 
-target_link_options(${NSX_BOARD_FLAGS_TARGET} INTERFACE
-    -mthumb
-    -mcpu=${NSX_CPU}
-    -mfpu=${NSX_FPU}
-    -mfloat-abi=${NSX_FLOAT_ABI}
-    -nostartfiles
-    -static
-    -fno-exceptions
-    -Wl,--gc-sections,--entry,Reset_Handler
-    -Wl,--wrap=_write_r
-    -Wl,--wrap=_close_r
-    -Wl,--wrap=_lseek_r
-    -Wl,--wrap=_read_r
-    -Wl,--wrap=_kill_r
-    -Wl,--wrap=_getpid_r
-    -Wl,--wrap=_fstat_r
-    -Wl,--wrap=_isatty_r
-    -T${NSX_LINKER_SCRIPT}
-)
+# Link options set by nsx_apply_toolchain_flags() below
+
+nsx_apply_toolchain_flags(${NSX_BOARD_FLAGS_TARGET})
 
 target_link_libraries(${NSX_BOARD_TARGET} INTERFACE ${NSX_BOARD_FLAGS_TARGET})
 

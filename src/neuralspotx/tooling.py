@@ -78,3 +78,21 @@ def doctor_check(
     if hint and not ok:
         print(f"  Hint: {hint}")
     return ok
+
+
+# SEGGER tool names differ across platforms:
+#   Linux / macOS: JLinkExe, JLinkSWOViewerCL
+#   Windows:       JLink.exe, JLinkSWOViewerCL.exe
+# The lists are searched in order — first match wins.
+JLINK_NAMES = ["JLinkExe", "JLink"]
+JLINK_SWO_NAMES = ["JLinkSWOViewerCL", "JLinkSWOViewer_CL"]
+
+
+def find_segger_tool(names: list[str]) -> str | None:
+    """Resolve the first available SEGGER executable from *names*."""
+
+    for name in names:
+        resolved = tool_path(name)
+        if resolved is not None:
+            return resolved
+    return None

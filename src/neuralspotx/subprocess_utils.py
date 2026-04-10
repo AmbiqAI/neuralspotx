@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import shlex
 import subprocess
 from pathlib import Path
@@ -142,7 +143,7 @@ def extract_view_command(build_dir: Path, target: str) -> list[str]:
                 command_text = stripped.removeprefix("COMMAND = ")
                 if " && " in command_text:
                     _, command_text = command_text.split(" && ", 1)
-                return shlex.split(command_text)
+                return shlex.split(command_text, posix=(os.name != "nt"))
         break
 
     raise SystemExit(

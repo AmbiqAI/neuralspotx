@@ -22,6 +22,7 @@ lint = [
 ]
 test = [
     "pytest>=8.0",
+    "pytest-timeout>=2.3",
 ]
 examples = [
     # Host-side tools for example apps (e.g. usb_rpc rpc_host.py).

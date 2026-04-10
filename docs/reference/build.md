@@ -6,7 +6,8 @@ Builds a generated NSX app.
 
 ```text
 nsx build [--app-dir APP_DIR] [--board BOARD]
-          [--build-dir BUILD_DIR] [--target TARGET] [--jobs JOBS]
+          [--build-dir BUILD_DIR] [--toolchain TOOLCHAIN]
+          [--target TARGET] [--jobs JOBS]
 ```
 
 ## Main Arguments
@@ -14,6 +15,7 @@ nsx build [--app-dir APP_DIR] [--board BOARD]
 - `--app-dir`: app directory containing `nsx.yml`
 - `--board`: override board from `nsx.yml`
 - `--build-dir`: build directory override
+- `--toolchain`: toolchain override (`gcc`, `armclang`). Defaults to `nsx.yml` → `arm-none-eabi-gcc`
 - `--target`: explicit build target
 - `--jobs`: parallel build jobs
 

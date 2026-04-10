@@ -65,6 +65,7 @@ nav:
       - Metadata Model: architecture/metadata-model.md
       - SDK Provider Model: architecture/sdk-provider-model.md
       - Board Coverage: architecture/board-coverage.md
+      - Toolchain Support: architecture/toolchain-support.md
       - SDK Upstream Plan: architecture/sdk-upstream-plan.md
   - Contributing:
       - Overview: contributing/index.md

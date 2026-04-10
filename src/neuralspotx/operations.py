@@ -56,7 +56,15 @@ from .subprocess_utils import (
 )
 from .subprocess_utils import set_verbosity as set_subprocess_verbosity
 from .templating import render_template_tree
-from .tooling import doctor_check, require_tool, tool_cmd, tool_path
+from .tooling import (
+    JLINK_NAMES,
+    JLINK_SWO_NAMES,
+    doctor_check,
+    find_segger_tool,
+    require_tool,
+    tool_cmd,
+    tool_path,
+)
 
 VERBOSE = 0
 
@@ -216,27 +224,27 @@ def doctor_impl() -> None:
         hint="Install the Arm GNU toolchain and ensure it is in PATH.",
     )
 
-    jlink_path = _tool_path("JLinkExe")
+    jlink_path = find_segger_tool(JLINK_NAMES)
     jlink_ok = jlink_path is not None
     all_ok &= _doctor_check(
-        "SEGGER JLinkExe",
+        "SEGGER J-Link",
         jlink_ok,
         detail=jlink_path,
-        hint="Install the SEGGER J-Link package and ensure `JLinkExe` is in PATH.",
+        hint="Install the SEGGER J-Link package and ensure JLinkExe (Linux/macOS) or JLink (Windows) is in PATH.",
     )
 
-    swo_path = _tool_path("JLinkSWOViewerCL")
+    swo_path = find_segger_tool(JLINK_SWO_NAMES)
     all_ok &= _doctor_check(
         "SEGGER JLinkSWOViewerCL",
         swo_path is not None,
         detail=swo_path,
-        hint="Install the SEGGER J-Link package and ensure `JLinkSWOViewerCL` is in PATH.",
+        hint="Install the SEGGER J-Link package and ensure JLinkSWOViewerCL is in PATH.",
     )
 
     if jlink_ok:
         try:
             probe = subprocess.run(
-                _tool_cmd("JLinkExe", "-CommandFile", "-", "-NoGui", "1"),
+                [jlink_path, "-CommandFile", "-", "-NoGui", "1"],
                 check=True,
                 text=True,
                 capture_output=True,
@@ -324,6 +332,7 @@ def configure_app_impl(
     *,
     board: str | None = None,
     build_dir: Path | None = None,
+    toolchain: str | None = None,
 ) -> Path:
     """Configure an app with CMake.
 
@@ -341,7 +350,7 @@ def configure_app_impl(
         build_dir=build_dir,
     )
     _ensure_app_modules(resolved_app_dir)
-    _run_cmake_configure(resolved_app_dir, resolved_build_dir, resolved_board)
+    _run_cmake_configure(resolved_app_dir, resolved_build_dir, resolved_board, toolchain=toolchain)
     print(f"Configured app at: {resolved_app_dir}")
     print(f"Build directory: {resolved_build_dir}")
     return resolved_build_dir
@@ -352,6 +361,7 @@ def build_app_impl(
     *,
     board: str | None = None,
     build_dir: Path | None = None,
+    toolchain: str | None = None,
     target: str | None = None,
     jobs: int = 8,
 ) -> Path:
@@ -364,7 +374,9 @@ def build_app_impl(
     )
     if not (resolved_build_dir / "build.ninja").exists():
         _ensure_app_modules(resolved_app_dir)
-        _run_cmake_configure(resolved_app_dir, resolved_build_dir, resolved_board)
+        _run_cmake_configure(
+            resolved_app_dir, resolved_build_dir, resolved_board, toolchain=toolchain
+        )
     resolved_target = target or app_name
     _run(
         ["cmake", "--build", str(resolved_build_dir), "--target", resolved_target, "-j", str(jobs)]
@@ -377,6 +389,7 @@ def flash_app_impl(
     *,
     board: str | None = None,
     build_dir: Path | None = None,
+    toolchain: str | None = None,
     jobs: int = 8,
 ) -> Path:
     """Flash an app using its generated CMake flash target."""
@@ -388,7 +401,9 @@ def flash_app_impl(
     )
     if not (resolved_build_dir / "build.ninja").exists():
         _ensure_app_modules(resolved_app_dir)
-        _run_cmake_configure(resolved_app_dir, resolved_build_dir, resolved_board)
+        _run_cmake_configure(
+            resolved_app_dir, resolved_build_dir, resolved_board, toolchain=toolchain
+        )
     target = f"{app_name}_flash"
     cmd = ["cmake", "--build", str(resolved_build_dir), "--target", target, "-j", str(jobs)]
     if VERBOSE > 0:
@@ -407,6 +422,7 @@ def view_app_impl(
     *,
     board: str | None = None,
     build_dir: Path | None = None,
+    toolchain: str | None = None,
     reset_on_open: bool = True,
     reset_delay_ms: int = 400,
 ) -> Path:
@@ -423,7 +439,9 @@ def view_app_impl(
     )
     if not (resolved_build_dir / "build.ninja").exists():
         _ensure_app_modules(resolved_app_dir)
-        _run_cmake_configure(resolved_app_dir, resolved_build_dir, resolved_board)
+        _run_cmake_configure(
+            resolved_app_dir, resolved_build_dir, resolved_board, toolchain=toolchain
+        )
     target = f"{app_name}_view"
     view_cmd = _extract_view_command(resolved_build_dir, target)
     viewer_proc: subprocess.Popen[bytes] | None = None
@@ -466,6 +484,7 @@ def clean_app_impl(
     *,
     board: str | None = None,
     build_dir: Path | None = None,
+    toolchain: str | None = None,
     full: bool = False,
 ) -> Path:
     """Clean or fully remove an app build directory."""
@@ -482,7 +501,9 @@ def clean_app_impl(
         print(f"Removed build directory: {resolved_build_dir}")
         return resolved_build_dir
     if not (resolved_build_dir / "build.ninja").exists():
-        _run_cmake_configure(resolved_app_dir, resolved_build_dir, resolved_board)
+        _run_cmake_configure(
+            resolved_app_dir, resolved_build_dir, resolved_board, toolchain=toolchain
+        )
     _run(["cmake", "--build", str(resolved_build_dir), "--target", "clean"])
     return resolved_build_dir
 

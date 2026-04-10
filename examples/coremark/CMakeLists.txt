@@ -106,12 +106,17 @@ target_link_libraries(coremark PRIVATE
 
 # ---------------------------------------------------------------------------
 # Override linker script: run ALL .text/.rodata from ITCM (zero-wait-state)
-# Strip the board-default -T flag and replace with our ITCM variant.
+# Strip the board-default linker-script flag and replace with our ITCM variant.
 # ---------------------------------------------------------------------------
-set(COREMARK_LINKER_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/linker_script_itcm.ld")
-get_target_property(_board_link_opts nsx_board_apollo510_evb_flags INTERFACE_LINK_OPTIONS)
-list(FILTER _board_link_opts EXCLUDE REGEX "^-T")
-list(APPEND _board_link_opts "-T${COREMARK_LINKER_SCRIPT}")
-set_property(TARGET nsx_board_apollo510_evb_flags PROPERTY INTERFACE_LINK_OPTIONS ${_board_link_opts})
+if(NSX_TOOLCHAIN_FAMILY STREQUAL "armclang")
+    # TODO: create an armclang scatter file for ITCM placement
+    message(STATUS "Skipping ITCM linker-script override for armclang (not yet ported)")
+else()
+    set(COREMARK_LINKER_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/linker_script_itcm.ld")
+    get_target_property(_board_link_opts nsx_board_apollo510_evb_flags INTERFACE_LINK_OPTIONS)
+    list(FILTER _board_link_opts EXCLUDE REGEX "^-T")
+    list(APPEND _board_link_opts "-T${COREMARK_LINKER_SCRIPT}")
+    set_property(TARGET nsx_board_apollo510_evb_flags PROPERTY INTERFACE_LINK_OPTIONS ${_board_link_opts})
+endif()
 
 nsx_finalize_app(coremark)

@@ -9,7 +9,8 @@ the target is already running before the viewer is listening.
 ## Syntax
 
 ```text
-nsx view [--app-dir APP_DIR] [--board BOARD] [--build-dir BUILD_DIR] [--no-reset-on-open] [--reset-delay-ms RESET_DELAY_MS]
+nsx view [--app-dir APP_DIR] [--board BOARD] [--build-dir BUILD_DIR]
+         [--toolchain TOOLCHAIN] [--no-reset-on-open] [--reset-delay-ms RESET_DELAY_MS]
 ```
 
 ## Main Arguments
@@ -17,6 +18,7 @@ nsx view [--app-dir APP_DIR] [--board BOARD] [--build-dir BUILD_DIR] [--no-reset
 - `--app-dir`: app directory containing `nsx.yml`
 - `--board`: override board from `nsx.yml`
 - `--build-dir`: build directory override
+- `--toolchain`: toolchain override (`gcc`, `armclang`). Defaults to `nsx.yml` → `arm-none-eabi-gcc`
 - `--no-reset-on-open`: open the viewer without issuing the normal reset target after attach
 - `--reset-delay-ms`: wait time before issuing the reset target after the viewer opens
 
