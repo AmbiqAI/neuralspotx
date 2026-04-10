@@ -124,11 +124,12 @@ jobs:
         run: |
           curl -fsSL -o arm-gcc.zip \
             "https://developer.arm.com/-/media/Files/downloads/gnu/14.2.rel1/binrel/arm-gnu-toolchain-14.2.rel1-mingw-w64-i686-arm-none-eabi.zip"
-          7z x arm-gcc.zip -oC:/arm-gcc-tmp -y > /dev/null
-          inner=$(find C:/arm-gcc-tmp -maxdepth 1 -mindepth 1 -type d | head -1)
-          echo "Toolchain root: $inner"
-          mv "$inner" C:/arm-gcc
-          echo "C:/arm-gcc/bin" >> "$GITHUB_PATH"
+          7z x arm-gcc.zip -oC:/arm-gcc -y > /dev/null
+          # Find the actual gcc binary — zip layout varies across releases
+          gcc_bin=$(find C:/arm-gcc -name "arm-none-eabi-gcc.exe" -type f | head -1)
+          gcc_dir=$(dirname "$gcc_bin")
+          echo "Found gcc at: $gcc_bin"
+          echo "$gcc_dir" >> "$GITHUB_PATH"
 
       - name: Verify toolchain
         run: |
