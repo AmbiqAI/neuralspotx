@@ -1,0 +1,2 @@
+This example requires TensorFlow Lite Micro sources from the neuralspot
+monorepo extern/ directory and cannot be built in standalone CI.

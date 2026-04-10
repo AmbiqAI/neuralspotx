@@ -114,7 +114,7 @@ jobs:
         if: runner.os == 'macOS'
         run: |
           curl -fsSL -o arm-gcc.tar.xz \
-            "https://developer.arm.com/-/media/Files/downloads/gnu/14.2.rel1/binrel/arm-gnu-toolchain-14.2.rel1-darwin-x86_64-arm-none-eabi.tar.xz"
+            "https://developer.arm.com/-/media/Files/downloads/gnu/14.2.rel1/binrel/arm-gnu-toolchain-14.2.rel1-darwin-arm64-arm-none-eabi.tar.xz"
           sudo mkdir -p /opt/arm-gcc
           sudo tar -xf arm-gcc.tar.xz --strip-components=1 -C /opt/arm-gcc
           echo "/opt/arm-gcc/bin" >> "$GITHUB_PATH"
@@ -124,12 +124,11 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = "Stop"
-          Invoke-WebRequest -Uri "https://developer.arm.com/-/media/Files/downloads/gnu/14.2.rel1/binrel/arm-gnu-toolchain-14.2.rel1-mingw-w64-i686-arm-none-eabi.zip" -OutFile arm-gcc.zip
+          Invoke-WebRequest -Uri "https://developer.arm.com/-/media/Files/downloads/gnu/14.2.rel1/binrel/arm-gnu-toolchain-14.2.rel1-mingw-w64-x86_64-arm-none-eabi.zip" -OutFile arm-gcc.zip
           Expand-Archive -Path arm-gcc.zip -DestinationPath C:\arm-gcc-tmp
-          # The zip contains a single top-level directory; move its contents up.
           $inner = Get-ChildItem -Path C:\arm-gcc-tmp -Directory | Select-Object -First 1
           Move-Item -Path $inner.FullName -Destination C:\arm-gcc
-          echo "C:\arm-gcc\bin" | Out-File -FilePath $env:GITHUB_PATH -Append
+          Add-Content -Path $env:GITHUB_PATH -Value "C:\arm-gcc\bin" -Encoding UTF8
 
       - name: Verify toolchain
         run: |

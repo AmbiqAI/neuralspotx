@@ -18,8 +18,11 @@ import pytest
 EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "examples"
 
 # Discover every sub-directory that contains an nsx.yml.
+# Skip examples with a .ci-skip marker (they have external dependencies).
 _EXAMPLE_NAMES = sorted(
-    d.name for d in EXAMPLES_DIR.iterdir() if d.is_dir() and (d / "nsx.yml").exists()
+    d.name
+    for d in EXAMPLES_DIR.iterdir()
+    if d.is_dir() and (d / "nsx.yml").exists() and not (d / ".ci-skip").exists()
 )
 
 _HAS_TOOLCHAIN = shutil.which("arm-none-eabi-gcc") is not None
