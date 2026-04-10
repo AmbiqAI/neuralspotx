@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import copy
+import os
 import shutil
+import stat
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +30,20 @@ from .subprocess_utils import (
     git_clone,
 )
 from .tooling import require_tool as _require_tool
+
+
+def _rmtree(path: Path) -> None:
+    """Remove a directory tree, handling read-only files on Windows.
+
+    Git pack-index files are marked read-only; ``shutil.rmtree`` fails
+    on Windows unless we clear the read-only flag first.
+    """
+
+    def _on_rm_error(_func, _path, _exc_info):  # noqa: ANN001
+        os.chmod(_path, stat.S_IWRITE)
+        os.unlink(_path)
+
+    shutil.rmtree(path, onerror=_on_rm_error)
 
 
 def _module_metadata_path(
@@ -137,7 +153,7 @@ def _ensure_module_cloned(
     # Remove .git so the module is a plain copy, not a nested repo.
     git_dir = clone_dir / ".git"
     if git_dir.exists():
-        shutil.rmtree(git_dir)
+        _rmtree(git_dir)
 
 
 def _update_module_clone(
@@ -163,7 +179,7 @@ def _update_module_clone(
 
     clone_dir = _module_clone_dir(app_dir, entry.project, registry)
     if clone_dir.exists():
-        shutil.rmtree(clone_dir)
+        _rmtree(clone_dir)
     _ensure_module_cloned(app_dir, module_name, registry)
 
 
@@ -190,7 +206,7 @@ def _vendor_local_module_into_app(
         return
 
     if destination_dir.exists():
-        shutil.rmtree(destination_dir)
+        _rmtree(destination_dir)
     destination_dir.parent.mkdir(parents=True, exist_ok=True)
     shutil.copytree(
         source_dir,
@@ -223,7 +239,7 @@ def _vendor_packaged_module_into_app(
 
     preserve_existing = destination_dir == app_dir / "cmake" / "nsx"
     if destination_dir.exists() and not preserve_existing:
-        shutil.rmtree(destination_dir)
+        _rmtree(destination_dir)
     destination_dir.parent.mkdir(parents=True, exist_ok=True)
     shutil.copytree(
         source_dir,
@@ -244,12 +260,12 @@ def _remove_vendored_module_from_app(
         if destination_dir == app_dir / "cmake" / "nsx":
             return
         if destination_dir.exists():
-            shutil.rmtree(destination_dir)
+            _rmtree(destination_dir)
     else:
         entry = registry_entry_for_module(registry, module_name)
         clone_dir = _module_clone_dir(app_dir, entry.project, registry)
         if clone_dir.exists():
-            shutil.rmtree(clone_dir)
+            _rmtree(clone_dir)
 
 
 def _acquire_modules_for_app(
