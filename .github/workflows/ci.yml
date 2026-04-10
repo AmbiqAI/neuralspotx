@@ -121,14 +121,16 @@ jobs:
 
       - name: Install ARM GCC (Windows)
         if: runner.os == 'Windows'
-        shell: pwsh
         run: |
-          $ErrorActionPreference = "Stop"
-          Invoke-WebRequest -Uri "https://developer.arm.com/-/media/Files/downloads/gnu/14.2.rel1/binrel/arm-gnu-toolchain-14.2.rel1-mingw-w64-x86_64-arm-none-eabi.zip" -OutFile arm-gcc.zip
-          Expand-Archive -Path arm-gcc.zip -DestinationPath C:\arm-gcc-tmp
-          $inner = Get-ChildItem -Path C:\arm-gcc-tmp -Directory | Select-Object -First 1
-          Move-Item -Path $inner.FullName -Destination C:\arm-gcc
-          Add-Content -Path $env:GITHUB_PATH -Value "C:\arm-gcc\bin" -Encoding UTF8
+          curl -fsSL -o arm-gcc.zip \
+            "https://developer.arm.com/-/media/Files/downloads/gnu/14.2.rel1/binrel/arm-gnu-toolchain-14.2.rel1-mingw-w64-x86_64-arm-none-eabi.zip"
+          echo "Downloaded $(stat -c%s arm-gcc.zip 2>/dev/null || stat -f%z arm-gcc.zip) bytes"
+          7z x arm-gcc.zip -oC:/arm-gcc-tmp -y > /dev/null
+          inner=$(find C:/arm-gcc-tmp -maxdepth 1 -mindepth 1 -type d | head -1)
+          echo "Inner dir: $inner"
+          mv "$inner" C:/arm-gcc
+          ls C:/arm-gcc/bin/arm-none-eabi-gcc* || echo "WARNING: gcc binary not found"
+          echo "C:/arm-gcc/bin" >> "$GITHUB_PATH"
 
       - name: Verify toolchain
         run: |
