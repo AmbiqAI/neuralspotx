@@ -1,0 +1,1 @@
+../../examples/coremark/README.md

@@ -145,3 +145,21 @@ jobs:
           uv run --group test pytest tests/test_example_builds.py
           -q
           --timeout=600
+
+  # ---------------------------------------------------------------
+  # Gate — single required-check for branch protection
+  # ---------------------------------------------------------------
+  lint-and-test:
+    if: always()
+    needs: [lint, unit-tests, example-builds]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Decide status
+        run: |
+          # Fail if any dependency was not successful.
+          if [[ "${{ needs.lint.result }}" != "success" ]] ||
+             [[ "${{ needs.unit-tests.result }}" != "success" ]] ||
+             [[ "${{ needs.example-builds.result }}" != "success" ]]; then
+            echo "One or more CI jobs failed."
+            exit 1
+          fi

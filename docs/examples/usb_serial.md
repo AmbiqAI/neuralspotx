@@ -1,0 +1,1 @@
+../../examples/usb_serial/README.md

@@ -67,6 +67,15 @@ nav:
       - Board Coverage: architecture/board-coverage.md
       - Toolchain Support: architecture/toolchain-support.md
       - SDK Upstream Plan: architecture/sdk-upstream-plan.md
+  - Examples:
+      - hello_world: examples/hello_world.md
+      - coremark: examples/coremark.md
+      - power_benchmark: examples/power_benchmark.md
+      - pmu_profiling: examples/pmu_profiling.md
+      - kws_infer: examples/kws_infer.md
+      - audio_capture: examples/audio_capture.md
+      - usb_serial: examples/usb_serial.md
+      - usb_rpc: examples/usb_rpc.md
   - Contributing:
       - Overview: contributing/index.md
       - Agent Guidance: contributing/agent-guidance.md

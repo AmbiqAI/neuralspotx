@@ -1,0 +1,1 @@
+../../examples/kws_infer/README.md
