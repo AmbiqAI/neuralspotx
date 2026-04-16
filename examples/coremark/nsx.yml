@@ -10,7 +10,7 @@ profile: apollo510_evb_minimal
 profile_status: active
 modules:
 - name: nsx-ambiqsuite-r5
-  revision: r5.3
+  revision: main
   project: nsx-ambiqsuite-r5
 - name: nsx-ambiq-hal-r5
   revision: main
@@ -50,9 +50,9 @@ tooling:
 module_registry:
   projects:
     nsx-ambiqsuite-r5:
-      revision: r5.3
+      revision: main
   modules:
     nsx-ambiqsuite-r5:
       project: nsx-ambiqsuite-r5
-      revision: r5.3
+      revision: main
       metadata: modules/nsx-ambiqsuite-r5/nsx-module.yaml
