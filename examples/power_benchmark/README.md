@@ -1,10 +1,13 @@
 # Power Benchmark
 
-Three power benchmarks for Apollo510 EVB in a single example:
+Power benchmarks for Apollo510 EVB with multiple execution modes:
 
 | Mode | What it measures | Active workload |
 |------|-----------------|----------------|
-| `coremark` | Active compute efficiency | EEMBC CoreMark from ITCM, NVM off |
+| `coremark` | Active compute (ITCM) | EEMBC CoreMark from ITCM, NVM off |
+| `coremark_nvm` | Active compute (NVM, all memory) | EEMBC CoreMark from NVM, all memory on |
+| `coremark_minmem` | Active compute (NVM, min memory) | EEMBC CoreMark from NVM, SDK5-equivalent memory |
+| `coremark_sdk5` | SDK5 reference comparison | EEMBC CoreMark with SDK5-verbatim init (UART) |
 | `while1` | Minimum active current | Tight NOP loop from ITCM, NVM off |
 | `deepsleep` | Sleep floor | WFI deep sleep, all peripherals off |
 
@@ -27,7 +30,7 @@ python tools/joulescope_capture.py --duration 60
 
 | CMake Variable | Values | Default | Description |
 |---|---|---|---|
-| `BENCHMARK_MODE` | `coremark`, `while1`, `deepsleep` | `coremark` | Benchmark workload |
+| `BENCHMARK_MODE` | `coremark`, `coremark_nvm`, `coremark_minmem`, `coremark_sdk5`, `while1`, `deepsleep` | `coremark` | Benchmark workload |
 | `BENCHMARK_HP_MODE` | `ON`/`OFF` | `OFF` | HP 250 MHz (ON) or LP 96 MHz (OFF) |
 | `USE_ARMCLANG` | `ON`/`OFF` | `OFF` | Compile CoreMark with armclang -Ofast |
 

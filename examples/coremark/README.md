@@ -1,13 +1,10 @@
-# External NSX App Template
+# CoreMark
 
-This template shows a standalone NSX app with app-local modules and board content.
+EEMBC CoreMark benchmark for Apollo510 EVB.
 
-## Create
-
-```bash
-nsx create-app coremark --board apollo510_evb
-cd coremark
-```
+Runs the standard CoreMark benchmark with configurable execution modes
+(ITCM, NVM) and clock speeds (LP 96 MHz, HP 250 MHz). Results are
+output via SWO.
 
 ## Build
 
@@ -18,25 +15,9 @@ nsx flash --app-dir .
 nsx view --app-dir .
 ```
 
-`nsx view` opens the SEGGER SWO viewer first and then runs the app's normal
-reset target once. This keeps the standard `Reset` behavior while avoiding an
-empty SWO session when the target is already running before the viewer attaches.
-
-Expected SWO output after `flash` + `view`:
-
-```text
-nsx hello from generated app
-nsx hello from generated app
-...
-```
-
 ## Layout
 
-- `cmake/nsx/` contains copied NSX CMake support.
-- `modules/` contains NSX module sources managed inside this app.
-- `boards/` contains the vendored board definition for the selected target.
-- `nsx.yml` tracks the app board and enabled module set.
-- Use `--no-reset-on-open` only if you explicitly want to attach without the automatic reset.
-
-If you are using a source checkout instead of a `pipx` install, activate the
-`uv` environment first and then run the same `nsx ...` commands.
+- `cmake/nsx/` — NSX CMake support
+- `modules/` — NSX module sources (app-local)
+- `boards/` — Vendored board definition
+- `src/` — CoreMark source and port files

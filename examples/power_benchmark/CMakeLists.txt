@@ -15,7 +15,7 @@ nsx_bootstrap_app(
 # ---------------------------------------------------------------------------
 # Benchmark Mode: coremark | while1 | deepsleep
 # ---------------------------------------------------------------------------
-set(BENCHMARK_MODE "coremark" CACHE STRING "Benchmark: coremark, while1, deepsleep")
+set(BENCHMARK_MODE "coremark" CACHE STRING "Benchmark: coremark, coremark_nvm, coremark_minmem, coremark_sdk5, while1, deepsleep")
 option(BENCHMARK_HP_MODE "Run at HP 250 MHz instead of LP 96 MHz" OFF)
 option(USE_ARMCLANG "Compile CoreMark hot-path with armclang -Ofast" OFF)
 
@@ -27,8 +27,15 @@ set(COREMARK_DIR ${CMAKE_CURRENT_LIST_DIR}/src/coremark)
 set(APP_SOURCES src/main.c)
 set(APP_DEFINES "")
 
-if(BENCHMARK_MODE STREQUAL "coremark")
+if(BENCHMARK_MODE STREQUAL "coremark" OR BENCHMARK_MODE STREQUAL "coremark_nvm" OR BENCHMARK_MODE STREQUAL "coremark_minmem" OR BENCHMARK_MODE STREQUAL "coremark_sdk5")
     list(APPEND APP_DEFINES BENCHMARK_COREMARK)
+    if(BENCHMARK_MODE STREQUAL "coremark_nvm")
+        list(APPEND APP_DEFINES BENCHMARK_NVM_ALL_ON)
+    elseif(BENCHMARK_MODE STREQUAL "coremark_minmem")
+        list(APPEND APP_DEFINES BENCHMARK_NVM_MINMEM)
+    elseif(BENCHMARK_MODE STREQUAL "coremark_sdk5")
+        list(APPEND APP_DEFINES BENCHMARK_SDK5_MIMIC)
+    endif()
     list(APPEND APP_SOURCES src/core_portme.c)
 
     if(USE_ARMCLANG)
@@ -75,7 +82,7 @@ elseif(BENCHMARK_MODE STREQUAL "while1")
     # No extra defines — while1 is the default fallthrough in main.c
 
 else()
-    message(FATAL_ERROR "Unknown BENCHMARK_MODE: ${BENCHMARK_MODE}. Use: coremark, while1, deepsleep")
+    message(FATAL_ERROR "Unknown BENCHMARK_MODE: ${BENCHMARK_MODE}. Use: coremark, coremark_nvm, coremark_minmem, coremark_sdk5, while1, deepsleep")
 endif()
 
 # ---------------------------------------------------------------------------
@@ -83,7 +90,7 @@ endif()
 # ---------------------------------------------------------------------------
 add_executable(power_benchmark ${APP_SOURCES})
 
-if(BENCHMARK_MODE STREQUAL "coremark" AND USE_ARMCLANG)
+if((BENCHMARK_MODE STREQUAL "coremark" OR BENCHMARK_MODE STREQUAL "coremark_nvm" OR BENCHMARK_MODE STREQUAL "coremark_minmem" OR BENCHMARK_MODE STREQUAL "coremark_sdk5") AND USE_ARMCLANG)
     target_link_libraries(power_benchmark PRIVATE ${COREMARK_OBJS})
     add_dependencies(power_benchmark armclang_coremark_objs)
 endif()
@@ -99,7 +106,7 @@ target_compile_definitions(power_benchmark PRIVATE
 )
 
 # CoreMark-specific defines (only when mode=coremark, only on CoreMark files)
-if(BENCHMARK_MODE STREQUAL "coremark" AND NOT USE_ARMCLANG)
+if((BENCHMARK_MODE STREQUAL "coremark" OR BENCHMARK_MODE STREQUAL "coremark_nvm" OR BENCHMARK_MODE STREQUAL "coremark_minmem" OR BENCHMARK_MODE STREQUAL "coremark_sdk5") AND NOT USE_ARMCLANG)
     foreach(_cm_src core_main.c core_list_join.c core_matrix.c core_state.c core_util.c)
         set_source_files_properties(${COREMARK_DIR}/${_cm_src} PROPERTIES
             COMPILE_DEFINITIONS "main=coremark_main;PERFORMANCE_RUN=1;ITERATIONS=0;FLAGS_STR=\"${CMAKE_C_FLAGS}\""
@@ -117,9 +124,23 @@ target_link_libraries(power_benchmark PRIVATE
 )
 
 # ---------------------------------------------------------------------------
-# ITCM linker script (coremark and while1 modes use ITCM execution)
+# coremark_minmem: strip -ffast-math to match SDK5 -O3-only build.
+# GCC flags are last-wins, and the toolchain interface target appends after
+# the target's own options.  Remove it from the source (the flags target).
 # ---------------------------------------------------------------------------
-if(NOT BENCHMARK_MODE STREQUAL "deepsleep")
+if(BENCHMARK_MODE STREQUAL "coremark_minmem" OR BENCHMARK_MODE STREQUAL "coremark_sdk5")
+    get_target_property(_tc_opts nsx_board_apollo510_evb_flags INTERFACE_COMPILE_OPTIONS)
+    if(_tc_opts)
+        list(REMOVE_ITEM _tc_opts "-ffast-math")
+        set_property(TARGET nsx_board_apollo510_evb_flags PROPERTY INTERFACE_COMPILE_OPTIONS ${_tc_opts})
+    endif()
+endif()
+
+# ---------------------------------------------------------------------------
+# ITCM linker script (coremark and while1 modes use ITCM execution)
+# coremark_nvm runs from NVM — use the default board linker script.
+# ---------------------------------------------------------------------------
+if(NOT BENCHMARK_MODE STREQUAL "deepsleep" AND NOT BENCHMARK_MODE STREQUAL "coremark_nvm" AND NOT BENCHMARK_MODE STREQUAL "coremark_minmem" AND NOT BENCHMARK_MODE STREQUAL "coremark_sdk5")
     set(PB_LINKER_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/linker_script_itcm.ld")
     get_target_property(_board_link_opts nsx_board_apollo510_evb_flags INTERFACE_LINK_OPTIONS)
     list(FILTER _board_link_opts EXCLUDE REGEX "^-T")
