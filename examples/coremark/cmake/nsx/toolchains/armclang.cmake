@@ -26,7 +26,11 @@ set(CMAKE_LINKER ${ARMLINK})
 set(CMAKE_OBJCOPY ${FROMELF})
 set(CMAKE_SIZE ${FROMELF})
 
-set(CMAKE_EXECUTABLE_SUFFIX ".axf")
+set(CMAKE_EXECUTABLE_SUFFIX ".elf")
+
+# armclang bundles its own runtime — no standard library flags needed.
+set(CMAKE_C_STANDARD_LIBRARIES "")
+set(CMAKE_CXX_STANDARD_LIBRARIES "")
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
