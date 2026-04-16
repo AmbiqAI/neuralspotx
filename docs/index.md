@@ -1,29 +1,30 @@
+---
+hide:
+  - navigation
+  - toc
+---
+
+<div class="hero-logo" markdown>
+[![neuralspotx](./assets/neuralspotx-logo-light.png#only-light)](https://github.com/AmbiqAI/neuralspotx)
+[![neuralspotx](./assets/neuralspotx-logo-dark.png#only-dark)](https://github.com/AmbiqAI/neuralspotx)
+</div>
+
 # NSX
 
-NSX is a task-focused bare-metal application workflow for Ambiq SoCs and
-boards.
+**Task-focused bare-metal application workflow for Ambiq SoCs and boards.**
 
-It is designed for:
+NSX is designed for board bring-up, smoke-test applications,
+profiling and instrumentation workflows, and targeted feature validation
+such as USB or interface demos.
 
-- board bring-up
-- smoke-test applications
-- profiling and instrumentation workflows
-- targeted feature validation such as USB or interface demos
+## How it Works
 
-The main idea is simple:
+```
+nsx create-app   →   nsx configure   →   nsx build   →   nsx flash   →   nsx view
+```
 
-1. create an app with `nsx create-app`
-2. vendor the required board and module content into that app
-3. use `nsx configure`, `nsx build`, `nsx flash`, and `nsx view`
-
-Generated apps stay explicit and inspectable:
-
-- one board
-- one SoC
-- one toolchain
-- ordinary CMake structure
-
-## Core Workflow
+Generated apps stay explicit and inspectable — one board, one SoC, one
+toolchain, ordinary CMake structure.
 
 ```mermaid
 flowchart LR
@@ -39,17 +40,33 @@ flowchart LR
     G --> H["Flash / SWO View"]
 ```
 
-## What NSX Provides
+## Features
 
-- packaged templates for new apps
-- packaged CMake helpers for build, flash, and SWO workflows
-- built-in board definitions
-- module and SDK provider resolution through metadata
-- a CLI designed around the app lifecycle
+<div class="feature-grid" markdown>
+<div class="card" markdown>
+### :material-console: CLI Workflow
+`create-app` · `configure` · `build` · `flash` · `view` — the full app lifecycle from a single tool.
+</div>
+<div class="card" markdown>
+### :material-package-variant: Module Registry
+Declarative module resolution — pull board support, HALs, peripherals, and libraries from versioned repos.
+</div>
+<div class="card" markdown>
+### :material-chip: Board Definitions
+Built-in definitions for Apollo4, Apollo510, and more. One board per app, zero ambiguity.
+</div>
+<div class="card" markdown>
+### :material-cog: CMake Native
+Standard CMake under the hood. Inspect, extend, or eject at any time.
+</div>
+</div>
 
 ## Where to Start
 
-- New to NSX: go to **Getting Started**
-- Already using it: go to **User Guide**
-- Need exact flags or syntax: go to **Command Reference**
-- Working on the platform itself: go to **Contributing**
+| You want to… | Go to |
+|---|---|
+| Get up and running | [Getting Started](getting-started/index.md) |
+| Understand the app model | [User Guide](user-guide/app-model.md) |
+| Look up exact CLI flags | [Command Reference](reference/cli-overview.md) |
+| Try an example | [Examples](examples/hello_world.md) |
+| Contribute to the platform | [Contributing](contributing/index.md) |

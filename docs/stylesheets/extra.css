@@ -1,0 +1,77 @@
+/* ── Wide body layout ─────────────────────────────────────────────── */
+/* Increase the content area max-width for large screens */
+.md-grid {
+  max-width: 1440px;
+}
+
+/* ── Hero / landing-page logo banner ─────────────────────────────── */
+.hero-logo {
+  text-align: center;
+  margin: 2rem 0 1rem;
+}
+.hero-logo img {
+  max-width: min(720px, 90%);
+  height: auto;
+}
+
+/* ── Modern typography & spacing ─────────────────────────────────── */
+.md-typeset h1 {
+  font-weight: 700;
+  letter-spacing: -0.02em;
+}
+.md-typeset h2 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  margin-top: 2em;
+}
+
+/* Tighter paragraph line-height for a cleaner look */
+.md-typeset p {
+  line-height: 1.7;
+}
+
+/* ── Cards-style feature list on the landing page ────────────────── */
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 1.2rem;
+  margin: 2rem 0;
+}
+.feature-grid .card {
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 12px;
+  padding: 1.4rem;
+  transition: box-shadow 0.2s, transform 0.2s;
+}
+.feature-grid .card:hover {
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
+  transform: translateY(-2px);
+}
+.feature-grid .card h3 {
+  margin-top: 0;
+  font-size: 1.05rem;
+}
+.feature-grid .card p {
+  margin-bottom: 0;
+  font-size: 0.92rem;
+  opacity: 0.85;
+}
+
+/* ── Landing-page section titles ─────────────────────────────────── */
+.md-typeset .landing-section {
+  text-align: center;
+  margin-bottom: 0.4rem;
+}
+
+/* ── Subtle code-block refinement ────────────────────────────────── */
+.md-typeset code {
+  border-radius: 6px;
+}
+.md-typeset pre > code {
+  border-radius: 10px;
+}
+
+/* ── Navigation polish ───────────────────────────────────────────── */
+.md-nav__link {
+  font-size: 0.82rem;
+}

@@ -3,13 +3,40 @@ site_description: Bare-metal application tooling and build workflow for Ambiq ta
 repo_url: https://github.com/AmbiqAI/neuralspotx
 theme:
   name: material
+  favicon: assets/neuralspotx-icon.png
+  icon:
+    logo: material/chip
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: indigo
+      accent: deep purple
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: indigo
+      accent: deep purple
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  font:
+    text: Inter
+    code: JetBrains Mono
   features:
     - navigation.instant
     - navigation.sections
     - navigation.top
+    - navigation.tabs
     - content.code.copy
+    - header.autohide
+extra_css:
+  - stylesheets/extra.css
 markdown_extensions:
   - admonition
+  - attr_list
+  - md_in_html
   - tables
   - toc:
       permalink: true
