@@ -108,6 +108,22 @@ class ModuleRegisterRequest:
     dry_run: bool = False
 
 
+@dataclass(slots=True)
+class ModuleInitRequest:
+    """Request parameters for creating a custom-module skeleton."""
+
+    module_dir: PathLike
+    module_name: str | None = None
+    module_type: str = "runtime"
+    summary: str | None = None
+    version: str = "0.1.0"
+    dependencies: list[str] | None = None
+    boards: list[str] | None = None
+    socs: list[str] | None = None
+    toolchains: list[str] | None = None
+    force: bool = False
+
+
 def _invoke(func, *args, **kwargs) -> None:
     """Invoke an NSX operation and normalize ``SystemExit`` into ``NSXError``."""
 
@@ -429,6 +445,52 @@ def register_module(
         ),
         override=request.override,
         dry_run=request.dry_run,
+    )
+
+
+def init_module(
+    module_dir: PathLike | ModuleInitRequest,
+    *,
+    module_name: str | None = None,
+    module_type: str = "runtime",
+    summary: str | None = None,
+    version: str = "0.1.0",
+    dependencies: list[str] | None = None,
+    boards: list[str] | None = None,
+    socs: list[str] | None = None,
+    toolchains: list[str] | None = None,
+    force: bool = False,
+) -> None:
+    """Create a standard custom-module skeleton on disk."""
+
+    request = (
+        module_dir
+        if isinstance(module_dir, ModuleInitRequest)
+        else ModuleInitRequest(
+            module_dir=module_dir,
+            module_name=module_name,
+            module_type=module_type,
+            summary=summary,
+            version=version,
+            dependencies=dependencies,
+            boards=boards,
+            socs=socs,
+            toolchains=toolchains,
+            force=force,
+        )
+    )
+    _invoke(
+        operations.init_module_impl,
+        Path(request.module_dir).expanduser().resolve(),
+        module_name=request.module_name,
+        module_type=request.module_type,
+        summary=request.summary,
+        version=request.version,
+        dependencies=request.dependencies,
+        boards=request.boards,
+        socs=request.socs,
+        toolchains=request.toolchains,
+        force=request.force,
     )
 
 

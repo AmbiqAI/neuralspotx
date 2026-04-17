@@ -1,0 +1,47 @@
+schema_version: 1
+
+module:
+  name: {{ module_name }}
+  type: {{ module_type }}
+  version: "{{ version }}"
+
+support:
+  ambiqsuite: true
+  zephyr: false
+
+summary: {{ summary_literal }}
+
+capabilities: []
+use_cases: []
+agent_keywords: []
+
+build:
+  cmake:
+    package: {{ package_name }}
+    targets:
+      - {{ module_target }}
+
+depends:
+{% if dependency_names %}
+  required:
+{% for dep in dependency_names %}
+    - {{ dep }}
+{% endfor %}
+{% else %}
+  required: []
+{% endif %}
+  optional: []
+
+compatibility:
+  boards:
+{% for board in boards %}
+    - "{{ board }}"
+{% endfor %}
+  socs:
+{% for soc in socs %}
+    - "{{ soc }}"
+{% endfor %}
+  toolchains:
+{% for toolchain in toolchains %}
+    - "{{ toolchain }}"
+{% endfor %}

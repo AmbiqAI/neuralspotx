@@ -13,12 +13,14 @@ from neuralspotx import (
     AppBuildRequest,
     AppCleanRequest,
     AppCreateRequest,
+    ModuleInitRequest,
     ModuleRegisterRequest,
     add_module,
     build_app,
     clean_app,
     cli,
     create_app,
+    init_module,
     register_module,
     remove_module,
     update_modules,
@@ -286,6 +288,68 @@ def test_module_describe_parser_wiring() -> None:
     assert args.func == cli.cmd_module_describe
 
 
+def test_module_init_creates_valid_skeleton(tmp_path: Path) -> None:
+    module_dir = tmp_path / "my-sensor-driver"
+
+    init_module(
+        ModuleInitRequest(
+            module_dir=module_dir,
+            module_type="backend_specific",
+            summary="I2C driver for the XYZ ambient light sensor.",
+            dependencies=["nsx-core", "nsx-i2c"],
+            socs=["apollo510", "apollo510b", "apollo5b"],
+        )
+    )
+
+    metadata_path = module_dir / "nsx-module.yaml"
+    header_path = module_dir / "includes-api" / "my_sensor_driver" / "my_sensor_driver.h"
+    source_path = module_dir / "src" / "my_sensor_driver.c"
+    cmake_path = module_dir / "CMakeLists.txt"
+
+    assert metadata_path.exists()
+    assert header_path.exists()
+    assert source_path.exists()
+    assert cmake_path.exists()
+
+    metadata = _load_yaml(metadata_path)
+    assert metadata["module"]["name"] == "my-sensor-driver"
+    assert metadata["module"]["type"] == "backend_specific"
+    assert metadata["depends"]["required"] == ["nsx-core", "nsx-i2c"]
+    assert metadata["compatibility"]["socs"] == ["apollo510", "apollo510b", "apollo5b"]
+
+    cmake_text = cmake_path.read_text(encoding="utf-8")
+    assert "find_package(nsx_core REQUIRED)" in cmake_text
+    assert "find_package(nsx_i2c REQUIRED)" in cmake_text
+    assert "add_library(nsx::my_sensor_driver ALIAS my_sensor_driver)" in cmake_text
+
+    header_text = header_path.read_text(encoding="utf-8")
+    assert "MY_SENSOR_DRIVER_H" in header_text
+    assert "int my_sensor_driver_init(void);" in header_text
+
+
+def test_module_init_parser_wiring() -> None:
+    parser = cli._build_parser()
+    args = parser.parse_args(
+        [
+            "module",
+            "init",
+            "my-sensor-driver",
+            "--type",
+            "backend_specific",
+            "--dependency",
+            "nsx-core",
+            "--soc",
+            "apollo510",
+        ]
+    )
+
+    assert args.module_dir == "my-sensor-driver"
+    assert args.type == "backend_specific"
+    assert args.dependency == ["nsx-core"]
+    assert args.soc == ["apollo510"]
+    assert args.func == cli.cmd_module_init
+
+
 def test_cmd_commands_json_outputs_command_graph(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -302,6 +366,7 @@ def test_cmd_commands_json_outputs_command_graph(
 
     module_subcommands = {item["command"]: item for item in top_level["nsx module"]["subcommands"]}
     assert "nsx module describe" in module_subcommands
+    assert "nsx module init" in module_subcommands
     assert any(
         option["flags"] == ["--json"]
         for option in module_subcommands["nsx module describe"]["arguments"]["options"]

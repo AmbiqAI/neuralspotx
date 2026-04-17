@@ -1,0 +1,23 @@
+# {{ module_name }}
+
+Generated with `nsx module init`.
+
+## Next Steps
+
+1. Update `nsx-module.yaml` with a real summary, capabilities, and compatibility.
+2. Replace the stub functions in `src/{{ package_name }}.c`.
+3. Validate the metadata:
+
+   ```bash
+   nsx module validate nsx-module.yaml
+   ```
+
+4. Register the module into an app:
+
+   ```bash
+   nsx module register {{ module_name }} \
+     --metadata nsx-module.yaml \
+     --project {{ package_name }} \
+     --project-local-path . \
+     --app-dir <app-dir>
+   ```

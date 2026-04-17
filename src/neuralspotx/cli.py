@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from . import operations
-from .metadata import load_yaml, validate_nsx_module_metadata
+from .metadata import SUPPORTED_MODULE_TYPES, load_yaml, validate_nsx_module_metadata
 from .module_discovery import (
     resolve_module_context,
     resolve_target_context,
@@ -83,7 +83,12 @@ _COMMAND_GRAPH_HINTS: dict[str, dict[str, Any]] = {
     "module": {
         "category": "modules",
         "scope": "app",
-        "next_commands": ["nsx module list", "nsx module describe", "nsx module add"],
+        "next_commands": [
+            "nsx module list",
+            "nsx module describe",
+            "nsx module init <module-dir>",
+            "nsx module add",
+        ],
     },
     "module list": {
         "category": "modules",
@@ -127,6 +132,15 @@ _COMMAND_GRAPH_HINTS: dict[str, dict[str, Any]] = {
         "category": "modules",
         "scope": "app",
         "next_commands": ["nsx module add <module>", "nsx configure", "nsx build"],
+    },
+    "module init": {
+        "category": "modules",
+        "scope": "filesystem",
+        "next_commands": [
+            "nsx module validate <metadata>",
+            "nsx module register <module>",
+            "nsx module add <module>",
+        ],
     },
     "module validate": {
         "category": "modules",
@@ -565,6 +579,21 @@ def cmd_module_register(args: argparse.Namespace) -> None:
     )
 
 
+def cmd_module_init(args: argparse.Namespace) -> None:
+    operations.init_module_impl(
+        Path(args.module_dir).expanduser().resolve(),
+        module_name=args.name,
+        module_type=args.type,
+        summary=args.summary,
+        version=args.version,
+        dependencies=args.dependency,
+        boards=args.board,
+        socs=args.soc,
+        toolchains=args.toolchain,
+        force=args.force,
+    )
+
+
 def cmd_module_validate(args: argparse.Namespace) -> None:
     metadata_path = Path(args.metadata).expanduser().resolve()
     try:
@@ -819,6 +848,64 @@ def _build_parser() -> argparse.ArgumentParser:
     p_mod_update.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
     p_mod_update.add_argument("--dry-run", action="store_true", help="Show changes without writing")
     p_mod_update.set_defaults(func=cmd_module_update)
+
+    p_mod_init = mod_sub.add_parser(
+        "init",
+        help="Create a standard custom-module skeleton",
+        description="Scaffold a new NSX custom-module directory with metadata, CMake, headers, and source stubs.",
+    )
+    p_mod_init.add_argument("module_dir", help="Directory to create for the module skeleton")
+    p_mod_init.add_argument(
+        "--name",
+        default=None,
+        help="Logical module name (defaults to the directory name)",
+    )
+    p_mod_init.add_argument(
+        "--type",
+        choices=sorted(SUPPORTED_MODULE_TYPES),
+        default="runtime",
+        help="NSX module type for the generated metadata",
+    )
+    p_mod_init.add_argument(
+        "--summary",
+        default=None,
+        help="One-line module summary to seed into nsx-module.yaml",
+    )
+    p_mod_init.add_argument(
+        "--version",
+        default="0.1.0",
+        help="Initial semantic version for the module",
+    )
+    p_mod_init.add_argument(
+        "--dependency",
+        action="append",
+        default=[],
+        help="Required module dependency to add to the skeleton; repeat as needed",
+    )
+    p_mod_init.add_argument(
+        "--board",
+        action="append",
+        default=[],
+        help="Compatible board to declare; repeat as needed (defaults to *)",
+    )
+    p_mod_init.add_argument(
+        "--soc",
+        action="append",
+        default=[],
+        help="Compatible SoC to declare; repeat as needed (defaults to *)",
+    )
+    p_mod_init.add_argument(
+        "--toolchain",
+        action="append",
+        default=[],
+        help="Compatible toolchain to declare; repeat as needed (defaults to arm-none-eabi-gcc)",
+    )
+    p_mod_init.add_argument(
+        "--force",
+        action="store_true",
+        help="Allow writing into a non-empty destination directory",
+    )
+    p_mod_init.set_defaults(func=cmd_module_init)
 
     p_mod_register = mod_sub.add_parser(
         "register",

@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import copy
 import importlib.resources as resources
+import json
 import shutil
 import subprocess
 import time
@@ -14,7 +15,7 @@ from .constants import (
     DEFAULT_SOC_FOR_BOARD,
     DEFAULT_TOOLCHAIN,
 )
-from .metadata import validate_nsx_module_metadata
+from .metadata import load_yaml, validate_nsx_module_metadata
 from .models import ModuleEntry, ProjectEntry
 from .module_registry import (
     _acquire_modules_for_app,
@@ -199,6 +200,103 @@ def create_app_impl(
     print("  2) Run `nsx configure --app-dir .`")
     print("  3) Run `nsx build --app-dir .`, `nsx flash --app-dir .`, or `nsx view --app-dir .`")
     return app_dir
+
+
+def _module_package_name(module_name: str) -> str:
+    """Convert a module name into its default CMake package/header stem."""
+
+    return module_name.replace("-", "_")
+
+
+def _module_target_name(module_name: str) -> str:
+    """Convert a module name into its default namespaced CMake target."""
+
+    stem = _module_package_name(module_name)
+    if stem.startswith("nsx_"):
+        stem = stem[4:]
+    return f"nsx::{stem}"
+
+
+def init_module_impl(
+    module_dir: Path,
+    *,
+    module_name: str | None = None,
+    module_type: str = "runtime",
+    summary: str | None = None,
+    version: str = "0.1.0",
+    dependencies: list[str] | None = None,
+    boards: list[str] | None = None,
+    socs: list[str] | None = None,
+    toolchains: list[str] | None = None,
+    force: bool = False,
+) -> Path:
+    """Create a standard custom-module skeleton."""
+
+    module_name = (module_name or module_dir.name).strip()
+    if not module_name:
+        raise SystemExit("Module name must not be empty.")
+
+    if module_dir.exists() and not module_dir.is_dir():
+        raise SystemExit(f"Module path already exists and is not a directory: {module_dir}")
+    if module_dir.exists() and any(module_dir.iterdir()) and not force:
+        raise SystemExit(f"Module directory already exists and is not empty: {module_dir}")
+
+    dependency_names = _unique_preserving_order(dependencies or [])
+    board_names = _unique_preserving_order(boards or ["*"])
+    soc_names = _unique_preserving_order(socs or ["*"])
+    toolchain_names = _unique_preserving_order(toolchains or [DEFAULT_TOOLCHAIN])
+
+    package_name = _module_package_name(module_name)
+    module_target = _module_target_name(module_name)
+    summary_text = summary or f"TODO: describe what {module_name} provides."
+    dependency_records = [
+        {
+            "name": dep,
+            "package": _module_package_name(dep),
+            "target": _module_target_name(dep),
+        }
+        for dep in dependency_names
+    ]
+
+    template_root = resources.files("neuralspotx.templates").joinpath("module_skeleton")
+    with resources.as_file(template_root) as src_template:
+        if not src_template.exists():
+            raise SystemExit(f"Template directory not found: {src_template}")
+
+        module_dir.mkdir(parents=True, exist_ok=True)
+        render_template_tree(
+            src_template,
+            module_dir,
+            context={
+                "module_name": module_name,
+                "module_type": module_type,
+                "version": version,
+                "summary_literal": json.dumps(summary_text),
+                "package_name": package_name,
+                "module_target": module_target,
+                "include_dir": package_name,
+                "include_guard": f"{package_name.upper()}_H",
+                "dependency_names": dependency_names,
+                "dependency_records": dependency_records,
+                "boards": board_names,
+                "socs": soc_names,
+                "toolchains": toolchain_names,
+            },
+        )
+
+    metadata_path = module_dir / "nsx-module.yaml"
+    validate_nsx_module_metadata(load_yaml(metadata_path), str(metadata_path))
+
+    print(f"Created module skeleton '{module_name}' at: {module_dir}")
+    print("Next steps:")
+    print("  1) Review nsx-module.yaml and fill in summary, capabilities, and compatibility")
+    print(f"  2) Run `nsx module validate {metadata_path}`")
+    print(
+        "  3) Register it into an app with `nsx module register "
+        f"{module_name} --metadata {metadata_path} --project {package_name} "
+        f"--project-local-path {module_dir} --app-dir <app-dir>`"
+    )
+    return module_dir
 
 
 def doctor_impl() -> None:

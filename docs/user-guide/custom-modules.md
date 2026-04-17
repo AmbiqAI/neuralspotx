@@ -34,6 +34,28 @@ directory when enabled. The only difference is how NSX discovers them:
 - **Custom** modules are resolved from the app-local `nsx.yml` overrides
   created by `nsx module register`.
 
+## Scaffolding a New Module
+
+Use `nsx module init` to generate a standard custom-module layout instead of
+creating every file manually.
+
+```bash
+nsx module init my-sensor-driver \
+  --type backend_specific \
+  --summary "I2C driver for the XYZ ambient light sensor." \
+  --dependency nsx-core \
+  --dependency nsx-i2c \
+  --soc apollo510 \
+  --soc apollo510b \
+  --soc apollo5b
+```
+
+This creates `nsx-module.yaml`, `CMakeLists.txt`, a public header tree under
+`includes-api/`, and a source stub under `src/`.
+
+For a full walkthrough of the generated files and how to register the module,
+see [Creating a Custom Module](creating-a-custom-module.md).
+
 ## Requirements
 
 A custom module must provide two files at minimum:

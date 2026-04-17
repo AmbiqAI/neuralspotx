@@ -1,0 +1,21 @@
+cmake_minimum_required(VERSION 3.20)
+
+{% for dep in dependency_records %}
+find_package({{ dep.package }} REQUIRED)
+{% endfor %}
+add_library({{ package_name }} STATIC
+  src/{{ package_name }}.c
+)
+
+target_include_directories({{ package_name }} PUBLIC
+  includes-api
+)
+
+target_link_libraries({{ package_name }} PUBLIC
+  ${NSX_BOARD_FLAGS_TARGET}
+{% for dep in dependency_records %}
+  {{ dep.target }}
+{% endfor %}
+)
+
+add_library({{ module_target }} ALIAS {{ package_name }})

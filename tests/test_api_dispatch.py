@@ -12,6 +12,7 @@ from neuralspotx import (
     AppCreateRequest,
     AppFlashRequest,
     ModuleChangeRequest,
+    ModuleInitRequest,
     ModuleRegisterRequest,
     ModuleUpdateRequest,
     NSXError,
@@ -22,6 +23,7 @@ from neuralspotx import (
     create_app,
     doctor,
     flash_app,
+    init_module,
     register_module,
     remove_module,
     update_modules,
@@ -290,6 +292,84 @@ def test_module_register_dispatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
             "modules/local-demo",
             project_local_path.expanduser(),
             True,
+            True,
+        )
+    ]
+
+
+def test_module_init_dispatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[
+        tuple[
+            Path,
+            str | None,
+            str,
+            str | None,
+            str,
+            list[str] | None,
+            list[str] | None,
+            list[str] | None,
+            list[str] | None,
+            bool,
+        ]
+    ] = []
+
+    def fake_init(
+        module_dir: Path,
+        *,
+        module_name: str | None = None,
+        module_type: str = "runtime",
+        summary: str | None = None,
+        version: str = "0.1.0",
+        dependencies: list[str] | None = None,
+        boards: list[str] | None = None,
+        socs: list[str] | None = None,
+        toolchains: list[str] | None = None,
+        force: bool = False,
+    ) -> None:
+        calls.append(
+            (
+                module_dir,
+                module_name,
+                module_type,
+                summary,
+                version,
+                dependencies,
+                boards,
+                socs,
+                toolchains,
+                force,
+            )
+        )
+
+    monkeypatch.setattr(operations, "init_module_impl", fake_init)
+
+    module_dir = tmp_path / "my-module"
+    init_module(
+        ModuleInitRequest(
+            module_dir=module_dir,
+            module_name="my-module",
+            module_type="backend_specific",
+            summary="Generated test module",
+            version="0.2.0",
+            dependencies=["nsx-core", "nsx-i2c"],
+            boards=["*"],
+            socs=["apollo510"],
+            toolchains=["arm-none-eabi-gcc"],
+            force=True,
+        )
+    )
+
+    assert calls == [
+        (
+            module_dir.resolve(),
+            "my-module",
+            "backend_specific",
+            "Generated test module",
+            "0.2.0",
+            ["nsx-core", "nsx-i2c"],
+            ["*"],
+            ["apollo510"],
+            ["arm-none-eabi-gcc"],
             True,
         )
     ]

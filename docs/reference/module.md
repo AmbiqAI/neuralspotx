@@ -10,6 +10,7 @@ Subcommands:
 - `add`
 - `remove`
 - `update`
+- `init`
 - `register`
 - `validate`
 
@@ -110,6 +111,43 @@ nsx module remove [--app-dir APP_DIR] [--dry-run] module
 ```text
 nsx module update [--app-dir APP_DIR] [--dry-run] [module]
 ```
+
+## `nsx module init`
+
+```text
+nsx module init [--name NAME] [--type TYPE] [--summary SUMMARY]
+                                [--version VERSION]
+                                [--dependency DEPENDENCY]
+                                [--board BOARD] [--soc SOC] [--toolchain TOOLCHAIN]
+                                [--force]
+                                module_dir
+```
+
+Examples:
+
+```bash
+nsx module init my-sensor-driver
+
+nsx module init my-sensor-driver \
+    --type backend_specific \
+    --summary "I2C driver for the XYZ ambient light sensor." \
+    --dependency nsx-core \
+    --dependency nsx-i2c \
+    --soc apollo510 \
+    --soc apollo510b \
+    --soc apollo5b
+```
+
+Creates a standard custom-module skeleton with:
+
+- `nsx-module.yaml`
+- `CMakeLists.txt`
+- `README.md`
+- `includes-api/<module_name>/...`
+- `src/<module_name>.c`
+
+Use this as the normal starting point for third-party and app-local modules,
+then validate and register the generated module.
 
 ## `nsx module register`
 
