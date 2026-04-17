@@ -101,6 +101,7 @@ nav:
       - Toolchain Support: architecture/toolchain-support.md
       - SDK Upstream Plan: architecture/sdk-upstream-plan.md
   - Examples:
+      - Overview: examples/index.md
       - hello_world: examples/hello_world.md
       - coremark: examples/coremark.md
       - power_benchmark: examples/power_benchmark.md

@@ -151,3 +151,29 @@
 
 /* ── Nav ──────────────────────────────────────────────────────────── */
 .md-nav__link { font-size: 0.82rem; }
+
+/* ── Header: neutral background, translucent on scroll ────────────── */
+.md-header {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
+}
+[data-md-color-scheme="slate"] .md-header {
+  background: rgba(18, 18, 18, 0.92);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+.md-header__button, .md-header-nav__topic,
+.md-header .md-logo, .md-tabs {
+  color: var(--md-default-fg-color);
+}
+.md-tabs {
+  background: transparent;
+}
+.md-tabs__link {
+  color: var(--md-default-fg-color--light);
+  opacity: 1;
+}
+.md-tabs__link--active, .md-tabs__link:hover {
+  color: var(--md-default-fg-color);
+}

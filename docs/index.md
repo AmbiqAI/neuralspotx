@@ -138,7 +138,7 @@ Flags, options, and usage for every `nsx` subcommand.
 <div class="card" markdown>
 ### :material-flask-outline: Browse Examples
 CoreMark, PMU profiling, power benchmarking, USB serial, and more.
-**[Examples →](examples/hello_world.md)**
+**[Examples →](examples/index.md)**
 </div>
 </div>
 
