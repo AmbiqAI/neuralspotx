@@ -105,10 +105,10 @@ statistics, and prints a summary:
 ======================================================================
 CAPTURE SUMMARY
 ======================================================================
-  ACTIVE      : I=   2.461 mA  V= 1.800 V  P=   4.430 mW  t=   30.0 s
-  SLEEP       : I=   0.003 mA  V= 1.800 V  P=   0.005 mW  t=   30.0 s
+  ACTIVE      : I= <I_act> mA  V= <V> V  P= <P_act> mW  t=   30.0 s
+  SLEEP       : I= <I_slp> mA  V= <V> V  P= <P_slp> mW  t=   30.0 s
 
-  CoreMark/mW = CoreMark_score / 4.430 mW
+  CoreMark/mW = CoreMark_score / <P_act> mW
 ======================================================================
 ```
 
