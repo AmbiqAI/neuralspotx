@@ -19,18 +19,9 @@ such as USB or interface demos.
 
 ## How it Works
 
-<div class="workflow-pipeline" markdown>
-
-``` mermaid
-flowchart LR
-    A("<strong>create&#8209;app</strong><br/>scaffold") --> B("<strong>configure</strong><br/>resolve modules") --> C("<strong>build</strong><br/>CMake + GCC") --> D("<strong>flash</strong><br/>J-Link / SWD") --> E("<strong>view</strong><br/>SWO output")
-    style A fill:#4051b5,color:#fff,stroke:none,rx:8
-    style B fill:#4051b5,color:#fff,stroke:none,rx:8
-    style C fill:#4051b5,color:#fff,stroke:none,rx:8
-    style D fill:#4051b5,color:#fff,stroke:none,rx:8
-    style E fill:#4051b5,color:#fff,stroke:none,rx:8
-```
-
+<div class="workflow-pipeline">
+  <img src="./assets/workflow-light.svg#only-light" alt="NSX workflow: create-app → configure → build → flash → view">
+  <img src="./assets/workflow-dark.svg#only-dark" alt="NSX workflow: create-app → configure → build → flash → view">
 </div>
 
 Generated apps stay explicit and inspectable — one board, one SoC, one

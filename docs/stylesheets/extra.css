@@ -65,9 +65,14 @@
 }
 
 /* ── Workflow pipeline diagram ───────────────────────────────────── */
-.workflow-pipeline .mermaid {
+.workflow-pipeline {
+  text-align: center;
+  margin: 2rem auto;
   max-width: 900px;
-  margin: 1.5rem auto;
+}
+.workflow-pipeline img {
+  width: 100%;
+  height: auto;
 }
 
 /* ── Subtle code-block refinement ────────────────────────────────── */
