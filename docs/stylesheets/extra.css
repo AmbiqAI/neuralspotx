@@ -7,7 +7,7 @@
 
 /* ── Landing page ─────────────────────────────────────────────────── */
 .landing {
-  max-width: 800px;
+  max-width: 1120px;
   margin: 0 auto;
 }
 .landing h2 {
@@ -45,6 +45,19 @@
 /* SVG diagrams */
 .diagram { display: block; margin: 1.5rem auto; width: 100%; height: auto; }
 .diagram--narrow { max-width: 680px; }
+
+/* Material grid cards on the home page */
+.landing .grid.cards > ul > li > p {
+  font-size: 0.9rem;
+  line-height: 1.55;
+}
+.landing .grid.cards > ul > li > p:first-child {
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+.landing .grid.cards > ul > li > p:first-child strong {
+  font-weight: 600;
+}
 
 /* ── Card grid for non-landing pages (getting-started, examples) ──── */
 .card-grid {
