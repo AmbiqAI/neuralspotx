@@ -45,7 +45,6 @@ extra_css:
   - stylesheets/table-overrides.css
   - stylesheets/extra.css
 extra_javascript:
-  - https://cdn.jsdelivr.net/npm/simple-datatables@10.2.0
   - javascripts/module-catalog-tables.js
 markdown_extensions:
   - admonition
