@@ -4,7 +4,7 @@ repo_url: https://github.com/AmbiqAI/neuralspotx
 theme:
   name: material
   favicon: assets/neuralspotx-icon.png
-  logo: assets/neuralspotx-icon.png
+  logo: assets/neuralspotx-icon-white.png
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
