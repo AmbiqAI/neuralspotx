@@ -95,7 +95,9 @@ nav:
       - Create an App: user-guide/create-app.md
       - App Layout: user-guide/app-layout.md
       - Modules: user-guide/modules.md
+      - Module Catalog: user-guide/module-catalog.md
       - Custom Modules: user-guide/custom-modules.md
+      - Creating a Custom Module: user-guide/creating-a-custom-module.md
       - First-Class Modules: user-guide/first-class-modules.md
       - Python API: user-guide/python-api.md
       - Build, Flash, and View: user-guide/build-flash-view.md
