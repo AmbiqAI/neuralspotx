@@ -10,27 +10,22 @@ for `nsx module add` workflows.
 nsx module list --registry-only
 ```
 
-!!! tip "Need a module that isn't listed here?"
-
-    NSX supports **custom and third-party modules** alongside the built-in
-    catalog. You can register a local directory or any git repo as a module
-    for your app — no changes to the upstream registry required.
-
-    See [Custom Modules](custom-modules.md) for registration commands, or
-    follow the [Creating a Custom Module](creating-a-custom-module.md)
-    walkthrough to build one from scratch.
+> **Need a module that isn't listed here?**
+>
+> NSX supports **custom and third-party modules** alongside the built-in
+> catalog. You can register a local directory or any git repo as a module
+> for your app — no changes to the upstream registry required.
+>
+> See [Custom Modules](custom-modules.md) for registration commands, or
+> follow the [Creating a Custom Module](creating-a-custom-module.md)
+> walkthrough to build one from scratch.
 
 ---
 
-## Quick Filter
-
-Type in the box below to instantly filter the catalog table.
-
-<div>
-<input type="text" id="module-filter" class="md-input md-input--stretch" placeholder="Filter modules by name, category, or description…" style="width:100%;padding:.6rem .8rem;margin-bottom:1rem;border:1px solid var(--md-default-fg-color--lightest);border-radius:.4rem;font-size:.88rem;background:var(--md-code-bg-color);color:var(--md-default-fg-color);">
-</div>
-
 ## All Modules
+
+Use the built-in search field above the table to filter modules, then adjust
+the page size selector as needed.
 
 | Module | Category | Description | SoC Support |
 | --- | --- | --- | --- |
@@ -65,6 +60,8 @@ Type in the box below to instantly filter the catalog table.
 
 Board modules are selected automatically when you create an app for a specific
 target. They capture board-level wiring and pin configuration.
+
+This table has its own search and pagination controls.
 
 | Board Module | SoC Family |
 | --- | --- |
@@ -122,20 +119,3 @@ nsx module remove nsx-peripherals --app-dir my-app
 - [Creating a Custom Module](creating-a-custom-module.md) — step-by-step walkthrough
 - [First-Class Modules](first-class-modules.md) — detailed family descriptions
 - [Module Model](../architecture/module-model.md) — architecture deep-dive
-
-<script>
-document.addEventListener("DOMContentLoaded", function () {
-  var input = document.getElementById("module-filter");
-  if (!input) return;
-  input.addEventListener("input", function () {
-    var term = this.value.toLowerCase();
-    document.querySelectorAll(".md-content table").forEach(function (table) {
-      var rows = table.querySelectorAll("tbody tr");
-      rows.forEach(function (row) {
-        var text = row.textContent.toLowerCase();
-        row.style.display = text.includes(term) ? "" : "none";
-      });
-    });
-  });
-});
-</script>
