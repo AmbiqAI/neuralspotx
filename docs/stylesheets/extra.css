@@ -7,12 +7,37 @@
 /* ── Hero / landing-page logo banner ─────────────────────────────── */
 .hero-logo {
   text-align: center;
-  margin: 2rem 0 1rem;
+  margin: 3rem 0 0.5rem;
 }
 .hero-logo img {
-  max-width: min(480px, 70%);
+  max-width: min(720px, 85%);
   height: auto;
   display: inline-block;
+}
+
+/* ── Hero text & actions ─────────────────────────────────────────── */
+.hero-tagline {
+  text-align: center;
+  font-size: 1.6rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  margin: 0.8rem 0 0.6rem;
+  color: var(--md-default-fg-color);
+}
+.hero-description {
+  text-align: center;
+  max-width: 680px;
+  margin: 0 auto 1.6rem;
+  font-size: 1.05rem;
+  line-height: 1.7;
+  opacity: 0.82;
+}
+.hero-actions {
+  text-align: center;
+  margin-bottom: 1rem;
+}
+.hero-actions .md-button {
+  margin: 0 0.4rem;
 }
 
 /* ── Modern typography & spacing ─────────────────────────────────── */
@@ -34,19 +59,21 @@
 /* ── Cards-style feature list on the landing page ────────────────── */
 .feature-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
   gap: 1.2rem;
   margin: 2rem 0;
 }
 .feature-grid .card {
   border: 1px solid var(--md-default-fg-color--lightest);
-  border-radius: 12px;
-  padding: 1.4rem;
-  transition: box-shadow 0.2s, transform 0.2s;
+  border-radius: 14px;
+  padding: 1.5rem;
+  transition: box-shadow 0.25s, transform 0.25s, border-color 0.25s;
+  border-left: 3px solid #00897b;
 }
 .feature-grid .card:hover {
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08);
-  transform: translateY(-2px);
+  box-shadow: 0 6px 28px rgba(0, 137, 123, 0.12);
+  transform: translateY(-3px);
+  border-left-color: #00e5ff;
 }
 .feature-grid .card h3 {
   margin-top: 0;
@@ -58,10 +85,9 @@
   opacity: 0.85;
 }
 
-/* ── Landing-page section titles ─────────────────────────────────── */
-.md-typeset .landing-section {
-  text-align: center;
-  margin-bottom: 0.4rem;
+/* Where to Start grid uses 2 columns */
+.start-grid {
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
 }
 
 /* ── Workflow pipeline diagram ───────────────────────────────────── */
@@ -71,6 +97,17 @@
   max-width: 900px;
 }
 .workflow-pipeline img {
+  width: 100%;
+  height: auto;
+}
+
+/* ── Ecosystem module diagram ────────────────────────────────────── */
+.ecosystem-diagram {
+  text-align: center;
+  margin: 2rem auto;
+  max-width: 720px;
+}
+.ecosystem-diagram img {
   width: 100%;
   height: auto;
 }

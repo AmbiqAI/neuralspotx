@@ -1,99 +1,105 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 160" fill="none">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 200" fill="none">
   <defs>
-    <linearGradient id="arrow-grad-d" x1="0" y1="0" x2="1" y2="0">
-      <stop offset="0%" stop-color="#7c8aff"/>
-      <stop offset="100%" stop-color="#b388ff"/>
+    <linearGradient id="hex-d" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0%" stop-color="#00a896"/>
+      <stop offset="100%" stop-color="#00796b"/>
     </linearGradient>
-    <filter id="shadow-d" x="-4%" y="-10%" width="108%" height="130%">
-      <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#000" flood-opacity="0.4"/>
+    <linearGradient id="conn-d" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#4db6ac"/>
+      <stop offset="100%" stop-color="#00e5ff"/>
+    </linearGradient>
+    <linearGradient id="ribbon-d" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#1a3a3a"/>
+      <stop offset="50%" stop-color="#264d4d"/>
+      <stop offset="100%" stop-color="#1a3a3a"/>
+    </linearGradient>
+    <filter id="sh-d" x="-15%" y="-10%" width="130%" height="130%">
+      <feDropShadow dx="0" dy="3" stdDeviation="6" flood-color="#000" flood-opacity="0.35"/>
     </filter>
-    <linearGradient id="pill-d" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#5c6bc0"/>
-      <stop offset="100%" stop-color="#3949ab"/>
-    </linearGradient>
   </defs>
 
-  <!-- ── connecting arrows ──────────────────────────────────── -->
-  <line x1="186" y1="80" x2="205" y2="80" stroke="url(#arrow-grad-d)" stroke-width="2.5" stroke-linecap="round"/>
-  <polygon points="205,74 217,80 205,86" fill="#b388ff"/>
+  <!-- subtle ribbon -->
+  <rect x="60" y="80" width="840" height="4" rx="2" fill="url(#ribbon-d)" opacity="0.6"/>
 
-  <line x1="378" y1="80" x2="397" y2="80" stroke="url(#arrow-grad-d)" stroke-width="2.5" stroke-linecap="round"/>
-  <polygon points="397,74 409,80 397,86" fill="#b388ff"/>
+  <!-- ── connectors ─────────────────────────────────────────── -->
+  <line x1="136" y1="82" x2="240" y2="82" stroke="url(#conn-d)" stroke-width="3" stroke-linecap="round"/>
+  <polygon points="240,76 254,82 240,88" fill="#00e5ff"/>
+  <circle cx="188" cy="82" r="2.5" fill="#4db6ac"/>
 
-  <line x1="570" y1="80" x2="589" y2="80" stroke="url(#arrow-grad-d)" stroke-width="2.5" stroke-linecap="round"/>
-  <polygon points="589,74 601,80 589,86" fill="#b388ff"/>
+  <line x1="328" y1="82" x2="432" y2="82" stroke="url(#conn-d)" stroke-width="3" stroke-linecap="round"/>
+  <polygon points="432,76 446,82 432,88" fill="#00e5ff"/>
+  <circle cx="380" cy="82" r="2.5" fill="#4db6ac"/>
 
-  <line x1="762" y1="80" x2="781" y2="80" stroke="url(#arrow-grad-d)" stroke-width="2.5" stroke-linecap="round"/>
-  <polygon points="781,74 793,80 781,86" fill="#b388ff"/>
+  <line x1="520" y1="82" x2="624" y2="82" stroke="url(#conn-d)" stroke-width="3" stroke-linecap="round"/>
+  <polygon points="624,76 638,82 624,88" fill="#00e5ff"/>
+  <circle cx="572" cy="82" r="2.5" fill="#4db6ac"/>
 
-  <!-- ── step 1: create-app ─────────────────────────────────── -->
-  <g filter="url(#shadow-d)">
-    <rect x="6" y="24" width="178" height="112" rx="16" fill="url(#pill-d)"/>
-    <g transform="translate(72,36)" fill="none" stroke="#e8eaff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <rect x="0" y="0" width="34" height="26" rx="4"/>
-      <polyline points="8,10 14,16 8,22"/>
-      <line x1="18" y1="22" x2="26" y2="22"/>
-    </g>
-    <text x="95" y="90" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="700" font-size="14" fill="#fff">create-app</text>
-    <text x="95" y="110" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="400" font-size="11" fill="#b0b8ff">scaffold project</text>
+  <line x1="712" y1="82" x2="816" y2="82" stroke="url(#conn-d)" stroke-width="3" stroke-linecap="round"/>
+  <polygon points="816,76 830,82 816,88" fill="#00e5ff"/>
+  <circle cx="764" cy="82" r="2.5" fill="#4db6ac"/>
+
+  <!-- ── node 1: create-app ─────────────────────────────────── -->
+  <g filter="url(#sh-d)">
+    <path d="M96,40 L132,61 L132,103 L96,124 L60,103 L60,61Z" fill="url(#hex-d)"/>
   </g>
-
-  <!-- ── step 2: configure ──────────────────────────────────── -->
-  <g filter="url(#shadow-d)">
-    <rect x="218" y="24" width="158" height="112" rx="16" fill="url(#pill-d)"/>
-    <g transform="translate(275,36)" fill="none" stroke="#e8eaff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <circle cx="13" cy="13" r="5"/>
-      <path d="M11.3 1.5h3.4l.5 3.2a7 7 0 012 1.1l3-.9 1.7 2.9-2.5 2a7 7 0 010 2.4l2.5 2-1.7 2.9-3-.9a7 7 0 01-2 1.1l-.5 3.2h-3.4l-.5-3.2a7 7 0 01-2-1.1l-3 .9-1.7-2.9 2.5-2a7 7 0 010-2.4l-2.5-2 1.7-2.9 3 .9a7 7 0 012-1.1z"/>
-    </g>
-    <text x="297" y="90" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="700" font-size="14" fill="#fff">configure</text>
-    <text x="297" y="110" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="400" font-size="11" fill="#b0b8ff">resolve modules</text>
+  <g transform="translate(96,82) scale(1.2) translate(-17,-13)" fill="none" stroke="#e0f7fa" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <rect x="0" y="0" width="34" height="26" rx="4"/>
+    <polyline points="8,10 14,16 8,22"/>
+    <line x1="18" y1="22" x2="26" y2="22"/>
   </g>
+  <circle cx="120" cy="48" r="11" fill="#00e5ff"/>
+  <text x="120" y="52" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="700" font-size="10" fill="#003d33">1</text>
+  <text x="96" y="152" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="700" font-size="14" fill="#e0f2f1">create-app</text>
+  <text x="96" y="170" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="400" font-size="11" fill="#80cbc4">Scaffold project</text>
 
-  <!-- ── step 3: build ──────────────────────────────────────── -->
-  <g filter="url(#shadow-d)">
-    <rect x="410" y="24" width="158" height="112" rx="16" fill="url(#pill-d)"/>
-    <g transform="translate(467,36)" fill="none" stroke="#e8eaff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M14 2a5 5 0 00-4.8 6.3L3 14.5a2.1 2.1 0 103 3l6.2-6.2A5 5 0 0014 2z"/>
-      <path d="M22 12l-4.6 4.6a2 2 0 01-2.8 0L11 13"/>
-    </g>
-    <text x="489" y="90" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="700" font-size="14" fill="#fff">build</text>
-    <text x="489" y="110" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="400" font-size="11" fill="#b0b8ff">CMake + GCC</text>
+  <!-- ── node 2: configure ──────────────────────────────────── -->
+  <g filter="url(#sh-d)">
+    <path d="M288,40 L324,61 L324,103 L288,124 L252,103 L252,61Z" fill="url(#hex-d)"/>
   </g>
-
-  <!-- ── step 4: flash ──────────────────────────────────────── -->
-  <g filter="url(#shadow-d)">
-    <rect x="602" y="24" width="158" height="112" rx="16" fill="url(#pill-d)"/>
-    <g transform="translate(666,36)" fill="none" stroke="#e8eaff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <polygon points="13,1 5,15 13,15 11,25 21,11 13,11"/>
-    </g>
-    <text x="681" y="90" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="700" font-size="14" fill="#fff">flash</text>
-    <text x="681" y="110" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="400" font-size="11" fill="#b0b8ff">J-Link / SWD</text>
+  <g transform="translate(288,82) scale(1.2) translate(-13,-13)" fill="none" stroke="#e0f7fa" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="13" cy="13" r="5"/>
+    <path d="M11.3 1.5h3.4l.5 3.2a7 7 0 012 1.1l3-.9 1.7 2.9-2.5 2a7 7 0 010 2.4l2.5 2-1.7 2.9-3-.9a7 7 0 01-2 1.1l-.5 3.2h-3.4l-.5-3.2a7 7 0 01-2-1.1l-3 .9-1.7-2.9 2.5-2a7 7 0 010-2.4l-2.5-2 1.7-2.9 3 .9a7 7 0 012-1.1z"/>
   </g>
+  <circle cx="312" cy="48" r="11" fill="#00e5ff"/>
+  <text x="312" y="52" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="700" font-size="10" fill="#003d33">2</text>
+  <text x="288" y="152" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="700" font-size="14" fill="#e0f2f1">configure</text>
+  <text x="288" y="170" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="400" font-size="11" fill="#80cbc4">Resolve modules</text>
 
-  <!-- ── step 5: view ───────────────────────────────────────── -->
-  <g filter="url(#shadow-d)">
-    <rect x="794" y="24" width="158" height="112" rx="16" fill="url(#pill-d)"/>
-    <g transform="translate(849,36)" fill="none" stroke="#e8eaff" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M2 13s4-8 12-8 12 8 12 8-4 8-12 8-12-8-12-8z"/>
-      <circle cx="14" cy="13" r="4"/>
-    </g>
-    <text x="873" y="90" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="700" font-size="14" fill="#fff">view</text>
-    <text x="873" y="110" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="400" font-size="11" fill="#b0b8ff">SWO output</text>
+  <!-- ── node 3: build ──────────────────────────────────────── -->
+  <g filter="url(#sh-d)">
+    <path d="M480,40 L516,61 L516,103 L480,124 L444,103 L444,61Z" fill="url(#hex-d)"/>
   </g>
+  <g transform="translate(480,82) scale(1.2) translate(-12,-10)" fill="none" stroke="#e0f7fa" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14 2a5 5 0 00-4.8 6.3L3 14.5a2.1 2.1 0 103 3l6.2-6.2A5 5 0 0014 2z"/>
+    <path d="M22 12l-4.6 4.6a2 2 0 01-2.8 0L11 13"/>
+  </g>
+  <circle cx="504" cy="48" r="11" fill="#00e5ff"/>
+  <text x="504" y="52" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="700" font-size="10" fill="#003d33">3</text>
+  <text x="480" y="152" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="700" font-size="14" fill="#e0f2f1">build</text>
+  <text x="480" y="170" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="400" font-size="11" fill="#80cbc4">CMake + GCC</text>
 
-  <!-- ── step numbers ───────────────────────────────────────── -->
-  <circle cx="18" cy="36" r="10" fill="#b388ff"/>
-  <text x="18" y="40" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="700" font-size="11" fill="#1a1a2e">1</text>
+  <!-- ── node 4: flash ──────────────────────────────────────── -->
+  <g filter="url(#sh-d)">
+    <path d="M672,40 L708,61 L708,103 L672,124 L636,103 L636,61Z" fill="url(#hex-d)"/>
+  </g>
+  <g transform="translate(672,82) scale(1.2) translate(-13,-13)" fill="none" stroke="#e0f7fa" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <polygon points="13,1 5,15 13,15 11,25 21,11 13,11"/>
+  </g>
+  <circle cx="696" cy="48" r="11" fill="#00e5ff"/>
+  <text x="696" y="52" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="700" font-size="10" fill="#003d33">4</text>
+  <text x="672" y="152" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="700" font-size="14" fill="#e0f2f1">flash</text>
+  <text x="672" y="170" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="400" font-size="11" fill="#80cbc4">J-Link / SWD</text>
 
-  <circle cx="230" cy="36" r="10" fill="#b388ff"/>
-  <text x="230" y="40" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="700" font-size="11" fill="#1a1a2e">2</text>
-
-  <circle cx="422" cy="36" r="10" fill="#b388ff"/>
-  <text x="422" y="40" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="700" font-size="11" fill="#1a1a2e">3</text>
-
-  <circle cx="614" cy="36" r="10" fill="#b388ff"/>
-  <text x="614" y="40" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="700" font-size="11" fill="#1a1a2e">4</text>
-
-  <circle cx="806" cy="36" r="10" fill="#b388ff"/>
-  <text x="806" y="40" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="700" font-size="11" fill="#1a1a2e">5</text>
+  <!-- ── node 5: view ───────────────────────────────────────── -->
+  <g filter="url(#sh-d)">
+    <path d="M864,40 L900,61 L900,103 L864,124 L828,103 L828,61Z" fill="url(#hex-d)"/>
+  </g>
+  <g transform="translate(864,82) scale(1.2) translate(-14,-13)" fill="none" stroke="#e0f7fa" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M2 13s4-8 12-8 12 8 12 8-4 8-12 8-12-8-12-8z"/>
+    <circle cx="14" cy="13" r="4"/>
+  </g>
+  <circle cx="888" cy="48" r="11" fill="#00e5ff"/>
+  <text x="888" y="52" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="700" font-size="10" fill="#003d33">5</text>
+  <text x="864" y="152" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="700" font-size="14" fill="#e0f2f1">view</text>
+  <text x="864" y="170" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="400" font-size="11" fill="#80cbc4">Stream SWO output</text>
 </svg>

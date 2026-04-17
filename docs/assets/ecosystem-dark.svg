@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 960 360" fill="none">
+  <defs>
+    <linearGradient id="center-d" x1="0" y1="0" x2="0.3" y2="1">
+      <stop offset="0%" stop-color="#00a896"/>
+      <stop offset="100%" stop-color="#00796b"/>
+    </linearGradient>
+    <linearGradient id="pill-d" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#1a3038"/>
+      <stop offset="100%" stop-color="#142428"/>
+    </linearGradient>
+    <filter id="ch-d" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="4" stdDeviation="8" flood-color="#000" flood-opacity="0.35"/>
+    </filter>
+    <filter id="ph-d" x="-5%" y="-8%" width="110%" height="120%">
+      <feDropShadow dx="0" dy="2" stdDeviation="4" flood-color="#000" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+
+  <!-- ── connecting lines ───────────────────────────────────── -->
+  <line x1="480" y1="72"  x2="480" y2="128" stroke="#4db6ac" stroke-width="2" stroke-dasharray="6 4" opacity="0.5"/>
+  <line x1="295" y1="120" x2="435" y2="154" stroke="#4db6ac" stroke-width="2" stroke-dasharray="6 4" opacity="0.5"/>
+  <line x1="665" y1="120" x2="525" y2="154" stroke="#4db6ac" stroke-width="2" stroke-dasharray="6 4" opacity="0.5"/>
+  <line x1="480" y1="288" x2="480" y2="232" stroke="#4db6ac" stroke-width="2" stroke-dasharray="6 4" opacity="0.5"/>
+  <line x1="295" y1="242" x2="435" y2="206" stroke="#4db6ac" stroke-width="2" stroke-dasharray="6 4" opacity="0.5"/>
+  <line x1="665" y1="242" x2="525" y2="206" stroke="#4db6ac" stroke-width="2" stroke-dasharray="6 4" opacity="0.5"/>
+
+  <!-- small diamonds on each line -->
+  <rect x="477" y="97"  width="6" height="6" rx="1" fill="#00e5ff" transform="rotate(45 480 100)"/>
+  <rect x="362" y="134" width="6" height="6" rx="1" fill="#00e5ff" transform="rotate(45 365 137)"/>
+  <rect x="597" y="134" width="6" height="6" rx="1" fill="#00e5ff" transform="rotate(45 600 137)"/>
+  <rect x="477" y="257" width="6" height="6" rx="1" fill="#00e5ff" transform="rotate(45 480 260)"/>
+  <rect x="362" y="221" width="6" height="6" rx="1" fill="#00e5ff" transform="rotate(45 365 224)"/>
+  <rect x="597" y="221" width="6" height="6" rx="1" fill="#00e5ff" transform="rotate(45 600 224)"/>
+
+  <!-- ── central hexagon ────────────────────────────────────── -->
+  <g filter="url(#ch-d)">
+    <path d="M480,128 L525,154 L525,206 L480,232 L435,206 L435,154Z" fill="url(#center-d)"/>
+  </g>
+  <text x="480" y="174" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="400" font-size="12" fill="#b2dfdb">Your</text>
+  <text x="480" y="198" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="800" font-size="22" fill="#ffffff">App</text>
+
+  <!-- ── pill 1: SDK Provider (top) ─────────────────────────── -->
+  <g filter="url(#ph-d)">
+    <rect x="395" y="18" width="170" height="52" rx="12" fill="url(#pill-d)" stroke="#37474f" stroke-width="1"/>
+  </g>
+  <text x="480" y="40" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="700" font-size="13" fill="#4db6ac">SDK Provider</text>
+  <text x="480" y="58" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="400" font-size="10" fill="#80cbc4">ambiqsuite r3 · r4 · r5</text>
+
+  <!-- ── pill 2: Core (top-left) ────────────────────────────── -->
+  <g filter="url(#ph-d)">
+    <rect x="125" y="93" width="170" height="52" rx="12" fill="url(#pill-d)" stroke="#37474f" stroke-width="1"/>
+  </g>
+  <text x="210" y="115" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="700" font-size="13" fill="#4db6ac">Core</text>
+  <text x="210" y="133" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="400" font-size="10" fill="#80cbc4">nsx-core · harness · startup</text>
+
+  <!-- ── pill 3: Board Support (top-right) ──────────────────── -->
+  <g filter="url(#ph-d)">
+    <rect x="665" y="93" width="170" height="52" rx="12" fill="url(#pill-d)" stroke="#37474f" stroke-width="1"/>
+  </g>
+  <text x="750" y="115" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="700" font-size="13" fill="#4db6ac">Board Support</text>
+  <text x="750" y="133" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="400" font-size="10" fill="#80cbc4">apollo510_evb · apollo4p_evb</text>
+
+  <!-- ── pill 4: HAL Layer (bottom-left) ────────────────────── -->
+  <g filter="url(#ph-d)">
+    <rect x="125" y="216" width="170" height="52" rx="12" fill="url(#pill-d)" stroke="#37474f" stroke-width="1"/>
+  </g>
+  <text x="210" y="238" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="700" font-size="13" fill="#4db6ac">HAL Layer</text>
+  <text x="210" y="256" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="400" font-size="10" fill="#80cbc4">ambiq-hal r3 · r4 · r5</text>
+
+  <!-- ── pill 5: Peripherals (bottom-right) ─────────────────── -->
+  <g filter="url(#ph-d)">
+    <rect x="665" y="216" width="170" height="52" rx="12" fill="url(#pill-d)" stroke="#37474f" stroke-width="1"/>
+  </g>
+  <text x="750" y="238" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="700" font-size="13" fill="#4db6ac">Peripherals</text>
+  <text x="750" y="256" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="400" font-size="10" fill="#80cbc4">uart · i2c · spi · usb</text>
+
+  <!-- ── pill 6: Libraries (bottom) ─────────────────────────── -->
+  <g filter="url(#ph-d)">
+    <rect x="395" y="290" width="170" height="52" rx="12" fill="url(#pill-d)" stroke="#37474f" stroke-width="1"/>
+  </g>
+  <text x="480" y="312" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="700" font-size="13" fill="#4db6ac">Libraries</text>
+  <text x="480" y="330" text-anchor="middle" font-family="Inter,system-ui,sans-serif" font-weight="400" font-size="10" fill="#80cbc4">audio · nanopb · cmsis-nn</text>
+</svg>
