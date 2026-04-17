@@ -1,1 +1,1 @@
-../../examples/pmu_profiling/README.md
+--8<-- "examples/pmu_profiling/README.md"

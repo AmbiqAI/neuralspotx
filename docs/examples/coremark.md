@@ -1,1 +1,1 @@
-../../examples/coremark/README.md
+--8<-- "examples/coremark/README.md"

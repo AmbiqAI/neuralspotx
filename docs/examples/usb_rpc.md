@@ -1,1 +1,1 @@
-../../examples/usb_rpc/README.md
+--8<-- "examples/usb_rpc/README.md"

@@ -10,8 +10,9 @@
   margin: 2rem 0 1rem;
 }
 .hero-logo img {
-  max-width: min(720px, 90%);
+  max-width: min(480px, 70%);
   height: auto;
+  display: inline-block;
 }
 
 /* ── Modern typography & spacing ─────────────────────────────────── */

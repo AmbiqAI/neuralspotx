@@ -1,1 +1,1 @@
-../../examples/audio_capture/README.md
+--8<-- "examples/audio_capture/README.md"

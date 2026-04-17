@@ -1,1 +1,1 @@
-../../examples/power_benchmark/README.md
+--8<-- "examples/power_benchmark/README.md"

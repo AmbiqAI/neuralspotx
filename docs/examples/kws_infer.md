@@ -1,1 +1,1 @@
-../../examples/kws_infer/README.md
+--8<-- "examples/kws_infer/README.md"

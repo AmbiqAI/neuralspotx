@@ -1,1 +1,1 @@
-../../examples/hello_world/README.md
+--8<-- "examples/hello_world/README.md"
