@@ -4,7 +4,7 @@ Go from a fresh machine to a running firmware image in minutes. The three
 guides below cover everything you need — prerequisites, your first build,
 and a library of ready-made examples to explore.
 
-<div class="feature-grid" markdown>
+<div class="card-grid card-grid--3" markdown>
 <div class="card" markdown>
 ### :material-download: Install and Setup
 Install the toolchain, set up the Python environment, and verify

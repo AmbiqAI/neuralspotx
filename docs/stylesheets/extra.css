@@ -1,126 +1,153 @@
-/* ── Wide body layout ─────────────────────────────────────────────── */
-/* Increase the content area max-width for large screens */
-.md-grid {
-  max-width: 1440px;
-}
+/* ═══════════════════════════════════════════════════════════════════
+   NSX — flat, modern landing-page styles
+   ═══════════════════════════════════════════════════════════════════ */
 
-/* ── Hero / landing-page logo banner ─────────────────────────────── */
+/* ── Wide body ────────────────────────────────────────────────────── */
+.md-grid { max-width: 1440px; }
+
+/* ── Hero section ─────────────────────────────────────────────────── */
 .hero-logo {
   text-align: center;
-  margin: 3rem 0 0.5rem;
+  margin: 4rem 0 0;
 }
 .hero-logo img {
-  max-width: min(720px, 85%);
+  max-width: min(640px, 80%);
   height: auto;
   display: inline-block;
 }
 
-/* ── Hero text & actions ─────────────────────────────────────────── */
 .hero-tagline {
   text-align: center;
-  font-size: 1.6rem;
+  font-size: 1.55rem;
   font-weight: 700;
-  letter-spacing: -0.02em;
-  margin: 0.8rem 0 0.6rem;
+  letter-spacing: -0.025em;
+  margin: 1.2rem 0 0.5rem;
   color: var(--md-default-fg-color);
 }
-.hero-description {
+
+.hero-sub {
   text-align: center;
-  max-width: 680px;
-  margin: 0 auto 1.6rem;
+  max-width: 640px;
+  margin: 0 auto 2rem;
   font-size: 1.05rem;
-  line-height: 1.7;
-  opacity: 0.82;
+  line-height: 1.75;
+  color: var(--md-default-fg-color--light);
 }
+
 .hero-actions {
   text-align: center;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
 }
 .hero-actions .md-button {
-  margin: 0 0.4rem;
-}
-
-/* ── Modern typography & spacing ─────────────────────────────────── */
-.md-typeset h1 {
-  font-weight: 700;
-  letter-spacing: -0.02em;
-}
-.md-typeset h2 {
+  margin: 0 0.35rem;
+  border-radius: 6px;
   font-weight: 600;
-  letter-spacing: -0.01em;
-  margin-top: 2em;
-}
-
-/* Tighter paragraph line-height for a cleaner look */
-.md-typeset p {
-  line-height: 1.7;
-}
-
-/* ── Cards-style feature list on the landing page ────────────────── */
-.feature-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 1.2rem;
-  margin: 2rem 0;
-}
-.feature-grid .card {
-  border: 1px solid var(--md-default-fg-color--lightest);
-  border-radius: 14px;
-  padding: 1.5rem;
-  transition: box-shadow 0.25s, transform 0.25s, border-color 0.25s;
-  border-left: 3px solid #00897b;
-}
-.feature-grid .card:hover {
-  box-shadow: 0 6px 28px rgba(0, 137, 123, 0.12);
-  transform: translateY(-3px);
-  border-left-color: #00e5ff;
-}
-.feature-grid .card h3 {
-  margin-top: 0;
-  font-size: 1.05rem;
-}
-.feature-grid .card p {
-  margin-bottom: 0;
   font-size: 0.92rem;
-  opacity: 0.85;
+  padding: 0.55em 1.6em;
 }
 
-/* Where to Start grid uses 2 columns */
-.start-grid {
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+/* ── Section headings (centered on landing page) ──────────────────── */
+.landing h2 {
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.5rem;
+  letter-spacing: -0.02em;
+  margin-top: 0;
+  margin-bottom: 0.25rem;
+}
+.landing .section-sub {
+  text-align: center;
+  max-width: 580px;
+  margin: 0 auto 2rem;
+  font-size: 0.95rem;
+  color: var(--md-default-fg-color--light);
+  line-height: 1.65;
 }
 
-/* ── Workflow pipeline diagram ───────────────────────────────────── */
+/* ── Divider ──────────────────────────────────────────────────────── */
+.landing hr {
+  border: none;
+  border-top: 1px solid var(--md-default-fg-color--lightest);
+  margin: 3rem 0;
+}
+
+/* ── Workflow pipeline ────────────────────────────────────────────── */
 .workflow-pipeline {
   text-align: center;
-  margin: 2rem auto;
-  max-width: 900px;
+  margin: 1.5rem auto 2rem;
+  max-width: 880px;
 }
 .workflow-pipeline img {
   width: 100%;
   height: auto;
 }
 
-/* ── Ecosystem module diagram ────────────────────────────────────── */
+/* ── Flat card grid ───────────────────────────────────────────────── */
+.card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 1rem;
+  margin: 0 0 1rem;
+}
+.card-grid .card {
+  background: var(--md-default-bg-color);
+  border: 1px solid var(--md-default-fg-color--lightest);
+  border-radius: 8px;
+  padding: 1.3rem 1.4rem;
+  transition: border-color 0.2s;
+}
+.card-grid .card:hover {
+  border-color: #00897b;
+}
+.card-grid .card h3 {
+  margin: 0 0 0.35rem;
+  font-size: 0.98rem;
+  font-weight: 600;
+}
+.card-grid .card p {
+  margin: 0;
+  font-size: 0.88rem;
+  line-height: 1.6;
+  color: var(--md-default-fg-color--light);
+}
+
+/* 3-col for features, 2-col for start */
+.card-grid--3 {
+  grid-template-columns: repeat(3, 1fr);
+}
+.card-grid--2 {
+  grid-template-columns: repeat(2, 1fr);
+}
+@media (max-width: 900px) {
+  .card-grid--3 { grid-template-columns: 1fr; }
+  .card-grid--2 { grid-template-columns: 1fr; }
+}
+
+/* ── Ecosystem diagram ────────────────────────────────────────────── */
 .ecosystem-diagram {
   text-align: center;
-  margin: 2rem auto;
-  max-width: 720px;
+  margin: 1.5rem auto 2rem;
+  max-width: 680px;
 }
 .ecosystem-diagram img {
   width: 100%;
   height: auto;
 }
 
-/* ── Subtle code-block refinement ────────────────────────────────── */
-.md-typeset code {
-  border-radius: 6px;
-}
-.md-typeset pre > code {
-  border-radius: 10px;
+/* ── Code snippet on landing page ─────────────────────────────────── */
+.landing-code {
+  max-width: 640px;
+  margin: 0 auto 1rem;
 }
 
-/* ── Navigation polish ───────────────────────────────────────────── */
-.md-nav__link {
-  font-size: 0.82rem;
-}
+/* ── Typography (global) ──────────────────────────────────────────── */
+.md-typeset h1 { font-weight: 700; letter-spacing: -0.02em; }
+.md-typeset h2 { font-weight: 600; letter-spacing: -0.01em; margin-top: 2em; }
+.md-typeset p  { line-height: 1.7; }
+
+/* ── Code blocks ──────────────────────────────────────────────────── */
+.md-typeset code { border-radius: 4px; }
+.md-typeset pre > code { border-radius: 6px; }
+
+/* ── Nav ──────────────────────────────────────────────────────────── */
+.md-nav__link { font-size: 0.82rem; }
