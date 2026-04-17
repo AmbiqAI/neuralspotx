@@ -24,6 +24,77 @@ stream live output in five commands.
 
 ---
 
+## Quick Links
+
+<div class="quick-links" markdown>
+
+[Features](#features-at-a-glance){ .md-button }
+[What is NSX?](#what-is-nsx){ .md-button }
+[How it Works](#how-it-works){ .md-button }
+[Module Catalog](user-guide/module-catalog.md){ .md-button }
+[Create First App](getting-started/first-app.md){ .md-button }
+[Examples](examples/index.md){ .md-button }
+
+</div>
+
+---
+
+## Features at a Glance
+
+<div class="grid cards feature-cards" markdown>
+
+-   :material-console: __5-command lifecycle__
+
+    ---
+
+    Create, configure, build, flash, and live-view from one CLI.
+
+-   :material-package-variant: __Registry-backed modules__
+
+    ---
+
+    Declarative dependencies with versioned module resolution.
+
+-   :material-chip: __Board-ready targets__
+
+    ---
+
+    Built-in Apollo3, Apollo4, Apollo5, and Apollo510 board coverage.
+
+-   :material-cog: __Standard CMake output__
+
+    ---
+
+    Generated projects stay transparent and fully editable.
+
+-   :material-speedometer: __Perf and power tooling__
+
+    ---
+
+    PMU profiling, cycle counters, and Joulescope workflows included.
+
+-   :material-usb: __Maintained example apps__
+
+    ---
+
+    Ready-to-run examples for USB, audio, CoreMark, and more.
+
+</div>
+
+---
+
+## What is NSX?
+
+NSX is a CLI-first firmware workflow for Ambiq SoCs that keeps app projects
+simple, reproducible, and easy to inspect.
+{ .section-sub }
+
+It focuses on source-controlled configuration, reusable modules, and generated
+vanilla CMake projects so teams can move quickly without hidden build tooling.
+{ .section-sub }
+
+---
+
 ## How it Works
 
 Five commands cover the full firmware lifecycle.
@@ -55,56 +126,6 @@ Declare dependencies in YAML. NSX resolves versioned modules and wires them into
 
 Modules are plain Git repos with a `module.yaml` descriptor. Adding one is a pull request, not a toolchain project.
 { .section-sub }
-
----
-
-## Features
-
-<div class="grid cards" markdown>
-
--   :material-console: __CLI Lifecycle__
-
-    ---
-
-    `create-app` · `configure` · `build` · `flash` · `view` — the entire
-    workflow from scaffolding to live SWO output.
-
--   :material-package-variant: __Declarative Modules__
-
-    ---
-
-    Declare dependencies in YAML. NSX fetches versioned board support, HALs,
-    drivers, and libraries from the registry.
-
--   :material-chip: __Multi-Board Targets__
-
-    ---
-
-    Built-in definitions for Apollo3, Apollo4, and Apollo510 EVBs. One board
-    per app, pin-level config included.
-
--   :material-cog: __Standard CMake__
-
-    ---
-
-    No proprietary build system. Generated projects are vanilla CMake —
-    inspect, extend, or eject at any time.
-
--   :material-speedometer: __Performance Tooling__
-
-    ---
-
-    PMU profiling, Cortex-M cycle counters, and Joulescope power-measurement
-    scripts built in.
-
--   :material-usb: __Ready-Made Examples__
-
-    ---
-
-    Eight maintained examples — hello world, CoreMark, PMU, power benchmarking,
-    audio capture, USB serial, and USB RPC.
-
-</div>
 
 ---
 
