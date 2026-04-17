@@ -1,35 +1,41 @@
 # Install and Setup
 
-This page covers the baseline environment needed for NSX app development.
-
-NSX currently supports two practical installation styles:
-
-- a `pipx` install for app developers who want the published CLI
-- a source checkout for contributors and maintainers
+Everything you need to go from a blank terminal to a working `nsx`
+command — in about five minutes.
 
 ## Required Tools
 
-Install or make available in `PATH`:
+NSX generates CMake projects that cross-compile for Arm Cortex-M targets.
+Make sure the following are available on your `PATH`:
 
-- Python 3.10 or newer
-- `uv`
-- CMake
-- Ninja
-- Arm GNU toolchain
-- SEGGER J-Link tools for flash and SWO view
+| Tool | Version | Purpose |
+|---|---|---|
+| **Python** | 3.10+ | Runs the NSX CLI and module resolver |
+| **uv** | latest | Fast Python dependency management |
+| **CMake** | 3.24+ | Build-system generator |
+| **Ninja** | any | Parallel build backend |
+| **Arm GNU Toolchain** | 13.x+ | `arm-none-eabi-gcc` cross-compiler |
+| **SEGGER J-Link** | 7.x+ | Flash firmware and stream SWO output |
 
-## Install with `pipx`
+!!! tip
+    On macOS you can install most of these with Homebrew:
+    ```bash
+    brew install python uv cmake ninja
+    brew install --cask gcc-arm-embedded segger-jlink
+    ```
 
-This is the cleanest path for app developers using NSX as a tool.
+## Option A — Install with `pipx` (Recommended for App Developers)
+
+If you just want the `nsx` CLI as a standalone tool:
 
 ```bash
 pipx install git+https://github.com/AmbiqAI/neuralspotx.git
 ```
 
-This installs:
+This gives you:
 
-- the `nsx` CLI
-- runtime Python dependencies
+- The `nsx` CLI on your `PATH`
+- All runtime Python dependencies in an isolated environment
 
 Verify the install:
 
@@ -38,9 +44,12 @@ nsx --help
 nsx doctor
 ```
 
-## Set Up from a Source Checkout
+`nsx doctor` checks your local toolchain — it will flag anything that's
+missing or misconfigured before you try to build.
 
-This is the recommended path when contributing to NSX itself.
+## Option B — Source Checkout (Recommended for Contributors)
+
+Clone the repo and let `uv` handle the environment:
 
 ```bash
 git clone https://github.com/AmbiqAI/neuralspotx.git
@@ -48,31 +57,33 @@ cd neuralspotx
 uv sync
 ```
 
-This installs:
-
-- the `nsx` CLI from the local repo
-- runtime Python dependencies
-
-To use plain `nsx` commands from the checkout, activate the `uv` environment:
+Activate the environment so `nsx` is available directly:
 
 ```bash
-cd <nsx-repo>
 source .venv/bin/activate
 nsx --help
 ```
 
-Run the built-in environment check:
+Or, if you prefer not to activate, prefix every command with `uv run`:
+
+```bash
+uv run nsx doctor
+```
+
+## Verify the Installation
+
+Regardless of install method, run the built-in environment check:
 
 ```bash
 nsx doctor
 ```
 
-If you prefer not to activate the environment, `uv run nsx ...`
-remains valid from the source checkout.
+A clean run means Python, CMake, Ninja, the Arm toolchain, and J-Link are
+all reachable. Any missing tool is called out with a clear error message.
 
-## Docs Tooling
+## Docs Tooling (Optional)
 
-If you are working on the docs site:
+Working on the documentation site? Install the docs dependencies:
 
 ```bash
 cd <nsx-repo>
@@ -80,10 +91,6 @@ uv sync --group docs
 uv run --group docs zensical serve
 ```
 
-## What You Need Next
+## Next Steps
 
-After the environment is ready:
-
-1. run `nsx doctor` to check the local toolchain setup
-2. generate an app with `nsx create-app`
-3. configure and build it with `nsx configure` and `nsx build`
+Environment is ready — time to [build your first app](first-app.md).

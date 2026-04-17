@@ -1,26 +1,13 @@
 # Examples
 
-Ready-to-build example apps live in the
+Eight ready-to-build example apps ship in the
 [`examples/`](https://github.com/AmbiqAI/neuralspotx/tree/main/examples)
-directory of the neuralspotx repository.  Each one is a self-contained nsx
-app — clone the repo and you can configure, build, and flash straight away.
+directory. Each one is a self-contained NSX app — clone the repo and you
+can configure, build, and flash immediately.
 
-## Available examples
+## Quick Start
 
-| Directory | Extra modules | What it shows |
-|---|---|---|
-| [`hello_world`](https://github.com/AmbiqAI/neuralspotx/tree/main/examples/hello_world) | *(base profile only)* | Minimal app — SWO printf loop |
-| [`power_benchmark`](https://github.com/AmbiqAI/neuralspotx/tree/main/examples/power_benchmark) | `nsx-power` | Power measurement: CoreMark, while(1), deep sleep |
-| [`coremark`](https://github.com/AmbiqAI/neuralspotx/tree/main/examples/coremark) | `nsx-power` | EEMBC CoreMark with ITCM + NVM shutdown |
-| [`kws_infer`](https://github.com/AmbiqAI/neuralspotx/tree/main/examples/kws_infer) | `cmsis-nn` | Keyword-spotting TFLite Micro inference |
-| [`pmu_profiling`](https://github.com/AmbiqAI/neuralspotx/tree/main/examples/pmu_profiling) | `nsx-pmu-armv8m` | PMU cycle / event counting |
-| [`audio_capture`](https://github.com/AmbiqAI/neuralspotx/tree/main/examples/audio_capture) | `nsx-audio` | PDM microphone capture + SWO stats |
-| [`usb_serial`](https://github.com/AmbiqAI/neuralspotx/tree/main/examples/usb_serial) | `nsx-usb` | USB CDC echo |
-| [`usb_rpc`](https://github.com/AmbiqAI/neuralspotx/tree/main/examples/usb_rpc) | `nsx-usb`, `nsx-nanopb` | USB RPC with protobuf serialization |
-
-All examples target the **Apollo510 EVB** (`apollo510_evb` profile).
-
-## Quick start
+Pick any example, configure, build, and (optionally) flash:
 
 ```bash
 git clone https://github.com/AmbiqAI/neuralspotx.git
@@ -28,16 +15,82 @@ cd neuralspotx/examples/hello_world
 
 nsx configure --app-dir .
 nsx build     --app-dir .
-nsx flash     --app-dir .   # optional — requires an EVB
-nsx view      --app-dir .   # optional — SWO viewer
+nsx flash     --app-dir .   # requires an EVB connected via J-Link
+nsx view      --app-dir .   # streams SWO output in the terminal
 ```
 
-`nsx configure` automatically clones any missing registry modules, so
-there is no separate module-install step.
+`nsx configure` automatically fetches any missing registry modules — there
+is no separate install step.
 
-## Trying a different example
+## Available Examples
 
-Just change the directory:
+All examples target the **Apollo510 EVB** (`apollo510_evb` profile).
+
+### :material-hand-wave: hello_world
+
+Minimal app — a SWO printf loop and nothing else. Start here to verify
+that your toolchain, board connection, and SWO viewer all work.
+
+**Extra modules:** *(base profile only)*
+
+### :material-speedometer: coremark
+
+Industry-standard [EEMBC CoreMark](https://www.eembc.org/coremark/)
+benchmark with ITCM execution and NVM shutdown for clean power numbers.
+Includes a Joulescope capture script for automated power measurement.
+
+**Extra modules:** `nsx-power`
+
+### :material-lightning-bolt: power_benchmark
+
+Three-phase power measurement app: CoreMark under load, `while(1)` idle,
+and deep-sleep shutdown. Designed to pair with a Joulescope JS220 for
+characterizing board-level power consumption.
+
+**Extra modules:** `nsx-power`
+
+### :material-counter: pmu_profiling
+
+Cortex-M55 Performance Monitoring Unit (PMU) demonstration. Counts CPU
+cycles, cache hits, and branch mispredicts around a code region, then
+prints the results over SWO.
+
+**Extra modules:** `nsx-pmu-armv8m`
+
+### :material-brain: kws_infer
+
+Keyword-spotting inference using TensorFlow Lite for Microcontrollers and
+CMSIS-NN optimized kernels. Runs a small neural network on a canned audio
+buffer and reports the classification result.
+
+**Extra modules:** `cmsis-nn`
+
+### :material-microphone: audio_capture
+
+PDM microphone capture on the Apollo510 EVB. Streams audio statistics
+(RMS, peak) over SWO — useful for verifying microphone wiring and clock
+configuration.
+
+**Extra modules:** `nsx-audio`
+
+### :material-usb: usb_serial
+
+USB CDC (virtual COM port) echo app. Enumerates as a USB serial device
+and echoes back anything sent from the host.
+
+**Extra modules:** `nsx-usb`
+
+### :material-swap-horizontal: usb_rpc
+
+USB vendor-class RPC endpoint with protobuf serialization. Demonstrates
+bidirectional host-to-device communication using nanopb-encoded messages
+over a USB bulk interface.
+
+**Extra modules:** `nsx-usb`, `nsx-nanopb`
+
+## Switching Between Examples
+
+Every example follows the same workflow — just change directories:
 
 ```bash
 cd ../pmu_profiling
@@ -45,16 +98,18 @@ nsx configure --app-dir .
 nsx build     --app-dir .
 ```
 
-## Structure of each example
+## Example Directory Layout
 
-```
+Each example follows a consistent structure:
+
+```text
 <example>/
-├── nsx.yml          # module list and board target
+├── nsx.yml          # module manifest and board target
 ├── CMakeLists.txt   # CMake entry point
 ├── src/
-│   └── main.c
-└── README.md
+│   └── main.c       # application source
+└── README.md        # build and usage instructions
 ```
 
-Vendored modules (`modules/`) and the build directory are gitignored and
-re-created automatically by `nsx configure`.
+The `modules/` and `build/` directories are gitignored and regenerated
+by `nsx configure` — you'll never need to check them in.
