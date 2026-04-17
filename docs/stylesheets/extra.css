@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════════
-   NSX — minimal custom styles
+   NSX — minimal custom styles (everything else is stock material)
    ═══════════════════════════════════════════════════════════════════ */
 
 /* ── Layout ───────────────────────────────────────────────────────── */
@@ -46,31 +46,6 @@
 .diagram { display: block; margin: 1.5rem auto; width: 100%; height: auto; }
 .diagram--narrow { max-width: 680px; }
 
-/* ── Header ───────────────────────────────────────────────────────── */
-.md-header {
-  background: var(--md-default-bg-color);
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.07);
-}
-[data-md-color-scheme="slate"] .md-header {
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.07);
-}
-.md-header__button, .md-header-nav__topic,
-.md-header .md-logo {
-  color: var(--md-default-fg-color);
-}
-.md-tabs {
-  background: transparent;
-  color: var(--md-default-fg-color);
-}
-.md-tabs__link { color: var(--md-default-fg-color--light); opacity: 1; }
-.md-tabs__link--active, .md-tabs__link:hover { color: var(--md-default-fg-color); }
-
-/* ── Search input — keep readable in light mode ───────────────────── */
-.md-search__input {
-  background-color: var(--md-default-bg-color);
-  color: var(--md-default-fg-color);
-}
-
 /* ── Card grid for non-landing pages (getting-started, examples) ──── */
 .card-grid {
   display: grid;
@@ -84,7 +59,7 @@
   padding: 1.3rem 1.4rem;
   transition: border-color 0.2s;
 }
-.card-grid .card:hover { border-color: #00897b; }
+.card-grid .card:hover { border-color: var(--md-accent-fg-color); }
 .card-grid .card h3 { margin: 0 0 0.35rem; font-size: 0.98rem; font-weight: 600; }
 .card-grid .card p  { margin: 0; font-size: 0.88rem; line-height: 1.6; color: var(--md-default-fg-color--light); }
 .card-grid--3 { grid-template-columns: repeat(3, 1fr); }
