@@ -1,157 +1,77 @@
 /* ═══════════════════════════════════════════════════════════════════
-   NSX — landing page + global styles
+   NSX — minimal custom styles
    ═══════════════════════════════════════════════════════════════════ */
 
-/* ── Wide body ────────────────────────────────────────────────────── */
-.md-grid { max-width: 1440px; }
+/* ── Layout ───────────────────────────────────────────────────────── */
+.md-grid { max-width: 1220px; }
 
-/* ── Landing page: full-bleed sections ────────────────────────────── */
-.lp-hero,
-.lp-section {
-  width: 100vw;
-  position: relative;
-  left: 50%;
-  right: 50%;
-  margin-left: -50vw;
-  margin-right: -50vw;
-  padding: 3.5rem 1.5rem;
-}
-
-.lp-hero {
-  padding: 5rem 1.5rem 3rem;
-  text-align: center;
-}
-
-.lp-section--alt {
-  background: var(--md-code-bg-color);
-}
-
-/* Inner container — single consistent width for everything */
-.lp-hero__inner,
-.lp-section__inner {
-  max-width: 960px;
+/* ── Landing page ─────────────────────────────────────────────────── */
+.landing {
+  max-width: 800px;
   margin: 0 auto;
 }
-
-/* ── Hero ─────────────────────────────────────────────────────────── */
-.hero-logo {
+.landing h2 {
   text-align: center;
+  margin-top: 0.5rem;
+}
+.landing hr {
+  border: none;
+  border-top: 1px solid var(--md-default-fg-color--lightest);
+  margin: 3rem 0;
+}
+
+/* Hero */
+.landing .hero { text-align: center; margin: 3rem 0 0; }
+.hero-logo { max-width: min(460px, 80%); height: auto; }
+.landing .hero h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
   margin: 0 0 0.5rem;
 }
-.hero-logo img {
-  max-width: min(520px, 80%);
-  height: auto;
-  display: inline-block;
+.hero-sub {
+  font-size: 1.05rem;
+  color: var(--md-default-fg-color--light);
+  margin-bottom: 1.5rem;
 }
 
-.lp-hero__tagline {
-  font-size: 1.65rem;
-  font-weight: 700;
-  letter-spacing: -0.03em;
-  margin: 1rem 0 0.6rem;
+/* Subtitle paragraphs */
+.section-sub {
+  text-align: center;
+  color: var(--md-default-fg-color--light);
+  font-size: 0.95rem;
+}
+
+/* SVG diagrams */
+.diagram { display: block; margin: 1.5rem auto; width: 100%; height: auto; }
+.diagram--narrow { max-width: 680px; }
+
+/* ── Header ───────────────────────────────────────────────────────── */
+.md-header {
+  background: var(--md-default-bg-color);
+  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.07);
+}
+[data-md-color-scheme="slate"] .md-header {
+  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.07);
+}
+.md-header__button, .md-header-nav__topic,
+.md-header .md-logo {
+  color: var(--md-default-fg-color);
+}
+.md-tabs {
+  background: transparent;
+  color: var(--md-default-fg-color);
+}
+.md-tabs__link { color: var(--md-default-fg-color--light); opacity: 1; }
+.md-tabs__link--active, .md-tabs__link:hover { color: var(--md-default-fg-color); }
+
+/* ── Search input — keep readable in light mode ───────────────────── */
+.md-search__input {
+  background-color: var(--md-default-bg-color);
   color: var(--md-default-fg-color);
 }
 
-.lp-hero__sub {
-  max-width: 560px;
-  margin: 0 auto 2rem;
-  font-size: 1.08rem;
-  line-height: 1.7;
-  color: var(--md-default-fg-color--light);
-}
-
-.lp-hero__actions {
-  text-align: center;
-}
-.lp-hero__actions .md-button {
-  margin: 0 0.4rem;
-  border-radius: 6px;
-  font-weight: 600;
-  font-size: 0.92rem;
-  padding: 0.55em 1.6em;
-}
-
-/* ── Section titles ───────────────────────────────────────────────── */
-.lp-section__title {
-  text-align: center;
-  font-weight: 700;
-  font-size: 1.5rem;
-  letter-spacing: -0.02em;
-  margin: 0 0 0.3rem;
-}
-
-.lp-section__sub {
-  text-align: center;
-  max-width: 600px;
-  margin: 0 auto 2rem;
-  font-size: 0.95rem;
-  color: var(--md-default-fg-color--light);
-  line-height: 1.65;
-}
-
-.lp-section__foot {
-  text-align: center;
-  font-size: 0.9rem;
-  color: var(--md-default-fg-color--light);
-  margin: 1.5rem 0 0;
-  line-height: 1.6;
-}
-
-/* ── Workflow SVG ─────────────────────────────────────────────────── */
-.lp-workflow {
-  text-align: center;
-  margin: 0 auto 1.5rem;
-  max-width: 100%;
-}
-.lp-workflow img { width: 100%; height: auto; }
-
-/* ── Code snippet ─────────────────────────────────────────────────── */
-.lp-code {
-  max-width: 640px;
-  margin: 0 auto;
-}
-
-/* ── Ecosystem diagram ────────────────────────────────────────────── */
-.lp-ecosystem {
-  text-align: center;
-  margin: 0 auto 0.5rem;
-  max-width: 680px;
-}
-.lp-ecosystem img { width: 100%; height: auto; }
-
-/* ── Card grid ────────────────────────────────────────────────────── */
-.lp-grid {
-  display: grid;
-  gap: 1rem;
-  margin: 0;
-}
-.lp-grid--3 { grid-template-columns: repeat(3, 1fr); }
-.lp-grid--2 { grid-template-columns: repeat(2, 1fr); }
-@media (max-width: 900px) {
-  .lp-grid--3, .lp-grid--2 { grid-template-columns: 1fr; }
-}
-
-.lp-card {
-  background: var(--md-default-bg-color);
-  border: 1px solid var(--md-default-fg-color--lightest);
-  border-radius: 8px;
-  padding: 1.3rem 1.4rem;
-  transition: border-color 0.2s;
-}
-.lp-card:hover { border-color: #00897b; }
-.lp-card h3 {
-  margin: 0 0 0.3rem;
-  font-size: 0.98rem;
-  font-weight: 600;
-}
-.lp-card p {
-  margin: 0;
-  font-size: 0.88rem;
-  line-height: 1.6;
-  color: var(--md-default-fg-color--light);
-}
-
-/* ── Getting-started card grid (reuse from other pages) ───────────── */
+/* ── Card grid for non-landing pages (getting-started, examples) ──── */
 .card-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -159,64 +79,16 @@
   margin: 0 0 1rem;
 }
 .card-grid .card {
-  background: var(--md-default-bg-color);
   border: 1px solid var(--md-default-fg-color--lightest);
   border-radius: 8px;
   padding: 1.3rem 1.4rem;
   transition: border-color 0.2s;
 }
 .card-grid .card:hover { border-color: #00897b; }
-.card-grid .card h3 {
-  margin: 0 0 0.35rem;
-  font-size: 0.98rem;
-  font-weight: 600;
-}
-.card-grid .card p {
-  margin: 0;
-  font-size: 0.88rem;
-  line-height: 1.6;
-  color: var(--md-default-fg-color--light);
-}
+.card-grid .card h3 { margin: 0 0 0.35rem; font-size: 0.98rem; font-weight: 600; }
+.card-grid .card p  { margin: 0; font-size: 0.88rem; line-height: 1.6; color: var(--md-default-fg-color--light); }
 .card-grid--3 { grid-template-columns: repeat(3, 1fr); }
 .card-grid--2 { grid-template-columns: repeat(2, 1fr); }
 @media (max-width: 900px) {
   .card-grid--3, .card-grid--2 { grid-template-columns: 1fr; }
-}
-
-/* ── Typography (global) ──────────────────────────────────────────── */
-.md-typeset h1 { font-weight: 700; letter-spacing: -0.02em; }
-.md-typeset h2 { font-weight: 600; letter-spacing: -0.01em; margin-top: 2em; }
-.md-typeset p  { line-height: 1.7; }
-
-/* ── Code blocks ──────────────────────────────────────────────────── */
-.md-typeset code { border-radius: 4px; }
-.md-typeset pre > code { border-radius: 6px; }
-
-/* ── Nav ──────────────────────────────────────────────────────────── */
-.md-nav__link { font-size: 0.82rem; }
-
-/* ── Header: neutral background, translucent on scroll ────────────── */
-.md-header {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  box-shadow: 0 1px 0 rgba(0, 0, 0, 0.06);
-}
-[data-md-color-scheme="slate"] .md-header {
-  background: rgba(18, 18, 18, 0.92);
-  box-shadow: 0 1px 0 rgba(255, 255, 255, 0.06);
-}
-.md-header__button, .md-header-nav__topic,
-.md-header .md-logo, .md-tabs {
-  color: var(--md-default-fg-color);
-}
-.md-tabs {
-  background: transparent;
-}
-.md-tabs__link {
-  color: var(--md-default-fg-color--light);
-  opacity: 1;
-}
-.md-tabs__link--active, .md-tabs__link:hover {
-  color: var(--md-default-fg-color);
 }
