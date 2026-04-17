@@ -1,7 +1,7 @@
 # Internal Module Coverage
 
 For the higher-level migration plan and module matrix, see
-[Migrating from neuralSPOT](../architecture/migration-from-neuralspot.md).
+[Migrating from neuralSPOT](migration-from-neuralspot.md).
 
 This page tracks how the major internal `neuralSPOT` module areas map into the
 current NSX module set.
@@ -25,6 +25,9 @@ These major internal areas already have clear NSX coverage.
 | `ns-uart` | `nsx-uart` | Optional UART wrapper migrated with current shim dependencies. |
 | `ns-i2c` | `nsx-i2c` | Optional I2C wrapper and register-driver helpers are migrated. |
 | `ns-spi` | `nsx-spi` | Optional SPI wrapper migrated with current shim dependencies. |
+| `ns-audio` | `nsx-audio` | PDM audio capture driver with DMA-backed sampling and callback delivery. |
+| `ns-usb` | `nsx-usb` | USB CDC serial driver using TinyUSB with proper error handling. |
+| `ns-nanopb` | `nsx-nanopb` | Vendored nanopb — zero-dynamic-memory Protocol Buffers in ANSI C. |
 | Ambiq HAL/BSP wiring | `nsx-ambiq-hal-r*`, `nsx-ambiq-bsp-r*`, `nsx-soc-hal`, `nsx-cmsis-startup` | Split into SDK-facing wrappers plus SoC/startup integration. |
 | thin common wrappers | `nsx-portable-api` | Optional migration-friendly shim for printf, delay, and interrupt helpers. |
 
@@ -46,16 +49,14 @@ These remain valid migration targets if they still matter for NSX.
 
 | Legacy area | Likely NSX direction |
 | --- | --- |
-| `ns-audio` | optional audio/input module set |
 | `ns-ble` | optional connectivity module |
 | `ns-camera` | optional camera/sensor module |
-| `ns-features` | optional DSP/features module |
+| `ns-features` | optional DSP/features module (legacy `ns-features` exists but not yet fully on `nsx-module.yaml`) |
 | `ns-imu` | optional sensor driver/module |
 | `ns-ipc` | optional IPC/ring-buffer utility module |
 | `ns-model` | optional model/runtime integration module |
 | `ns-nnsp` | optional neural signal/audio processing module |
 | `ns-rpc` | optional RPC/transport module |
-| `ns-usb` | optional USB module set |
 
 ## Migration Guidance
 

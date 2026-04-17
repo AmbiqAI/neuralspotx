@@ -41,8 +41,6 @@ flowchart LR
     RESOLVE --> CLONE["Git clone sources"]
     CLONE --> VENDOR["Vendor into app"]
     VENDOR --> APP["Self-contained app"]
-
-    style APP fill:#e8f5e9,stroke:#4caf50
 ```
 
 ## Why Apps Have Their Own `modules/`

@@ -124,7 +124,7 @@ Declare dependencies in YAML. NSX resolves versioned modules and wires them into
 ![Module ecosystem](./assets/ecosystem-light.svg#only-light){ .diagram .diagram--narrow }
 ![Module ecosystem](./assets/ecosystem-dark.svg#only-dark){ .diagram .diagram--narrow }
 
-Modules are plain Git repos with a `module.yaml` descriptor. Adding one is a pull request, not a toolchain project.
+Modules are plain Git repos with an `nsx-module.yaml` descriptor. Adding one is a pull request, not a toolchain project.
 { .section-sub }
 
 ---

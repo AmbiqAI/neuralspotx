@@ -101,8 +101,6 @@ nav:
       - Modules: user-guide/modules.md
       - Module Catalog: user-guide/module-catalog.md
       - Custom Modules: user-guide/custom-modules.md
-      - Creating a Custom Module: user-guide/creating-a-custom-module.md
-      - First-Class Modules: user-guide/first-class-modules.md
       - Python API: user-guide/python-api.md
       - Build, Flash, and View: user-guide/build-flash-view.md
       - Boards and Targets: user-guide/boards-and-targets.md
@@ -124,7 +122,6 @@ nav:
       - module: reference/module.md
   - Architecture:
       - Overview: architecture/overview.md
-      - Migration From neuralSPOT: architecture/migration-from-neuralspot.md
       - App Generation Flow: architecture/app-generation-flow.md
       - Design Decisions: architecture/design-decisions.md
       - Module Model: architecture/module-model.md
@@ -152,4 +149,5 @@ nav:
       - Adding Boards: contributing/adding-boards.md
       - Adding Modules: contributing/adding-modules.md
       - Internal Module Coverage: contributing/module-coverage.md
+      - Migrating from neuralSPOT: contributing/migration-from-neuralspot.md
       - SDK Providers: contributing/sdk-providers.md

@@ -2,6 +2,80 @@
    NSX — minimal custom styles (everything else is stock material)
    ═══════════════════════════════════════════════════════════════════ */
 
+/* ── Navbar ───────────────────────────────────────────────────────── */
+/* Keep the header neutral even if the Material primary palette changes. */
+[data-md-color-scheme="default"] {
+  --nsx-header-bg: #ffffff;
+  --nsx-header-fg: #111827;
+  --nsx-header-muted: #4b5563;
+  --nsx-header-border: rgba(17, 24, 39, 0.08);
+  --nsx-header-search-bg: rgba(17, 24, 39, 0.04);
+  --nsx-header-search-bg-hover: rgba(17, 24, 39, 0.08);
+}
+
+[data-md-color-scheme="slate"] {
+  --nsx-header-bg: #050816;
+  --nsx-header-fg: #f8fafc;
+  --nsx-header-muted: #cbd5e1;
+  --nsx-header-border: rgba(248, 250, 252, 0.08);
+  --nsx-header-search-bg: rgba(248, 250, 252, 0.08);
+  --nsx-header-search-bg-hover: rgba(248, 250, 252, 0.12);
+}
+
+.md-header,
+.md-tabs {
+  background: var(--nsx-header-bg);
+  color: var(--nsx-header-fg);
+}
+
+.md-header {
+  border-bottom: 1px solid var(--nsx-header-border);
+  box-shadow: none;
+}
+
+.md-tabs {
+  border-bottom: 1px solid var(--nsx-header-border);
+}
+
+.md-header__button,
+.md-header__title,
+.md-header__topic,
+.md-tabs__link,
+.md-search__icon,
+.md-source,
+.md-source__icon,
+.md-source__repository {
+  color: var(--nsx-header-fg);
+}
+
+.md-tabs__link {
+  opacity: 0.8;
+}
+
+.md-tabs__link--active,
+.md-tabs__link:is(:hover, :focus),
+.md-header__button:is(:hover, :focus),
+.md-header__title:is(:hover, :focus),
+.md-source:is(:hover, :focus) {
+  color: var(--md-accent-fg-color);
+  opacity: 1;
+}
+
+.md-search__form {
+  background: var(--nsx-header-search-bg);
+  box-shadow: inset 0 0 0 1px var(--nsx-header-border);
+}
+
+.md-search__form:hover,
+.md-search__form:focus-within {
+  background: var(--nsx-header-search-bg-hover);
+}
+
+.md-search__input,
+.md-search__input::placeholder {
+  color: var(--nsx-header-muted);
+}
+
 /* ── Layout ───────────────────────────────────────────────────────── */
 .md-grid { max-width: 1840px; }
 

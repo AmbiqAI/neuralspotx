@@ -106,13 +106,13 @@ Status definitions:
 | `ns-i2c` | Migrated | `nsx-i2c` | Bus wrapper and register-driver helpers are available. |
 | `ns-spi` | Migrated | `nsx-spi` | SPI wrapper support is available. |
 | `ns-uart` | Migrated | `nsx-uart` | UART wrapper support is available. |
-| `ns-features` | Migrated | `ns-features` | The legacy features area already has a direct module home. |
+| `ns-features` | Partial | `ns-features` | The legacy features area has a module directory but has not been fully migrated to the NSX module system. |
 | `ns-peripherals` | Split | `nsx-peripherals`, `nsx-power` | Generic peripherals and power policy were separated into clearer modules. |
 | `ns-utils` | Split | `nsx-utils`, `nsx-perf`, `nsx-pmu-armv8m`, `nsx-power` | Legacy utilities bundled several concerns that are now being separated. |
 | `ns-ble` | Partial | no first-class `nsx-ble` yet | BLE-related code exists in add-on areas, but not as a clean first-class NSX module. |
-| `ns-usb` | Partial | no first-class `nsx-usb` yet | USB transport pieces exist in add-on form, but not as a standalone NSX module. |
+| `ns-usb` | Migrated | `nsx-usb` | USB CDC serial driver using TinyUSB with proper error handling. |
 | `ns-imu` | Partial | sensor and physiokit modules | Pieces exist, but there is not yet a broad migration-equivalent IMU module. |
-| `ns-audio` | Future | none yet | Candidate optional module if audio capture remains important. |
+| `ns-audio` | Migrated | `nsx-audio` | PDM audio capture driver with DMA-backed sampling and callback delivery. |
 | `ns-camera` | Future | none yet | Candidate optional camera or sensor module. |
 | `ns-ipc` | Future | none yet | Candidate utility module if ring-buffer or IPC patterns remain broadly useful. |
 | `ns-model` | Future | none yet | Candidate model/runtime integration module once the baseline is stable. |
@@ -195,8 +195,8 @@ The next phase should:
 
 1. keep tightening the core replacement
 2. migrate the most useful optional modules next
-3. use migration as an opportunity to simplify and de-opinionate old module
-   boundaries
+3. use migration as an opportunity to simplify and reduce assumptions in old
+   module boundaries
 
 For a lower-level module-by-module tracking view, see the internal coverage page
-in [Internal Module Coverage](../contributing/module-coverage.md).
+in [Internal Module Coverage](module-coverage.md).

@@ -7,10 +7,10 @@ contracts as built-in modules.
 
 ## Module Types
 
-| Source       | Built-in              | Custom                                |
-| ------------ | --------------------- | ------------------------------------- |
-| **Git**      | Packaged registry     | `nsx module register --project-url`   |
-| **Local**    | —                     | `nsx module register --project-local-path` |
+| Source | Built-in | Custom |
+| --- | --- | --- |
+| **Git** | Packaged registry | `nsx module register --project-url` |
+| **Local** | None | `nsx module register --project-local-path` |
 
 ```mermaid
 flowchart TD
@@ -54,7 +54,138 @@ This creates `nsx-module.yaml`, `CMakeLists.txt`, a public header tree under
 `includes-api/`, and a source stub under `src/`.
 
 For a full walkthrough of the generated files and how to register the module,
-see [Creating a Custom Module](creating-a-custom-module.md).
+continue with the sections below.
+
+## Build a Module from Scratch
+
+The shortest end-to-end path is:
+
+1. run `nsx module init`
+2. review the generated metadata and CMake target names
+3. validate the metadata
+4. register the module with an app
+5. add it to the app and build
+
+Example:
+
+```bash
+nsx module init my-sensor-driver \
+  --type backend_specific \
+  --summary "I2C driver for the XYZ ambient light sensor." \
+  --dependency nsx-core \
+  --dependency nsx-i2c \
+  --soc apollo510 \
+  --soc apollo510b \
+  --soc apollo5b
+```
+
+Generated layout:
+
+```text
+my-sensor-driver/
+├── CMakeLists.txt
+├── README.md
+├── nsx-module.yaml
+├── includes-api/
+│   └── my_sensor_driver/
+│       └── my_sensor_driver.h
+└── src/
+    └── my_sensor_driver.c
+```
+
+Key flags:
+
+- `--type` sets `module.type` in the generated metadata.
+- `--dependency` adds required module dependencies and matching CMake links.
+- `--soc`, `--board`, and `--toolchain` seed compatibility constraints.
+- `--name` decouples the logical module name from the directory name.
+- `--force` allows writing into a non-empty destination directory.
+
+## Review the Generated Metadata
+
+Generated `my-sensor-driver/nsx-module.yaml`:
+
+```yaml
+schema_version: 1
+
+module:
+  name: my-sensor-driver
+  type: backend_specific
+  version: "0.1.0"
+
+support:
+  ambiqsuite: true
+  zephyr: false
+
+summary: "I2C driver for the XYZ ambient light sensor."
+
+capabilities: []
+use_cases: []
+agent_keywords: []
+
+build:
+  cmake:
+    package: my_sensor_driver
+    targets:
+      - nsx::my_sensor_driver
+
+depends:
+  required:
+    - nsx-core
+    - nsx-i2c
+  optional: []
+
+compatibility:
+  boards:
+    - "*"
+  socs:
+    - "apollo510"
+    - "apollo510b"
+    - "apollo5b"
+  toolchains:
+    - "arm-none-eabi-gcc"
+```
+
+The init command derives a valid baseline from the module name and the flags
+you pass. Review these fields before registering the module:
+
+- `build.cmake.package`
+- `build.cmake.targets`
+- `depends.required`
+- `compatibility.boards`
+- `compatibility.socs`
+- `compatibility.toolchains`
+
+## Review the Generated Build Files
+
+Generated `my-sensor-driver/CMakeLists.txt`:
+
+```cmake
+cmake_minimum_required(VERSION 3.20)
+
+find_package(nsx_core REQUIRED)
+find_package(nsx_i2c REQUIRED)
+
+add_library(my_sensor_driver STATIC
+  src/my_sensor_driver.c
+)
+
+target_include_directories(my_sensor_driver PUBLIC
+  includes-api
+)
+
+target_link_libraries(my_sensor_driver PUBLIC
+  ${NSX_BOARD_FLAGS_TARGET}
+  nsx::core
+  nsx::i2c
+)
+
+add_library(nsx::my_sensor_driver ALIAS my_sensor_driver)
+```
+
+Generated source stubs are intentionally minimal. Replace them with your real
+driver or runtime implementation once the dependency and compatibility shape is
+correct.
 
 ## Requirements
 
@@ -150,7 +281,7 @@ target_include_directories(my_custom_module PUBLIC
 
 ## Recommended Directory Layout
 
-```
+```text
 my-custom-module/
 ├── CMakeLists.txt
 ├── nsx-module.yaml
@@ -185,6 +316,28 @@ from neuralspotx import validate_module_metadata
 
 data = validate_module_metadata("path/to/nsx-module.yaml")
 ```
+
+## Register, Add, and Build
+
+Register the module from a local filesystem path:
+
+```bash
+nsx module register my-sensor-driver \
+  --metadata ./my-sensor-driver/nsx-module.yaml \
+  --project my_sensor_driver \
+  --project-local-path ./my-sensor-driver \
+  --app-dir my-app
+```
+
+Then enable it and build:
+
+```bash
+nsx module add my-sensor-driver --app-dir my-app
+nsx build --app-dir my-app
+```
+
+At that point the module is vendored into `my-app/modules/my-sensor-driver/`
+alongside any built-in dependencies the app already uses.
 
 ## Registering a Custom Module
 
@@ -294,3 +447,10 @@ modules = list_modules(app_dir=Path("my-app"))
 record = describe_module("my-custom-module", app_dir=Path("my-app"))
 results = search_modules("my capability", app_dir=Path("my-app"))
 ```
+
+## Related Pages
+
+- [Modules](modules.md) — terminology and normal CLI workflows
+- [Module Catalog](module-catalog.md) — browse the built-in registry catalog
+- [Adding Modules](../contributing/adding-modules.md) — contributing modules to the packaged registry
+- [Module Model](../architecture/module-model.md) — architecture deep-dive

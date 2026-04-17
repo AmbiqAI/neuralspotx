@@ -20,8 +20,11 @@ Vendored is about where the app builds from.
 In normal use, a first-class module is resolved from the packaged registry and
 then vendored into the app.
 
-For a high-level overview of the current first-class module catalog, see
-[First-Class Modules](first-class-modules.md).
+For the built-in registry catalog, compatibility tables, and first-class module
+families, see [Module Catalog](module-catalog.md).
+
+For local or third-party module authoring, registration, and scaffolding, see
+[Custom Modules](custom-modules.md).
 
 ## List Modules
 
