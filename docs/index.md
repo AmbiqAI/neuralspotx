@@ -19,26 +19,22 @@ such as USB or interface demos.
 
 ## How it Works
 
+<div class="workflow-pipeline" markdown>
+
+``` mermaid
+flowchart LR
+    A("<strong>create&#8209;app</strong><br/>scaffold") --> B("<strong>configure</strong><br/>resolve modules") --> C("<strong>build</strong><br/>CMake + GCC") --> D("<strong>flash</strong><br/>J-Link / SWD") --> E("<strong>view</strong><br/>SWO output")
+    style A fill:#4051b5,color:#fff,stroke:none,rx:8
+    style B fill:#4051b5,color:#fff,stroke:none,rx:8
+    style C fill:#4051b5,color:#fff,stroke:none,rx:8
+    style D fill:#4051b5,color:#fff,stroke:none,rx:8
+    style E fill:#4051b5,color:#fff,stroke:none,rx:8
 ```
-nsx create-app   →   nsx configure   →   nsx build   →   nsx flash   →   nsx view
-```
+
+</div>
 
 Generated apps stay explicit and inspectable — one board, one SoC, one
 toolchain, ordinary CMake structure.
-
-```mermaid
-flowchart LR
-    A["nsx CLI"] --> B["Generated App"]
-    A --> C["Built-in Boards"]
-    A --> D["Module Registry"]
-    D --> E["External Module Repos"]
-    D --> F["SDK Provider Repos"]
-    C --> B
-    E --> B
-    F --> B
-    B --> G["CMake Build"]
-    G --> H["Flash / SWO View"]
-```
 
 ## Features
 
@@ -63,10 +59,21 @@ Standard CMake under the hood. Inspect, extend, or eject at any time.
 
 ## Where to Start
 
-| You want to… | Go to |
-|---|---|
-| Get up and running | [Getting Started](getting-started/index.md) |
-| Understand the app model | [User Guide](user-guide/app-model.md) |
-| Look up exact CLI flags | [Command Reference](reference/cli-overview.md) |
-| Try an example | [Examples](examples/hello_world.md) |
-| Contribute to the platform | [Contributing](contributing/index.md) |
+<div class="feature-grid" markdown>
+<div class="card" markdown>
+### :material-rocket-launch: New to NSX?
+Start with **[Getting Started](getting-started/index.md)** — install prerequisites, create your first app, and build it.
+</div>
+<div class="card" markdown>
+### :material-book-open-variant: Already using it?
+The **[User Guide](user-guide/app-model.md)** covers the app model, modules, boards, and build workflows in depth.
+</div>
+<div class="card" markdown>
+### :material-console-line: Need a CLI reference?
+The **[Command Reference](reference/cli-overview.md)** has exact flags and syntax for every `nsx` subcommand.
+</div>
+<div class="card" markdown>
+### :material-flask-outline: Want working code?
+Browse the **[Examples](examples/hello_world.md)** — hello world, CoreMark, PMU profiling, USB, and more.
+</div>
+</div>

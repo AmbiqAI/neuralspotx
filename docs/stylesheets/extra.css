@@ -64,6 +64,12 @@
   margin-bottom: 0.4rem;
 }
 
+/* ── Workflow pipeline diagram ───────────────────────────────────── */
+.workflow-pipeline .mermaid {
+  max-width: 900px;
+  margin: 1.5rem auto;
+}
+
 /* ── Subtle code-block refinement ────────────────────────────────── */
 .md-typeset code {
   border-radius: 6px;
