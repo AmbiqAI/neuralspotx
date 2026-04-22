@@ -222,6 +222,10 @@ modules:
     project: neuralspotx
     revision: main
     metadata: src/neuralspotx/boards/apollo4l_blue_evb/nsx-module.yaml
+  nsx-board-apollo4b-blue-evb:
+    project: neuralspotx
+    revision: main
+    metadata: src/neuralspotx/boards/apollo4b_blue_evb/nsx-module.yaml
   nsx-board-apollo4p-evb:
     project: neuralspotx
     revision: main
@@ -546,6 +550,31 @@ starter_profiles:
       - nsx-utils
       - nsx-tooling
     features: {}
+  apollo4b_blue_evb_minimal:
+    board: apollo4b_blue_evb
+    soc: apollo4p
+    toolchain: arm-none-eabi-gcc
+    channel: preview
+    project_overrides:
+      nsx-ambiqsuite-r4:
+        revision: r4.5.0
+    module_overrides:
+      nsx-ambiqsuite-r4:
+        project: nsx-ambiqsuite-r4
+        revision: r4.5.0
+        metadata: modules/nsx-ambiqsuite-r4/nsx-module.yaml
+    modules:
+      - nsx-ambiqsuite-r4
+      - nsx-ambiq-hal-r4
+      - nsx-ambiq-bsp-r4
+      - nsx-soc-hal
+      - nsx-cmsis-startup
+      - nsx-board-apollo4b-blue-evb
+      - nsx-core
+      - nsx-harness
+      - nsx-utils
+      - nsx-tooling
+    features: {}
   apollo4p_evb_minimal:
     board: apollo4p_evb
     soc: apollo4p
@@ -789,6 +818,23 @@ compat_matrix:
         - nsx-soc-hal
         - nsx-cmsis-startup
         - nsx-board-apollo4l-blue-evb
+        - nsx-core
+        - nsx-harness
+        - nsx-utils
+        - nsx-tooling
+  apollo4b_blue_evb:
+    socs:
+      - apollo4p
+    toolchains:
+      - arm-none-eabi-gcc
+    modules:
+      required:
+        - nsx-ambiqsuite-r4
+        - nsx-ambiq-hal-r4
+        - nsx-ambiq-bsp-r4
+        - nsx-soc-hal
+        - nsx-cmsis-startup
+        - nsx-board-apollo4b-blue-evb
         - nsx-core
         - nsx-harness
         - nsx-utils

@@ -9,6 +9,7 @@ DEFAULT_SOC_FOR_BOARD = {
     "apollo3p_evb_cygnus": "apollo3p",
     "apollo4l_evb": "apollo4l",
     "apollo4l_blue_evb": "apollo4l",
+    "apollo4b_blue_evb": "apollo4p",
     "apollo4p_evb": "apollo4p",
     "apollo4p_blue_kbr_evb": "apollo4p",
     "apollo4p_blue_kxr_evb": "apollo4p",

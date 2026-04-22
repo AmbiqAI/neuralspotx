@@ -25,7 +25,8 @@ function(nsx_select_sdk_provider board_name)
         )
             set(NSX_SDK_PROVIDER "ambiqsuite-r3")
         elseif(
-            board_name STREQUAL "apollo4l_evb"
+            board_name STREQUAL "apollo4b_blue_evb"
+            OR board_name STREQUAL "apollo4l_evb"
             OR board_name STREQUAL "apollo4l_blue_evb"
             OR board_name STREQUAL "apollo4p_evb"
             OR board_name STREQUAL "apollo4p_blue_kbr_evb"

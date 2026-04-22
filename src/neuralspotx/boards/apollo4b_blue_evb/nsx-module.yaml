@@ -1,0 +1,36 @@
+schema_version: 1
+
+module:
+  name: nsx-board-apollo4b-blue-evb
+  type: board
+  version: "0.1.0"
+
+support:
+  ambiqsuite: true
+  zephyr: false
+
+build:
+  cmake:
+    package: nsx_board_apollo4b_blue_evb
+    targets:
+      - nsx::board_apollo4b_blue_evb
+
+depends:
+  required:
+    - nsx-ambiq-hal-r4
+    - nsx-ambiq-bsp-r4
+    - nsx-soc-hal
+    - nsx-cmsis-startup
+    - nsx-ambiqsuite-r4
+  optional: []
+
+constraints:
+  required_sdk_provider: nsx-ambiqsuite-r4
+
+compatibility:
+  boards:
+    - apollo4b_blue_evb
+  socs:
+    - apollo4p
+  toolchains:
+    - arm-none-eabi-gcc
