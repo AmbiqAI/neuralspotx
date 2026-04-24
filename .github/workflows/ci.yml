@@ -147,6 +147,64 @@ jobs:
           --timeout=600
 
   # ---------------------------------------------------------------
+  # Example builds (armclang) — optional, Linux only.
+  # Skipped unless the ARMCLANG_URL secret is configured on the repo
+  # (a URL to a tarball containing the Arm Compiler for Embedded install).
+  # Safe for forks and PRs without the secret: the `if` short-circuits.
+  # ---------------------------------------------------------------
+  example-builds-armclang:
+    if: ${{ vars.ARMCLANG_URL != '' }}
+    runs-on: ubuntu-latest
+    env:
+      NSX_TOOLCHAIN: armclang
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install cmake and ninja
+        run: uv pip install --system cmake ninja
+
+      - name: Install armclang
+        env:
+          ARMCLANG_URL: ${{ vars.ARMCLANG_URL }}
+        run: |
+          curl -fsSL -o armclang.tgz "$ARMCLANG_URL"
+          sudo mkdir -p /opt/armclang
+          sudo tar -xf armclang.tgz --strip-components=1 -C /opt/armclang
+          # Path layout is e.g. /opt/armclang/bin/armclang
+          bin=$(find /opt/armclang -maxdepth 4 -name armclang -type f | head -1)
+          echo "armclang at: $bin"
+          echo "$(dirname "$bin")" >> "$GITHUB_PATH"
+
+      - name: Verify toolchain
+        run: |
+          armclang --version
+          armlink --version || true
+          cmake --version
+          ninja --version
+
+      - name: Install neuralspotx
+        run: uv sync --group test
+
+      - name: Run example build tests (armclang)
+        env:
+          NSX_TEST_TOOLCHAIN: armclang
+        run: >-
+          uv run --group test pytest tests/test_example_builds.py
+          -q
+          --timeout=600
+
+  # ---------------------------------------------------------------
   # Gate — single required-check for branch protection
   # ---------------------------------------------------------------
   lint-and-test:

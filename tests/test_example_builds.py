@@ -3,12 +3,14 @@
 Each test copies an example to *tmp_path*, runs ``nsx configure`` and
 ``nsx build``, then checks that the output ELF exists.
 
-The tests are skipped automatically when ``arm-none-eabi-gcc`` is not
-on PATH (the cross toolchain is required for a real build).
+The tests are skipped automatically when the required cross toolchain
+is not on PATH. Set ``NSX_TEST_TOOLCHAIN=armclang`` to exercise the Arm
+Compiler for Embedded path instead of the default ``arm-none-eabi-gcc``.
 """
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -25,11 +27,13 @@ _EXAMPLE_NAMES = sorted(
     if d.is_dir() and (d / "nsx.yml").exists() and not (d / ".ci-skip").exists()
 )
 
-_HAS_TOOLCHAIN = shutil.which("arm-none-eabi-gcc") is not None
+_TOOLCHAIN = os.environ.get("NSX_TEST_TOOLCHAIN", "arm-none-eabi-gcc")
+_PROBE_TOOL = "armclang" if _TOOLCHAIN == "armclang" else "arm-none-eabi-gcc"
+_HAS_TOOLCHAIN = shutil.which(_PROBE_TOOL) is not None
 
 pytestmark = pytest.mark.skipif(
     not _HAS_TOOLCHAIN,
-    reason="arm-none-eabi-gcc not found — skipping E2E build tests",
+    reason=f"{_PROBE_TOOL} not found — skipping E2E build tests",
 )
 
 
@@ -46,16 +50,13 @@ def example_app(request: pytest.FixtureRequest, tmp_path: Path) -> Path:
 @pytest.mark.parametrize("example_app", _EXAMPLE_NAMES, indirect=True)
 def test_example_configures_and_builds(example_app: Path) -> None:
     """``nsx configure`` + ``nsx build`` succeeds for each example."""
-    subprocess.run(
-        ["nsx", "configure", "--app-dir", str(example_app)],
-        check=True,
-        timeout=300,
-    )
-    subprocess.run(
-        ["nsx", "build", "--app-dir", str(example_app)],
-        check=True,
-        timeout=300,
-    )
+    configure_cmd = ["nsx", "configure", "--app-dir", str(example_app)]
+    build_cmd = ["nsx", "build", "--app-dir", str(example_app)]
+    if _TOOLCHAIN != "arm-none-eabi-gcc":
+        configure_cmd += ["--toolchain", _TOOLCHAIN]
+        build_cmd += ["--toolchain", _TOOLCHAIN]
+    subprocess.run(configure_cmd, check=True, timeout=300)
+    subprocess.run(build_cmd, check=True, timeout=300)
 
     # The build target name matches the directory / project name.
     app_name = example_app.name

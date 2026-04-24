@@ -322,6 +322,32 @@ def doctor_impl() -> None:
         hint="Install the Arm GNU toolchain and ensure it is in PATH.",
     )
 
+    # armclang is optional — report but do not fail doctor when missing.
+    armclang_path = _tool_path("armclang")
+    armlink_path = _tool_path("armlink")
+    fromelf_path = _tool_path("fromelf")
+    if armclang_path or armlink_path or fromelf_path:
+        _doctor_check(
+            "armclang",
+            armclang_path is not None,
+            detail=armclang_path,
+            hint="Install Arm Compiler for Embedded (armclang) if you want the armclang toolchain.",
+        )
+        _doctor_check(
+            "armlink",
+            armlink_path is not None,
+            detail=armlink_path,
+            hint="armlink should ship alongside armclang.",
+        )
+        _doctor_check(
+            "fromelf",
+            fromelf_path is not None,
+            detail=fromelf_path,
+            hint="fromelf should ship alongside armclang.",
+        )
+    else:
+        print("  (armclang toolchain not detected — optional)")
+
     jlink_path = find_segger_tool(JLINK_NAMES)
     jlink_ok = jlink_path is not None
     all_ok &= _doctor_check(
