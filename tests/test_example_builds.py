@@ -4,8 +4,10 @@ Each test copies an example to *tmp_path*, runs ``nsx configure`` and
 ``nsx build``, then checks that the output ELF exists.
 
 The tests are skipped automatically when the required cross toolchain
-is not on PATH. Set ``NSX_TEST_TOOLCHAIN=armclang`` to exercise the Arm
-Compiler for Embedded path instead of the default ``arm-none-eabi-gcc``.
+is not on PATH. Set ``NSX_TEST_TOOLCHAIN`` to exercise a non-default
+toolchain — supported values are ``arm-none-eabi-gcc`` (default),
+``armclang`` (Arm Compiler for Embedded), or ``atfe`` (Arm Toolchain for
+Embedded; requires ``ATFE_ROOT`` to be set).
 """
 
 from __future__ import annotations
@@ -28,12 +30,30 @@ _EXAMPLE_NAMES = sorted(
 )
 
 _TOOLCHAIN = os.environ.get("NSX_TEST_TOOLCHAIN", "arm-none-eabi-gcc")
-_PROBE_TOOL = "armclang" if _TOOLCHAIN == "armclang" else "arm-none-eabi-gcc"
-_HAS_TOOLCHAIN = shutil.which(_PROBE_TOOL) is not None
+
+
+def _atfe_clang_path() -> str | None:
+    """Return the ATfE clang binary if ``ATFE_ROOT`` is set and valid."""
+    root = os.environ.get("ATFE_ROOT")
+    if not root:
+        return None
+    candidate = Path(root) / "bin" / "clang"
+    return str(candidate) if candidate.exists() else None
+
+
+if _TOOLCHAIN == "armclang":
+    _HAS_TOOLCHAIN = shutil.which("armclang") is not None
+    _PROBE_DESC = "armclang"
+elif _TOOLCHAIN == "atfe":
+    _HAS_TOOLCHAIN = _atfe_clang_path() is not None
+    _PROBE_DESC = "ATfE clang (via ATFE_ROOT)"
+else:
+    _HAS_TOOLCHAIN = shutil.which("arm-none-eabi-gcc") is not None
+    _PROBE_DESC = "arm-none-eabi-gcc"
 
 pytestmark = pytest.mark.skipif(
     not _HAS_TOOLCHAIN,
-    reason=f"{_PROBE_TOOL} not found — skipping E2E build tests",
+    reason=f"{_PROBE_DESC} not found — skipping E2E build tests",
 )
 
 

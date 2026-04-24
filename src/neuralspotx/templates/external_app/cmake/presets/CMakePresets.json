@@ -23,6 +23,15 @@
         "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/nsx/toolchains/armclang.cmake",
         "CMAKE_BUILD_TYPE": "Release"
       }
+    },
+    {
+      "name": "atfe-ninja",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/atfe-ninja",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/nsx/toolchains/atfe.cmake",
+        "CMAKE_BUILD_TYPE": "Release"
+      }
     }
   ]
 }

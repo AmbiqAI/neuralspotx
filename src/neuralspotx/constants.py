@@ -25,6 +25,7 @@ SUPPORTED_TOOLCHAINS = {
     "arm-none-eabi-gcc": "arm-none-eabi-gcc.cmake",
     "gcc": "arm-none-eabi-gcc.cmake",
     "armclang": "armclang.cmake",
+    "atfe": "atfe.cmake",
 }
 
 # The project name used to identify modules that ship packaged with neuralspotx
