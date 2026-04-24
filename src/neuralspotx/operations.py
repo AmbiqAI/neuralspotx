@@ -6,6 +6,7 @@ import argparse
 import copy
 import importlib.resources as resources
 import json
+import os
 import shutil
 import subprocess
 import time
@@ -347,6 +348,47 @@ def doctor_impl() -> None:
         )
     else:
         print("  (armclang toolchain not detected — optional)")
+
+    # ATfE (Arm Toolchain for Embedded) — optional.
+    # ATFE_ROOT env var points to the install dir; tools are NOT on PATH.
+    atfe_root = os.environ.get("ATFE_ROOT", "")
+    if atfe_root:
+        atfe_bin = os.path.join(atfe_root, "bin")
+        atfe_clang = (
+            os.path.join(atfe_bin, "clang")
+            if os.path.isfile(os.path.join(atfe_bin, "clang"))
+            else None
+        )
+        atfe_objcopy = (
+            os.path.join(atfe_bin, "llvm-objcopy")
+            if os.path.isfile(os.path.join(atfe_bin, "llvm-objcopy"))
+            else None
+        )
+        atfe_newlib_cfg = (
+            os.path.join(atfe_bin, "newlib.cfg")
+            if os.path.isfile(os.path.join(atfe_bin, "newlib.cfg"))
+            else None
+        )
+        _doctor_check(
+            "ATfE clang",
+            atfe_clang is not None,
+            detail=atfe_clang,
+            hint="ATFE_ROOT is set but clang not found in $ATFE_ROOT/bin.",
+        )
+        _doctor_check(
+            "ATfE llvm-objcopy",
+            atfe_objcopy is not None,
+            detail=atfe_objcopy,
+            hint="llvm-objcopy should ship alongside ATfE clang.",
+        )
+        _doctor_check(
+            "ATfE newlib.cfg",
+            atfe_newlib_cfg is not None,
+            detail=atfe_newlib_cfg,
+            hint="Install the ATfE newlib overlay — extract ATfE-newlib-overlay on top of the ATfE install.",
+        )
+    else:
+        print("  (ATfE toolchain not detected — set ATFE_ROOT to enable; optional)")
 
     jlink_path = find_segger_tool(JLINK_NAMES)
     jlink_ok = jlink_path is not None

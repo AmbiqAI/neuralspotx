@@ -113,9 +113,16 @@ function(nsx_finalize_app app_target)
     # CMAKE_C_STANDARD_LIBRARIES is appended at the very end of the
     # linker invocation, after all target_link_libraries contributions.
     # armclang bundles its own runtime — no explicit stdlib linking needed.
+    # ATfE uses newlib overlay via --config=newlib.cfg and compiler-rt
+    # instead of libgcc, but still needs -lm -lc -lnosys.
     if(NSX_TOOLCHAIN_FAMILY STREQUAL "gcc")
         set(CMAKE_C_STANDARD_LIBRARIES
             "-Wl,--start-group -lm -lc -lgcc -lnosys -lstdc++ -Wl,--end-group"
+            PARENT_SCOPE
+        )
+    elseif(NSX_TOOLCHAIN_FAMILY STREQUAL "atfe")
+        set(CMAKE_C_STANDARD_LIBRARIES
+            "-Wl,--start-group -lm -lc -lnosys -Wl,--end-group"
             PARENT_SCOPE
         )
     endif()
@@ -146,8 +153,8 @@ function(nsx_finalize_app app_target)
     endif()
 
     # Map file — armclang generates it via --map in link flags;
-    # GCC needs an explicit -Wl,-Map option.
-    if(NSX_TOOLCHAIN_FAMILY STREQUAL "gcc")
+    # GCC and ATfE need an explicit -Wl,-Map option.
+    if(NSX_TOOLCHAIN_FAMILY STREQUAL "gcc" OR NSX_TOOLCHAIN_FAMILY STREQUAL "atfe")
         target_link_options(${app_target} PRIVATE
             -Wl,-Map,$<TARGET_FILE_DIR:${app_target}>/${app_target}.map
         )

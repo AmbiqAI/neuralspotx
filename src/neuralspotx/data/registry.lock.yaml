@@ -725,6 +725,8 @@ compat_matrix:
       - apollo510
     toolchains:
       - arm-none-eabi-gcc
+      - armclang
+      - atfe
     modules:
       required:
         - nsx-ambiqsuite-r5
@@ -742,6 +744,8 @@ compat_matrix:
       - apollo5b
     toolchains:
       - arm-none-eabi-gcc
+      - armclang
+      - atfe
     modules:
       required:
         - nsx-ambiqsuite-r5
@@ -759,6 +763,8 @@ compat_matrix:
       - apollo510b
     toolchains:
       - arm-none-eabi-gcc
+      - armclang
+      - atfe
     modules:
       required:
         - nsx-ambiqsuite-r5
@@ -776,6 +782,8 @@ compat_matrix:
       - apollo330P
     toolchains:
       - arm-none-eabi-gcc
+      - armclang
+      - atfe
     modules:
       required:
         - nsx-ambiqsuite-r5
