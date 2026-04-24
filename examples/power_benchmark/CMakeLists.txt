@@ -141,11 +141,16 @@ endif()
 # coremark_nvm runs from NVM — use the default board linker script.
 # ---------------------------------------------------------------------------
 if(NOT BENCHMARK_MODE STREQUAL "deepsleep" AND NOT BENCHMARK_MODE STREQUAL "coremark_nvm" AND NOT BENCHMARK_MODE STREQUAL "coremark_minmem" AND NOT BENCHMARK_MODE STREQUAL "coremark_sdk5")
-    set(PB_LINKER_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/linker_script_itcm.ld")
-    get_target_property(_board_link_opts nsx_board_apollo510_evb_flags INTERFACE_LINK_OPTIONS)
-    list(FILTER _board_link_opts EXCLUDE REGEX "^-T")
-    list(APPEND _board_link_opts "-T${PB_LINKER_SCRIPT}")
-    set_property(TARGET nsx_board_apollo510_evb_flags PROPERTY INTERFACE_LINK_OPTIONS ${_board_link_opts})
+    if(NSX_TOOLCHAIN_FAMILY STREQUAL "armclang")
+        # TODO: create an armclang scatter file for ITCM placement
+        message(STATUS "Skipping ITCM linker-script override for armclang (not yet ported)")
+    else()
+        set(PB_LINKER_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/linker_script_itcm.ld")
+        get_target_property(_board_link_opts nsx_board_apollo510_evb_flags INTERFACE_LINK_OPTIONS)
+        list(FILTER _board_link_opts EXCLUDE REGEX "^-T")
+        list(APPEND _board_link_opts "-T${PB_LINKER_SCRIPT}")
+        set_property(TARGET nsx_board_apollo510_evb_flags PROPERTY INTERFACE_LINK_OPTIONS ${_board_link_opts})
+    endif()
 endif()
 
 nsx_finalize_app(power_benchmark)

@@ -120,8 +120,27 @@ NSX_PACKED_END
 | `NSX_COMPILER_ARMCLANG` | Arm Compiler 6 (`__ARMCC_VERSION >= 6000000`) |
 | `NSX_HAS_NEWLIB` | Only true for GCC (newlib retarget stubs available) |
 
-## Limitations
+## SoC / Board Coverage
 
-- Pre-built SDK libraries (`libam_hal.a`, `libam_bsp.a`) are GCC-compiled. armclang can link them but requires `-fshort-enums` for ABI compatibility.
-- Apollo3 boards do not have armclang startup/scatter files (Cortex-M4, older SDK).
-- Apollo3p has `.s` assembly startup only (not `.c`), which may need adjustments.
+armclang is validated on Apollo510 (Cortex-M55) and declared supported by the
+Apollo5a/Apollo5b/Apollo510L/Apollo510B and Apollo330mP EVBs (their
+`nsx-module.yaml` lists `armclang` under `compatibility.toolchains`).
+
+Apollo3/Apollo3p/Apollo4* boards currently declare only `arm-none-eabi-gcc`:
+
+- Apollo3 / Apollo3p: no armclang startup/scatter files in `nsx-core` yet.
+- Apollo4l / Apollo4p / Apollo4b-blue: armclang ships only an assembly startup
+  (`startup_keil6.s`) instead of the `.c` variant NSX board files wire up, and
+  only a `linker_script.sct` (no `_sbl` variant). Adding armclang here is a
+  matter of supplying the missing `startup_armclang.c` + `linker_script_sbl.sct`
+  under `nsx-core/src/<soc>/armclang/`.
+
+## Notes
+
+- Pre-built SDK libraries (`libam_hal.a`, `libam_bsp.a`) are GCC-compiled but
+  are ABI-compatible with armclang-compiled code. The alternate Keil `*.lib`
+  archives are **not** compatible — they carry `Tag_ABI_HardFP_use = 1` which
+  clashes with armclang's default output attributes (L6242E). NSX therefore
+  always links the `.a` variants regardless of toolchain.
+- `nsx_toolchain_flags.cmake` passes `-fshort-enums` when building with
+  armclang to match the enum ABI used by the prebuilt `.a` libraries.

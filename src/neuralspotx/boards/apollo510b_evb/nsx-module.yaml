@@ -34,3 +34,4 @@ compatibility:
     - apollo510b
   toolchains:
     - arm-none-eabi-gcc
+    - armclang
