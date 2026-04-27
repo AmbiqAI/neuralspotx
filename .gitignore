@@ -6,3 +6,6 @@
 **/.DS_Store
 **/__pycache__/
 *.pyc
+
+# Toolchain-variant build dirs (build_armclang/, build_gcc/, build_atfe/, etc.)
+**/build_*/
