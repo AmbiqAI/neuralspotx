@@ -61,6 +61,11 @@ projects:
     url: https://github.com/AmbiqAI/nsx-soc-hal.git
     revision: main
     path: modules/nsx-soc-hal
+  nsx-cmsis-core:
+    name: nsx-cmsis-core
+    url: https://github.com/AmbiqAI/nsx-cmsis-core.git
+    revision: main
+    path: modules/nsx-cmsis-core
   nsx-cmsis-startup:
     name: nsx-cmsis-startup
     url: https://github.com/AmbiqAI/nsx-cmsis-startup.git
@@ -178,6 +183,10 @@ modules:
     project: nsx-soc-hal
     revision: main
     metadata: modules/nsx-soc-hal/nsx-module.yaml
+  nsx-cmsis-core:
+    project: nsx-cmsis-core
+    revision: main
+    metadata: modules/nsx-cmsis-core/nsx-module.yaml
   nsx-cmsis-startup:
     project: nsx-cmsis-startup
     revision: main

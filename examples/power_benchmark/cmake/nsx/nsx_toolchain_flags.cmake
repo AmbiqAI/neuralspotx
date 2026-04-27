@@ -46,6 +46,9 @@ function(nsx_apply_toolchain_flags flags_target)
             -Wall
             -g
             -Ofast
+            # AmbiqSuite headers use C-style string literal concatenation
+            # without a space, which C++11 treats as a user-defined literal.
+            $<$<COMPILE_LANGUAGE:CXX>:-Wno-reserved-user-defined-literal>
         )
 
         target_compile_definitions(${flags_target} INTERFACE

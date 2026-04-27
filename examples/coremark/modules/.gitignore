@@ -4,6 +4,7 @@ nsx-ambiq-bsp-r5/
 nsx-ambiq-hal-r5/
 nsx-ambiqsuite-r5/
 nsx-board-apollo510-evb/
+nsx-cmsis-core/
 nsx-cmsis-startup/
 nsx-core/
 nsx-harness/

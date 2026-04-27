@@ -9,6 +9,9 @@ channel: stable
 profile: apollo510_evb_minimal
 profile_status: active
 modules:
+- name: nsx-cmsis-core
+  revision: main
+  project: nsx-cmsis-core
 - name: nsx-ambiqsuite-r5
   revision: main
   project: nsx-ambiqsuite-r5
