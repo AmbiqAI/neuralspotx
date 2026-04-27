@@ -18,7 +18,9 @@ nsx doctor
 - `uv`
 - CMake
 - Ninja
-- Arm GNU toolchain
+- Arm GNU toolchain (`arm-none-eabi-gcc`)
+- Arm Compiler for Embedded (`armclang`, `armlink`, `fromelf`) — optional
+- Arm Toolchain for Embedded (`$ATFE_ROOT/bin/clang`, `llvm-objcopy`, picolibc newlib config) — optional
 - `JLinkExe`
 - `JLinkSWOViewerCL`
 - basic SEGGER J-Link runtime startup

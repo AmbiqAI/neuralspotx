@@ -8,7 +8,19 @@ Ambiq targets.
 
 When the Cortex-M core comes out of reset, the hardware loads the initial
 stack pointer from address 0x0 and the reset vector from address 0x4, then
-jumps to `Reset_Handler` in `startup_gcc.c`.
+jumps to `Reset_Handler` in the startup file.
+
+### Startup Files by Toolchain
+
+| Toolchain | Startup File | Linker Config |
+|-----------|-------------|---------------|
+| **GCC** | `startup_gcc.c` | `.ld` linker scripts |
+| **armclang** | `startup_keil6.c` | `.sct` scatter files |
+| **ATfE** | `startup_clang.c` | `.ld` linker scripts (same as GCC) |
+
+All three startup files perform the same logical sequence — they differ
+only in compiler-specific syntax (attributes, section directives, inline
+assembly).
 
 ```mermaid
 flowchart TD
@@ -68,7 +80,10 @@ symbols resolve to the same address).
 ## Linker Script Anatomy
 
 NSX targets use GCC linker scripts (`.ld` files) in
-`nsx-core/src/<soc>/gcc/`. There are three variants per SoC:
+`nsx-core/src/<soc>/gcc/`. armclang uses scatter files (`.sct`) in
+`nsx-core/src/<soc>/armclang/`. ATfE reuses the GCC `.ld` scripts.
+
+There are three variants per SoC:
 
 | Script | Boot loader | Use case |
 |--------|-----------|----------|

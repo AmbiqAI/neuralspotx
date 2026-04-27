@@ -35,8 +35,12 @@ power benchmarking, audio capture, USB serial, and more.
 | **Python 3.10+** | NSX CLI and module resolution run on Python |
 | **uv** | Fast dependency manager used by the project |
 | **CMake + Ninja** | Build system underneath every generated app |
-| **Arm GNU Toolchain** | Cross-compiler for Cortex-M targets |
+| **Arm GNU Toolchain** | Default cross-compiler for Cortex-M targets |
 | **SEGGER J-Link** | Flash and SWO viewer (`nsx flash` / `nsx view`) |
+
+Optional: **armclang** (Arm Compiler for Embedded) and **ATfE** (Arm
+Toolchain for Embedded) are also supported. See
+[Install and Setup](install.md) for details.
 
 All of these are covered in detail on the [Install and Setup](install.md) page.
 

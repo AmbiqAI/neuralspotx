@@ -14,7 +14,7 @@ Make sure the following are available on your `PATH`:
 | **uv** | latest | Fast Python dependency management |
 | **CMake** | 3.24+ | Build-system generator |
 | **Ninja** | any | Parallel build backend |
-| **Arm GNU Toolchain** | 13.x+ | `arm-none-eabi-gcc` cross-compiler |
+| **Arm GNU Toolchain** | 13.x+ | `arm-none-eabi-gcc` cross-compiler (default) |
 | **SEGGER J-Link** | 7.x+ | Flash firmware and stream SWO output |
 
 !!! tip
@@ -23,6 +23,20 @@ Make sure the following are available on your `PATH`:
     brew install python uv cmake ninja
     brew install --cask gcc-arm-embedded segger-jlink
     ```
+
+## Optional Toolchains
+
+NSX supports two additional cross-compilers alongside GCC. These are
+**not** required — GCC is the default and works for all examples.
+
+| Toolchain | Version | Setup |
+|---|---|---|
+| **Arm Compiler for Embedded (armclang)** | 6.22+ | Install and add to `PATH`. NSX detects `armclang` automatically. |
+| **Arm Toolchain for Embedded (ATfE)** | 22.1+ | Install and set `ATFE_ROOT` to the install directory (tools are **not** on `PATH`). |
+
+Use `--toolchain armclang` or `--toolchain atfe` with any `nsx` command
+to select an alternate toolchain. See
+[Toolchain Support](../architecture/toolchain-support.md) for details.
 
 ## Option A — Install with `pipx` (Recommended for App Developers)
 

@@ -18,7 +18,7 @@ nsx view [--app-dir APP_DIR] [--board BOARD] [--build-dir BUILD_DIR]
 - `--app-dir`: app directory containing `nsx.yml`
 - `--board`: override board from `nsx.yml`
 - `--build-dir`: build directory override
-- `--toolchain`: toolchain override (`gcc`, `armclang`). Defaults to `nsx.yml` → `arm-none-eabi-gcc`
+- `--toolchain`: toolchain override (`gcc`, `armclang`, `atfe`). Defaults to `nsx.yml` → `arm-none-eabi-gcc`
 - `--no-reset-on-open`: open the viewer without issuing the normal reset target after attach
 - `--reset-delay-ms`: wait time before issuing the reset target after the viewer opens
 
