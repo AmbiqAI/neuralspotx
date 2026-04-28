@@ -29,6 +29,19 @@ from .module_registry import (
     _resolve_module_closure,
     _update_module_clone,
     _update_nsx_cfg_modules,
+    _vendored_module_names,
+)
+from .nsx_lock import (
+    NsxLock,
+    ResolutionError,
+    ResolvedModule,
+    hash_manifest,
+    hash_tree,
+    lock_path,
+    read_lock,
+    resolve_commit,
+    utcnow_iso,
+    write_lock,
 )
 from .project_config import (
     _copy_packaged_tree,
@@ -452,6 +465,42 @@ def doctor_impl() -> None:
         raise SystemExit("One or more required tools are missing or misconfigured.")
 
 
+def _scaffold_vendored_module(target_dir: Path, module_name: str) -> None:
+    """Drop minimal ``nsx-module.yaml`` + ``CMakeLists.txt`` into *target_dir*.
+
+    Existing files are left untouched so the helper is idempotent and
+    safe to run on a partially-populated module directory.
+    """
+
+    metadata_path = target_dir / "nsx-module.yaml"
+    if not metadata_path.exists():
+        metadata_path.write_text(
+            "schema_version: 1\n"
+            "module:\n"
+            f"  name: {module_name}\n"
+            "  type: app\n"
+            f'  description: "Vendored module {module_name}"\n'
+            "support:\n"
+            "  ambiqsuite: true\n"
+            "compatibility:\n"
+            '  boards: ["*"]\n'
+            '  socs: ["*"]\n'
+            '  toolchains: ["*"]\n'
+            "depends:\n"
+            "  required: []\n",
+            encoding="utf-8",
+        )
+    cmake_path = target_dir / "CMakeLists.txt"
+    if not cmake_path.exists():
+        cmake_path.write_text(
+            f"# {module_name} — vendored module (committed in this app).\n"
+            f"# Add sources / link libraries below; re-run `nsx lock` after edits.\n"
+            f"add_library({module_name} INTERFACE)\n"
+            f"target_include_directories({module_name} INTERFACE ${{CMAKE_CURRENT_SOURCE_DIR}})\n",
+            encoding="utf-8",
+        )
+
+
 def _ensure_app_modules(app_dir: Path) -> None:
     """Ensure all modules declared in nsx.yml are present on disk.
 
@@ -459,23 +508,42 @@ def _ensure_app_modules(app_dir: Path) -> None:
     (whose registry modules are gitignored) can be configured without
     a separate ``nsx module add`` or ``nsx module update`` step.
 
-    Only missing modules are acquired — existing vendored or cloned
-    modules are left untouched.  Modules marked ``local: true`` are
-    skipped entirely (they are source-controlled with the app).
+    When an ``nsx.lock`` is present it is used as the source of truth
+    (delegates to :func:`sync_app_impl`). Otherwise the legacy "clone
+    each module at its branch tip" path is used and a warning printed
+    so the user knows to run ``nsx lock``.
+
+    Modules marked ``local: true`` are skipped entirely (they are
+    source-controlled with the app).
     """
+
+    if (app_dir / "nsx.lock").exists():
+        sync_app_impl(app_dir)
+        return
 
     nsx_cfg = _load_app_cfg(app_dir)
     base_registry = _load_registry()
     registry = _effective_registry(base_registry, nsx_cfg)
     module_names = _module_names_from_nsx(nsx_cfg)
     local_names = _local_module_names(nsx_cfg)
-    _acquire_modules_for_app(app_dir, module_names, registry, local_modules=local_names)
+    vendored_names = _vendored_module_names(nsx_cfg)
+    _acquire_modules_for_app(
+        app_dir,
+        module_names,
+        registry,
+        local_modules=local_names,
+        vendored_modules=vendored_names,
+    )
     # Re-copy packaged cmake tree in case it was gitignored, then
     # regenerate the app-specific modules.cmake that _copy_packaged_tree
     # would have removed (it does an rmtree before copying).
     _copy_packaged_tree("neuralspotx", "cmake", app_dir / "cmake" / "nsx")
     _write_app_module_file(app_dir, nsx_cfg)
     _write_modules_gitignore(app_dir, nsx_cfg)
+    print(
+        "note: nsx.lock not found; modules acquired at branch tip. "
+        "Run `nsx lock` to record reproducible commits."
+    )
 
 
 def _resolve_build_context(
@@ -679,17 +747,51 @@ def add_module_impl(
     module_name: str,
     *,
     local: bool = False,
+    vendored: bool = False,
     dry_run: bool = False,
 ) -> list[str]:
     """Enable a module for an app and clone/copy the resolved closure.
 
-    If *local* is True the module is marked ``local: true`` in nsx.yml.
-    Local modules live inside the app tree (``modules/<name>/``), are
-    source-controlled with the app, and are not acquired from a registry
-    or git remote.
+    Args:
+        local: Mark as ``local: true`` in nsx.yml. Module lives inside
+            the app tree (``modules/<name>/``), is mirrored from an
+            external path, and is gitignored.
+        vendored: Mark with ``source: { vendored: true }`` in nsx.yml.
+            Module lives inside the app tree (``modules/<name>/``), is
+            committed in the app's git, and is never touched by ``nsx
+            sync``. A minimal ``nsx-module.yaml`` and ``CMakeLists.txt``
+            are scaffolded if absent.
     """
 
+    if local and vendored:
+        raise SystemExit("--local and --vendored are mutually exclusive")
+
     nsx_cfg = _load_app_cfg(app_dir)
+
+    if vendored:
+        existing = _module_names_from_nsx(nsx_cfg)
+        if module_name in existing:
+            raise SystemExit(f"Module '{module_name}' is already enabled in nsx.yml")
+        target_dir = app_dir / "modules" / module_name
+        if dry_run:
+            print(f"[dry-run] would scaffold vendored module: {module_name}")
+            print(f"[dry-run]   directory: {target_dir.relative_to(app_dir)}/")
+            print(f"[dry-run]   nsx.yml:  - name: {module_name}\\n    source: {{ vendored: true }}")
+            return existing + [module_name]
+        target_dir.mkdir(parents=True, exist_ok=True)
+        _scaffold_vendored_module(target_dir, module_name)
+        modules_list = nsx_cfg.setdefault("modules", [])
+        modules_list.append({"name": module_name, "source": {"vendored": True}})
+        _save_app_cfg(app_dir, nsx_cfg)
+        _write_app_module_file(app_dir, nsx_cfg)
+        _write_modules_gitignore(app_dir, nsx_cfg)
+        # Refresh the lock so the new module's content_hash is recorded.
+        if (app_dir / "nsx.lock").exists():
+            lock_app_impl(app_dir)
+        print(f"Registered vendored module '{module_name}'")
+        print(f"  scaffolded: {target_dir.relative_to(app_dir)}/")
+        print(f"  next: edit {target_dir.relative_to(app_dir)}/CMakeLists.txt and run `nsx lock`")
+        return _module_names_from_nsx(nsx_cfg)
 
     if local:
         # Local modules bypass registry resolution entirely.
@@ -994,3 +1096,564 @@ def register_module_impl(
     print(f"Project: {project_name}")
     print(f"Metadata: {metadata_path}")
     return metadata_path
+
+
+# ---------------------------------------------------------------------------
+# nsx.lock — resolution receipt and sync
+# ---------------------------------------------------------------------------
+
+
+def _resolved_module_path(
+    app_dir: Path,
+    module_name: str,
+    registry: dict,
+) -> Path:
+    """Return the on-disk vendored directory for *module_name* in *app_dir*."""
+
+    from .metadata import registry_entry_for_module
+    from .module_registry import _is_packaged_module
+    from .project_config import _module_clone_dir, _vendored_target_dir
+
+    entry = registry_entry_for_module(registry, module_name)
+    if _is_packaged_module(registry, module_name):
+        return _vendored_target_dir(app_dir, module_name, entry.metadata)
+    return _module_clone_dir(app_dir, entry.project, registry)
+
+
+def _build_lock_for_app(
+    app_dir: Path,
+    *,
+    previous: NsxLock | None = None,
+) -> NsxLock:
+    """Resolve every module in nsx.yml to a commit + content hash.
+
+    Re-uses entries from *previous* (the existing lock) when the
+    constraint is unchanged AND a vendored copy is already on disk with
+    a matching content hash — avoids redundant ``git ls-remote`` calls.
+    """
+
+    from .metadata import registry_entry_for_module
+    from .module_registry import _is_packaged_module
+
+    nsx_cfg = _load_app_cfg(app_dir)
+    base_registry = _load_registry()
+    registry = _effective_registry(base_registry, nsx_cfg)
+    module_names = _module_names_from_nsx(nsx_cfg)
+    local_names = _local_module_names(nsx_cfg)
+    vendored_names = _vendored_module_names(nsx_cfg)
+    tool_version = _nsx_tool_version()
+
+    # Regenerate the deterministic side-effects that ``nsx sync`` produces
+    # at the end of every run, so the hashes recorded here reflect the
+    # post-sync state. Without this, editing nsx.yml and running ``nsx
+    # lock`` before ``nsx sync`` would record a stale ``cmake/nsx/
+    # modules.cmake`` content hash and trip ``--frozen`` on the next sync.
+    _copy_packaged_tree("neuralspotx", "cmake", app_dir / "cmake" / "nsx")
+    _write_app_module_file(app_dir, nsx_cfg)
+    _write_modules_gitignore(app_dir, nsx_cfg)
+
+    lock = NsxLock(
+        generated_at=utcnow_iso(),
+        nsx_tool_version=tool_version,
+        manifest_path="nsx.yml",
+        manifest_hash=hash_manifest(app_dir / "nsx.yml"),
+        target={
+            **(nsx_cfg.get("target") or {}),
+            "toolchain": str(nsx_cfg.get("toolchain") or DEFAULT_TOOLCHAIN),
+        },
+    )
+
+    prev_modules = previous.modules if previous else {}
+
+    for name in module_names:
+        # Vendored (in-app, source-controlled) modules — record content hash
+        # only; no registry, no upstream resolution. The user owns these.
+        if name in vendored_names:
+            vendored_dir = app_dir / "modules" / name
+            if not vendored_dir.exists():
+                raise SystemExit(
+                    f"Module '{name}' declares source: {{ vendored: true }} "
+                    f"but {vendored_dir.relative_to(app_dir)}/ is missing. "
+                    "Add the module's files (e.g. via `nsx module add --vendored`) "
+                    "and re-run `nsx lock`."
+                )
+            rel = str(vendored_dir.relative_to(app_dir))
+            constraint_str = "vendored"
+            project_key = name  # vendored modules don't belong to a registry project
+            for item in nsx_cfg.get("modules", []):
+                if isinstance(item, dict) and item.get("name") == name:
+                    if isinstance(item.get("project"), str):
+                        project_key = item["project"]
+                    break
+            lock.modules[name] = ResolvedModule(
+                project=project_key,
+                kind="vendored",
+                constraint=constraint_str,
+                vendored_at=rel,
+                content_hash=hash_tree(vendored_dir),
+                acquired_at=utcnow_iso(),
+            )
+            continue
+
+        entry = registry_entry_for_module(registry, name)
+        constraint = str(entry.revision or "main")
+
+        # Local modules are source-controlled with the app — record only
+        # the on-disk content hash; no upstream resolution.
+        if name in local_names:
+            vendored_dir = _resolved_module_path(app_dir, name, registry)
+            rel = (
+                str(vendored_dir.relative_to(app_dir))
+                if vendored_dir.is_relative_to(app_dir)
+                else str(vendored_dir)
+            )
+            lock.modules[name] = ResolvedModule(
+                project=entry.project,
+                kind="local",
+                constraint=constraint,
+                vendored_at=rel,
+                content_hash=hash_tree(vendored_dir),
+                acquired_at=utcnow_iso(),
+            )
+            continue
+
+        if _is_packaged_module(registry, name):
+            vendored_dir = _resolved_module_path(app_dir, name, registry)
+            rel = (
+                str(vendored_dir.relative_to(app_dir))
+                if vendored_dir.is_relative_to(app_dir)
+                else str(vendored_dir)
+            )
+            lock.modules[name] = ResolvedModule(
+                project=entry.project,
+                kind="packaged",
+                constraint="packaged",
+                vendored_at=rel,
+                content_hash=hash_tree(vendored_dir),
+                acquired_at=utcnow_iso(),
+                tool_version=tool_version,
+            )
+            continue
+
+        # Git-hosted module — resolve constraint to a commit SHA via ls-remote.
+        project_entry = _registry_project_entry(registry, entry.project)
+        url = project_entry.url
+        if not url:
+            raise SystemExit(
+                f"Module '{name}' project '{entry.project}' has no URL in registry; cannot lock."
+            )
+
+        previous_entry = prev_modules.get(name)
+        commit: str | None
+        if (
+            previous_entry
+            and previous_entry.kind == "git"
+            and previous_entry.constraint == constraint
+            and previous_entry.url == url
+            and previous_entry.commit
+        ):
+            # Re-use the previously resolved SHA — `nsx update` is the
+            # explicit way to re-resolve.
+            commit = previous_entry.commit
+        else:
+            try:
+                commit = resolve_commit(url, constraint)
+            except ResolutionError as exc:
+                # Upstream not reachable yet (e.g. repo not published). Degrade
+                # to a content-only lock — sync will verify hash but won't
+                # attempt to re-clone.
+                print(
+                    f"warning: could not resolve {name} @ {constraint} "
+                    f"on {url} ({exc}); recording content-only lock entry."
+                )
+                vendored_dir = _resolved_module_path(app_dir, name, registry)
+                rel = (
+                    str(vendored_dir.relative_to(app_dir))
+                    if vendored_dir.is_relative_to(app_dir)
+                    else str(vendored_dir)
+                )
+                lock.modules[name] = ResolvedModule(
+                    project=entry.project,
+                    kind="unresolved",
+                    constraint=constraint,
+                    vendored_at=rel,
+                    content_hash=hash_tree(vendored_dir),
+                    acquired_at=utcnow_iso(),
+                    url=url,
+                    ref=constraint,
+                    commit=None,
+                )
+                continue
+
+        vendored_dir = _resolved_module_path(app_dir, name, registry)
+        rel = (
+            str(vendored_dir.relative_to(app_dir))
+            if vendored_dir.is_relative_to(app_dir)
+            else str(vendored_dir)
+        )
+        lock.modules[name] = ResolvedModule(
+            project=entry.project,
+            kind="git",
+            constraint=constraint,
+            vendored_at=rel,
+            content_hash=hash_tree(vendored_dir),
+            acquired_at=utcnow_iso(),
+            url=url,
+            ref=constraint,
+            commit=commit,
+        )
+
+    return lock
+
+
+def lock_app_impl(
+    app_dir: Path,
+    *,
+    update: bool = False,
+    modules: list[str] | None = None,
+    check: bool = False,
+) -> Path:
+    """Resolve and write ``nsx.lock`` for *app_dir*.
+
+    Args:
+        update: When True, re-resolve every module's constraint to its
+            current upstream HEAD/tag (equivalent to ``nsx update``).
+        modules: When given alongside ``update``, only re-resolve these.
+        check: Read-only mode. Resolve as usual but, instead of writing,
+            compare against the on-disk ``nsx.lock`` and raise
+            ``SystemExit`` (with a non-zero status) when they would
+            differ. Useful in CI to assert that ``nsx.lock`` is up to
+            date with ``nsx.yml``.
+
+    Returns:
+        The path to the (would-be) ``nsx.lock``.
+    """
+
+    previous = read_lock(app_dir)
+    on_disk_lock = previous  # capture before update-mutation
+
+    if update:
+        if previous and modules:
+            # Drop the named entries from `previous` so they get re-resolved.
+            kept = {n: e for n, e in previous.modules.items() if n not in set(modules)}
+            previous = NsxLock(
+                schema_version=previous.schema_version,
+                generated_at=previous.generated_at,
+                nsx_tool_version=previous.nsx_tool_version,
+                manifest_path=previous.manifest_path,
+                manifest_hash=previous.manifest_hash,
+                target=previous.target,
+                modules=kept,
+            )
+        elif previous and not modules:
+            previous = None  # full refresh
+
+    lock = _build_lock_for_app(app_dir, previous=previous)
+    lock_file = lock_path(app_dir)
+
+    if check:
+        diff = _diff_locks(on_disk_lock, lock)
+        rel = (
+            lock_file.relative_to(app_dir.parent)
+            if lock_file.is_relative_to(app_dir.parent)
+            else lock_file
+        )
+        if not diff:
+            print(f"{rel} is up to date.")
+            return lock_file
+        print(f"{rel} is OUT OF DATE:")
+        for line in diff:
+            print(f"  {line}")
+        print("Run `nsx lock` to refresh.")
+        raise SystemExit(1)
+
+    path = write_lock(app_dir, lock)
+    print(
+        f"Wrote {path.relative_to(app_dir.parent) if path.is_relative_to(app_dir.parent) else path}"
+    )
+    n_git = sum(1 for m in lock.modules.values() if m.kind == "git")
+    n_pkg = sum(1 for m in lock.modules.values() if m.kind == "packaged")
+    n_loc = sum(1 for m in lock.modules.values() if m.kind == "local")
+    n_ven = sum(1 for m in lock.modules.values() if m.kind == "vendored")
+    n_unres = sum(1 for m in lock.modules.values() if m.kind == "unresolved")
+    parts = [f"{n_git} git", f"{n_pkg} packaged", f"{n_loc} local"]
+    if n_ven:
+        parts.append(f"{n_ven} vendored")
+    if n_unres:
+        parts.append(f"{n_unres} unresolved (upstream unreachable)")
+    print(f"  modules: {len(lock.modules)} ({', '.join(parts)})")
+    return path
+
+
+def _diff_locks(previous: NsxLock | None, fresh: NsxLock) -> list[str]:
+    """Return a human-readable list of differences relevant to drift detection.
+
+    Compares only the resolution-affecting fields (manifest hash, kind,
+    constraint, commit, content_hash) — not timestamps or the tool
+    version, which legitimately move on every regenerate.
+    """
+
+    if previous is None:
+        return [f"no nsx.lock present (would create {len(fresh.modules)} entries)"]
+
+    diffs: list[str] = []
+    if previous.manifest_hash != fresh.manifest_hash:
+        diffs.append(
+            f"manifest hash: {previous.manifest_hash[:14]}\u2026 -> {fresh.manifest_hash[:14]}\u2026"
+        )
+
+    prev_names = set(previous.modules)
+    fresh_names = set(fresh.modules)
+    for name in sorted(fresh_names - prev_names):
+        diffs.append(f"+ {name}")
+    for name in sorted(prev_names - fresh_names):
+        diffs.append(f"- {name}")
+    for name in sorted(prev_names & fresh_names):
+        a = previous.modules[name]
+        b = fresh.modules[name]
+        if a.kind != b.kind:
+            diffs.append(f"~ {name}: kind {a.kind} -> {b.kind}")
+        if a.constraint != b.constraint:
+            diffs.append(f"~ {name}: constraint {a.constraint} -> {b.constraint}")
+        if (a.commit or "") != (b.commit or ""):
+            ac = (a.commit or "-")[:10]
+            bc = (b.commit or "-")[:10]
+            diffs.append(f"~ {name}: commit {ac} -> {bc}")
+        if a.content_hash != b.content_hash:
+            diffs.append(f"~ {name}: content hash differs")
+    return diffs
+
+
+def sync_app_impl(
+    app_dir: Path,
+    *,
+    frozen: bool = False,
+    force: bool = False,
+) -> None:
+    """Make ``modules/`` exactly match ``nsx.lock``.
+
+    Args:
+        frozen: Error on any drift instead of correcting it (CI mode).
+        force: Re-vendor every module even if its content_hash matches.
+    """
+
+    from .module_registry import (
+        _update_module_clone,
+        _vendor_git_module_at_commit,
+        _vendor_packaged_module_into_app,
+    )
+
+    lock = read_lock(app_dir)
+    if lock is None:
+        if frozen:
+            raise SystemExit(
+                f"{app_dir / 'nsx.lock'} not found. Run `nsx lock` first (or drop --frozen)."
+            )
+        # No lock yet — produce one, then sync against it.
+        lock_app_impl(app_dir)
+        lock = read_lock(app_dir)
+        assert lock is not None  # noqa: S101 — invariant guaranteed by lock_app_impl
+
+    nsx_cfg = _load_app_cfg(app_dir)
+    base_registry = _load_registry()
+    registry = _effective_registry(base_registry, nsx_cfg)
+
+    # Detect manifest drift — the user edited nsx.yml since the lock was written.
+    current_manifest_hash = hash_manifest(app_dir / "nsx.yml")
+    if lock.manifest_hash and lock.manifest_hash != current_manifest_hash:
+        if frozen:
+            raise SystemExit(
+                "nsx.yml has changed since nsx.lock was written. "
+                "Run `nsx lock` to refresh, or drop --frozen."
+            )
+        print("warning: nsx.yml has changed since nsx.lock was written; run `nsx lock` to refresh.")
+
+    changed = 0
+    for name, entry in lock.modules.items():
+        # Vendored / unresolved modules don't necessarily have a registry
+        # entry; trust the path recorded in the lock for those.
+        if entry.kind in ("vendored", "unresolved"):
+            vendored_dir = app_dir / entry.vendored_at
+        else:
+            vendored_dir = _resolved_module_path(app_dir, name, registry)
+        on_disk_hash = hash_tree(vendored_dir) if vendored_dir.exists() else None
+
+        if entry.kind == "local":
+            # Source path is mirrored into modules/<name>/. If the module
+            # has a configured local_path (e.g. via source: { path: <p> }),
+            # mirror it into place; otherwise the user is managing the
+            # directory in-tree and we just verify the hash.
+            try:
+                project_entry = _registry_project_entry(registry, entry.project)
+            except Exception:  # noqa: BLE001 — best-effort lookup
+                project_entry = None
+            if project_entry is not None and project_entry.local_path:
+                from .module_registry import _vendor_local_module_into_app
+
+                _vendor_local_module_into_app(app_dir, name, registry)
+                on_disk_hash = hash_tree(vendored_dir) if vendored_dir.exists() else None
+            if frozen and on_disk_hash != entry.content_hash:
+                raise SystemExit(
+                    f"Local module '{name}' content drifted from lock "
+                    f"({entry.vendored_at}). Refusing under --frozen."
+                )
+            continue
+
+        if entry.kind == "vendored":
+            # Committed in the app (source: { vendored: true }) — sync never
+            # writes to it. Verify the on-disk content still matches what the
+            # lock recorded.
+            if on_disk_hash != entry.content_hash:
+                msg = (
+                    f"Vendored module '{name}' content drifted from lock "
+                    f"({entry.vendored_at}). Run `nsx lock` to re-record, "
+                    "or revert the changes."
+                )
+                if frozen:
+                    raise SystemExit(msg)
+                print(f"warning: {msg}")
+            continue
+
+        if entry.kind == "unresolved":
+            # Upstream wasn't reachable when the lock was written. Verify the
+            # on-disk content still matches; can't re-fetch.
+            if on_disk_hash != entry.content_hash:
+                msg = (
+                    f"Unresolved module '{name}' content drifted from lock "
+                    f"({entry.vendored_at}); upstream {entry.url} is not reachable."
+                )
+                if frozen:
+                    raise SystemExit(msg)
+                print(f"warning: {msg}")
+            continue
+
+        needs_refresh = force or (on_disk_hash != entry.content_hash)
+        if not needs_refresh:
+            continue
+
+        if frozen and on_disk_hash is not None:
+            raise SystemExit(
+                f"Module '{name}' on-disk content does not match nsx.lock "
+                f"({entry.vendored_at}). Refusing to modify under --frozen."
+            )
+
+        if entry.kind == "packaged":
+            _vendor_packaged_module_into_app(app_dir, name, registry)
+        elif entry.kind == "git":
+            # Re-vendor at the exact locked commit (not the branch tip).
+            if entry.commit:
+                _vendor_git_module_at_commit(app_dir, name, registry, entry.commit)
+            else:
+                _update_module_clone(app_dir, name, registry)
+        changed += 1
+
+    # Always refresh the packaged cmake tree and regenerate modules.cmake +
+    # modules/.gitignore — these are cheap and keep the build inputs aligned.
+    _copy_packaged_tree("neuralspotx", "cmake", app_dir / "cmake" / "nsx")
+    _write_app_module_file(app_dir, nsx_cfg)
+    _write_modules_gitignore(app_dir, nsx_cfg)
+
+    if changed:
+        print(f"Synced {changed} module{'s' if changed != 1 else ''} from nsx.lock.")
+    else:
+        print("All modules already match nsx.lock.")
+
+
+def outdated_app_impl(app_dir: Path, *, as_json: bool = False) -> int:
+    """Report git modules whose locked commit lags behind the upstream constraint.
+
+    Returns the number of outdated modules so callers (e.g. CI) can use
+    the exit code as a signal.
+    """
+
+    lock = read_lock(app_dir)
+    if lock is None:
+        raise SystemExit(f"{app_dir / 'nsx.lock'} not found. Run `nsx lock` first.")
+
+    rows: list[tuple[str, str, str, str, str]] = []  # name, constraint, locked, upstream, status
+    full_rows: list[dict[str, str]] = []
+    skipped: list[tuple[str, str]] = []
+
+    for name, entry in sorted(lock.modules.items()):
+        if entry.kind != "git":
+            continue
+        if not entry.url:
+            skipped.append((name, "no url"))
+            continue
+        try:
+            upstream = resolve_commit(entry.url, entry.ref or entry.constraint)
+        except ResolutionError as exc:
+            skipped.append((name, str(exc)))
+            continue
+        locked = (entry.commit or "").lower()
+        if upstream.lower() == locked:
+            status = "up-to-date"
+        else:
+            status = "outdated"
+        rows.append((name, entry.constraint, locked[:10], upstream[:10], status))
+        full_rows.append(
+            {
+                "module": name,
+                "constraint": entry.constraint,
+                "locked": locked,
+                "upstream": upstream.lower(),
+                "status": status,
+                "url": entry.url or "",
+            }
+        )
+
+    outdated = [r for r in rows if r[4] == "outdated"]
+
+    if as_json:
+        import json
+
+        payload = {
+            "checked": full_rows,
+            "skipped": [{"module": n, "reason": r} for n, r in skipped],
+            "outdated_count": len(outdated),
+        }
+        print(json.dumps(payload, indent=2))
+        return len(outdated)
+
+    if not rows and not skipped:
+        print("No git modules to check.")
+        return 0
+
+    name_w = max((len(r[0]) for r in rows), default=4)
+    cons_w = max((len(r[1]) for r in rows), default=10)
+    header = f"{'module'.ljust(name_w)}  {'constraint'.ljust(cons_w)}  {'locked'.ljust(10)}  {'upstream'.ljust(10)}  status"
+    print(header)
+    print("-" * len(header))
+    for r in rows:
+        print(
+            f"{r[0].ljust(name_w)}  {r[1].ljust(cons_w)}  {r[2].ljust(10)}  {r[3].ljust(10)}  {r[4]}"
+        )
+
+    if skipped:
+        print()
+        for name, reason in skipped:
+            print(f"skipped: {name} ({reason})")
+
+    print()
+    if outdated:
+        names = ", ".join(r[0] for r in outdated)
+        print(f"{len(outdated)} outdated: {names}")
+        print("Run `nsx update` (all) or `nsx update --module <name>` to refresh.")
+    else:
+        print("All git modules are up-to-date with their constraints.")
+    return len(outdated)
+
+
+def update_app_impl(
+    app_dir: Path,
+    *,
+    modules: list[str] | None = None,
+) -> None:
+    """Re-resolve constraints to current upstream and re-vendor.
+
+    Equivalent to ``nsx lock --update [--module ...]`` followed by
+    ``nsx sync``.
+    """
+
+    lock_app_impl(app_dir, update=True, modules=modules)
+    sync_app_impl(app_dir)

@@ -101,6 +101,7 @@ nav:
       - Modules: user-guide/modules.md
       - Module Catalog: user-guide/module-catalog.md
       - Custom Modules: user-guide/custom-modules.md
+      - Lock and Sync: user-guide/lock-and-sync.md
       - Python API: user-guide/python-api.md
       - Build, Flash, and View: user-guide/build-flash-view.md
       - Boards and Targets: user-guide/boards-and-targets.md
