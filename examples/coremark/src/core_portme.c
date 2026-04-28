@@ -21,6 +21,8 @@
 #include "ns_ambiqsuite_harness.h"
 #include "ns_energy_monitor.h"
 
+#include "SEGGER_RTT.h"
+
 #include <stdarg.h>
 
 /*
@@ -151,6 +153,12 @@ portable_init(core_portable *p, int *argc, char *argv[])
     /* Recover core_results* from the embedded core_portable member */
     s_results_ptr = (void *)((char *)p - offsetof(core_results, port));
 
+    /* Initialize SEGGER RTT control block early so the J-Link host can
+     * locate it as soon as the firmware boots.  NO_BLOCK_TRIM means writes
+     * that overflow the 32 KB up-buffer are dropped instead of stalling. */
+    SEGGER_RTT_ConfigUpBuffer(0, "CoreMark", NULL, 0,
+                              SEGGER_RTT_MODE_NO_BLOCK_TRIM);
+
     /* Full SoC init: caches, SWO debug output (starts in HP mode) */
     nsx_system_init(&nsx_system_development);
 
@@ -278,7 +286,10 @@ portable_fini(core_portable *p)
     while (1) { __WFI(); }
 }
 
-/* ── ee_printf via ITM/SWO ─────────────────────────────────── */
+/* ── ee_printf via SEGGER RTT ──────────────────────────────── */
+/* RTT writes to an in-SRAM ring buffer that JLinkRTTLogger drains over SWD
+ * via background memory reads — no SWO/TPIU pins, no ITM stimulus, and no
+ * sensitivity to clock/baud configuration. */
 int
 ee_printf(const char *fmt, ...)
 {
@@ -289,6 +300,12 @@ ee_printf(const char *fmt, ...)
     int n = am_util_stdio_vsprintf(buf, fmt, args);
     va_end(args);
 
-    ns_printf("%s", buf);
+    if (n > 0) {
+        SEGGER_RTT_Write(0, buf, (unsigned)n);
+        /* J-Link reads the RTT control block + ring buffer over SWD, which
+         * bypasses the CPU D-cache.  Clean the cache so the J-Link host can
+         * see the latest WrOff and bytes. */
+        SCB_CleanDCache();
+    }
     return n;
 }
