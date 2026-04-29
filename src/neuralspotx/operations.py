@@ -509,14 +509,12 @@ def _ensure_app_modules(app_dir: Path) -> None:
     (whose registry modules are gitignored) can be configured without
     a separate ``nsx module add`` or ``nsx module update`` step.
 
-    The lock file is the single source of truth: if no ``nsx.lock``
-    exists yet, one is generated first so that ``configure`` records
-    reproducible commits instead of silently cloning at branch tips.
+    The lock file is the single source of truth: ``sync_app_impl``
+    handles both the lock-present and lock-missing cases (in the latter
+    it generates a lock, vendors against it, and refreshes the lock so
+    ``content_hash`` reflects the just-vendored trees).
     """
 
-    if not (app_dir / "nsx.lock").exists():
-        print("note: nsx.lock not found; generating one (run `nsx lock` to refresh).")
-        lock_app_impl(app_dir)
     sync_app_impl(app_dir)
 
 
@@ -1226,6 +1224,27 @@ def _build_lock_for_app(
         project_entry = _registry_project_entry(registry, entry.project)
         url = project_entry.url
         if not url:
+            # Project has no upstream URL but does declare a local source
+            # path (e.g. registered via `nsx module register
+            # --project-local-path`). Treat it like a local mirror: hash
+            # whatever was vendored into modules/<name>/ and skip
+            # ls-remote.
+            if project_entry.local_path:
+                vendored_dir = _resolved_module_path(app_dir, name, registry)
+                rel = (
+                    str(vendored_dir.relative_to(app_dir))
+                    if vendored_dir.is_relative_to(app_dir)
+                    else str(vendored_dir)
+                )
+                lock.modules[name] = ResolvedModule(
+                    project=entry.project,
+                    kind="local",
+                    constraint=constraint,
+                    vendored_at=rel,
+                    content_hash=hash_tree(vendored_dir),
+                    acquired_at=utcnow_iso(),
+                )
+                continue
             raise SystemExit(
                 f"Module '{name}' project '{entry.project}' has no URL in registry; cannot lock."
             )
@@ -1434,15 +1453,22 @@ def sync_app_impl(
     )
 
     lock = read_lock(app_dir)
+    fresh_lock = False
     if lock is None:
         if frozen:
             raise SystemExit(
                 f"{app_dir / 'nsx.lock'} not found. Run `nsx lock` first (or drop --frozen)."
             )
-        # No lock yet — produce one, then sync against it.
+        # No lock yet — produce a preliminary one (commits + tags
+        # resolved, but content_hash is computed against possibly-empty
+        # trees), then sync against it. We refresh the lock at the end
+        # of this function so the recorded content_hash matches the
+        # post-sync vendored trees.
+        print("note: nsx.lock not found; generating one (run `nsx lock` to refresh).")
         lock_app_impl(app_dir)
         lock = read_lock(app_dir)
         assert lock is not None  # noqa: S101 — invariant guaranteed by lock_app_impl
+        fresh_lock = True
 
     nsx_cfg = _load_app_cfg(app_dir)
     base_registry = _load_registry()
@@ -1547,6 +1573,13 @@ def sync_app_impl(
         print(f"Synced {changed} module{'s' if changed != 1 else ''} from nsx.lock.")
     else:
         print("All modules already match nsx.lock.")
+
+    if fresh_lock:
+        # Refresh the lock so its content_hash entries reflect the
+        # post-sync vendored trees. Without this the lock records
+        # empty-tree hashes from before vendoring and every subsequent
+        # sync would re-vendor, plus `nsx sync --frozen` would fail.
+        lock_app_impl(app_dir)
 
 
 def outdated_app_impl(app_dir: Path, *, as_json: bool = False) -> int:
