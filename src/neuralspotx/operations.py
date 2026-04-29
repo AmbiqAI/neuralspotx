@@ -509,42 +509,15 @@ def _ensure_app_modules(app_dir: Path) -> None:
     (whose registry modules are gitignored) can be configured without
     a separate ``nsx module add`` or ``nsx module update`` step.
 
-    When an ``nsx.lock`` is present it is used as the source of truth
-    (delegates to :func:`sync_app_impl`). Otherwise the legacy "clone
-    each module at its branch tip" path is used and a warning printed
-    so the user knows to run ``nsx lock``.
-
-    Modules marked ``local: true`` are skipped entirely (they are
-    source-controlled with the app).
+    The lock file is the single source of truth: if no ``nsx.lock``
+    exists yet, one is generated first so that ``configure`` records
+    reproducible commits instead of silently cloning at branch tips.
     """
 
-    if (app_dir / "nsx.lock").exists():
-        sync_app_impl(app_dir)
-        return
-
-    nsx_cfg = _load_app_cfg(app_dir)
-    base_registry = _load_registry()
-    registry = _effective_registry(base_registry, nsx_cfg)
-    module_names = _module_names_from_nsx(nsx_cfg)
-    local_names = _local_module_names(nsx_cfg)
-    vendored_names = _vendored_module_names(nsx_cfg)
-    _acquire_modules_for_app(
-        app_dir,
-        module_names,
-        registry,
-        local_modules=local_names,
-        vendored_modules=vendored_names,
-    )
-    # Re-copy packaged cmake tree in case it was gitignored, then
-    # regenerate the app-specific modules.cmake that _copy_packaged_tree
-    # would have removed (it does an rmtree before copying).
-    _copy_packaged_tree("neuralspotx", "cmake", app_dir / "cmake" / "nsx")
-    _write_app_module_file(app_dir, nsx_cfg)
-    _write_modules_gitignore(app_dir, nsx_cfg)
-    print(
-        "note: nsx.lock not found; modules acquired at branch tip. "
-        "Run `nsx lock` to record reproducible commits."
-    )
+    if not (app_dir / "nsx.lock").exists():
+        print("note: nsx.lock not found; generating one (run `nsx lock` to refresh).")
+        lock_app_impl(app_dir)
+    sync_app_impl(app_dir)
 
 
 def _resolve_build_context(
