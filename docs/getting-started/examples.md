@@ -24,7 +24,7 @@ out of the repo — you do not need a full clone or a separate workspace:
 ```bash
 # One-shot: download the hello_world example and treat it like any app
 curl -L https://github.com/AmbiqAI/neuralspotx/archive/refs/heads/main.tar.gz \
-  | tar xz --strip-components=2 neuralspotx-main/examples/hello_world
+  | tar -xz -f - --strip-components=2 neuralspotx-main/examples/hello_world
 cd hello_world
 
 nsx configure

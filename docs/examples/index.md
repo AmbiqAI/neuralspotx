@@ -17,7 +17,7 @@ workspace or full clone required:
 
 ```bash
 curl -L https://github.com/AmbiqAI/neuralspotx/archive/refs/heads/main.tar.gz \
-  | tar xz --strip-components=2 neuralspotx-main/examples/hello_world
+  | tar -xz -f - --strip-components=2 neuralspotx-main/examples/hello_world
 cd hello_world
 
 nsx configure
