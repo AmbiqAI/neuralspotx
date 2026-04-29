@@ -243,6 +243,30 @@ jobs:
             if ! uv run --group test nsx sync --app-dir "$app"; then
               fail=1
             elif ! uv run --group test nsx lock --check --app-dir "$app"; then
+              # Diagnostic: dump file listings + hashes of any packaged
+              # board dirs so we can see what drifted.
+              echo "--- DIAG: post-sync state of $app ---"
+              find "$app/boards" -type f -exec ls -la {} \; 2>/dev/null || true
+              uv run --group test python - <<PYEOF
+          from pathlib import Path
+          from neuralspotx.nsx_lock import hash_tree, read_lock
+          app = Path("$app")
+          lock = read_lock(app)
+          print(f"--- DIAG: lock vs disk hashes for {app} ---")
+          for name, entry in lock.modules.items():
+              if entry.kind != "packaged":
+                  continue
+              vd = app / entry.vendored_at
+              disk = hash_tree(vd) if vd.exists() else "(missing)"
+              ok = "OK" if disk == entry.content_hash else "DIFF"
+              print(f"  [{ok}] {name} at {entry.vendored_at}")
+              print(f"        lock: {entry.content_hash}")
+              print(f"        disk: {disk}")
+              if disk != entry.content_hash and vd.exists():
+                  for f in sorted(vd.rglob("*")):
+                      if f.is_file():
+                          print(f"          - {f.relative_to(vd)} ({f.stat().st_size} bytes)")
+          PYEOF
               fail=1
             fi
             echo "::endgroup::"
