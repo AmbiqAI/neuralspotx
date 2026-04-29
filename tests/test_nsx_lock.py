@@ -228,7 +228,7 @@ class TestLocalKind:
 class TestGitKind:
     def test_git_lock_records_commit(self, app: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         fake_sha = "a" * 40
-        monkeypatch.setattr(operations, "resolve_commit", lambda url, ref: fake_sha)
+        monkeypatch.setattr(operations, "resolve_ref", lambda url, ref: (fake_sha, "branch"))
 
         _write_nsx_yml(
             app,
@@ -251,7 +251,7 @@ class TestGitKind:
         def _fail(url: str, ref: str) -> str:
             raise ResolutionError("offline")
 
-        monkeypatch.setattr(operations, "resolve_commit", _fail)
+        monkeypatch.setattr(operations, "resolve_ref", _fail)
 
         _write_nsx_yml(
             app,
@@ -281,6 +281,7 @@ class TestOutdatedJson:
         capsys: pytest.CaptureFixture[str],
         sha: str,
     ) -> None:
+        monkeypatch.setattr(operations, "resolve_ref", lambda url, ref: (sha, "branch"))
         monkeypatch.setattr(operations, "resolve_commit", lambda url, ref: sha)
         _write_nsx_yml(
             app,
