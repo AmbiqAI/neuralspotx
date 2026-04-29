@@ -128,9 +128,9 @@ re-run `nsx lock`.
 
 Mark the module as a local mirror — the on-disk copy under
 `modules/<name>/` is regenerated from an external source path on every
-sync. The path is configured by either the legacy
-`module_registry.modules.<name>.local_path` override or the
-[`source: { path: <p> }`](#source-field) shorthand on the module entry.
+sync. The path is configured by either the
+[`source: { path: <p> }`](#source-field) shorthand on the module entry
+or by setting `module_registry.modules.<name>.local_path` directly.
 
 ## `nsx module remove`
 

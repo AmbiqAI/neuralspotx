@@ -1,26 +1,43 @@
 # Examples
 
-Eight ready-to-build example apps ship in the
+Eight ready-to-build example apps live in the
 [`examples/`](https://github.com/AmbiqAI/neuralspotx/tree/main/examples)
-directory. Each one is a self-contained NSX app — clone the repo and you
-can configure, build, and flash immediately.
+directory of the `neuralspotx` repo. Each one is a self-contained NSX
+app — the same shape that `nsx create-app` produces — with its own
+`nsx.yml` manifest and `nsx.lock` receipt.
 
 ## Quick Start
 
-Pick any example, configure, build, and (optionally) flash:
+The normal app-developer flow is to install `nsx` once with `pipx` (see
+[Install and Setup](install.md)) and create your own app:
 
 ```bash
-git clone https://github.com/AmbiqAI/neuralspotx.git
-cd neuralspotx/examples/hello_world
-
-nsx configure --app-dir .
-nsx build     --app-dir .
-nsx flash     --app-dir .   # requires an EVB connected via J-Link
-nsx view      --app-dir .   # streams SWO output in the terminal
+nsx create-app my_app
+cd my_app
+nsx configure
+nsx build
 ```
 
-`nsx configure` automatically fetches any missing registry modules — there
-is no separate install step.
+To browse or copy a maintained example, grab just that example folder
+out of the repo — you do not need a full clone or a separate workspace:
+
+```bash
+# One-shot: download the hello_world example and treat it like any app
+curl -L https://github.com/AmbiqAI/neuralspotx/archive/refs/heads/main.tar.gz \
+  | tar xz --strip-components=2 neuralspotx-main/examples/hello_world
+cd hello_world
+
+nsx configure
+nsx build
+nsx flash    # requires an EVB connected via J-Link
+nsx view     # streams SWO output in the terminal
+```
+
+(If you already have the repo cloned for contributing, `cd
+neuralspotx/examples/hello_world` works the same way.)
+
+`nsx configure` automatically fetches any missing registry modules —
+there is no separate install step.
 
 ## Available Examples
 
