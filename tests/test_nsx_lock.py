@@ -15,7 +15,7 @@ import pytest
 import yaml
 
 from neuralspotx import operations
-from neuralspotx.nsx_lock import ResolutionError, read_lock
+from neuralspotx.nsx_lock import LegacyLockError, ResolutionError, read_lock
 from neuralspotx.operations import (
     add_module_impl,
     lock_app_impl,
@@ -228,7 +228,7 @@ class TestLocalKind:
 class TestGitKind:
     def test_git_lock_records_commit(self, app: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         fake_sha = "a" * 40
-        monkeypatch.setattr(operations, "resolve_commit", lambda url, ref: fake_sha)
+        monkeypatch.setattr(operations, "resolve_ref", lambda url, ref: (fake_sha, "branch"))
 
         _write_nsx_yml(
             app,
@@ -251,7 +251,7 @@ class TestGitKind:
         def _fail(url: str, ref: str) -> str:
             raise ResolutionError("offline")
 
-        monkeypatch.setattr(operations, "resolve_commit", _fail)
+        monkeypatch.setattr(operations, "resolve_ref", _fail)
 
         _write_nsx_yml(
             app,
@@ -267,6 +267,57 @@ class TestGitKind:
         assert m.kind == "unresolved"
         assert m.commit is None
 
+    def test_legacy_v1_lock_migrates_in_place(
+        self, app: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+    ) -> None:
+        """A v1 nsx.lock on disk must not block ``nsx lock`` from regenerating."""
+
+        fake_sha = "d" * 40
+        monkeypatch.setattr(operations, "resolve_ref", lambda url, ref: (fake_sha, "branch"))
+
+        _write_nsx_yml(
+            app,
+            [{"name": "fake-mod", "project": "fake-proj", "revision": "main"}],
+            registry_overrides=_GIT_PROJECT_OVERRIDES,
+        )
+
+        # Drop a synthetic v1 lock with a legacy `ref` field.
+        legacy = {
+            "schema_version": 1,
+            "generated_at": "2025-01-01T00:00:00+00:00",
+            "manifest": {"path": "nsx.yml", "hash": "sha256:deadbeef"},
+            "modules": {
+                "fake-mod": {
+                    "project": "fake-proj",
+                    "kind": "git",
+                    "constraint": "main",
+                    "resolved": {
+                        "url": "https://example.com/fake.git",
+                        "ref": "main",
+                        "commit": "a" * 40,
+                        "vendored_at": "modules/fake-mod",
+                        "content_hash": "sha256:" + "0" * 64,
+                        "acquired_at": "2025-01-01T00:00:00+00:00",
+                    },
+                }
+            },
+        }
+        (app / "nsx.lock").write_text(yaml.safe_dump(legacy), encoding="utf-8")
+
+        # Strict reads still raise so callers like sync/outdated fail loudly.
+        with pytest.raises(LegacyLockError):
+            read_lock(app)
+
+        # `nsx lock` rewrites in place under v2.
+        lock_app_impl(app)
+        capsys.readouterr()
+
+        lock = read_lock(app)
+        assert lock is not None
+        assert lock.schema_version == 2
+        assert lock.modules["fake-mod"].commit == fake_sha
+        assert lock.modules["fake-mod"].tag is None
+
 
 # ---------------------------------------------------------------------------
 # Outdated --json
@@ -281,6 +332,7 @@ class TestOutdatedJson:
         capsys: pytest.CaptureFixture[str],
         sha: str,
     ) -> None:
+        monkeypatch.setattr(operations, "resolve_ref", lambda url, ref: (sha, "branch"))
         monkeypatch.setattr(operations, "resolve_commit", lambda url, ref: sha)
         _write_nsx_yml(
             app,

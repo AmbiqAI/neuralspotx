@@ -40,6 +40,7 @@ from .nsx_lock import (
     lock_path,
     read_lock,
     resolve_commit,
+    resolve_ref,
     utcnow_iso,
     write_lock,
 )
@@ -1258,6 +1259,7 @@ def _build_lock_for_app(
 
         previous_entry = prev_modules.get(name)
         commit: str | None
+        tag: str | None
         if (
             previous_entry
             and previous_entry.kind == "git"
@@ -1268,9 +1270,10 @@ def _build_lock_for_app(
             # Re-use the previously resolved SHA — `nsx update` is the
             # explicit way to re-resolve.
             commit = previous_entry.commit
+            tag = previous_entry.tag
         else:
             try:
-                commit = resolve_commit(url, constraint)
+                commit, matched = resolve_ref(url, constraint)
             except ResolutionError as exc:
                 # Upstream not reachable yet (e.g. repo not published). Degrade
                 # to a content-only lock — sync will verify hash but won't
@@ -1293,10 +1296,11 @@ def _build_lock_for_app(
                     content_hash=hash_tree(vendored_dir),
                     acquired_at=utcnow_iso(),
                     url=url,
-                    ref=constraint,
+                    tag=None,
                     commit=None,
                 )
                 continue
+            tag = constraint if matched == "tag" else None
 
         vendored_dir = _resolved_module_path(app_dir, name, registry)
         rel = (
@@ -1312,7 +1316,7 @@ def _build_lock_for_app(
             content_hash=hash_tree(vendored_dir),
             acquired_at=utcnow_iso(),
             url=url,
-            ref=constraint,
+            tag=tag,
             commit=commit,
         )
 
@@ -1342,7 +1346,7 @@ def lock_app_impl(
         The path to the (would-be) ``nsx.lock``.
     """
 
-    previous = read_lock(app_dir)
+    previous = read_lock(app_dir, allow_legacy=True)
     on_disk_lock = previous  # capture before update-mutation
 
     if update:
@@ -1594,7 +1598,7 @@ def outdated_app_impl(app_dir: Path, *, as_json: bool = False) -> int:
             skipped.append((name, "no url"))
             continue
         try:
-            upstream = resolve_commit(entry.url, entry.ref or entry.constraint)
+            upstream = resolve_commit(entry.url, entry.tag or entry.constraint)
         except ResolutionError as exc:
             skipped.append((name, str(exc)))
             continue
