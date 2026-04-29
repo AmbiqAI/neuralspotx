@@ -105,6 +105,20 @@ target_link_libraries(coremark PRIVATE
 )
 
 # ---------------------------------------------------------------------------
+# SEGGER RTT — used for score output instead of SWO/ITM.
+# RTT uses an in-SRAM ring buffer that the J-Link reads via background SWD
+# memory accesses — no peripheral pins, no TPIU/ACPR brittleness.
+# ---------------------------------------------------------------------------
+target_sources(coremark PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}/src/rtt/SEGGER_RTT.c
+)
+target_include_directories(coremark PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}/src/rtt
+    ${CMAKE_CURRENT_LIST_DIR}/src/rtt/Config
+)
+target_compile_definitions(coremark PRIVATE BUFFER_SIZE_UP=32768)
+
+# ---------------------------------------------------------------------------
 # Override linker script: run ALL .text/.rodata from ITCM (zero-wait-state)
 # Strip the board-default linker-script flag and replace with our ITCM variant.
 # ---------------------------------------------------------------------------

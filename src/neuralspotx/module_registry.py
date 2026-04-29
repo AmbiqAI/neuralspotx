@@ -28,6 +28,7 @@ from .project_config import (
 )
 from .subprocess_utils import (
     git_clone,
+    git_clone_at_commit,
 )
 from .tooling import require_tool as _require_tool
 
@@ -183,6 +184,49 @@ def _update_module_clone(
     _ensure_module_cloned(app_dir, module_name, registry)
 
 
+def _vendor_git_module_at_commit(
+    app_dir: Path,
+    module_name: str,
+    registry: dict[str, Any],
+    commit: str,
+) -> None:
+    """Re-vendor a git module at an exact commit SHA.
+
+    Used by ``nsx sync`` to faithfully restore an ``nsx.lock`` entry,
+    independent of where the module's branch currently points. A full
+    clone is performed (shallow clones may not contain the commit), the
+    requested commit is checked out detached, and ``.git`` is stripped.
+    """
+
+    if _is_packaged_module(registry, module_name):
+        return
+
+    entry = registry_entry_for_module(registry, module_name)
+    project_entry = _registry_project_entry(registry, entry.project)
+
+    # User-registered local modules: copy from local_path; ignore commit.
+    if project_entry.local_path:
+        _vendor_local_module_into_app(app_dir, module_name, registry)
+        return
+
+    url = project_entry.url
+    if not url:
+        raise SystemExit(
+            f"Module '{module_name}' project '{entry.project}' has no URL in registry; cannot sync."
+        )
+
+    clone_dir = _module_clone_dir(app_dir, entry.project, registry)
+    if clone_dir.exists():
+        _rmtree(clone_dir)
+
+    _require_tool("git")
+    git_clone_at_commit(url, clone_dir, commit)
+
+    git_dir = clone_dir / ".git"
+    if git_dir.exists():
+        _rmtree(git_dir)
+
+
 def _vendor_local_module_into_app(
     app_dir: Path,
     module_name: str,
@@ -274,14 +318,17 @@ def _acquire_modules_for_app(
     registry: dict[str, Any],
     *,
     local_modules: set[str] | None = None,
+    vendored_modules: set[str] | None = None,
 ) -> None:
     """Clone or copy all modules needed by an app.
 
-    Modules whose names appear in *local_modules* are skipped — they
-    live inside the app tree and are source-controlled by the user.
+    Modules whose names appear in *local_modules* or *vendored_modules*
+    are skipped — they live inside the app tree and are source-controlled
+    by the user. (The two sets exist separately so that ``nsx sync`` can
+    enforce different invariants on each.)
     """
 
-    skip = local_modules or set()
+    skip = (local_modules or set()) | (vendored_modules or set())
     for module_name in module_names:
         if module_name in skip:
             continue
@@ -390,12 +437,39 @@ def _is_local_module(nsx_cfg: dict[str, Any], module_name: str) -> bool:
 
 
 def _local_module_names(nsx_cfg: dict[str, Any]) -> set[str]:
-    """Return the set of module names marked ``local: true``."""
+    """Return the set of modules linked to a local path on disk.
+
+    Keyed off the ``local: true`` flag on the module entry. Note that
+    ``_load_app_cfg()`` invokes ``_normalize_module_source()`` first, which
+    expands the user-facing ``source: { path: <p> }`` shorthand into
+    ``local: true`` plus a ``module_registry.modules.<name>.local_path``
+    override -- so both spellings are picked up here.
+    """
     return {
         item["name"]
         for item in nsx_cfg.get("modules", [])
         if isinstance(item, dict) and isinstance(item.get("name"), str) and item.get("local")
     }
+
+
+def _vendored_module_names(nsx_cfg: dict[str, Any]) -> set[str]:
+    """Return the set of modules declared as ``source: { vendored: true }``.
+
+    Vendored modules live inside the app tree (``modules/<name>/``), are
+    source-controlled with the app, and are NEVER touched by ``nsx sync``
+    — useful for AOT-generated modules and custom third-party drops.
+    """
+    names: set[str] = set()
+    for item in nsx_cfg.get("modules", []):
+        if not isinstance(item, dict):
+            continue
+        name = item.get("name")
+        if not isinstance(name, str):
+            continue
+        source = item.get("source")
+        if isinstance(source, dict) and source.get("vendored") is True:
+            names.add(name)
+    return names
 
 
 def _validate_board_module_dep_policy(
@@ -462,6 +536,8 @@ def _resolve_module_closure(
         raise SystemExit("nsx.yml toolchain must be a string")
 
     local_names = _local_module_names(nsx_cfg)
+    vendored_names = _vendored_module_names(nsx_cfg)
+    opaque_names = local_names | vendored_names
 
     visited: set[str] = set()
     visiting: set[str] = set()
@@ -471,8 +547,8 @@ def _resolve_module_closure(
     def dfs(module_name: str) -> None:
         if module_name in visited:
             return
-        # Local modules are opaque — skip registry metadata lookup.
-        if module_name in local_names:
+        # Local / vendored modules are opaque — skip registry metadata lookup.
+        if module_name in opaque_names:
             visited.add(module_name)
             resolved.append(module_name)
             return

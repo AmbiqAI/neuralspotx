@@ -15,7 +15,7 @@ nsx build [--app-dir APP_DIR] [--board BOARD]
 - `--app-dir`: app directory containing `nsx.yml`
 - `--board`: override board from `nsx.yml`
 - `--build-dir`: build directory override
-- `--toolchain`: toolchain override (`gcc`, `armclang`). Defaults to `nsx.yml` → `arm-none-eabi-gcc`
+- `--toolchain`: toolchain override (`gcc`, `armclang`, `atfe`). Defaults to `nsx.yml` → `arm-none-eabi-gcc`
 - `--target`: explicit build target
 - `--jobs`: parallel build jobs
 

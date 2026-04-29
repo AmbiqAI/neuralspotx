@@ -86,7 +86,7 @@ non-matching results in the output for comparison or planning.
 ## `nsx module add`
 
 ```text
-nsx module add [--app-dir APP_DIR] [--dry-run] module
+nsx module add [--app-dir APP_DIR] [--local] [--vendored] [--dry-run] module
 ```
 
 Example:
@@ -99,6 +99,38 @@ For built-in modules, NSX uses the registry's default upstream repo and
 revision unless the app overrides that source.
 
 This is the standard way to install a supported first-class module into an app.
+
+### `--vendored`
+
+Scaffold a custom module that lives **inside this app's git repository**
+and is never touched by `nsx sync`. Useful for AOT-generated modules,
+in-house drivers, or any code that needs to be source-controlled with
+the app itself.
+
+```bash
+nsx module add my-aot-stub --vendored
+```
+
+This creates `modules/my-aot-stub/` with a minimal `nsx-module.yaml` and
+`CMakeLists.txt`, appends
+
+```yaml
+- name: my-aot-stub
+  source: { vendored: true }
+```
+
+to `nsx.yml`, regenerates `modules/.gitignore` so the directory is **not**
+ignored, and refreshes `nsx.lock` so the module's content hash is
+recorded. Edit the scaffolded `CMakeLists.txt` to add your sources, then
+re-run `nsx lock`.
+
+### `--local`
+
+Mark the module as a local mirror — the on-disk copy under
+`modules/<name>/` is regenerated from an external source path on every
+sync. The path is configured by either the legacy
+`module_registry.modules.<name>.local_path` override or the
+[`source: { path: <p> }`](#source-field) shorthand on the module entry.
 
 ## `nsx module remove`
 

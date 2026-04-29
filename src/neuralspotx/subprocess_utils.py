@@ -103,6 +103,18 @@ def git_clone(url: str, dest: Path, *, revision: str | None = None, depth: int =
     run(cmd)
 
 
+def git_clone_at_commit(url: str, dest: Path, commit: str) -> None:
+    """Clone *url* into *dest* and check out the exact *commit*.
+
+    Used by ``nsx sync`` to faithfully restore the locked SHA. A full
+    (non-shallow) clone is used because shallow clones do not always
+    contain arbitrary historical commits.
+    """
+
+    run(["git", "clone", url, str(dest)])
+    run(["git", "checkout", "--detach", commit], cwd=dest)
+
+
 def git_fetch(repo: Path, *, remote: str = "origin") -> None:
     """Fetch updates from the remote in an existing clone."""
 

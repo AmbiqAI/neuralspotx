@@ -80,6 +80,26 @@ _COMMAND_GRAPH_HINTS: dict[str, dict[str, Any]] = {
         "scope": "app",
         "next_commands": ["nsx configure", "nsx build"],
     },
+    "lock": {
+        "category": "modules",
+        "scope": "app",
+        "next_commands": ["nsx sync", "nsx configure", "nsx build"],
+    },
+    "sync": {
+        "category": "modules",
+        "scope": "app",
+        "next_commands": ["nsx configure", "nsx build", "nsx flash"],
+    },
+    "outdated": {
+        "category": "modules",
+        "scope": "app",
+        "next_commands": ["nsx update", "nsx lock --update"],
+    },
+    "update": {
+        "category": "modules",
+        "scope": "app",
+        "next_commands": ["nsx configure", "nsx build", "nsx flash"],
+    },
     "module": {
         "category": "modules",
         "scope": "app",
@@ -366,6 +386,42 @@ def cmd_clean(args: argparse.Namespace) -> None:
     )
 
 
+def cmd_lock(args: argparse.Namespace) -> None:
+    # `--module X` re-resolves only the named module(s); per its `--help`
+    # text it implies `--update` (the modules filter is a no-op without it).
+    update = bool(args.update) or bool(args.modules)
+    operations.lock_app_impl(
+        resolve_app_dir(args.app_dir),
+        update=update,
+        modules=list(args.modules) if args.modules else None,
+        check=bool(getattr(args, "check", False)),
+    )
+
+
+def cmd_sync(args: argparse.Namespace) -> None:
+    operations.sync_app_impl(
+        resolve_app_dir(args.app_dir),
+        frozen=bool(args.frozen),
+        force=bool(args.force),
+    )
+
+
+def cmd_outdated(args: argparse.Namespace) -> None:
+    n = operations.outdated_app_impl(
+        resolve_app_dir(args.app_dir),
+        as_json=bool(getattr(args, "json", False)),
+    )
+    if args.exit_code and n:
+        raise SystemExit(1)
+
+
+def cmd_update(args: argparse.Namespace) -> None:
+    operations.update_app_impl(
+        resolve_app_dir(args.app_dir),
+        modules=list(args.modules) if args.modules else None,
+    )
+
+
 def _resolve_cli_app_dir(app_dir_arg: str | None) -> Path | None:
     """Resolve CLI --app-dir to a Path, or None when not supplied."""
 
@@ -542,6 +598,7 @@ def cmd_module_add(args: argparse.Namespace) -> None:
         resolve_app_dir(args.app_dir),
         args.module,
         local=getattr(args, "local", False),
+        vendored=getattr(args, "vendored", False),
         dry_run=args.dry_run,
     )
 
@@ -685,14 +742,18 @@ def _build_parser() -> argparse.ArgumentParser:
     p_configure.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
     p_configure.add_argument("--board", default=None, help="Override board from nsx.yml")
     p_configure.add_argument("--build-dir", default=None, help="Build directory override")
-    p_configure.add_argument("--toolchain", default=None, help="Toolchain override (gcc, armclang)")
+    p_configure.add_argument(
+        "--toolchain", default=None, help="Toolchain override (gcc, armclang, atfe)"
+    )
     p_configure.set_defaults(func=cmd_configure)
 
     p_build = sub.add_parser("build", help="Build a generated NSX app")
     p_build.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
     p_build.add_argument("--board", default=None, help="Override board from nsx.yml")
     p_build.add_argument("--build-dir", default=None, help="Build directory override")
-    p_build.add_argument("--toolchain", default=None, help="Toolchain override (gcc, armclang)")
+    p_build.add_argument(
+        "--toolchain", default=None, help="Toolchain override (gcc, armclang, atfe)"
+    )
     p_build.add_argument("--target", default=None, help="Optional explicit build target")
     p_build.add_argument("--jobs", type=int, default=8, help="Parallel build jobs")
     p_build.set_defaults(func=cmd_build)
@@ -701,7 +762,9 @@ def _build_parser() -> argparse.ArgumentParser:
     p_flash.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
     p_flash.add_argument("--board", default=None, help="Override board from nsx.yml")
     p_flash.add_argument("--build-dir", default=None, help="Build directory override")
-    p_flash.add_argument("--toolchain", default=None, help="Toolchain override (gcc, armclang)")
+    p_flash.add_argument(
+        "--toolchain", default=None, help="Toolchain override (gcc, armclang, atfe)"
+    )
     p_flash.add_argument("--jobs", type=int, default=8, help="Parallel build jobs")
     p_flash.set_defaults(func=cmd_flash)
 
@@ -709,7 +772,9 @@ def _build_parser() -> argparse.ArgumentParser:
     p_view.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
     p_view.add_argument("--board", default=None, help="Override board from nsx.yml")
     p_view.add_argument("--build-dir", default=None, help="Build directory override")
-    p_view.add_argument("--toolchain", default=None, help="Toolchain override (gcc, armclang)")
+    p_view.add_argument(
+        "--toolchain", default=None, help="Toolchain override (gcc, armclang, atfe)"
+    )
     p_view.add_argument(
         "--no-reset-on-open",
         action="store_true",
@@ -727,13 +792,106 @@ def _build_parser() -> argparse.ArgumentParser:
     p_clean.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
     p_clean.add_argument("--board", default=None, help="Override board from nsx.yml")
     p_clean.add_argument("--build-dir", default=None, help="Build directory override")
-    p_clean.add_argument("--toolchain", default=None, help="Toolchain override (gcc, armclang)")
+    p_clean.add_argument(
+        "--toolchain", default=None, help="Toolchain override (gcc, armclang, atfe)"
+    )
     p_clean.add_argument(
         "--full",
         action="store_true",
         help="Remove the full build directory instead of only running the build-system clean target",
     )
     p_clean.set_defaults(func=cmd_clean)
+
+    p_lock = sub.add_parser(
+        "lock",
+        help="Resolve modules in nsx.yml to commits and write nsx.lock",
+        description=(
+            "Resolve every module declared in nsx.yml to its current upstream commit "
+            "and content hash, and write the resulting nsx.lock receipt. Does not "
+            "modify the modules/ tree."
+        ),
+    )
+    p_lock.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
+    p_lock.add_argument(
+        "--update",
+        action="store_true",
+        help="Re-resolve constraints to current upstream tip (otherwise reuses prior SHAs)",
+    )
+    p_lock.add_argument(
+        "--module",
+        dest="modules",
+        action="append",
+        default=[],
+        help="Only re-resolve the named module (may be repeated; implies --update)",
+    )
+    p_lock.add_argument(
+        "--check",
+        action="store_true",
+        help=("Exit non-zero if nsx.lock is out of date with nsx.yml (do not write); useful in CI"),
+    )
+    p_lock.set_defaults(func=cmd_lock)
+
+    p_sync = sub.add_parser(
+        "sync",
+        help="Make modules/ exactly match nsx.lock",
+        description=(
+            "Re-vendor each module from nsx.lock at its locked commit. Idempotent: "
+            "modules whose on-disk content already matches the lock are skipped."
+        ),
+    )
+    p_sync.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
+    p_sync.add_argument(
+        "--frozen",
+        action="store_true",
+        help="Error on any drift between nsx.yml, nsx.lock, and modules/ instead of correcting it",
+    )
+    p_sync.add_argument(
+        "--force",
+        action="store_true",
+        help="Re-vendor every module even if its content_hash matches the lock",
+    )
+    p_sync.set_defaults(func=cmd_sync)
+
+    p_outdated = sub.add_parser(
+        "outdated",
+        help="Show git modules whose locked commit lags behind upstream",
+        description=(
+            "For each git module in nsx.lock, compare the locked commit "
+            "against the current upstream tip of the constraint and report "
+            "any drift."
+        ),
+    )
+    p_outdated.add_argument("--app-dir", default=".", help="App directory containing nsx.lock")
+    p_outdated.add_argument(
+        "--exit-code",
+        action="store_true",
+        help="Exit non-zero if any modules are outdated (useful in CI)",
+    )
+    p_outdated.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit machine-readable JSON instead of the human-readable table",
+    )
+    p_outdated.set_defaults(func=cmd_outdated)
+
+    p_update = sub.add_parser(
+        "update",
+        help="Re-resolve constraints to upstream tip and sync modules",
+        description=(
+            "Re-resolve every (or selected) module constraint to its current "
+            "upstream tip, rewrite nsx.lock, and re-vendor changed modules. "
+            "Equivalent to `nsx lock --update [--module ...] && nsx sync`."
+        ),
+    )
+    p_update.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
+    p_update.add_argument(
+        "--module",
+        dest="modules",
+        action="append",
+        default=[],
+        help="Only update the named module (may be repeated)",
+    )
+    p_update.set_defaults(func=cmd_update)
 
     p_mod = sub.add_parser(
         "module",
@@ -822,7 +980,15 @@ def _build_parser() -> argparse.ArgumentParser:
     p_mod_add.add_argument(
         "--local",
         action="store_true",
-        help="Mark the module as local (source-controlled with the app, not fetched from registry)",
+        help="Mark the module as local (mirrored from external path; ignored by git)",
+    )
+    p_mod_add.add_argument(
+        "--vendored",
+        action="store_true",
+        help=(
+            "Scaffold a vendored module under modules/<name>/ "
+            "(committed in this app's git; never touched by `nsx sync`)"
+        ),
     )
     p_mod_add.add_argument("--dry-run", action="store_true", help="Show changes without writing")
     p_mod_add.set_defaults(func=cmd_module_add)

@@ -24,117 +24,122 @@ projects:
   nsx-ambiqsuite-r5:
     name: nsx-ambiqsuite-r5
     url: https://github.com/AmbiqAI/nsx-ambiqsuite-r5.git
-    revision: main
+    revision: v0.1.0
     path: modules/nsx-ambiqsuite-r5
   nsx-ambiq-hal-r3:
     name: nsx-ambiq-hal-r3
     url: https://github.com/AmbiqAI/nsx-ambiq-hal-r3.git
-    revision: main
+    revision: v0.1.0
     path: modules/nsx-ambiq-hal-r3
   nsx-ambiq-hal-r4:
     name: nsx-ambiq-hal-r4
     url: https://github.com/AmbiqAI/nsx-ambiq-hal-r4.git
-    revision: main
+    revision: v0.1.0
     path: modules/nsx-ambiq-hal-r4
   nsx-ambiq-hal-r5:
     name: nsx-ambiq-hal-r5
     url: https://github.com/AmbiqAI/nsx-ambiq-hal-r5.git
-    revision: main
+    revision: v0.1.0
     path: modules/nsx-ambiq-hal-r5
   nsx-ambiq-bsp-r3:
     name: nsx-ambiq-bsp-r3
     url: https://github.com/AmbiqAI/nsx-ambiq-bsp-r3.git
-    revision: main
+    revision: v0.1.0
     path: modules/nsx-ambiq-bsp-r3
   nsx-ambiq-bsp-r4:
     name: nsx-ambiq-bsp-r4
     url: https://github.com/AmbiqAI/nsx-ambiq-bsp-r4.git
-    revision: main
+    revision: v0.1.0
     path: modules/nsx-ambiq-bsp-r4
   nsx-ambiq-bsp-r5:
     name: nsx-ambiq-bsp-r5
     url: https://github.com/AmbiqAI/nsx-ambiq-bsp-r5.git
-    revision: main
+    revision: v0.1.0
     path: modules/nsx-ambiq-bsp-r5
   nsx-soc-hal:
     name: nsx-soc-hal
     url: https://github.com/AmbiqAI/nsx-soc-hal.git
-    revision: main
+    revision: v0.1.0
     path: modules/nsx-soc-hal
+  nsx-cmsis-core:
+    name: nsx-cmsis-core
+    url: https://github.com/AmbiqAI/nsx-cmsis-core.git
+    revision: v0.1.0
+    path: modules/nsx-cmsis-core
   nsx-cmsis-startup:
     name: nsx-cmsis-startup
     url: https://github.com/AmbiqAI/nsx-cmsis-startup.git
-    revision: main
+    revision: v0.1.0
     path: modules/nsx-cmsis-startup
   nsx-core:
     name: nsx-core
     url: https://github.com/AmbiqAI/nsx-core.git
-    revision: main
+    revision: v0.1.0
     path: modules/nsx-core
   nsx-harness:
     name: nsx-harness
     url: https://github.com/AmbiqAI/nsx-harness.git
-    revision: main
+    revision: v0.1.0
     path: modules/nsx-harness
   nsx-utils:
     name: nsx-utils
     url: https://github.com/AmbiqAI/nsx-utils.git
-    revision: main
+    revision: v0.1.0
     path: modules/nsx-utils
   nsx-perf:
     name: nsx-perf
     url: https://github.com/AmbiqAI/nsx-perf.git
-    revision: main
+    revision: v0.1.0
     path: modules/nsx-perf
   nsx-pmu-armv8m:
     name: nsx-pmu-armv8m
     url: https://github.com/AmbiqAI/nsx-pmu-armv8m.git
-    revision: main
+    revision: v0.1.0
     path: modules/nsx-pmu-armv8m
   nsx-peripherals:
     name: nsx-peripherals
     url: https://github.com/AmbiqAI/nsx-peripherals.git
-    revision: main
+    revision: v0.1.0
     path: modules/nsx-peripherals
   nsx-power:
     name: nsx-power
     url: https://github.com/AmbiqAI/nsx-power.git
-    revision: main
+    revision: v0.1.0
     path: modules/nsx-power
   nsx-portable-api:
     name: nsx-portable-api
     url: https://github.com/AmbiqAI/nsx-portable-api.git
-    revision: main
+    revision: v0.1.0
     path: modules/nsx-portable-api
   nsx-uart:
     name: nsx-uart
     url: https://github.com/AmbiqAI/nsx-uart.git
-    revision: main
+    revision: v0.1.0
     path: modules/nsx-uart
   nsx-i2c:
     name: nsx-i2c
     url: https://github.com/AmbiqAI/nsx-i2c.git
-    revision: main
+    revision: v0.1.0
     path: modules/nsx-i2c
   nsx-spi:
     name: nsx-spi
     url: https://github.com/AmbiqAI/nsx-spi.git
-    revision: main
+    revision: v0.1.0
     path: modules/nsx-spi
   nsx-audio:
     name: nsx-audio
     url: https://github.com/AmbiqAI/nsx-audio.git
-    revision: main
+    revision: v0.1.0
     path: modules/nsx-audio
   nsx-usb:
     name: nsx-usb
     url: https://github.com/AmbiqAI/nsx-usb.git
-    revision: main
+    revision: v0.1.0
     path: modules/nsx-usb
   nsx-nanopb:
     name: nsx-nanopb
     url: https://github.com/AmbiqAI/nsx-nanopb.git
-    revision: main
+    revision: v0.1.0
     path: modules/nsx-nanopb
 
 modules:
@@ -148,39 +153,43 @@ modules:
     metadata: modules/nsx-ambiqsuite-r4/nsx-module.yaml
   nsx-ambiqsuite-r5:
     project: nsx-ambiqsuite-r5
-    revision: main
+    revision: v0.1.0
     metadata: modules/nsx-ambiqsuite-r5/nsx-module.yaml
   nsx-ambiq-hal-r3:
     project: nsx-ambiq-hal-r3
-    revision: main
+    revision: v0.1.0
     metadata: modules/nsx-ambiq-hal-r3/nsx-module.yaml
   nsx-ambiq-hal-r4:
     project: nsx-ambiq-hal-r4
-    revision: main
+    revision: v0.1.0
     metadata: modules/nsx-ambiq-hal-r4/nsx-module.yaml
   nsx-ambiq-hal-r5:
     project: nsx-ambiq-hal-r5
-    revision: main
+    revision: v0.1.0
     metadata: modules/nsx-ambiq-hal-r5/nsx-module.yaml
   nsx-ambiq-bsp-r3:
     project: nsx-ambiq-bsp-r3
-    revision: main
+    revision: v0.1.0
     metadata: modules/nsx-ambiq-bsp-r3/nsx-module.yaml
   nsx-ambiq-bsp-r4:
     project: nsx-ambiq-bsp-r4
-    revision: main
+    revision: v0.1.0
     metadata: modules/nsx-ambiq-bsp-r4/nsx-module.yaml
   nsx-ambiq-bsp-r5:
     project: nsx-ambiq-bsp-r5
-    revision: main
+    revision: v0.1.0
     metadata: modules/nsx-ambiq-bsp-r5/nsx-module.yaml
   nsx-soc-hal:
     project: nsx-soc-hal
-    revision: main
+    revision: v0.1.0
     metadata: modules/nsx-soc-hal/nsx-module.yaml
+  nsx-cmsis-core:
+    project: nsx-cmsis-core
+    revision: v0.1.0
+    metadata: modules/nsx-cmsis-core/nsx-module.yaml
   nsx-cmsis-startup:
     project: nsx-cmsis-startup
-    revision: main
+    revision: v0.1.0
     metadata: modules/nsx-cmsis-startup/nsx-module.yaml
   nsx-board-apollo3p-evb:
     project: neuralspotx
@@ -240,59 +249,59 @@ modules:
     metadata: src/neuralspotx/boards/apollo4p_blue_kxr_evb/nsx-module.yaml
   nsx-core:
     project: nsx-core
-    revision: main
+    revision: v0.1.0
     metadata: modules/nsx-core/nsx-module.yaml
   nsx-harness:
     project: nsx-harness
-    revision: main
+    revision: v0.1.0
     metadata: modules/nsx-harness/nsx-module.yaml
   nsx-utils:
     project: nsx-utils
-    revision: main
+    revision: v0.1.0
     metadata: modules/nsx-utils/nsx-module.yaml
   nsx-perf:
     project: nsx-perf
-    revision: main
+    revision: v0.1.0
     metadata: modules/nsx-perf/nsx-module.yaml
   nsx-pmu-armv8m:
     project: nsx-pmu-armv8m
-    revision: main
+    revision: v0.1.0
     metadata: modules/nsx-pmu-armv8m/nsx-module.yaml
   nsx-peripherals:
     project: nsx-peripherals
-    revision: main
+    revision: v0.1.0
     metadata: modules/nsx-peripherals/nsx-module.yaml
   nsx-power:
     project: nsx-power
-    revision: main
+    revision: v0.1.0
     metadata: modules/nsx-power/nsx-module.yaml
   nsx-portable-api:
     project: nsx-portable-api
-    revision: main
+    revision: v0.1.0
     metadata: modules/nsx-portable-api/nsx-module.yaml
   nsx-uart:
     project: nsx-uart
-    revision: main
+    revision: v0.1.0
     metadata: modules/nsx-uart/nsx-module.yaml
   nsx-i2c:
     project: nsx-i2c
-    revision: main
+    revision: v0.1.0
     metadata: modules/nsx-i2c/nsx-module.yaml
   nsx-spi:
     project: nsx-spi
-    revision: main
+    revision: v0.1.0
     metadata: modules/nsx-spi/nsx-module.yaml
   nsx-audio:
     project: nsx-audio
-    revision: main
+    revision: v0.1.0
     metadata: modules/nsx-audio/nsx-module.yaml
   nsx-usb:
     project: nsx-usb
-    revision: main
+    revision: v0.1.0
     metadata: modules/nsx-usb/nsx-module.yaml
   nsx-nanopb:
     project: nsx-nanopb
-    revision: main
+    revision: v0.1.0
     metadata: modules/nsx-nanopb/nsx-module.yaml
   nsx-tooling:
     project: neuralspotx
