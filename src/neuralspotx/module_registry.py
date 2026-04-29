@@ -439,10 +439,11 @@ def _is_local_module(nsx_cfg: dict[str, Any], module_name: str) -> bool:
 def _local_module_names(nsx_cfg: dict[str, Any]) -> set[str]:
     """Return the set of modules linked to a local path on disk.
 
-    Today this is keyed off the legacy ``local: true`` flag (paired with
-    a ``module_registry.modules.<name>.local_path`` override). The
-    user-facing ``source: { path: <p> }`` shorthand is reserved for a
-    future pass and is not yet recognised here.
+    Keyed off the ``local: true`` flag on the module entry. Note that
+    ``_load_app_cfg()`` invokes ``_normalize_module_source()`` first, which
+    expands the user-facing ``source: { path: <p> }`` shorthand into
+    ``local: true`` plus a ``module_registry.modules.<name>.local_path``
+    override -- so both spellings are picked up here.
     """
     return {
         item["name"]

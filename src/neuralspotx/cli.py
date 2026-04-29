@@ -387,9 +387,12 @@ def cmd_clean(args: argparse.Namespace) -> None:
 
 
 def cmd_lock(args: argparse.Namespace) -> None:
+    # `--module X` re-resolves only the named module(s); per its `--help`
+    # text it implies `--update` (the modules filter is a no-op without it).
+    update = bool(args.update) or bool(args.modules)
     operations.lock_app_impl(
         resolve_app_dir(args.app_dir),
-        update=bool(args.update),
+        update=update,
         modules=list(args.modules) if args.modules else None,
         check=bool(getattr(args, "check", False)),
     )

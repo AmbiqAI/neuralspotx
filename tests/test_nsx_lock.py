@@ -197,6 +197,28 @@ class TestLocalKind:
         assert m.kind == "local"
         assert m.content_hash.startswith("sha256:")
 
+    def test_lock_local_without_registry_entry(self, app: Path) -> None:
+        """`nsx module add --local` writes `local: true` with no registry override.
+
+        Regression for the case where ``_build_lock_for_app`` invoked
+        ``registry_entry_for_module`` before the local-name short-circuit
+        and raised ``ValueError`` for unknown modules.
+        """
+        mod_dir = app / "modules" / "bare-local"
+        mod_dir.mkdir(parents=True)
+        (mod_dir / "src.c").write_text("// local")
+
+        _write_nsx_yml(app, [{"name": "bare-local", "local": True}])
+
+        lock_app_impl(app)  # must not raise
+
+        lock = read_lock(app)
+        assert lock is not None
+        m = lock.modules["bare-local"]
+        assert m.kind == "local"
+        assert m.constraint == "local"
+        assert m.content_hash.startswith("sha256:")
+
 
 # ---------------------------------------------------------------------------
 # Git + Unresolved kinds (monkeypatched resolver)

@@ -1195,20 +1195,30 @@ def _build_lock_for_app(
             )
             continue
 
-        entry = registry_entry_for_module(registry, name)
-        constraint = str(entry.revision or "main")
-
         # Local modules are source-controlled with the app — record only
-        # the on-disk content hash; no upstream resolution.
+        # the on-disk content hash; no upstream resolution. Handle these
+        # BEFORE the registry lookup, since `nsx module add --local` may
+        # have written `local: true` without a corresponding registry
+        # override (regular registry-backed locals fall through to the
+        # full `entry`-driven path).
         if name in local_names:
-            vendored_dir = _resolved_module_path(app_dir, name, registry)
+            try:
+                entry = registry_entry_for_module(registry, name)
+                project_key = entry.project
+                constraint = str(entry.revision or "local")
+                vendored_dir = _resolved_module_path(app_dir, name, registry)
+            except ValueError:
+                # No registry entry: hash modules/<name>/ directly.
+                project_key = name
+                constraint = "local"
+                vendored_dir = app_dir / "modules" / name
             rel = (
                 str(vendored_dir.relative_to(app_dir))
                 if vendored_dir.is_relative_to(app_dir)
                 else str(vendored_dir)
             )
             lock.modules[name] = ResolvedModule(
-                project=entry.project,
+                project=project_key,
                 kind="local",
                 constraint=constraint,
                 vendored_at=rel,
@@ -1216,6 +1226,9 @@ def _build_lock_for_app(
                 acquired_at=utcnow_iso(),
             )
             continue
+
+        entry = registry_entry_for_module(registry, name)
+        constraint = str(entry.revision or "main")
 
         if _is_packaged_module(registry, name):
             vendored_dir = _resolved_module_path(app_dir, name, registry)
