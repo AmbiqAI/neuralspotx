@@ -1346,7 +1346,7 @@ def lock_app_impl(
         The path to the (would-be) ``nsx.lock``.
     """
 
-    previous = read_lock(app_dir)
+    previous = read_lock(app_dir, allow_legacy=True)
     on_disk_lock = previous  # capture before update-mutation
 
     if update:

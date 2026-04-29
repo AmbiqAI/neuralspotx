@@ -162,7 +162,7 @@ class NsxLock:
             raise ValueError("nsx.lock root must be a mapping")
         version = int(data.get("schema_version", LOCK_SCHEMA_VERSION))
         if version != LOCK_SCHEMA_VERSION:
-            raise SystemExit(
+            raise LegacyLockError(
                 f"nsx.lock has schema_version {version}; this nsx requires "
                 f"v{LOCK_SCHEMA_VERSION}. Run `nsx lock` to regenerate."
             )
@@ -192,14 +192,29 @@ def lock_path(app_dir: Path) -> Path:
     return app_dir / LOCK_FILENAME
 
 
-def read_lock(app_dir: Path) -> NsxLock | None:
-    """Read nsx.lock from *app_dir*, or return ``None`` if missing."""
+def read_lock(app_dir: Path, *, allow_legacy: bool = False) -> NsxLock | None:
+    """Read nsx.lock from *app_dir*, or return ``None`` if missing.
+
+    If the file exists but uses a schema older than
+    :data:`LOCK_SCHEMA_VERSION`, behaviour depends on *allow_legacy*:
+
+    * ``False`` (default): raise :class:`LegacyLockError` so callers like
+      ``nsx sync`` / ``nsx outdated`` fail loudly with the upgrade hint.
+    * ``True``: emit a one-line warning and return ``None`` so callers
+      like ``nsx lock`` can transparently regenerate the file in place.
+    """
 
     path = lock_path(app_dir)
     if not path.exists():
         return None
     raw = yaml.safe_load(path.read_text(encoding="utf-8"))
-    return NsxLock.from_yaml_dict(raw or {})
+    try:
+        return NsxLock.from_yaml_dict(raw or {})
+    except LegacyLockError as exc:
+        if allow_legacy:
+            print(f"warning: {exc} (regenerating)")
+            return None
+        raise
 
 
 def write_lock(app_dir: Path, lock: NsxLock) -> Path:
@@ -350,6 +365,15 @@ def _resolve_ref(url: str, ref: str) -> tuple[str, str | None]:
 
 class ResolutionError(RuntimeError):
     """Raised when a git remote cannot be resolved during ``nsx lock``."""
+
+
+class LegacyLockError(RuntimeError):
+    """Raised when ``nsx.lock`` uses an older schema version.
+
+    ``read_lock(..., allow_legacy=True)`` swallows this so ``nsx lock``
+    can rewrite the file in place; everywhere else it propagates and is
+    surfaced to the user as a clear migration message.
+    """
 
 
 def _looks_like_full_sha(s: str) -> bool:

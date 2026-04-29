@@ -8,7 +8,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from . import operations
+from . import nsx_lock, operations
 from .metadata import SUPPORTED_MODULE_TYPES, load_yaml, validate_nsx_module_metadata
 from .module_discovery import (
     resolve_module_context,
@@ -1130,4 +1130,6 @@ def main(argv: list[str] | None = None) -> int:
         if VERBOSE > 0:
             raise
         raise SystemExit(format_subprocess_error(exc, context="Command")) from None
+    except nsx_lock.LegacyLockError as exc:
+        raise SystemExit(str(exc)) from None
     return 0
