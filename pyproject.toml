@@ -1,6 +1,6 @@
 [project]
 name = "neuralspotx"
-version = "0.3.0"
+version = "1.0.0"
 description = "Python tooling and app bootstrap for neuralspotx"
 requires-python = ">=3.10"
 dependencies = [
