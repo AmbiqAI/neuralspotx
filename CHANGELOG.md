@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.4.0](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.3.0...neuralspotx-v0.4.0) (2026-04-29)
+
+
+### ⚠ BREAKING CHANGES
+
+* nsx.lock schema v2 (drop ref, add tag, peeled commit SHAs) ([#15](https://github.com/AmbiqAI/neuralspotx/issues/15))
+
+### Features
+
+* nsx.lock schema v2 (drop ref, add tag, peeled commit SHAs) ([#15](https://github.com/AmbiqAI/neuralspotx/issues/15)) ([b166b06](https://github.com/AmbiqAI/neuralspotx/commit/b166b061cb092e44cff5f4485208c20089e14519))
+
 ## [0.3.0](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.2.0...neuralspotx-v0.3.0) (2026-04-29)
 
 
