@@ -205,11 +205,67 @@ jobs:
           --timeout=600
 
   # ---------------------------------------------------------------
+  # Lock integrity — verify each example's nsx.yml/nsx.lock/modules/
+  # are mutually consistent. No firmware toolchain required; runs
+  # only on Linux because the verification is content/network-based.
+  # ---------------------------------------------------------------
+  lock-integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install neuralspotx
+        run: uv sync --group test
+
+      - name: Verify lock integrity for every example
+        run: |
+          fail=0
+          for app in examples/*/; do
+            [ -f "$app/nsx.yml" ] || continue
+            [ -f "$app/nsx.lock" ] || continue
+            echo "::group::$app"
+            # `nsx sync` populates modules/ at the SHAs recorded in
+            # nsx.lock (no constraint re-resolution needed since the
+            # lock pins commits). `nsx lock --check` then verifies that
+            # nsx.yml has not drifted from nsx.lock and that the freshly
+            # vendored on-disk content matches each recorded content hash.
+            if ! uv run --group test nsx sync --app-dir "$app"; then
+              fail=1
+            elif ! uv run --group test nsx lock --check --app-dir "$app"; then
+              fail=1
+            fi
+            echo "::endgroup::"
+          done
+          exit "$fail"
+
+      - name: Report outdated modules (informational)
+        if: always()
+        continue-on-error: true
+        run: |
+          for app in examples/*/; do
+            [ -f "$app/nsx.lock" ] || continue
+            echo "::group::outdated $app"
+            uv run --group test nsx outdated --json --app-dir "$app" || true
+            echo "::endgroup::"
+          done
+
+  # ---------------------------------------------------------------
   # Gate — single required-check for branch protection
   # ---------------------------------------------------------------
   lint-and-test:
     if: always()
-    needs: [lint, unit-tests, example-builds]
+    needs: [lint, unit-tests, example-builds, lock-integrity]
     runs-on: ubuntu-latest
     steps:
       - name: Decide status
@@ -217,7 +273,8 @@ jobs:
           # Fail if any dependency was not successful.
           if [[ "${{ needs.lint.result }}" != "success" ]] ||
              [[ "${{ needs.unit-tests.result }}" != "success" ]] ||
-             [[ "${{ needs.example-builds.result }}" != "success" ]]; then
+             [[ "${{ needs.example-builds.result }}" != "success" ]] ||
+             [[ "${{ needs.lock-integrity.result }}" != "success" ]]; then
             echo "One or more CI jobs failed."
             exit 1
           fi
