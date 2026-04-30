@@ -323,10 +323,12 @@ def hash_git_artifact(url: str, commit: str) -> str:
     of whether the module is currently materialized under
     ``modules/<name>/``.
 
-    Used by ``nsx lock`` (records this hash) and ``nsx sync`` (verifies
-    it before vendoring). The clone is discarded; for repeated calls
-    against the same ``(url, commit)`` pair within a single ``nsx``
-    invocation, callers may cache the result.
+    Used by ``nsx lock`` to compute and record the upstream-artifact
+    integrity hash for ``kind=git`` entries. Other callers may use it
+    to compare a remote git artifact against the value stored in
+    ``nsx.lock``. The clone is discarded; for repeated calls against
+    the same ``(url, commit)`` pair within a single ``nsx``
+    invocation, callers should cache the result.
     """
 
     # Imported lazily to avoid a circular import at module load time

@@ -511,9 +511,11 @@ def _ensure_app_modules(app_dir: Path) -> None:
     a separate ``nsx module add`` or ``nsx module update`` step.
 
     The lock file is the single source of truth: ``sync_app_impl``
-    handles both the lock-present and lock-missing cases (in the latter
-    it generates a lock, vendors against it, and refreshes the lock so
-    ``content_hash`` reflects the just-vendored trees).
+    handles both the lock-present and lock-missing cases. When the
+    lock is missing, it creates ``nsx.lock`` and then vendors modules
+    according to the resolved lock; it does not rewrite the lock
+    after vendoring (``content_hash`` is the upstream-artifact hash,
+    so it is correct from the start under v3).
     """
 
     sync_app_impl(app_dir)
@@ -1239,10 +1241,16 @@ def _build_lock_for_app(
 
         if _is_packaged_module(registry, name):
             # Source IS the packaged resource directory inside the
-            # ``neuralspotx`` wheel. Hash that, not the on-disk copy.
+            # ``neuralspotx`` wheel. Hash that, not the on-disk copy:
+            # pass ``app_dir=None`` so ``_module_metadata_path`` skips
+            # the app-local-vendored / app-local-clone fallbacks and
+            # resolves directly to the packaged wheel resource. This
+            # preserves the v3 invariant that ``content_hash`` is the
+            # upstream artifact, never a (possibly user-modified)
+            # materialized tree under ``modules/<name>/``.
             from .module_registry import _module_metadata_path
 
-            source_metadata = _module_metadata_path(name, entry, registry, app_dir=app_dir)
+            source_metadata = _module_metadata_path(name, entry, registry, app_dir=None)
             source_dir = source_metadata.parent
             vendored_dir = _resolved_module_path(app_dir, name, registry)
             rel = (
@@ -1415,9 +1423,10 @@ def lock_app_impl(
             differ. Useful in CI to assert that ``nsx.lock`` is up to
             date with ``nsx.yml``.
         quiet: Suppress the post-write "Wrote ... / modules: ..."
-            summary print. Used by ``sync_app_impl`` for the post-sync
-            lock refresh, where the user already saw the pre-sync
-            "Wrote" line.
+            summary print. Useful when ``nsx lock`` is invoked
+            implicitly by another command (e.g. the lock-missing path
+            in ``sync_app_impl``) and the surrounding command has
+            already printed its own summary.
 
     Returns:
         The path to the (would-be) ``nsx.lock``.
