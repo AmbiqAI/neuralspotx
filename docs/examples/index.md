@@ -1,23 +1,34 @@
 # Examples
 
-Eight ready-to-build example apps ship in the
+Eight ready-to-build example apps live in the
 [`examples/`](https://github.com/AmbiqAI/neuralspotx/tree/main/examples)
-directory. Each one is a self-contained NSX app — clone the repo and you
-can configure, build, and flash immediately.
+directory of the `neuralspotx` repo. Each one is a self-contained NSX
+app — the same shape that `nsx create-app` produces — with its own
+`nsx.yml` manifest and `nsx.lock` receipt.
 
 All examples target the **Apollo510 EVB** (`apollo510_evb` profile).
 
 ## Quick Start
 
+The recommended flow is to install `nsx` once and create your own app
+(see [Getting Started](../getting-started/first-app.md)). To try a
+maintained example without a git clone or a separate workspace, use the
+snippet below. (Note: this still downloads the full repository tarball;
+`tar` then extracts only the example folder you ask for.)
+
 ```bash
-git clone https://github.com/AmbiqAI/neuralspotx.git
-cd neuralspotx/examples/hello_world
+curl -fL https://github.com/AmbiqAI/neuralspotx/archive/refs/heads/main.tar.gz \
+  | tar -xz -f - --strip-components=2 neuralspotx-main/examples/hello_world
+cd hello_world
 
 nsx configure --app-dir .
 nsx build     --app-dir .
 nsx flash     --app-dir .   # requires J-Link
 nsx view      --app-dir .   # live SWO stream
 ```
+
+Contributors who already have the repo cloned can simply
+`cd neuralspotx/examples/hello_world` and run the same commands.
 
 ## Available Examples
 
