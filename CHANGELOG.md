@@ -1,5 +1,16 @@
 # Changelog
 
+## [0.5.0](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.4.0...neuralspotx-v0.5.0) (2026-04-30)
+
+
+### ⚠ BREAKING CHANGES
+
+* **operations:** `nsx.lock` schema is now version 3. `content_hash` records the upstream artifact (git tree at the locked commit, or the packaged source tree) rather than the materialized `modules/<name>/` tree. Apps with a v1/v2 lock must re-run `nsx lock` once to migrate; the file is regenerated automatically the first time `nsx sync` runs without a current lock.
+
+### Code Refactoring
+
+* **operations:** always lock before sync; drop branch-tip fallback ([#20](https://github.com/AmbiqAI/neuralspotx/issues/20)) ([0122a76](https://github.com/AmbiqAI/neuralspotx/commit/0122a764071c94ff3ae69bd5faf0750de3604a82))
+
 ## [0.4.0](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.3.0...neuralspotx-v0.4.0) (2026-04-29)
 
 
