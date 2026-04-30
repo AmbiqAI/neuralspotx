@@ -175,21 +175,35 @@ class TestSyncFrozen:
         with pytest.raises(SystemExit):
             sync_app_impl(app, frozen=True)
 
-    def test_no_lock_sync_then_frozen_passes(self, app: Path) -> None:
-        """Sync from a fresh tree (no nsx.lock) then `--frozen` sync is a no-op.
+    def test_no_lock_sync_then_frozen_passes(self, app: Path, tmp_path: Path) -> None:
+        """Sync from a fresh tree (no nsx.lock) ends with a stable lock.
 
         Regression for the bug where ``sync_app_impl`` generated the
         lock *before* vendoring (recording empty-tree content hashes),
         leaving the lock immediately stale: the next ``sync --frozen``
-        would fail and every subsequent plain sync would re-vendor. The
-        fix is a post-sync lock refresh in the fresh-lock branch.
+        would fail and every subsequent plain sync would re-vendor.
+        Uses a ``source: { path: <ext> }`` (local) module so vendoring
+        is hermetic but exercises the same write-then-hash code path
+        that git/packaged modules go through.
         """
-        _make_vendored(app, "my-vend")
-        _write_nsx_yml(app, [{"name": "my-vend", "source": {"vendored": True}}])
+        ext = tmp_path / "ext-source"
+        ext.mkdir()
+        (ext / "src.c").write_text("// local source")
+        (ext / "nsx-module.yaml").write_text("schema_version: 1\n")
+
+        _write_nsx_yml(app, [{"name": "my-local", "source": {"path": str(ext)}}])
 
         assert not (app / "nsx.lock").exists()
-        sync_app_impl(app)  # generates lock + syncs + refreshes lock
+        assert not (app / "modules" / "my-local").exists()
+
+        # No lock + no vendored tree: lock_app_impl runs first and
+        # records the empty-tree content hash. sync_app_impl then
+        # vendors the real tree, and the post-sync refresh updates
+        # the recorded hash. Without the refresh, frozen would fail
+        # below.
+        sync_app_impl(app)
         assert (app / "nsx.lock").exists()
+        assert (app / "modules" / "my-local" / "src.c").exists()
 
         sync_app_impl(app, frozen=True)  # must not raise
 

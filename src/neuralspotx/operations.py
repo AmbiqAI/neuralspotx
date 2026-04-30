@@ -1321,6 +1321,7 @@ def lock_app_impl(
     update: bool = False,
     modules: list[str] | None = None,
     check: bool = False,
+    quiet: bool = False,
 ) -> Path:
     """Resolve and write ``nsx.lock`` for *app_dir*.
 
@@ -1333,6 +1334,10 @@ def lock_app_impl(
             ``SystemExit`` (with a non-zero status) when they would
             differ. Useful in CI to assert that ``nsx.lock`` is up to
             date with ``nsx.yml``.
+        quiet: Suppress the post-write "Wrote ... / modules: ..."
+            summary print. Used by ``sync_app_impl`` for the post-sync
+            lock refresh, where the user already saw the pre-sync
+            "Wrote" line.
 
     Returns:
         The path to the (would-be) ``nsx.lock``.
@@ -1377,6 +1382,8 @@ def lock_app_impl(
         raise SystemExit(1)
 
     path = write_lock(app_dir, lock)
+    if quiet:
+        return path
     print(
         f"Wrote {path.relative_to(app_dir.parent) if path.is_relative_to(app_dir.parent) else path}"
     )
@@ -1485,6 +1492,12 @@ def sync_app_impl(
         print("warning: nsx.yml has changed since nsx.lock was written; run `nsx lock` to refresh.")
 
     changed = 0
+    # Track resolved vendored directories so two module entries that
+    # share one project/path don't each trigger a redundant re-vendor
+    # in the same `nsx sync` run (most visible on a fresh-lock first
+    # configure, where every entry's pre-vendor content_hash is
+    # equal to the empty-tree sha).
+    vendored_paths: set[Path] = set()
     for name, entry in lock.modules.items():
         # Vendored / unresolved modules don't necessarily have a registry
         # entry; trust the path recorded in the lock for those.
@@ -1547,6 +1560,12 @@ def sync_app_impl(
         if not needs_refresh:
             continue
 
+        # Two modules sharing one resolved path: vendor exactly once
+        # per sync (the first iteration writes the tree; later ones
+        # would otherwise wipe-and-rewrite the identical content).
+        if vendored_dir in vendored_paths:
+            continue
+
         if frozen and on_disk_hash is not None:
             raise SystemExit(
                 f"Module '{name}' on-disk content does not match nsx.lock "
@@ -1561,6 +1580,7 @@ def sync_app_impl(
                 _vendor_git_module_at_commit(app_dir, name, registry, entry.commit)
             else:
                 _update_module_clone(app_dir, name, registry)
+        vendored_paths.add(vendored_dir)
         changed += 1
 
     # Always refresh the packaged cmake tree and regenerate modules.cmake +
@@ -1579,7 +1599,9 @@ def sync_app_impl(
         # post-sync vendored trees. Without this the lock records
         # empty-tree hashes from before vendoring and every subsequent
         # sync would re-vendor, plus `nsx sync --frozen` would fail.
-        lock_app_impl(app_dir)
+        # Pass quiet=True to avoid a duplicate "Wrote nsx.lock" line
+        # right after the pre-sync write the user already saw.
+        lock_app_impl(app_dir, quiet=True)
 
 
 def outdated_app_impl(app_dir: Path, *, as_json: bool = False) -> int:
