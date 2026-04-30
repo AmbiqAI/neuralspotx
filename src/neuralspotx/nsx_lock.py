@@ -5,9 +5,9 @@ git commit and content hash of every vendored module so that builds are
 reproducible and `nsx sync` can deterministically restore the modules/
 tree.
 
-Schema (YAML, v2):
+Schema (YAML, v3):
 
-    schema_version: 2
+    schema_version: 3
     generated_at: <ISO 8601 UTC>
     nsx_tool: { version: <pkg version> }
     manifest: { path: nsx.yml, hash: sha256:<hex> }
@@ -30,6 +30,38 @@ Schema (YAML, v2):
           # packaged only:
           tool_version: <neuralspotx pkg version>
 
+``content_hash`` semantics (v3, cargo/uv-style — hashes the *upstream
+artifact*, never the on-disk vendored tree):
+
+    git        — hash of the git working tree at the locked commit
+                  (computed by cloning at ``commit`` into a tempdir,
+                  stripping ``.git``, and hashing). Independent of
+                  whether/how the module is currently vendored under
+                  ``modules/``.
+    packaged   — hash of the packaged source tree shipped inside the
+                  ``neuralspotx`` Python wheel (the registry resource
+                  dir).
+    local      — if the registry project has a ``local_path``: hash of
+                  that source directory. Otherwise (in-tree local, e.g.
+                  ``nsx module add --local``): hash of
+                  ``modules/<name>/`` itself — the directory IS the
+                  source.
+    vendored   — hash of ``modules/<name>/`` itself — the directory IS
+                  the source (committed in the app).
+    unresolved — last-known hash of ``modules/<name>/`` from the
+                  previous lock or the current on-disk tree, since
+                  upstream is unreachable.
+
+This decoupling means ``nsx lock`` can produce real hashes on a fresh
+checkout (no ``modules/`` populated yet) and ``nsx sync`` never needs
+to modify the lock to keep it in sync with reality — the lock is
+written exactly once per actual change to the upstream resolution.
+
+v3 changes vs v2:
+  * ``content_hash`` is now the upstream-artifact hash, not the
+    materialized tree hash. Schema-wise the field is identical; the
+    bump signals the semantic change so v2 lockfiles are regenerated.
+
 v2 changes vs v1:
   * Drop `ref:` (was always equal to `constraint:`).
   * Add `tag:` — distinct from `constraint:` so we can tell whether the
@@ -39,8 +71,8 @@ v2 changes vs v1:
     tag, which broke `git checkout` reproducibility if the tag was
     later force-moved.
 
-No v1 read compat: schemas before v2 raise on load and direct the user
-to regenerate via `nsx lock`. (Pre-1.0; only one user.)
+No back-compat reads for older schemas: pre-1.0, only one user; old
+locks are rejected and the user is told to run ``nsx lock``.
 
 Kinds (the user-facing 'source:' field in nsx.yml maps to a kind):
     git        -> registry git module (default; sync re-clones at locked SHA)
@@ -68,7 +100,7 @@ import yaml
 from .subprocess_utils import run_capture
 
 LOCK_FILENAME = "nsx.lock"
-LOCK_SCHEMA_VERSION = 2
+LOCK_SCHEMA_VERSION = 3
 
 # Files/dirs to exclude when hashing a vendored module tree.
 _HASH_EXCLUDE_DIRS = frozenset({".git", "__pycache__", ".pytest_cache", ".DS_Store"})
@@ -279,6 +311,42 @@ def hash_file(path: Path) -> str:
         for chunk in iter(lambda: fh.read(65536), b""):
             h.update(chunk)
     return "sha256:" + h.hexdigest()
+
+
+def hash_git_artifact(url: str, commit: str) -> str:
+    """Hash the working tree at *commit* of the repo at *url*.
+
+    Clones the repo into a tempdir at the exact commit, strips ``.git``,
+    and returns :func:`hash_tree` of the result. This is the
+    upstream-artifact integrity hash for ``kind=git`` lock entries: it
+    records what the user *would* get if they re-vendored, independent
+    of whether the module is currently materialized under
+    ``modules/<name>/``.
+
+    Used by ``nsx lock`` (records this hash) and ``nsx sync`` (verifies
+    it before vendoring). The clone is discarded; for repeated calls
+    against the same ``(url, commit)`` pair within a single ``nsx``
+    invocation, callers may cache the result.
+    """
+
+    # Imported lazily to avoid a circular import at module load time
+    # (subprocess_utils is a leaf, but git_clone_at_commit pulls in tool
+    # detection that some tests stub out).
+    import tempfile
+
+    from .subprocess_utils import git_clone_at_commit
+
+    with tempfile.TemporaryDirectory(prefix="nsx-lock-") as tmp:
+        clone_dir = Path(tmp) / "clone"
+        git_clone_at_commit(url, clone_dir, commit)
+        git_dir = clone_dir / ".git"
+        if git_dir.exists():
+            # Strip metadata so the hash is over the working tree only,
+            # matching what _vendor_git_module_at_commit() leaves on disk.
+            import shutil
+
+            shutil.rmtree(git_dir, ignore_errors=True)
+        return hash_tree(clone_dir)
 
 
 # ---------------------------------------------------------------------------

@@ -176,15 +176,12 @@ class TestSyncFrozen:
             sync_app_impl(app, frozen=True)
 
     def test_no_lock_sync_then_frozen_passes(self, app: Path, tmp_path: Path) -> None:
-        """Sync from a fresh tree (no nsx.lock) ends with a stable lock.
+        """Fresh-checkout flow: ``nsx sync`` with no lock generates one and converges.
 
-        Regression for the bug where ``sync_app_impl`` generated the
-        lock *before* vendoring (recording empty-tree content hashes),
-        leaving the lock immediately stale: the next ``sync --frozen``
-        would fail and every subsequent plain sync would re-vendor.
-        Uses a ``source: { path: <ext> }`` (local) module so vendoring
-        is hermetic but exercises the same write-then-hash code path
-        that git/packaged modules go through.
+        With v3 schema, ``content_hash`` is the upstream-artifact hash
+        computed at lock time, so ``nsx lock`` produces correct hashes
+        on a fresh tree without ``modules/`` being populated. Sync then
+        materializes from the upstream and never writes the lock.
         """
         ext = tmp_path / "ext-source"
         ext.mkdir()
@@ -196,24 +193,17 @@ class TestSyncFrozen:
         assert not (app / "nsx.lock").exists()
         assert not (app / "modules" / "my-local").exists()
 
-        # No lock + no vendored tree: lock_app_impl runs first and
-        # records the empty-tree content hash. sync_app_impl then
-        # vendors the real tree, and the post-sync refresh updates
-        # the recorded hash. Without the refresh, frozen would fail
-        # below.
         sync_app_impl(app)
         assert (app / "nsx.lock").exists()
         assert (app / "modules" / "my-local" / "src.c").exists()
 
+        # Lock must not be rewritten by sync; --frozen verifies cleanly.
+        before_text = (app / "nsx.lock").read_text()
         sync_app_impl(app, frozen=True)  # must not raise
+        assert (app / "nsx.lock").read_text() == before_text
 
     def test_frozen_does_not_rewrite_lock(self, app: Path) -> None:
-        """`sync --frozen` is read-only — it must never write nsx.lock.
-
-        Regression for the bug where the post-sync lock refresh ran in
-        a ``finally`` block, so a frozen drift check could silently
-        mutate the file it was checking against.
-        """
+        """`sync --frozen` is read-only — it must never write nsx.lock."""
         _make_vendored(app, "my-vend")
         _write_nsx_yml(app, [{"name": "my-vend", "source": {"vendored": True}}])
         lock_app_impl(app)
@@ -228,12 +218,7 @@ class TestSyncFrozen:
         assert lock_path_.read_text() == before_text
 
     def test_noop_sync_does_not_rewrite_lock(self, app: Path) -> None:
-        """A no-op `nsx sync` (nothing changed) must not bump nsx.lock.
-
-        Regression for the bug where the post-sync lock refresh ran
-        unconditionally, dirtying a committed lock on every plain
-        ``nsx sync`` even when no module needed re-vendoring.
-        """
+        """A no-op `nsx sync` (nothing changed) must not bump nsx.lock."""
         _make_vendored(app, "my-vend")
         _write_nsx_yml(app, [{"name": "my-vend", "source": {"vendored": True}}])
         lock_app_impl(app)
@@ -244,6 +229,34 @@ class TestSyncFrozen:
         sync_app_impl(app)  # nothing to do
 
         assert lock_path_.read_text() == before_text
+
+    def test_sync_never_writes_lock(self, app: Path, tmp_path: Path) -> None:
+        """Sync is pure: even when it actively re-vendors, it does not touch nsx.lock.
+
+        Regression for the v2 design where the post-sync lock refresh
+        could rewrite the lock under various conditions.
+        """
+        ext = tmp_path / "ext-source"
+        ext.mkdir()
+        (ext / "src.c").write_text("// v1")
+        (ext / "nsx-module.yaml").write_text("schema_version: 1\n")
+
+        _write_nsx_yml(app, [{"name": "my-local", "source": {"path": str(ext)}}])
+        lock_app_impl(app)
+        sync_app_impl(app)  # populate modules/
+
+        lock_path_ = app / "nsx.lock"
+        before_text = lock_path_.read_text()
+        before_mtime = lock_path_.stat().st_mtime_ns
+
+        # Mutate modules/<name>/ so sync has work to do.
+        (app / "modules" / "my-local" / "src.c").write_text("// stomped")
+
+        sync_app_impl(app, force=True)
+
+        # Lock must be byte-identical even after a re-vendor.
+        assert lock_path_.read_text() == before_text
+        assert lock_path_.stat().st_mtime_ns == before_mtime
 
 
 # ---------------------------------------------------------------------------
@@ -355,6 +368,11 @@ class TestGitKind:
     def test_git_lock_records_commit(self, app: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         fake_sha = "a" * 40
         monkeypatch.setattr(operations, "resolve_ref", lambda url, ref: (fake_sha, "branch"))
+        monkeypatch.setattr(
+            operations,
+            "hash_git_artifact",
+            lambda url, commit: "sha256:" + "f" * 64,
+        )
 
         _write_nsx_yml(
             app,
@@ -370,6 +388,9 @@ class TestGitKind:
         assert m.kind == "git"
         assert m.commit == fake_sha
         assert m.url == "https://example.com/fake.git"
+        # content_hash is the upstream-artifact hash from
+        # hash_git_artifact, not a hash of modules/<name>/.
+        assert m.content_hash == "sha256:" + "f" * 64
 
     def test_unresolved_when_resolver_fails(
         self, app: Path, monkeypatch: pytest.MonkeyPatch
@@ -396,10 +417,15 @@ class TestGitKind:
     def test_legacy_v1_lock_migrates_in_place(
         self, app: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
     ) -> None:
-        """A v1 nsx.lock on disk must not block ``nsx lock`` from regenerating."""
+        """An older nsx.lock on disk must not block ``nsx lock`` from regenerating."""
 
         fake_sha = "d" * 40
         monkeypatch.setattr(operations, "resolve_ref", lambda url, ref: (fake_sha, "branch"))
+        monkeypatch.setattr(
+            operations,
+            "hash_git_artifact",
+            lambda url, commit: "sha256:" + "e" * 64,
+        )
 
         _write_nsx_yml(
             app,
@@ -434,13 +460,15 @@ class TestGitKind:
         with pytest.raises(LegacyLockError):
             read_lock(app)
 
-        # `nsx lock` rewrites in place under v2.
+        # `nsx lock` rewrites in place under the current schema.
         lock_app_impl(app)
         capsys.readouterr()
 
         lock = read_lock(app)
         assert lock is not None
-        assert lock.schema_version == 2
+        from neuralspotx.nsx_lock import LOCK_SCHEMA_VERSION
+
+        assert lock.schema_version == LOCK_SCHEMA_VERSION
         assert lock.modules["fake-mod"].commit == fake_sha
         assert lock.modules["fake-mod"].tag is None
 
@@ -460,6 +488,11 @@ class TestOutdatedJson:
     ) -> None:
         monkeypatch.setattr(operations, "resolve_ref", lambda url, ref: (sha, "branch"))
         monkeypatch.setattr(operations, "resolve_commit", lambda url, ref: sha)
+        monkeypatch.setattr(
+            operations,
+            "hash_git_artifact",
+            lambda url, commit: "sha256:" + "f" * 64,
+        )
         _write_nsx_yml(
             app,
             [{"name": "fake-mod", "project": "fake-proj", "revision": "main"}],
