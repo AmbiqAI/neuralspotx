@@ -318,9 +318,11 @@ class TestLocalKind:
         (ext / "src.c").write_text("// from local project")
         (ext / "nsx-module.yaml").write_text("schema_version: 1\n")
 
-        # The vendored module dir must exist so the content_hash can be
-        # computed; the resolved path comes from the project's `path`
-        # field (modules/local-proj/), not modules/<module-name>/.
+        # Keep a vendored module dir matching the project's configured
+        # ``path`` (modules/local-proj/) so sync-style code paths can
+        # find it. The lock ``content_hash`` for this local project is
+        # derived from the upstream ``local_path`` (the external
+        # source), not from this vendored directory.
         mod_dir = app / "modules" / "local-proj"
         mod_dir.mkdir(parents=True)
         (mod_dir / "src.c").write_text("// from local project")

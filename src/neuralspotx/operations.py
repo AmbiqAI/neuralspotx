@@ -1609,7 +1609,11 @@ def sync_app_impl(
         elif entry.kind == "local":
             try:
                 vendored_dir = _resolved_module_path(app_dir, name, registry)
-            except Exception:  # noqa: BLE001 — no registry entry; trust the lock
+            except ValueError:
+                # ``registry_entry_for_module`` raises ``ValueError``
+                # when the module isn't in the registry (e.g. ``nsx
+                # module add --local`` writes ``local: true`` without
+                # an override). Trust the path recorded in the lock.
                 vendored_dir = app_dir / entry.vendored_at
         else:
             vendored_dir = _resolved_module_path(app_dir, name, registry)
