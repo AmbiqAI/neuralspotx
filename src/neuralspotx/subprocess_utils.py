@@ -137,6 +137,13 @@ def git_clone_at_commit(url: str, dest: Path, commit: str) -> None:
         if path.exists():
             shutil.rmtree(path, onerror=_on_rm_error)
 
+    # Match ``git clone`` semantics: fail-fast on stale state. If
+    # ``dest`` already exists we remove it up front so neither
+    # ``git init`` nor the fallback ``git clone`` has to reason about
+    # leftover files from a prior interrupted run.
+    _robust_rmtree(dest)
+    if dest.exists():
+        raise SystemExit(f"git_clone_at_commit: refusing to operate on non-empty path {dest}")
     dest.parent.mkdir(parents=True, exist_ok=True)
     try:
         run(["git", "init", "--quiet", str(dest)])

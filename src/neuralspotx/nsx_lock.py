@@ -91,6 +91,7 @@ from __future__ import annotations
 import datetime as _dt
 import hashlib
 import json
+import os
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -324,8 +325,6 @@ def _git_artifact_hash_cache_path() -> Path:
     no eviction is needed.
     """
 
-    import os
-
     override = os.environ.get("NSX_CACHE_DIR")
     if override:
         base = Path(override).expanduser()
@@ -353,11 +352,29 @@ def _write_artifact_hash_cache(cache: dict[str, str]) -> None:
     path = _git_artifact_hash_cache_path()
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
-        # Atomic-ish write: tmp + rename so a concurrent reader never
-        # sees a half-written file.
-        tmp = path.with_suffix(path.suffix + ".tmp")
-        tmp.write_text(json.dumps(cache, sort_keys=True, indent=2), encoding="utf-8")
-        tmp.replace(path)
+        # Atomic write with a unique temp filename so concurrent
+        # writers don't clobber each other's tmp file. The final
+        # ``replace()`` is atomic on POSIX and Windows for same-fs
+        # paths; the last-writer-wins outcome is fine because cache
+        # entries are content-addressed and immutable.
+        import tempfile
+
+        fd, tmp_name = tempfile.mkstemp(
+            prefix=path.name + ".",
+            suffix=".tmp",
+            dir=path.parent,
+        )
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as fh:
+                json.dump(cache, fh, sort_keys=True, indent=2)
+            os.replace(tmp_name, path)
+        except Exception:
+            # Best-effort cleanup of the temp file on any failure.
+            try:
+                os.unlink(tmp_name)
+            except OSError:
+                pass
+            raise
     except OSError:
         # Cache is best-effort: a failure to persist must not break
         # the lock operation.

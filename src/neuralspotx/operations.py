@@ -1620,7 +1620,17 @@ def sync_app_impl(
 
         # ----- vendored: source IS modules/<name>/; verify only -----
         if entry.kind == "vendored":
-            on_disk_hash = hash_tree(vendored_dir) if vendored_dir.exists() else None
+            if not vendored_dir.exists():
+                # Vendored modules are not fetchable -- the source IS
+                # the in-tree directory. A missing path means the
+                # user deleted committed content; sync cannot repair
+                # it without a checkout/restore.
+                raise SystemExit(
+                    f"Vendored module '{name}' is missing on disk "
+                    f"({entry.vendored_at}). Restore the directory "
+                    "(e.g. `git checkout -- modules/`) before running sync."
+                )
+            on_disk_hash = hash_tree(vendored_dir)
             if on_disk_hash != entry.content_hash:
                 msg = (
                     f"Vendored module '{name}' content drifted from lock "
@@ -1635,7 +1645,17 @@ def sync_app_impl(
 
         # ----- unresolved: upstream unreachable; verify only -----
         if entry.kind == "unresolved":
-            on_disk_hash = hash_tree(vendored_dir) if vendored_dir.exists() else None
+            if not vendored_dir.exists():
+                # Upstream is unreachable by definition for unresolved
+                # entries; we cannot repair a missing tree from any
+                # source.
+                raise SystemExit(
+                    f"Unresolved module '{name}' is missing on disk "
+                    f"({entry.vendored_at}) and upstream {entry.url} is "
+                    "unreachable. Restore the vendored directory or "
+                    "re-run `nsx lock` with network access to resolve."
+                )
+            on_disk_hash = hash_tree(vendored_dir)
             if on_disk_hash != entry.content_hash:
                 msg = (
                     f"Unresolved module '{name}' content drifted from lock "
