@@ -207,6 +207,44 @@ class TestSyncFrozen:
 
         sync_app_impl(app, frozen=True)  # must not raise
 
+    def test_frozen_does_not_rewrite_lock(self, app: Path) -> None:
+        """`sync --frozen` is read-only — it must never write nsx.lock.
+
+        Regression for the bug where the post-sync lock refresh ran in
+        a ``finally`` block, so a frozen drift check could silently
+        mutate the file it was checking against.
+        """
+        _make_vendored(app, "my-vend")
+        _write_nsx_yml(app, [{"name": "my-vend", "source": {"vendored": True}}])
+        lock_app_impl(app)
+
+        lock_path_ = app / "nsx.lock"
+        before_mtime = lock_path_.stat().st_mtime_ns
+        before_text = lock_path_.read_text()
+
+        sync_app_impl(app, frozen=True)
+
+        assert lock_path_.stat().st_mtime_ns == before_mtime
+        assert lock_path_.read_text() == before_text
+
+    def test_noop_sync_does_not_rewrite_lock(self, app: Path) -> None:
+        """A no-op `nsx sync` (nothing changed) must not bump nsx.lock.
+
+        Regression for the bug where the post-sync lock refresh ran
+        unconditionally, dirtying a committed lock on every plain
+        ``nsx sync`` even when no module needed re-vendoring.
+        """
+        _make_vendored(app, "my-vend")
+        _write_nsx_yml(app, [{"name": "my-vend", "source": {"vendored": True}}])
+        lock_app_impl(app)
+
+        lock_path_ = app / "nsx.lock"
+        before_text = lock_path_.read_text()
+
+        sync_app_impl(app)  # nothing to do
+
+        assert lock_path_.read_text() == before_text
+
 
 # ---------------------------------------------------------------------------
 # Local kind
