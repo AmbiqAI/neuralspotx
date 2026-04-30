@@ -18,8 +18,9 @@ nsx configure
 nsx build
 ```
 
-To browse or copy a maintained example, grab just that example folder
-out of the repo — you do not need a full clone or a separate workspace:
+To try a maintained example without a git clone or a separate workspace,
+use the snippet below. (Note: this still downloads the full repository
+tarball; `tar` then extracts only the example folder you ask for.)
 
 ```bash
 # One-shot: download the hello_world example and treat it like any app
@@ -33,8 +34,8 @@ nsx flash    # requires an EVB connected via J-Link
 nsx view     # streams SWO output in the terminal
 ```
 
-(If you already have the repo cloned for contributing, `cd
-neuralspotx/examples/hello_world` works the same way.)
+If you already have the repo cloned for contributing,
+`cd neuralspotx/examples/hello_world` works the same way.
 
 `nsx configure` automatically fetches any missing registry modules —
 there is no separate install step.

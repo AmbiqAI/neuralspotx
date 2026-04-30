@@ -12,8 +12,9 @@ All examples target the **Apollo510 EVB** (`apollo510_evb` profile).
 
 The recommended flow is to install `nsx` once and create your own app
 (see [Getting Started](../getting-started/first-app.md)). To try a
-maintained example, grab the folder out of the repo — there is no
-workspace or full clone required:
+maintained example without a git clone or a separate workspace, use the
+snippet below. (Note: this still downloads the full repository tarball;
+`tar` then extracts only the example folder you ask for.)
 
 ```bash
 curl -L https://github.com/AmbiqAI/neuralspotx/archive/refs/heads/main.tar.gz \
@@ -26,8 +27,8 @@ nsx flash    # requires J-Link
 nsx view     # live SWO stream
 ```
 
-(Contributors who already have the repo cloned can simply `cd
-neuralspotx/examples/hello_world` and run the same commands.)
+Contributors who already have the repo cloned can simply
+`cd neuralspotx/examples/hello_world` and run the same commands.
 
 ## Available Examples
 
