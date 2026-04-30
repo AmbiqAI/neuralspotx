@@ -14,8 +14,8 @@ The normal app-developer flow is to install `nsx` once with `pipx` (see
 ```bash
 nsx create-app my_app
 cd my_app
-nsx configure
-nsx build
+nsx configure --app-dir .
+nsx build     --app-dir .
 ```
 
 To try a maintained example without a git clone or a separate workspace,
@@ -38,7 +38,8 @@ If you already have the repo cloned for contributing,
 `cd neuralspotx/examples/hello_world` works the same way.
 
 `nsx configure` automatically fetches any missing registry modules —
-there is no separate install step.
+no separate module-install step is required (the only one-time install
+is `nsx` itself, via `pipx`).
 
 ## Available Examples
 

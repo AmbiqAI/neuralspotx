@@ -51,7 +51,7 @@ Throughout the docs you'll see one universal placeholder path:
 - `<app-dir>` — the directory of a generated or example app (whatever
   you passed to `nsx create-app`, or the path to a checked-out example).
 
-Replace it with your actual path when running commands. Contributor‐
-oriented docs may also reference `<nsx-repo>`, the root of a local
-clone of the `neuralspotx` repository — normal app developers do not
-need one.
+Replace it with your actual path when running commands.
+Contributor-oriented docs may also reference `<nsx-repo>`, the root of
+a local clone of the `neuralspotx` repository — normal app developers
+do not need one.
