@@ -303,7 +303,8 @@ class TestLocalKind:
         m = lock.modules["local-mod"]
         assert m.kind == "local"
         assert m.constraint == "main"
-        assert m.vendored_at == "modules/local-proj"
+        # Normalize separators: Windows produces backslashes here.
+        assert Path(m.vendored_at).as_posix() == "modules/local-proj"
         assert m.content_hash.startswith("sha256:")
 
 
