@@ -181,7 +181,8 @@ class TestSyncFrozen:
         With v3 schema, ``content_hash`` is the upstream-artifact hash
         computed at lock time, so ``nsx lock`` produces correct hashes
         on a fresh tree without ``modules/`` being populated. Sync then
-        materializes from the upstream and never writes the lock.
+        materializes from the upstream, generating ``nsx.lock`` when it is
+        absent, and a later ``--frozen`` sync must not rewrite that lock.
         """
         ext = tmp_path / "ext-source"
         ext.mkdir()
