@@ -1781,13 +1781,21 @@ def sync_app_impl(
         # Mismatch here means upstream content drifted since lock
         # (force-pushed git history, packaged source bumped without a
         # tool_version bump, etc.).
-        post_hash = hash_tree(vendored_dir) if vendored_dir.exists() else None
-        if post_hash != entry.content_hash:
-            print(
-                f"warning: upstream for '{name}' has drifted since lock "
-                f"(expected {entry.content_hash}, got {post_hash}); "
-                "run `nsx lock` to re-record."
-            )
+        #
+        # Skip the verification for ``cmake/nsx``: that path is
+        # unconditionally refreshed by ``_copy_packaged_tree`` at the
+        # end of this function, so its on-disk state mid-loop is
+        # transient and any mismatch here would produce a misleading
+        # "drifted since lock" warning even when the final state is
+        # correct.
+        if vendored_dir != app_dir / "cmake" / "nsx":
+            post_hash = hash_tree(vendored_dir) if vendored_dir.exists() else None
+            if post_hash != entry.content_hash:
+                print(
+                    f"warning: upstream for '{name}' has drifted since lock "
+                    f"(expected {entry.content_hash}, got {post_hash}); "
+                    "run `nsx lock` to re-record."
+                )
         vendored_paths.add(vendored_dir)
         changed += 1
 
@@ -1797,6 +1805,24 @@ def sync_app_impl(
     _copy_packaged_tree("neuralspotx", "cmake", app_dir / "cmake" / "nsx")
     _write_app_module_file(app_dir, nsx_cfg)
     _write_modules_gitignore(app_dir, nsx_cfg)
+
+    # Now that ``cmake/nsx`` has been replaced by _copy_packaged_tree,
+    # verify any packaged lock entry mapped to that path against its
+    # recorded content_hash. Done after the refresh so the warning (if
+    # any) reflects the final on-disk state, not the pre-refresh state.
+    cmake_nsx = app_dir / "cmake" / "nsx"
+    for name, entry in lock.modules.items():
+        if entry.kind != "packaged":
+            continue
+        if (app_dir / entry.vendored_at) != cmake_nsx:
+            continue
+        post_hash = hash_tree(cmake_nsx) if cmake_nsx.exists() else None
+        if post_hash != entry.content_hash:
+            print(
+                f"warning: upstream for '{name}' has drifted since lock "
+                f"(expected {entry.content_hash}, got {post_hash}); "
+                "run `nsx lock` to re-record."
+            )
 
     if changed:
         print(f"Synced {changed} module{'s' if changed != 1 else ''} from nsx.lock.")
