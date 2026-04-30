@@ -24,14 +24,14 @@ tarball; `tar` then extracts only the example folder you ask for.)
 
 ```bash
 # One-shot: download the hello_world example and treat it like any app
-curl -L https://github.com/AmbiqAI/neuralspotx/archive/refs/heads/main.tar.gz \
+curl -fL https://github.com/AmbiqAI/neuralspotx/archive/refs/heads/main.tar.gz \
   | tar -xz -f - --strip-components=2 neuralspotx-main/examples/hello_world
 cd hello_world
 
-nsx configure
-nsx build
-nsx flash    # requires an EVB connected via J-Link
-nsx view     # streams SWO output in the terminal
+nsx configure --app-dir .
+nsx build     --app-dir .
+nsx flash     --app-dir .   # requires an EVB connected via J-Link
+nsx view      --app-dir .   # streams SWO output in the terminal
 ```
 
 If you already have the repo cloned for contributing,

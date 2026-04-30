@@ -17,14 +17,14 @@ snippet below. (Note: this still downloads the full repository tarball;
 `tar` then extracts only the example folder you ask for.)
 
 ```bash
-curl -L https://github.com/AmbiqAI/neuralspotx/archive/refs/heads/main.tar.gz \
+curl -fL https://github.com/AmbiqAI/neuralspotx/archive/refs/heads/main.tar.gz \
   | tar -xz -f - --strip-components=2 neuralspotx-main/examples/hello_world
 cd hello_world
 
-nsx configure
-nsx build
-nsx flash    # requires J-Link
-nsx view     # live SWO stream
+nsx configure --app-dir .
+nsx build     --app-dir .
+nsx flash     --app-dir .   # requires J-Link
+nsx view      --app-dir .   # live SWO stream
 ```
 
 Contributors who already have the repo cloned can simply
