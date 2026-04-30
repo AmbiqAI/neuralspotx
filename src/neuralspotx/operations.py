@@ -1684,11 +1684,18 @@ def sync_app_impl(
                 # which silently skipped re-mirroring when source had
                 # drifted to a hash equal to the lock's old value.)
                 source_dir = Path(project_entry.local_path).expanduser().resolve()
-                source_hash = hash_tree(source_dir) if source_dir.exists() else None
+                if not source_dir.exists():
+                    raise SystemExit(
+                        f"Local source for module '{name}' is missing: "
+                        f"{source_dir} does not exist. "
+                        f"Restore the path or re-register the project with "
+                        f"`nsx module register --project-local-path`."
+                    )
+                source_hash = hash_tree(source_dir)
                 on_disk_hash = hash_tree(vendored_dir) if vendored_dir.exists() else None
 
                 # Detect upstream-source drift since lock.
-                if source_hash is not None and source_hash != entry.content_hash:
+                if source_hash != entry.content_hash:
                     msg = (
                         f"Local source for '{name}' at {source_dir} has drifted "
                         f"since lock (expected {entry.content_hash}, got "
@@ -1699,7 +1706,7 @@ def sync_app_impl(
                     print(f"warning: {msg}")
 
                 # Mirror is already in sync with current source: skip.
-                if not force and source_hash is not None and on_disk_hash == source_hash:
+                if not force and on_disk_hash == source_hash:
                     vendored_paths.add(vendored_dir)
                     continue
 

@@ -637,6 +637,41 @@ class TestPackagedDriftRegression:
         assert second is not None
         assert second.modules[mod].content_hash == first_hash
 
+    def test_sync_repairs_mutated_packaged_tree(self, app: Path) -> None:
+        """Sync must re-copy a packaged module from the wheel resource.
+
+        Regression: previously ``_vendor_packaged_module_into_app``
+        resolved its source via ``_module_metadata_path(...,
+        app_dir=app_dir)``, which prefers an existing app-local
+        vendored copy. If the user mutated that copy, the resolver
+        returned the mutated tree, the same-path no-op short-circuit
+        kicked in, and sync became a no-op — leaving the tree drifted
+        from the lock and producing a perpetual warning loop.
+        """
+        mod = self._pick_packaged_module()
+        _write_nsx_yml(app, [{"name": mod}])
+
+        lock_app_impl(app)
+        sync_app_impl(app)
+
+        lock = read_lock(app)
+        assert lock is not None
+        vendored_at = app / lock.modules[mod].vendored_at
+        assert vendored_at.exists()
+
+        # Drop a stomp file inside the vendored tree.
+        stomp = vendored_at / "STOMP.txt"
+        stomp.write_text("user-modified", encoding="utf-8")
+        from neuralspotx.nsx_lock import hash_tree
+
+        assert hash_tree(vendored_at) != lock.modules[mod].content_hash
+
+        # Sync must re-copy from the wheel resource and remove STOMP.
+        sync_app_impl(app, force=True)
+
+        assert not stomp.exists(), "sync did not repair mutated packaged tree"
+        assert hash_tree(vendored_at) == lock.modules[mod].content_hash
+
 
 # ---------------------------------------------------------------------------
 # `nsx module add --vendored` scaffold

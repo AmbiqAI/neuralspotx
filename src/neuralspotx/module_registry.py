@@ -285,16 +285,24 @@ def _vendor_packaged_module_into_app(
     module_name: str,
     registry: dict[str, Any],
 ) -> None:
-    """Copy a packaged module (board/cmake) from the neuralspotx package into the app."""
+    """Copy a packaged module (board/cmake) from the neuralspotx package into the app.
+
+    Always sources from the packaged wheel resource (never the
+    app-local materialized copy). If we resolved the source via
+    ``_module_metadata_path(..., app_dir=app_dir)`` and the user had
+    mutated ``modules/<name>/``, the resolver would prefer that
+    vendored copy and the subsequent copy would be a same-path no-op,
+    leaving the on-disk tree drifted from the lock indefinitely.
+    """
 
     if not _is_packaged_module(registry, module_name):
         return  # git-hosted modules are cloned, not copied
 
     entry = registry_entry_for_module(registry, module_name)
-    source_metadata = _module_metadata_path(module_name, entry, registry, app_dir=app_dir)
+    # Use the public helper which always passes ``app_dir=None`` and
+    # so always returns the wheel resource path.
+    source_dir = packaged_module_source_dir(module_name, entry, registry)
     destination_dir = _vendored_target_dir(app_dir, module_name, entry.metadata)
-
-    source_dir = source_metadata.parent
 
     if destination_dir.resolve() == source_dir.resolve():
         return

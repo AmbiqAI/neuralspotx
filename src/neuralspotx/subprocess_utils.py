@@ -117,7 +117,23 @@ def git_clone_at_commit(url: str, dest: Path, commit: str) -> None:
     clone + checkout when the server rejects the targeted fetch.
     """
 
-    import shutil
+    import os
+    import stat
+
+    def _on_rm_error(_func, _path, _exc_info):  # noqa: ANN001
+        # git pack/index files can be read-only on Windows; clear the
+        # write bit before retrying the unlink so rmtree can finish.
+        try:
+            os.chmod(_path, stat.S_IWRITE)
+            os.unlink(_path)
+        except OSError:
+            pass
+
+    def _robust_rmtree(path: Path) -> None:
+        import shutil
+
+        if path.exists():
+            shutil.rmtree(path, onerror=_on_rm_error)
 
     dest.parent.mkdir(parents=True, exist_ok=True)
     try:
@@ -128,7 +144,9 @@ def git_clone_at_commit(url: str, dest: Path, commit: str) -> None:
     except subprocess.CalledProcessError:
         # Server doesn't allow fetching arbitrary SHAs, or commit is
         # unreachable from any ref tip. Fall back to a full clone.
-        shutil.rmtree(dest, ignore_errors=True)
+        _robust_rmtree(dest)
+        if dest.exists():
+            raise SystemExit(f"git_clone_at_commit: failed to remove stale partial clone at {dest}")
         run(["git", "clone", url, str(dest)])
         run(["git", "checkout", "--detach", commit], cwd=dest)
 
