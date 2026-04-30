@@ -1464,7 +1464,7 @@ def sync_app_impl(
         # trees), then sync against it. We refresh the lock at the end
         # of this function so the recorded content_hash matches the
         # post-sync vendored trees.
-        print("note: nsx.lock not found; generating one (run `nsx lock` to refresh).")
+        print("note: nsx.lock not found; generating one and refreshing it after sync.")
         lock_app_impl(app_dir)
         lock = read_lock(app_dir)
         assert lock is not None  # noqa: S101 — invariant guaranteed by lock_app_impl

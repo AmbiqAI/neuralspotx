@@ -175,6 +175,24 @@ class TestSyncFrozen:
         with pytest.raises(SystemExit):
             sync_app_impl(app, frozen=True)
 
+    def test_no_lock_sync_then_frozen_passes(self, app: Path) -> None:
+        """Sync from a fresh tree (no nsx.lock) then `--frozen` sync is a no-op.
+
+        Regression for the bug where ``sync_app_impl`` generated the
+        lock *before* vendoring (recording empty-tree content hashes),
+        leaving the lock immediately stale: the next ``sync --frozen``
+        would fail and every subsequent plain sync would re-vendor. The
+        fix is a post-sync lock refresh in the fresh-lock branch.
+        """
+        _make_vendored(app, "my-vend")
+        _write_nsx_yml(app, [{"name": "my-vend", "source": {"vendored": True}}])
+
+        assert not (app / "nsx.lock").exists()
+        sync_app_impl(app)  # generates lock + syncs + refreshes lock
+        assert (app / "nsx.lock").exists()
+
+        sync_app_impl(app, frozen=True)  # must not raise
+
 
 # ---------------------------------------------------------------------------
 # Local kind
