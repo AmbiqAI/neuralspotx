@@ -1498,110 +1498,140 @@ def sync_app_impl(
     # configure, where every entry's pre-vendor content_hash is
     # equal to the empty-tree sha).
     vendored_paths: set[Path] = set()
-    for name, entry in lock.modules.items():
-        # Vendored / unresolved modules don't necessarily have a registry
-        # entry; trust the path recorded in the lock for those.
-        if entry.kind in ("vendored", "unresolved"):
-            vendored_dir = app_dir / entry.vendored_at
-        else:
-            vendored_dir = _resolved_module_path(app_dir, name, registry)
-        on_disk_hash = hash_tree(vendored_dir) if vendored_dir.exists() else None
-
-        if entry.kind == "local":
-            # Source path is mirrored into modules/<name>/. If the module
-            # has a configured local_path (e.g. via source: { path: <p> }),
-            # mirror it into place; otherwise the user is managing the
-            # directory in-tree and we just verify the hash.
-            try:
-                project_entry = _registry_project_entry(registry, entry.project)
-            except Exception:  # noqa: BLE001 — best-effort lookup
-                project_entry = None
-            if project_entry is not None and project_entry.local_path:
-                from .module_registry import _vendor_local_module_into_app
-
-                _vendor_local_module_into_app(app_dir, name, registry)
-                on_disk_hash = hash_tree(vendored_dir) if vendored_dir.exists() else None
-            if frozen and on_disk_hash != entry.content_hash:
-                raise SystemExit(
-                    f"Local module '{name}' content drifted from lock "
-                    f"({entry.vendored_at}). Refusing under --frozen."
-                )
-            continue
-
-        if entry.kind == "vendored":
-            # Committed in the app (source: { vendored: true }) — sync never
-            # writes to it. Verify the on-disk content still matches what the
-            # lock recorded.
-            if on_disk_hash != entry.content_hash:
-                msg = (
-                    f"Vendored module '{name}' content drifted from lock "
-                    f"({entry.vendored_at}). Run `nsx lock` to re-record, "
-                    "or revert the changes."
-                )
-                if frozen:
-                    raise SystemExit(msg)
-                print(f"warning: {msg}")
-            continue
-
-        if entry.kind == "unresolved":
-            # Upstream wasn't reachable when the lock was written. Verify the
-            # on-disk content still matches; can't re-fetch.
-            if on_disk_hash != entry.content_hash:
-                msg = (
-                    f"Unresolved module '{name}' content drifted from lock "
-                    f"({entry.vendored_at}); upstream {entry.url} is not reachable."
-                )
-                if frozen:
-                    raise SystemExit(msg)
-                print(f"warning: {msg}")
-            continue
-
-        needs_refresh = force or (on_disk_hash != entry.content_hash)
-        if not needs_refresh:
-            continue
-
-        # Two modules sharing one resolved path: vendor exactly once
-        # per sync (the first iteration writes the tree; later ones
-        # would otherwise wipe-and-rewrite the identical content).
-        if vendored_dir in vendored_paths:
-            continue
-
-        if frozen and on_disk_hash is not None:
-            raise SystemExit(
-                f"Module '{name}' on-disk content does not match nsx.lock "
-                f"({entry.vendored_at}). Refusing to modify under --frozen."
-            )
-
-        if entry.kind == "packaged":
-            _vendor_packaged_module_into_app(app_dir, name, registry)
-        elif entry.kind == "git":
-            # Re-vendor at the exact locked commit (not the branch tip).
-            if entry.commit:
-                _vendor_git_module_at_commit(app_dir, name, registry, entry.commit)
+    try:
+        for name, entry in lock.modules.items():
+            # Vendored / unresolved modules don't necessarily have a registry
+            # entry; trust the path recorded in the lock for those.
+            if entry.kind in ("vendored", "unresolved"):
+                vendored_dir = app_dir / entry.vendored_at
             else:
-                _update_module_clone(app_dir, name, registry)
-        vendored_paths.add(vendored_dir)
-        changed += 1
+                vendored_dir = _resolved_module_path(app_dir, name, registry)
+            on_disk_hash = hash_tree(vendored_dir) if vendored_dir.exists() else None
 
-    # Always refresh the packaged cmake tree and regenerate modules.cmake +
-    # modules/.gitignore — these are cheap and keep the build inputs aligned.
-    _copy_packaged_tree("neuralspotx", "cmake", app_dir / "cmake" / "nsx")
-    _write_app_module_file(app_dir, nsx_cfg)
-    _write_modules_gitignore(app_dir, nsx_cfg)
+            if entry.kind == "local":
+                # Source path is mirrored into modules/<name>/. If the module
+                # has a configured local_path (e.g. via source: { path: <p> }),
+                # mirror it into place; otherwise the user is managing the
+                # directory in-tree and we just verify the hash.
+                try:
+                    project_entry = _registry_project_entry(registry, entry.project)
+                except Exception:  # noqa: BLE001 — best-effort lookup
+                    project_entry = None
+                if project_entry is not None and project_entry.local_path:
+                    from .module_registry import _vendor_local_module_into_app
 
-    if changed:
-        print(f"Synced {changed} module{'s' if changed != 1 else ''} from nsx.lock.")
-    else:
-        print("All modules already match nsx.lock.")
+                    _vendor_local_module_into_app(app_dir, name, registry)
+                    on_disk_hash = hash_tree(vendored_dir) if vendored_dir.exists() else None
+                if frozen and on_disk_hash != entry.content_hash:
+                    raise SystemExit(
+                        f"Local module '{name}' content drifted from lock "
+                        f"({entry.vendored_at}). Refusing under --frozen."
+                    )
+                continue
 
-    if fresh_lock:
-        # Refresh the lock so its content_hash entries reflect the
-        # post-sync vendored trees. Without this the lock records
-        # empty-tree hashes from before vendoring and every subsequent
-        # sync would re-vendor, plus `nsx sync --frozen` would fail.
-        # Pass quiet=True to avoid a duplicate "Wrote nsx.lock" line
-        # right after the pre-sync write the user already saw.
-        lock_app_impl(app_dir, quiet=True)
+            if entry.kind == "vendored":
+                # Committed in the app (source: { vendored: true }) — sync never
+                # writes to it. Verify the on-disk content still matches what the
+                # lock recorded.
+                if on_disk_hash != entry.content_hash:
+                    msg = (
+                        f"Vendored module '{name}' content drifted from lock "
+                        f"({entry.vendored_at}). Run `nsx lock` to re-record, "
+                        "or revert the changes."
+                    )
+                    if frozen:
+                        raise SystemExit(msg)
+                    print(f"warning: {msg}")
+                continue
+
+            if entry.kind == "unresolved":
+                # Upstream wasn't reachable when the lock was written. Verify the
+                # on-disk content still matches; can't re-fetch.
+                if on_disk_hash != entry.content_hash:
+                    msg = (
+                        f"Unresolved module '{name}' content drifted from lock "
+                        f"({entry.vendored_at}); upstream {entry.url} is not reachable."
+                    )
+                    if frozen:
+                        raise SystemExit(msg)
+                    print(f"warning: {msg}")
+                continue
+
+            needs_refresh = force or (on_disk_hash != entry.content_hash)
+            if not needs_refresh:
+                continue
+
+            # Two modules sharing one resolved path: vendor exactly once
+            # per sync (the first iteration writes the tree; later ones
+            # would otherwise wipe-and-rewrite the identical content).
+            # Validate that subsequent entries don't disagree with what was
+            # already vendored — if two lock entries map to the same path
+            # but expect different content_hashes, the lock is internally
+            # inconsistent and silently picking one would mask the bug.
+            if vendored_dir in vendored_paths:
+                current_hash = hash_tree(vendored_dir) if vendored_dir.exists() else None
+                if current_hash != entry.content_hash:
+                    msg = (
+                        f"Module '{name}' expects content_hash {entry.content_hash} "
+                        f"at {entry.vendored_at}, but that path was already vendored "
+                        f"for another module with hash {current_hash}. "
+                        "Multiple nsx.lock entries resolve to the same vendored "
+                        "path but disagree on its content; run `nsx lock` to "
+                        "refresh the lock."
+                    )
+                    if frozen:
+                        raise SystemExit(msg)
+                    print(f"warning: {msg}")
+                continue
+
+            if frozen and on_disk_hash is not None:
+                raise SystemExit(
+                    f"Module '{name}' on-disk content does not match nsx.lock "
+                    f"({entry.vendored_at}). Refusing to modify under --frozen."
+                )
+
+            if entry.kind == "packaged":
+                _vendor_packaged_module_into_app(app_dir, name, registry)
+            elif entry.kind == "git":
+                # Re-vendor at the exact locked commit (not the branch tip).
+                if entry.commit:
+                    _vendor_git_module_at_commit(app_dir, name, registry, entry.commit)
+                else:
+                    _update_module_clone(app_dir, name, registry)
+            vendored_paths.add(vendored_dir)
+            changed += 1
+
+        # Always refresh the packaged cmake tree and regenerate modules.cmake +
+        # modules/.gitignore — these are cheap and keep the build inputs aligned.
+        _copy_packaged_tree("neuralspotx", "cmake", app_dir / "cmake" / "nsx")
+        _write_app_module_file(app_dir, nsx_cfg)
+        _write_modules_gitignore(app_dir, nsx_cfg)
+
+        if changed:
+            print(f"Synced {changed} module{'s' if changed != 1 else ''} from nsx.lock.")
+        else:
+            print("All modules already match nsx.lock.")
+    finally:
+        if fresh_lock:
+            # Refresh the lock so its content_hash entries reflect the
+            # post-sync vendored trees. Without this the lock records
+            # empty-tree hashes from before vendoring and every subsequent
+            # sync would re-vendor, plus `nsx sync --frozen` would fail.
+            #
+            # Run in a `finally` block so a partial-vendor failure (e.g. a
+            # transient git-clone error mid-loop) still records hashes for
+            # whatever was vendored. Without this, retries would skip the
+            # fresh-lock path (nsx.lock now exists) and inherit the
+            # pre-sync empty-tree hashes for *every* module, causing
+            # repeated re-vendoring or `--frozen` failures until the user
+            # ran `nsx lock` manually.
+            #
+            # quiet=True suppresses a duplicate "Wrote nsx.lock" line
+            # right after the pre-sync write the user already saw.
+            try:
+                lock_app_impl(app_dir, quiet=True)
+            except Exception as exc:  # noqa: BLE001 — never mask the original error
+                print(f"warning: post-sync lock refresh failed: {exc}")
 
 
 def outdated_app_impl(app_dir: Path, *, as_json: bool = False) -> int:

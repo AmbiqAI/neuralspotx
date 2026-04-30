@@ -251,6 +251,61 @@ class TestLocalKind:
         assert m.constraint == "local"
         assert m.content_hash.startswith("sha256:")
 
+    def test_lock_registry_project_local_path_no_url(self, app: Path, tmp_path: Path) -> None:
+        """Registry project with ``local_path`` and no ``url`` locks as local.
+
+        Regression for the case where a registry override declares a
+        project as a local mirror (e.g. via
+        ``nsx module register --project-local-path``) and a module
+        entry references that project. Before the fix,
+        ``_build_lock_for_app`` raised ``SystemExit('... has no URL in
+        registry; cannot lock.')`` even though the project was
+        explicitly local-only.
+        """
+        ext = tmp_path / "ext-proj"
+        ext.mkdir()
+        (ext / "src.c").write_text("// from local project")
+        (ext / "nsx-module.yaml").write_text("schema_version: 1\n")
+
+        # The vendored module dir must exist so the content_hash can be
+        # computed; the resolved path comes from the project's `path`
+        # field (modules/local-proj/), not modules/<module-name>/.
+        mod_dir = app / "modules" / "local-proj"
+        mod_dir.mkdir(parents=True)
+        (mod_dir / "src.c").write_text("// from local project")
+
+        _write_nsx_yml(
+            app,
+            [{"name": "local-mod", "project": "local-proj", "revision": "main"}],
+            registry_overrides={
+                "projects": {
+                    "local-proj": {
+                        # No "url" — only a local_path.
+                        "local_path": str(ext),
+                        "revision": "main",
+                        "path": "modules/local-proj",
+                    }
+                },
+                "modules": {
+                    "local-mod": {
+                        "project": "local-proj",
+                        "revision": "main",
+                        "metadata": "modules/local-proj/nsx-module.yaml",
+                    }
+                },
+            },
+        )
+
+        lock_app_impl(app)  # must not raise "has no URL in registry"
+
+        lock = read_lock(app)
+        assert lock is not None
+        m = lock.modules["local-mod"]
+        assert m.kind == "local"
+        assert m.constraint == "main"
+        assert m.vendored_at == "modules/local-proj"
+        assert m.content_hash.startswith("sha256:")
+
 
 # ---------------------------------------------------------------------------
 # Git + Unresolved kinds (monkeypatched resolver)
