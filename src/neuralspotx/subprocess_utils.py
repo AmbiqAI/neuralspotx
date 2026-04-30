@@ -122,10 +122,12 @@ def git_clone_at_commit(url: str, dest: Path, commit: str) -> None:
 
     def _on_rm_error(_func, _path, _exc_info):  # noqa: ANN001
         # git pack/index files can be read-only on Windows; clear the
-        # write bit before retrying the unlink so rmtree can finish.
+        # write bit and retry the original failing op (which may be
+        # ``os.unlink`` for files or ``os.rmdir`` for directories) so
+        # rmtree can finish in both cases.
         try:
             os.chmod(_path, stat.S_IWRITE)
-            os.unlink(_path)
+            _func(_path)
         except OSError:
             pass
 

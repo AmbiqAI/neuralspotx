@@ -114,6 +114,21 @@ def _load_module_metadata(
     return data
 
 
+def packaged_module_metadata_path(
+    module_name: str,
+    registry_entry: RegistryModuleEntry,
+    registry: dict[str, Any],
+) -> Path:
+    """Resolve the ``nsx-module.yaml`` path for a *packaged* module.
+
+    Companion to :func:`packaged_module_source_dir`; always passes
+    ``app_dir=None`` so the result is the wheel resource path, not
+    an app-local materialized copy.
+    """
+
+    return _module_metadata_path(module_name, registry_entry, registry, app_dir=None)
+
+
 def packaged_module_source_dir(
     module_name: str,
     registry_entry: RegistryModuleEntry,
@@ -128,10 +143,10 @@ def packaged_module_source_dir(
 
     Returns the directory containing ``nsx-module.yaml`` (i.e. the
     source root); callers that want the metadata file itself can use
-    ``packaged_module_metadata_path``.
+    :func:`packaged_module_metadata_path`.
     """
 
-    return _module_metadata_path(module_name, registry_entry, registry, app_dir=None).parent
+    return packaged_module_metadata_path(module_name, registry_entry, registry).parent
 
 
 def _ensure_module_cloned(
