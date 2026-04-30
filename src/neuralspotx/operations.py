@@ -1227,8 +1227,10 @@ def _build_lock_for_app(
             # Project has no upstream URL but does declare a local source
             # path (e.g. registered via `nsx module register
             # --project-local-path`). Treat it like a local mirror: hash
-            # whatever was vendored into modules/<name>/ and skip
-            # ls-remote.
+            # the resolved vendored directory (which comes from the
+            # registry project's `path` field, typically
+            # `modules/<project>/`, not necessarily `modules/<name>/`)
+            # and skip ls-remote.
             if project_entry.local_path:
                 vendored_dir = _resolved_module_path(app_dir, name, registry)
                 rel = (
@@ -1509,10 +1511,29 @@ def sync_app_impl(
             on_disk_hash = hash_tree(vendored_dir) if vendored_dir.exists() else None
 
             if entry.kind == "local":
-                # Source path is mirrored into modules/<name>/. If the module
-                # has a configured local_path (e.g. via source: { path: <p> }),
-                # mirror it into place; otherwise the user is managing the
-                # directory in-tree and we just verify the hash.
+                # Source path is mirrored into the resolved module dir
+                # (typically modules/<project>/). If the module has a
+                # configured local_path (e.g. via source: { path: <p> }),
+                # mirror it into place; otherwise the user is managing
+                # the directory in-tree and we just verify the hash.
+                # Detect duplicate-resolution conflicts the same way the
+                # git/packaged path does — if two local entries share
+                # the same resolved dir but disagree on content_hash,
+                # raise under --frozen and warn otherwise instead of
+                # silently re-mirroring on top of the previous result.
+                if vendored_dir in vendored_paths:
+                    current_hash = hash_tree(vendored_dir) if vendored_dir.exists() else None
+                    if current_hash != entry.content_hash:
+                        msg = (
+                            f"Local module '{name}' expects content_hash "
+                            f"{entry.content_hash} at {entry.vendored_at}, but that "
+                            f"path was already vendored for another module with "
+                            f"hash {current_hash}."
+                        )
+                        if frozen:
+                            raise SystemExit(msg)
+                        print(f"warning: {msg}")
+                    continue
                 try:
                     project_entry = _registry_project_entry(registry, entry.project)
                 except Exception:  # noqa: BLE001 — best-effort lookup
@@ -1527,6 +1548,7 @@ def sync_app_impl(
                         f"Local module '{name}' content drifted from lock "
                         f"({entry.vendored_at}). Refusing under --frozen."
                     )
+                vendored_paths.add(vendored_dir)
                 continue
 
             if entry.kind == "vendored":
@@ -1559,6 +1581,11 @@ def sync_app_impl(
 
             needs_refresh = force or (on_disk_hash != entry.content_hash)
             if not needs_refresh:
+                # Even when no work is needed, register this resolved
+                # path so a *later* entry sharing the same resolved dir
+                # can short-circuit (and trigger the duplicate-content
+                # check) instead of repeating the wipe-and-vendor.
+                vendored_paths.add(vendored_dir)
                 continue
 
             # Two modules sharing one resolved path: vendor exactly once
@@ -1630,6 +1657,12 @@ def sync_app_impl(
             # right after the pre-sync write the user already saw.
             try:
                 lock_app_impl(app_dir, quiet=True)
+            except SystemExit as exc:
+                # lock_app_impl uses SystemExit for user-facing errors;
+                # downgrade to a warning here so we never mask the
+                # original failure (or override a successful sync) just
+                # because a post-sync re-lock couldn't run.
+                print(f"warning: post-sync lock refresh failed: {exc}")
             except Exception as exc:  # noqa: BLE001 — never mask the original error
                 print(f"warning: post-sync lock refresh failed: {exc}")
 
