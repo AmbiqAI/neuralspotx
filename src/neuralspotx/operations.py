@@ -1545,9 +1545,13 @@ def sync_app_impl(
     upstream would produce, nothing is written.
 
     Args:
-        frozen: Error on any drift (lock vs upstream, or lock vs
-            on-disk for vendored/in-tree-local kinds) instead of
-            correcting it. CI / reproducibility mode.
+        frozen: Read-only mode. Verify that the on-disk vendored tree
+            matches each lock entry's ``content_hash`` and raise
+            ``SystemExit`` on any mismatch instead of correcting it.
+            Also raises if ``nsx.yml`` has changed since ``nsx.lock``
+            was written (manifest-hash drift). This does NOT detect
+            upstream drift on its own — ``nsx outdated`` is the tool
+            for comparing the lock against current upstream HEADs.
         force: Re-vendor every fetchable module even if its on-disk
             tree already matches the locked content_hash.
     """
@@ -1572,7 +1576,7 @@ def sync_app_impl(
         # so the recorded content_hash is correct without ``modules/``
         # being populated first.
         print("note: nsx.lock not found; generating from manifest.")
-        lock_app_impl(app_dir)
+        lock_app_impl(app_dir, quiet=True)
         lock = read_lock(app_dir)
         assert lock is not None  # noqa: S101 — invariant guaranteed by lock_app_impl
 
