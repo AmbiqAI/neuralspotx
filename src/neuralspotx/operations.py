@@ -1462,7 +1462,6 @@ def sync_app_impl(
     )
 
     lock = read_lock(app_dir)
-    fresh_lock = False
     if lock is None:
         if frozen:
             raise SystemExit(
@@ -1470,14 +1469,13 @@ def sync_app_impl(
             )
         # No lock yet — produce a preliminary one (commits + tags
         # resolved, but content_hash is computed against possibly-empty
-        # trees), then sync against it. We refresh the lock at the end
-        # of this function so the recorded content_hash matches the
-        # post-sync vendored trees.
+        # trees), then sync against it. The unconditional post-sync
+        # refresh in the `finally` block below records the correct
+        # post-vendor hashes.
         print("note: nsx.lock not found; generating one and refreshing it after sync.")
         lock_app_impl(app_dir)
         lock = read_lock(app_dir)
         assert lock is not None  # noqa: S101 — invariant guaranteed by lock_app_impl
-        fresh_lock = True
 
     nsx_cfg = _load_app_cfg(app_dir)
     base_registry = _load_registry()
@@ -1503,9 +1501,18 @@ def sync_app_impl(
     try:
         for name, entry in lock.modules.items():
             # Vendored / unresolved modules don't necessarily have a registry
-            # entry; trust the path recorded in the lock for those.
+            # entry; trust the path recorded in the lock for those. Local
+            # entries may also be locked without a registry entry (e.g.
+            # `nsx module add --local` writes `local: true` without a
+            # registry override) — fall back to the lock-recorded path
+            # in that case so _resolved_module_path() doesn't raise.
             if entry.kind in ("vendored", "unresolved"):
                 vendored_dir = app_dir / entry.vendored_at
+            elif entry.kind == "local":
+                try:
+                    vendored_dir = _resolved_module_path(app_dir, name, registry)
+                except Exception:  # noqa: BLE001 — no registry entry; trust the lock
+                    vendored_dir = app_dir / entry.vendored_at
             else:
                 vendored_dir = _resolved_module_path(app_dir, name, registry)
             on_disk_hash = hash_tree(vendored_dir) if vendored_dir.exists() else None
@@ -1639,32 +1646,37 @@ def sync_app_impl(
         else:
             print("All modules already match nsx.lock.")
     finally:
-        if fresh_lock:
-            # Refresh the lock so its content_hash entries reflect the
-            # post-sync vendored trees. Without this the lock records
-            # empty-tree hashes from before vendoring and every subsequent
-            # sync would re-vendor, plus `nsx sync --frozen` would fail.
-            #
-            # Run in a `finally` block so a partial-vendor failure (e.g. a
-            # transient git-clone error mid-loop) still records hashes for
-            # whatever was vendored. Without this, retries would skip the
-            # fresh-lock path (nsx.lock now exists) and inherit the
-            # pre-sync empty-tree hashes for *every* module, causing
-            # repeated re-vendoring or `--frozen` failures until the user
-            # ran `nsx lock` manually.
-            #
-            # quiet=True suppresses a duplicate "Wrote nsx.lock" line
-            # right after the pre-sync write the user already saw.
-            try:
-                lock_app_impl(app_dir, quiet=True)
-            except SystemExit as exc:
-                # lock_app_impl uses SystemExit for user-facing errors;
-                # downgrade to a warning here so we never mask the
-                # original failure (or override a successful sync) just
-                # because a post-sync re-lock couldn't run.
-                print(f"warning: post-sync lock refresh failed: {exc}")
-            except Exception as exc:  # noqa: BLE001 — never mask the original error
-                print(f"warning: post-sync lock refresh failed: {exc}")
+        # Refresh the lock so its content_hash entries reflect the
+        # post-sync vendored trees. We do this on *every* run (not
+        # just on the no-lock-yet path) for two reasons:
+        #
+        # 1. fresh-lock first runs record empty-tree content_hashes
+        #    pre-vendor; without this refresh `--frozen` would fail
+        #    on the next run.
+        # 2. If a first run created a fresh lock but failed partway
+        #    through vendoring, only the modules vendored before
+        #    the failure had their hashes recorded. A subsequent
+        #    successful run would vendor the rest but, because
+        #    `nsx.lock` already exists, would skip the fresh-lock
+        #    branch — and without an unconditional refresh, the
+        #    stale empty-tree hashes for the late modules would
+        #    persist and force perpetual re-vendoring / `--frozen`
+        #    failures until the user ran `nsx lock` manually.
+        #
+        # Refreshing on every sync converges the lock after the
+        # first successful run. quiet=True suppresses a duplicate
+        # "Wrote nsx.lock" line on fresh-lock runs (where the
+        # pre-sync write already produced one).
+        try:
+            lock_app_impl(app_dir, quiet=True)
+        except SystemExit as exc:
+            # lock_app_impl uses SystemExit for user-facing errors;
+            # downgrade to a warning here so we never mask the
+            # original failure (or override a successful sync) just
+            # because a post-sync re-lock couldn't run.
+            print(f"warning: post-sync lock refresh failed: {exc}")
+        except Exception as exc:  # noqa: BLE001 — never mask the original error
+            print(f"warning: post-sync lock refresh failed: {exc}")
 
 
 def outdated_app_impl(app_dir: Path, *, as_json: bool = False) -> int:
