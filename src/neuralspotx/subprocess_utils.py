@@ -106,13 +106,31 @@ def git_clone(url: str, dest: Path, *, revision: str | None = None, depth: int =
 def git_clone_at_commit(url: str, dest: Path, commit: str) -> None:
     """Clone *url* into *dest* and check out the exact *commit*.
 
-    Used by ``nsx sync`` to faithfully restore the locked SHA. A full
-    (non-shallow) clone is used because shallow clones do not always
-    contain arbitrary historical commits.
+    Used by ``nsx sync`` to faithfully restore the locked SHA, and by
+    ``nsx_lock.hash_git_artifact`` to compute the upstream-artifact
+    hash for git lock entries.
+
+    Tries a shallow ``git fetch --depth 1 <commit>`` first to avoid
+    transferring full history; this works on hosts that allow fetching
+    arbitrary SHAs (modern GitHub does, with
+    ``uploadpack.allowReachableSHA1InWant``). Falls back to a full
+    clone + checkout when the server rejects the targeted fetch.
     """
 
-    run(["git", "clone", url, str(dest)])
-    run(["git", "checkout", "--detach", commit], cwd=dest)
+    import shutil
+
+    dest.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        run(["git", "init", "--quiet", str(dest)])
+        run(["git", "remote", "add", "origin", url], cwd=dest)
+        run(["git", "fetch", "--depth", "1", "--quiet", "origin", commit], cwd=dest)
+        run(["git", "checkout", "--detach", "--quiet", "FETCH_HEAD"], cwd=dest)
+    except subprocess.CalledProcessError:
+        # Server doesn't allow fetching arbitrary SHAs, or commit is
+        # unreachable from any ref tip. Fall back to a full clone.
+        shutil.rmtree(dest, ignore_errors=True)
+        run(["git", "clone", url, str(dest)])
+        run(["git", "checkout", "--detach", commit], cwd=dest)
 
 
 def git_fetch(repo: Path, *, remote: str = "origin") -> None:

@@ -258,6 +258,40 @@ class TestSyncFrozen:
         assert lock_path_.read_text() == before_text
         assert lock_path_.stat().st_mtime_ns == before_mtime
 
+    def test_sync_detects_local_source_drift(self, app: Path, tmp_path: Path) -> None:
+        """Sync must mirror upstream-source changes even when modules/ matches the lock.
+
+        Regression: previously sync compared
+        ``hash_tree(modules/<name>/) == entry.content_hash`` to decide
+        whether to re-mirror a ``kind=local`` entry whose
+        ``content_hash`` is the upstream-source hash. If the source
+        had drifted but the on-disk mirror still matched the lock's
+        old hash, sync silently skipped re-mirroring and the user
+        kept seeing stale source — and ``--frozen`` failed to flag
+        the drift.
+        """
+        ext = tmp_path / "ext-source"
+        ext.mkdir()
+        (ext / "src.c").write_text("// v1")
+        (ext / "nsx-module.yaml").write_text("schema_version: 1\n")
+
+        _write_nsx_yml(app, [{"name": "my-local", "source": {"path": str(ext)}}])
+        lock_app_impl(app)
+        sync_app_impl(app)
+        assert (app / "modules" / "my-local" / "src.c").read_text() == "// v1"
+
+        # Drift the upstream source; the on-disk mirror still matches
+        # the lock's recorded content_hash (it's the v1-source hash).
+        (ext / "src.c").write_text("// v2")
+
+        # --frozen must surface the upstream drift.
+        with pytest.raises(SystemExit):
+            sync_app_impl(app, frozen=True)
+
+        # A plain sync must update the mirror to match current source.
+        sync_app_impl(app)
+        assert (app / "modules" / "my-local" / "src.c").read_text() == "// v2"
+
 
 # ---------------------------------------------------------------------------
 # Local kind

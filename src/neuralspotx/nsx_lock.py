@@ -90,6 +90,7 @@ from __future__ import annotations
 
 import datetime as _dt
 import hashlib
+import json
 import subprocess
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -313,7 +314,57 @@ def hash_file(path: Path) -> str:
     return "sha256:" + h.hexdigest()
 
 
-def hash_git_artifact(url: str, commit: str) -> str:
+def _git_artifact_hash_cache_path() -> Path:
+    """Return the path to the persistent ``(url, commit) -> hash`` cache file.
+
+    Honours ``NSX_CACHE_DIR`` if set, else falls back to
+    ``$XDG_CACHE_HOME/nsx`` or ``~/.cache/nsx``. The cache is a flat
+    JSON object keyed by ``"<url>@<commit>"``; entries are
+    immutable (a content hash never changes for a given commit), so
+    no eviction is needed.
+    """
+
+    import os
+
+    override = os.environ.get("NSX_CACHE_DIR")
+    if override:
+        base = Path(override).expanduser()
+    else:
+        xdg = os.environ.get("XDG_CACHE_HOME")
+        base = Path(xdg).expanduser() if xdg else Path.home() / ".cache"
+        base = base / "nsx"
+    return base / "git-artifact-hashes.json"
+
+
+def _read_artifact_hash_cache() -> dict[str, str]:
+    path = _git_artifact_hash_cache_path()
+    if not path.exists():
+        return {}
+    try:
+        data = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return {k: v for k, v in data.items() if isinstance(k, str) and isinstance(v, str)}
+
+
+def _write_artifact_hash_cache(cache: dict[str, str]) -> None:
+    path = _git_artifact_hash_cache_path()
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+        # Atomic-ish write: tmp + rename so a concurrent reader never
+        # sees a half-written file.
+        tmp = path.with_suffix(path.suffix + ".tmp")
+        tmp.write_text(json.dumps(cache, sort_keys=True, indent=2), encoding="utf-8")
+        tmp.replace(path)
+    except OSError:
+        # Cache is best-effort: a failure to persist must not break
+        # the lock operation.
+        pass
+
+
+def hash_git_artifact(url: str, commit: str, *, use_cache: bool = True) -> str:
     """Hash the working tree at *commit* of the repo at *url*.
 
     Clones the repo into a tempdir at the exact commit, strips ``.git``,
@@ -326,10 +377,23 @@ def hash_git_artifact(url: str, commit: str) -> str:
     Used by ``nsx lock`` to compute and record the upstream-artifact
     integrity hash for ``kind=git`` entries. Other callers may use it
     to compare a remote git artifact against the value stored in
-    ``nsx.lock``. The clone is discarded; for repeated calls against
-    the same ``(url, commit)`` pair within a single ``nsx``
-    invocation, callers should cache the result.
+    ``nsx.lock``. The clone is discarded.
+
+    Caching: ``(url, commit) -> hash`` is content-addressed and
+    immutable, so results are persisted to a user cache file
+    (``~/.cache/nsx/git-artifact-hashes.json`` by default; override
+    with ``NSX_CACHE_DIR``) and reused across processes. Pass
+    ``use_cache=False`` to force a fresh clone-and-hash. Callers that
+    invoke this many times in one run should also memoize within the
+    process to avoid the JSON round-trip.
     """
+
+    cache_key = f"{url}@{commit}"
+    if use_cache:
+        cache = _read_artifact_hash_cache()
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
 
     # Imported lazily to avoid a circular import at module load time
     # (subprocess_utils is a leaf, but git_clone_at_commit pulls in tool
@@ -348,7 +412,13 @@ def hash_git_artifact(url: str, commit: str) -> str:
             import shutil
 
             shutil.rmtree(git_dir, ignore_errors=True)
-        return hash_tree(clone_dir)
+        result = hash_tree(clone_dir)
+
+    if use_cache:
+        cache = _read_artifact_hash_cache()
+        cache[cache_key] = result
+        _write_artifact_hash_cache(cache)
+    return result
 
 
 # ---------------------------------------------------------------------------

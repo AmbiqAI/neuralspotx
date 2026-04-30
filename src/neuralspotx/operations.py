@@ -1241,17 +1241,13 @@ def _build_lock_for_app(
 
         if _is_packaged_module(registry, name):
             # Source IS the packaged resource directory inside the
-            # ``neuralspotx`` wheel. Hash that, not the on-disk copy:
-            # pass ``app_dir=None`` so ``_module_metadata_path`` skips
-            # the app-local-vendored / app-local-clone fallbacks and
-            # resolves directly to the packaged wheel resource. This
-            # preserves the v3 invariant that ``content_hash`` is the
-            # upstream artifact, never a (possibly user-modified)
-            # materialized tree under ``modules/<name>/``.
-            from .module_registry import _module_metadata_path
+            # ``neuralspotx`` wheel. Use the public helper so callers
+            # don't depend on a private resolution function and so the
+            # path always points at the wheel resource, never an
+            # app-local materialized copy.
+            from .module_registry import packaged_module_source_dir
 
-            source_metadata = _module_metadata_path(name, entry, registry, app_dir=None)
-            source_dir = source_metadata.parent
+            source_dir = packaged_module_source_dir(name, entry, registry)
             vendored_dir = _resolved_module_path(app_dir, name, registry)
             rel = (
                 str(vendored_dir.relative_to(app_dir))
@@ -1678,31 +1674,42 @@ def sync_app_impl(
                 project_entry = None
 
             if project_entry is not None and project_entry.local_path:
-                # Source path is the upstream. Vendor by mirroring it
-                # into modules/<project>/. Skip the copy when the tree
-                # already matches the lock's content_hash (it's the
-                # source-path hash, so this also detects upstream
-                # drift).
+                # ``content_hash`` is the hash of the upstream source
+                # directory (``project_entry.local_path``), not the
+                # vendored mirror. Compare against the live source
+                # tree to detect upstream drift; compare on-disk vs
+                # source to decide whether the mirror needs an
+                # update. (Bug fix: previously we compared
+                # ``hash_tree(vendored_dir) == entry.content_hash``,
+                # which silently skipped re-mirroring when source had
+                # drifted to a hash equal to the lock's old value.)
+                source_dir = Path(project_entry.local_path).expanduser().resolve()
+                source_hash = hash_tree(source_dir) if source_dir.exists() else None
                 on_disk_hash = hash_tree(vendored_dir) if vendored_dir.exists() else None
-                if not force and on_disk_hash == entry.content_hash:
+
+                # Detect upstream-source drift since lock.
+                if source_hash is not None and source_hash != entry.content_hash:
+                    msg = (
+                        f"Local source for '{name}' at {source_dir} has drifted "
+                        f"since lock (expected {entry.content_hash}, got "
+                        f"{source_hash}); run `nsx lock` to re-record."
+                    )
+                    if frozen:
+                        raise SystemExit(msg)
+                    print(f"warning: {msg}")
+
+                # Mirror is already in sync with current source: skip.
+                if not force and source_hash is not None and on_disk_hash == source_hash:
                     vendored_paths.add(vendored_dir)
                     continue
+
                 if frozen:
                     raise SystemExit(
-                        f"Local module '{name}' on-disk content does not match nsx.lock "
-                        f"({entry.vendored_at}). Refusing under --frozen."
+                        f"Local module '{name}' mirror at {entry.vendored_at} "
+                        f"does not match source {source_dir}. Refusing under "
+                        "--frozen."
                     )
                 _vendor_local_module_into_app(app_dir, name, registry)
-                # After mirroring, the tree should equal the
-                # source-path hash recorded at lock time. If it
-                # doesn't, the source has drifted since lock.
-                post_hash = hash_tree(vendored_dir) if vendored_dir.exists() else None
-                if post_hash != entry.content_hash:
-                    print(
-                        f"warning: local source for '{name}' has drifted since lock "
-                        f"(expected {entry.content_hash}, got {post_hash}); "
-                        "run `nsx lock` to re-record."
-                    )
                 vendored_paths.add(vendored_dir)
                 changed += 1
                 continue

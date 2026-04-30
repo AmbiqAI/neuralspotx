@@ -114,6 +114,26 @@ def _load_module_metadata(
     return data
 
 
+def packaged_module_source_dir(
+    module_name: str,
+    registry_entry: RegistryModuleEntry,
+    registry: dict[str, Any],
+) -> Path:
+    """Resolve the source directory for a *packaged* module.
+
+    Public API for callers (e.g. ``nsx_lock``) that need the wheel
+    resource path without consulting any app-local materialized copy.
+    Always passes ``app_dir=None`` so the result is the upstream
+    artifact, never an on-disk vendored tree under ``modules/``.
+
+    Returns the directory containing ``nsx-module.yaml`` (i.e. the
+    source root); callers that want the metadata file itself can use
+    ``packaged_module_metadata_path``.
+    """
+
+    return _module_metadata_path(module_name, registry_entry, registry, app_dir=None).parent
+
+
 def _ensure_module_cloned(
     app_dir: Path,
     module_name: str,
