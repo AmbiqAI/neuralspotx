@@ -16,6 +16,7 @@ from .constants import (
     DEFAULT_SOC_FOR_BOARD,
     DEFAULT_TOOLCHAIN,
 )
+from .file_lock import app_lock
 from .metadata import load_yaml, validate_nsx_module_metadata
 from .models import ModuleEntry, ProjectEntry
 from .module_registry import (
@@ -693,6 +694,22 @@ def view_app_impl(
         viewer_proc.wait()
     except subprocess.CalledProcessError as exc:
         raise SystemExit(format_subprocess_error(exc, context="View")) from None
+    except KeyboardInterrupt:
+        # Ctrl-C must take the viewer down with us; otherwise SWO/RTT
+        # subprocesses can keep running detached and hold the SEGGER
+        # debug interface, blocking subsequent ``nsx flash``/``view``
+        # invocations until the user manually kills them.
+        if viewer_proc is not None and viewer_proc.poll() is None:
+            viewer_proc.terminate()
+            try:
+                viewer_proc.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                viewer_proc.kill()
+                try:
+                    viewer_proc.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    pass
+        raise
     return resolved_build_dir
 
 
@@ -1107,6 +1124,7 @@ def _build_lock_for_app(
     app_dir: Path,
     *,
     previous: NsxLock | None = None,
+    write_side_effects: bool = True,
 ) -> NsxLock:
     """Resolve every module in nsx.yml to a commit + content hash.
 
@@ -1133,6 +1151,11 @@ def _build_lock_for_app(
     Re-uses entries from *previous* (the existing lock) when the
     constraint is unchanged \u2014 avoids redundant ``git ls-remote`` calls
     *and* avoids re-cloning to recompute the upstream hash.
+
+    When ``write_side_effects`` is False, the build-glue side effects
+    (``cmake/nsx/`` copy, ``modules.cmake``, ``modules/.gitignore``)
+    are skipped. ``nsx lock --check`` uses this so a read-only check
+    truly does not modify the on-disk app.
     """
 
     from .metadata import registry_entry_for_module
@@ -1146,14 +1169,15 @@ def _build_lock_for_app(
     vendored_names = _vendored_module_names(nsx_cfg)
     tool_version = _nsx_tool_version()
 
-    # Regenerate the deterministic side-effects that ``nsx sync`` produces
-    # at the end of every run. These are not module trees; they are the
-    # build glue (cmake helpers, modules.cmake, modules/.gitignore) that
-    # lives outside ``modules/<name>/`` and is therefore not covered by
-    # any module's ``content_hash``.
-    _copy_packaged_tree("neuralspotx", "cmake", app_dir / "cmake" / "nsx")
-    _write_app_module_file(app_dir, nsx_cfg)
-    _write_modules_gitignore(app_dir, nsx_cfg)
+    if write_side_effects:
+        # Regenerate the deterministic side-effects that ``nsx sync`` produces
+        # at the end of every run. These are not module trees; they are the
+        # build glue (cmake helpers, modules.cmake, modules/.gitignore) that
+        # lives outside ``modules/<name>/`` and is therefore not covered by
+        # any module's ``content_hash``.
+        _copy_packaged_tree("neuralspotx", "cmake", app_dir / "cmake" / "nsx")
+        _write_app_module_file(app_dir, nsx_cfg)
+        _write_modules_gitignore(app_dir, nsx_cfg)
 
     lock = NsxLock(
         generated_at=utcnow_iso(),
@@ -1436,6 +1460,27 @@ def lock_app_impl(
         The path to the (would-be) ``nsx.lock``.
     """
 
+    # ``--check`` is read-only (no writes to ``nsx.lock`` or build glue),
+    # so it does not need the per-app advisory lock and CI can verify
+    # multiple apps in parallel without contention.
+    if check:
+        return _lock_app_impl_unlocked(
+            app_dir, update=update, modules=modules, check=True, quiet=quiet
+        )
+    with app_lock(app_dir):
+        return _lock_app_impl_unlocked(
+            app_dir, update=update, modules=modules, check=False, quiet=quiet
+        )
+
+
+def _lock_app_impl_unlocked(
+    app_dir: Path,
+    *,
+    update: bool = False,
+    modules: list[str] | None = None,
+    check: bool = False,
+    quiet: bool = False,
+) -> Path:
     previous = read_lock(app_dir, allow_legacy=True)
     on_disk_lock = previous  # capture before update-mutation
 
@@ -1455,7 +1500,7 @@ def lock_app_impl(
         elif previous and not modules:
             previous = None  # full refresh
 
-    lock = _build_lock_for_app(app_dir, previous=previous)
+    lock = _build_lock_for_app(app_dir, previous=previous, write_side_effects=not check)
     lock_file = lock_path(app_dir)
 
     if check:
@@ -1560,6 +1605,16 @@ def sync_app_impl(
             tree already matches the locked content_hash.
     """
 
+    with app_lock(app_dir):
+        _sync_app_impl_unlocked(app_dir, frozen=frozen, force=force)
+
+
+def _sync_app_impl_unlocked(
+    app_dir: Path,
+    *,
+    frozen: bool = False,
+    force: bool = False,
+) -> None:
     from .module_registry import (
         _update_module_clone,
         _vendor_git_module_at_commit,
@@ -1940,5 +1995,6 @@ def update_app_impl(
     ``nsx sync``.
     """
 
-    lock_app_impl(app_dir, update=True, modules=modules)
-    sync_app_impl(app_dir)
+    with app_lock(app_dir):
+        lock_app_impl(app_dir, update=True, modules=modules)
+        sync_app_impl(app_dir)
