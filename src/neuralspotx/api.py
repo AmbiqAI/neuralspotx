@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -49,13 +49,17 @@ class AppActionRequest:
             disables the timeout.  When the budget elapses, the entire
             child process group is SIGTERM/SIGKILL'd and
             :class:`NSXError` is raised.
+
+    ``timeout_s`` is keyword-only so subclasses (e.g. :class:`AppBuildRequest`)
+    can keep their existing positional argument order.  Construct with
+    ``AppBuildRequest(app_dir, target="all", jobs=4, timeout_s=300)``.
     """
 
     app_dir: PathLike
     board: str | None = None
     build_dir: PathLike | None = None
     toolchain: str | None = None
-    timeout_s: float | None = None
+    timeout_s: float | None = field(default=None, kw_only=True)
 
 
 @dataclass(slots=True)

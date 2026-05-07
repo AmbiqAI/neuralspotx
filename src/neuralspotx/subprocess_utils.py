@@ -114,6 +114,13 @@ def run(
     except subprocess.TimeoutExpired:
         _terminate_tree(proc)
         raise subprocess.TimeoutExpired(cmd, effective) from None
+    except KeyboardInterrupt:
+        # ``start_new_session=True`` puts the child in its own process
+        # group, so the Ctrl-C the user typed in our terminal does NOT
+        # propagate to it.  Kill the whole tree before re-raising,
+        # otherwise hung builds/flashes keep running in the background.
+        _terminate_tree(proc)
+        raise
     if rc != 0:
         raise subprocess.CalledProcessError(rc, cmd)
 
@@ -147,6 +154,11 @@ def run_capture(
         except Exception:  # noqa: BLE001
             out, err = "", ""
         raise subprocess.TimeoutExpired(cmd, effective, output=out, stderr=err) from None
+    except KeyboardInterrupt:
+        # See note in :func:`run` — ``start_new_session`` means SIGINT
+        # does not propagate; tear the tree down before re-raising.
+        _terminate_tree(proc)
+        raise
     if proc.returncode != 0:
         raise subprocess.CalledProcessError(proc.returncode, cmd, output=out, stderr=err)
     return subprocess.CompletedProcess(cmd, proc.returncode, stdout=out, stderr=err)
