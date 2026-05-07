@@ -426,8 +426,9 @@ enter_sdk5_power_measurement(void *benchmark_arg)
     /* --- Register dump: capture final state before measurement --- */
     dump_power_registers();
 
-    /* Signal ACTIVE phase to Joulescope before entering the steady-state
-     * CoreMark loop. */
+    /* Signal ACTIVE phase to Joulescope before entering the
+     * SDK5-mimic steady-state loop (calls iterate(benchmark_arg) —
+     * a CoreMark workload run from ITCM). */
     am_hal_gpio_output_set(NS_POWER_MONITOR_GPIO_0);
     am_hal_gpio_output_clear(NS_POWER_MONITOR_GPIO_1);
 

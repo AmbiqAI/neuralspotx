@@ -71,10 +71,11 @@ itcm_power_loop(void *results)
         (void)dummy;
     }
 
-    /* Brief settling delay, then signal ACTIVE for Joulescope.
-     * This is a SEPARATE measurement from the timed benchmark —
-     * it captures the ITCM-only, NVM-off steady-state power. */
-    for (volatile int i = 0; i < 100000; i++) {}
+    /* Brief settling delay (~1 ms) before signalling ACTIVE so the
+     * Joulescope phase marker is well clear of the NVM-off transient.
+     * Time-based rather than a magic-number busy-wait so the duration
+     * is reproducible across toolchains and optimisation levels. */
+    ns_delay_us(1000);
     am_hal_gpio_output_set(NS_POWER_MONITOR_GPIO_0);
     am_hal_gpio_output_clear(NS_POWER_MONITOR_GPIO_1);
 

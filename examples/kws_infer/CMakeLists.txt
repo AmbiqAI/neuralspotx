@@ -51,7 +51,7 @@ else()
         "kws_infer: HeliaRT v1.7.0 has no prebuilt for toolchain "
         "'${NSX_TOOLCHAIN_FAMILY}'. Available: gcc, armclang. "
         "Rebuild with -DCMAKE_TOOLCHAIN_FILE pointing at the GCC or armclang "
-        "toolchain file under neuralspotx/src/neuralspotx/cmake/toolchains/.")
+        "toolchain file under src/neuralspotx/cmake/toolchains/.")
 endif()
 
 set(_heliart_lib
