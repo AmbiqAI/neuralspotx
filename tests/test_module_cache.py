@@ -45,6 +45,50 @@ class TestCachePathResolution:
         entry = module_cache.cache_entry_for_hash(digest)
         assert entry == tmp_path / "modules" / "ff" / digest[2:]
 
+    @pytest.mark.parametrize(
+        "bad",
+        [
+            "sha256:../../etc/passwd",
+            "sha256:..",
+            "sha256:abc/def",
+            "sha256:",
+            "",
+            "sha256:zzzz",  # non-hex chars
+        ],
+    )
+    def test_entry_path_rejects_non_hex_digest(
+        self, bad: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("NSX_CACHE_DIR", str(tmp_path))
+        monkeypatch.delenv("XDG_CACHE_HOME", raising=False)
+        with pytest.raises(module_cache.InvalidContentHashError):
+            module_cache.cache_entry_for_hash(bad)
+
+    def test_lookup_returns_false_for_invalid_hash(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("NSX_CACHE_DIR", str(tmp_path / "cache"))
+        monkeypatch.delenv("XDG_CACHE_HOME", raising=False)
+        monkeypatch.delenv("NSX_DISABLE_MODULE_CACHE", raising=False)
+        dest = tmp_path / "dest"
+        # Crafted hash must NOT escape the cache root.
+        assert module_cache.lookup("sha256:../../escape", dest) is False
+        assert not dest.exists()
+
+    def test_populate_is_noop_for_invalid_hash(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.setenv("NSX_CACHE_DIR", str(tmp_path / "cache"))
+        monkeypatch.delenv("XDG_CACHE_HOME", raising=False)
+        monkeypatch.delenv("NSX_DISABLE_MODULE_CACHE", raising=False)
+        src = tmp_path / "src"
+        _make_tree(src)
+        # Must not write anywhere.
+        module_cache.populate("sha256:../../escape", src)
+        # Cache root should remain empty (no entries written).
+        root = module_cache.module_cache_root()
+        assert not root.exists() or not any(root.iterdir())
+
 
 # ---------------------------------------------------------------------------
 # Disable switch

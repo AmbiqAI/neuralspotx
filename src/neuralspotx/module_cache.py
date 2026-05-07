@@ -57,11 +57,13 @@ Safety
 from __future__ import annotations
 
 import os
+import re
 import shutil
 import tempfile
 from pathlib import Path
 
 __all__ = [
+    "InvalidContentHashError",
     "module_cache_root",
     "cache_entry_for_hash",
     "lookup",
@@ -98,12 +100,28 @@ def module_cache_root() -> Path:
     return _nsx_cache_root() / "modules"
 
 
-def _digest_from_content_hash(content_hash: str) -> str:
-    """Strip the ``"sha256:"`` prefix; tolerate raw hex digests too."""
+_HEX_DIGEST_RE = re.compile(r"^[0-9a-f]+$")
 
-    if ":" in content_hash:
-        return content_hash.split(":", 1)[1]
-    return content_hash
+
+class InvalidContentHashError(ValueError):
+    """Raised when a ``content_hash`` is not a safe hex digest."""
+
+
+def _digest_from_content_hash(content_hash: str) -> str:
+    """Strip the ``"sha256:"`` prefix and validate the digest.
+
+    The returned digest is guaranteed to match ``[0-9a-f]+`` so it is
+    safe to interpolate into a filesystem path. Lockfile values are
+    treated as untrusted input, so a crafted entry like
+    ``sha256:../../etc`` is rejected up front and cannot escape
+    :func:`module_cache_root`.
+    """
+
+    raw = content_hash.split(":", 1)[1] if ":" in content_hash else content_hash
+    digest = raw.strip().lower()
+    if not digest or not _HEX_DIGEST_RE.match(digest):
+        raise InvalidContentHashError(f"content_hash must be a hex digest (got {content_hash!r})")
+    return digest
 
 
 def cache_entry_for_hash(content_hash: str) -> Path:
@@ -111,6 +129,10 @@ def cache_entry_for_hash(content_hash: str) -> Path:
 
     The returned path may or may not exist — callers should use
     :func:`lookup` to test for cache hits.
+
+    Raises :class:`InvalidContentHashError` if ``content_hash`` is not
+    a hex digest. This prevents path-traversal via crafted lockfile
+    values (the digest is interpolated into the cache filesystem path).
     """
 
     digest = _digest_from_content_hash(content_hash)
@@ -154,7 +176,13 @@ def lookup(content_hash: str, dest: Path) -> bool:
     if is_disabled():
         return False
 
-    src = cache_entry_for_hash(content_hash)
+    try:
+        src = cache_entry_for_hash(content_hash)
+    except InvalidContentHashError:
+        # Untrusted lockfile entry; treat as a miss so the caller
+        # falls back to a fresh clone (and any subsequent populate()
+        # will be a no-op for the same reason).
+        return False
     if not src.is_dir():
         return False
 
@@ -200,7 +228,11 @@ def populate(content_hash: str, source: Path) -> None:
     if not source.is_dir():
         return
 
-    target = cache_entry_for_hash(content_hash)
+    try:
+        target = cache_entry_for_hash(content_hash)
+    except InvalidContentHashError:
+        # Refuse to write outside the cache root.
+        return
     if target.exists():
         # Already cached (by us on a prior run, or by a concurrent
         # populator). Nothing to do.
