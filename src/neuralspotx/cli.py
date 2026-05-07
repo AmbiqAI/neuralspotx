@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 from pathlib import Path
 from typing import Any
 
-from . import nsx_lock, operations
+from . import module_cache, nsx_lock, operations
 from .metadata import SUPPORTED_MODULE_TYPES, load_yaml, validate_nsx_module_metadata
 from .module_discovery import (
     resolve_module_context,
@@ -166,6 +167,21 @@ _COMMAND_GRAPH_HINTS: dict[str, dict[str, Any]] = {
         "category": "modules",
         "scope": "global",
         "next_commands": ["nsx module register <module>", "nsx module add <module>"],
+    },
+    "cache": {
+        "category": "maintenance",
+        "scope": "global",
+        "next_commands": ["nsx cache info", "nsx cache clean"],
+    },
+    "cache info": {
+        "category": "maintenance",
+        "scope": "global",
+        "next_commands": ["nsx cache clean"],
+    },
+    "cache clean": {
+        "category": "maintenance",
+        "scope": "global",
+        "next_commands": ["nsx sync"],
     },
 }
 
@@ -678,6 +694,75 @@ def cmd_module_validate(args: argparse.Namespace) -> None:
         print(f"Valid: {metadata_path} (module: {module_name})")
 
 
+def _format_bytes(n: int) -> str:
+    units = ("B", "KiB", "MiB", "GiB", "TiB")
+    size = float(n)
+    for unit in units:
+        if size < 1024.0 or unit == units[-1]:
+            return f"{size:.1f} {unit}" if unit != "B" else f"{int(size)} {unit}"
+        size /= 1024.0
+    return f"{n} B"
+
+
+def _dir_size_bytes(path: Path) -> int:
+    total = 0
+    for root, _dirs, files in os.walk(path):
+        for fname in files:
+            fpath = Path(root) / fname
+            try:
+                total += fpath.stat().st_size
+            except OSError:
+                continue
+    return total
+
+
+def cmd_cache_info(args: argparse.Namespace) -> None:
+    root = module_cache.module_cache_root()
+    entries = module_cache.iter_entries()
+    disabled = module_cache.is_disabled()
+
+    if args.json:
+        payload = {
+            "root": str(root),
+            "disabled": disabled,
+            "entry_count": len(entries),
+            "entries": [
+                {
+                    "digest": f"{e.parent.name}{e.name}",
+                    "path": str(e),
+                    "size_bytes": _dir_size_bytes(e),
+                }
+                for e in entries
+            ],
+        }
+        payload["total_size_bytes"] = sum(int(item["size_bytes"]) for item in payload["entries"])
+        print(json.dumps(payload, indent=2))
+        return
+
+    print(f"nsx module cache: {root}")
+    print(f"  status:  {'disabled (NSX_DISABLE_MODULE_CACHE set)' if disabled else 'enabled'}")
+    print(f"  entries: {len(entries)}")
+    if entries:
+        total = sum(_dir_size_bytes(e) for e in entries)
+        print(f"  total:   {_format_bytes(total)}")
+
+
+def cmd_cache_clean(args: argparse.Namespace) -> None:
+    if not args.yes:
+        root = module_cache.module_cache_root()
+        entries = module_cache.iter_entries()
+        if not entries:
+            print(f"nsx module cache at {root} is already empty.")
+            return
+        print(
+            f"This will delete {len(entries)} cached module artifact(s) "
+            f"under {root}. Re-run with --yes to confirm."
+        )
+        return
+    removed = module_cache.clear()
+    print(f"Removed {removed} cached module artifact(s).")
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="NSX helper for creating and building bare-metal Ambiq apps"
@@ -1114,6 +1199,45 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Emit machine-readable JSON instead of human-readable text",
     )
     p_mod_validate.set_defaults(func=cmd_module_validate)
+
+    p_cache = sub.add_parser(
+        "cache",
+        help="Inspect or clean the on-disk module artifact cache",
+        description=(
+            "Manage the content-addressed cache of vendored module "
+            "artifacts under $NSX_CACHE_DIR/modules/. Cache hits let "
+            "`nsx sync` skip git clones for already-seen (commit, "
+            "content_hash) tuples."
+        ),
+    )
+    cache_sub = p_cache.add_subparsers(dest="cache_command", required=True)
+
+    p_cache_info = cache_sub.add_parser(
+        "info",
+        help="Show cache location, entry count, and total size",
+        description="Show cache location, entry count, and total size on disk.",
+    )
+    p_cache_info.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit machine-readable JSON instead of human-readable text",
+    )
+    p_cache_info.set_defaults(func=cmd_cache_info)
+
+    p_cache_clean = cache_sub.add_parser(
+        "clean",
+        help="Remove every cached module artifact",
+        description=(
+            "Delete every cache entry. Subsequent `nsx sync` runs will "
+            "re-clone modules and repopulate the cache."
+        ),
+    )
+    p_cache_clean.add_argument(
+        "--yes",
+        action="store_true",
+        help="Confirm deletion (required; without it the command is a dry-run)",
+    )
+    p_cache_clean.set_defaults(func=cmd_cache_clean)
 
     return parser
 

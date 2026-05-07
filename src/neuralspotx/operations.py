@@ -1773,7 +1773,13 @@ def sync_app_impl(
         elif entry.kind == "git":
             # Re-vendor at the exact locked commit (not the branch tip).
             if entry.commit:
-                _vendor_git_module_at_commit(app_dir, name, registry, entry.commit)
+                _vendor_git_module_at_commit(
+                    app_dir,
+                    name,
+                    registry,
+                    entry.commit,
+                    content_hash=entry.content_hash,
+                )
             else:
                 _update_module_clone(app_dir, name, registry)
 
