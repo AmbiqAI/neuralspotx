@@ -1194,6 +1194,120 @@ def _build_lock_for_app(
     # Per-call cache: a single ``nsx lock`` invocation may have multiple
     # modules sharing one (url, commit) pair; clone once.
     git_artifact_hash_cache: dict[tuple[str, str], str] = {}
+    # Per-call resolve_ref cache shared by the prefetch pass below and
+    # the main loop. Keyed by ``(url, constraint)``.
+    resolve_ref_cache: dict[tuple[str, str], tuple[str, str | None]] = {}
+
+    # Parallel prefetch ---------------------------------------------------
+    # The main loop below classifies every module, calls ``git ls-remote``
+    # to resolve constraints to commits, and then ``git clone``s each
+    # ``(url, commit)`` to compute its upstream-artifact hash.  Both
+    # steps are I/O-bound and embarrassingly parallel: dispatch them up
+    # front via a thread pool and stash results in the per-call caches
+    # the main loop already consults.  Falls back to serial execution
+    # under ``NSX_RESOLVE_PARALLELISM=1``.
+    from ._parallel import parallel_map
+    from .module_registry import _is_packaged_module as _is_pkg
+
+    def _git_resolve_jobs() -> list[tuple[str, str]]:
+        jobs: dict[tuple[str, str], None] = {}
+        for nm in module_names:
+            if nm in vendored_names or nm in local_names:
+                continue
+            try:
+                ent = registry_entry_for_module(registry, nm)
+            except Exception:  # noqa: BLE001 - main loop will surface
+                continue
+            if _is_pkg(registry, nm):
+                continue
+            proj = _registry_project_entry(registry, ent.project)
+            if not proj.url:
+                continue
+            cons = str(ent.revision or "main")
+            prev = prev_modules.get(nm)
+            if (
+                prev
+                and prev.kind == "git"
+                and prev.constraint == cons
+                and prev.url == proj.url
+                and prev.commit
+            ):
+                # Re-use of previous SHA short-circuits resolve_ref.
+                continue
+            jobs[(proj.url, cons)] = None
+        return list(jobs.keys())
+
+    _resolve_jobs = _git_resolve_jobs()
+    if _resolve_jobs:
+
+        def _safe_resolve_ref(job: tuple[str, str]) -> tuple[str, str | None] | None:
+            try:
+                return resolve_ref(*job)
+            except Exception:  # noqa: BLE001 - main loop handles per-module
+                return None
+
+        _results = parallel_map(_safe_resolve_ref, _resolve_jobs)
+        for job, result in zip(_resolve_jobs, _results, strict=True):
+            if result is not None:
+                resolve_ref_cache[job] = result
+
+    def _git_hash_jobs() -> list[tuple[str, str]]:
+        jobs: dict[tuple[str, str], None] = {}
+        for nm in module_names:
+            if nm in vendored_names or nm in local_names:
+                continue
+            try:
+                ent = registry_entry_for_module(registry, nm)
+            except Exception:  # noqa: BLE001
+                continue
+            if _is_pkg(registry, nm):
+                continue
+            proj = _registry_project_entry(registry, ent.project)
+            if not proj.url:
+                continue
+            cons = str(ent.revision or "main")
+            prev = prev_modules.get(nm)
+            if (
+                prev
+                and prev.kind == "git"
+                and prev.constraint == cons
+                and prev.url == proj.url
+                and prev.commit
+                and prev.content_hash
+            ):
+                # The previous lock already has a usable upstream hash;
+                # the main loop will reuse it without cloning.
+                continue
+            cached = resolve_ref_cache.get((proj.url, cons))
+            if cached is None:
+                continue
+            commit_sha, _ = cached
+            jobs[(proj.url, commit_sha)] = None
+        return list(jobs.keys())
+
+    _hash_jobs = _git_hash_jobs()
+    if _hash_jobs:
+
+        def _safe_hash(job: tuple[str, str]) -> str | None:
+            try:
+                return hash_git_artifact(*job)
+            except Exception:  # noqa: BLE001 - main loop surfaces error
+                return None
+
+        _hashes = parallel_map(_safe_hash, _hash_jobs)
+        for job, hashed in zip(_hash_jobs, _hashes, strict=True):
+            if hashed is not None:
+                git_artifact_hash_cache[job] = hashed
+    # End parallel prefetch -----------------------------------------------
+
+    def _resolve_ref_cached(url: str, ref: str) -> tuple[str, str | None]:
+        key = (url, ref)
+        cached = resolve_ref_cache.get(key)
+        if cached is not None:
+            return cached
+        result = resolve_ref(url, ref)
+        resolve_ref_cache[key] = result
+        return result
 
     for name in module_names:
         # Vendored (in-app, source-controlled) modules \u2014 source IS
@@ -1347,7 +1461,7 @@ def _build_lock_for_app(
             tag = previous_entry.tag
         else:
             try:
-                commit, matched = resolve_ref(url, constraint)
+                commit, matched = _resolve_ref_cached(url, constraint)
             except ResolutionError as exc:
                 # Upstream not reachable. Degrade to a content-only lock
                 # entry. We cannot compute an upstream-artifact hash
@@ -1914,17 +2028,48 @@ def outdated_app_impl(app_dir: Path, *, as_json: bool = False) -> int:
     full_rows: list[dict[str, str]] = []
     skipped: list[tuple[str, str]] = []
 
+    # Parallel prefetch of upstream commits --------------------------------
+    # ``resolve_commit`` is one ``git ls-remote`` per call; for an app
+    # with many git-hosted modules this is the dominant cost of
+    # ``nsx outdated``.  Dispatch the unique ``(url, ref)`` pairs in
+    # parallel and stash the results (or the raised exception) in a
+    # dict the serial loop below consults.
+    from ._parallel import parallel_map
+
+    candidates = [
+        (name, entry)
+        for name, entry in sorted(lock.modules.items())
+        if entry.kind == "git" and entry.url
+    ]
+    upstream_jobs: dict[tuple[str, str], None] = {}
+    for _name, entry in candidates:
+        upstream_jobs[(entry.url or "", entry.tag or entry.constraint)] = None
+    upstream_keys = list(upstream_jobs.keys())
+
+    def _safe_resolve(job: tuple[str, str]) -> tuple[str | None, str | None]:
+        try:
+            return resolve_commit(job[0], job[1]), None
+        except ResolutionError as exc:  # noqa: BLE001
+            return None, str(exc)
+
+    upstream_results: dict[tuple[str, str], tuple[str | None, str | None]] = {}
+    if upstream_keys:
+        results = parallel_map(_safe_resolve, upstream_keys)
+        upstream_results = dict(zip(upstream_keys, results, strict=True))
+
     for name, entry in sorted(lock.modules.items()):
         if entry.kind != "git":
             continue
         if not entry.url:
             skipped.append((name, "no url"))
             continue
-        try:
-            upstream = resolve_commit(entry.url, entry.tag or entry.constraint)
-        except ResolutionError as exc:
-            skipped.append((name, str(exc)))
+        sha, err = upstream_results.get(
+            (entry.url, entry.tag or entry.constraint), (None, "unresolved")
+        )
+        if sha is None:
+            skipped.append((name, err or "unresolved"))
             continue
+        upstream = sha
         locked = (entry.commit or "").lower()
         if upstream.lower() == locked:
             status = "up-to-date"
