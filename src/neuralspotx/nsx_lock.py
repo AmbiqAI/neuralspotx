@@ -486,21 +486,38 @@ def resolve_commit(url: str, ref: str) -> str:
     if _looks_like_full_sha(ref):
         return ref.lower()
 
-    sha, _matched = _resolve_ref(url, ref)
+    sha, _matched = resolve_ref(url, ref)
     return sha
 
 
-def resolve_ref(url: str, ref: str) -> tuple[str, str | None]:
+def resolve_ref(url: str, ref: str, *, bypass_cache: bool = False) -> tuple[str, str | None]:
     """Resolve *ref* and report what kind of upstream ref it matched.
 
     Returns ``(sha, matched_kind)`` where ``matched_kind`` is one of
     ``"tag"``, ``"branch"``, ``"sha"`` or ``None``. ``sha`` is always
     the underlying commit SHA (annotated tags are peeled).
+
+    Results are cached on-disk for ``NSX_RESOLVE_TTL`` seconds (default
+    300).  Set ``bypass_cache=True`` (e.g. ``nsx lock --update``) to
+    force a fresh ``git ls-remote``.
     """
 
     if _looks_like_full_sha(ref):
         return ref.lower(), "sha"
-    return _resolve_ref(url, ref)
+
+    if not bypass_cache:
+        from . import _resolve_cache
+
+        cached = _resolve_cache.get(url, ref)
+        if cached is not None:
+            return cached
+
+    result = _resolve_ref(url, ref)
+
+    from . import _resolve_cache
+
+    _resolve_cache.put(url, ref, result[0], result[1])
+    return result
 
 
 def _resolve_ref(url: str, ref: str) -> tuple[str, str | None]:

@@ -95,6 +95,9 @@ class AppLockRequest:
         check: Read-only mode — fail if ``nsx.lock`` would change.
         quiet: Suppress the post-write summary print.
         timeout_s: Per-subprocess wall-clock budget (seconds).
+        resolve_ttl_s: Override the resolve-ref cache TTL for this call.
+            ``None`` uses the ``NSX_RESOLVE_TTL`` env var (default 300s).
+            ``0`` disables caching.
     """
 
     app_dir: PathLike
@@ -103,6 +106,7 @@ class AppLockRequest:
     check: bool = False
     quiet: bool = False
     timeout_s: float | None = None
+    resolve_ttl_s: float | None = None
 
 
 @dataclass(slots=True)
@@ -728,11 +732,14 @@ def lock_app(
     check: bool = False,
     quiet: bool = False,
     timeout_s: float | None = None,
+    resolve_ttl_s: float | None = None,
 ) -> Path:
     """Resolve module constraints and write ``nsx.lock``.
 
     Returns the path to the lock file (whether or not it was written).
     *timeout_s* applies per ``git`` / ``git ls-remote`` subprocess.
+    *resolve_ttl_s* overrides the ``NSX_RESOLVE_TTL`` env for this call
+    (e.g. ``1800`` for 30 min in long workflows; ``0`` to disable).
     """
 
     request = (
@@ -745,17 +752,33 @@ def lock_app(
             check=check,
             quiet=quiet,
             timeout_s=timeout_s,
+            resolve_ttl_s=resolve_ttl_s,
         )
     )
-    with timeout_budget(request.timeout_s):
-        return _invoke_with_return(
-            operations.lock_app_impl,
-            Path(request.app_dir).expanduser().resolve(),
-            update=request.update,
-            modules=request.modules,
-            check=request.check,
-            quiet=request.quiet,
-        )
+
+    # Apply per-call resolve TTL override via env var (scoped to this call).
+    import os
+
+    _ttl_env_key = "NSX_RESOLVE_TTL"
+    _prev_ttl = os.environ.get(_ttl_env_key)
+    if request.resolve_ttl_s is not None:
+        os.environ[_ttl_env_key] = str(request.resolve_ttl_s)
+    try:
+        with timeout_budget(request.timeout_s):
+            return _invoke_with_return(
+                operations.lock_app_impl,
+                Path(request.app_dir).expanduser().resolve(),
+                update=request.update,
+                modules=request.modules,
+                check=request.check,
+                quiet=request.quiet,
+            )
+    finally:
+        if request.resolve_ttl_s is not None:
+            if _prev_ttl is None:
+                os.environ.pop(_ttl_env_key, None)
+            else:
+                os.environ[_ttl_env_key] = _prev_ttl
 
 
 def sync_app(

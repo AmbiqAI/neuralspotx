@@ -1599,6 +1599,12 @@ def _lock_app_impl_unlocked(
     on_disk_lock = previous  # capture before update-mutation
 
     if update:
+        # Force fresh resolution — clear the persistent resolve-ref cache
+        # so ``git ls-remote`` results are re-fetched from the network.
+        from . import _resolve_cache
+
+        _resolve_cache.invalidate_all()
+
         if previous and modules:
             # Drop the named entries from `previous` so they get re-resolved.
             kept = {n: e for n, e in previous.modules.items() if n not in set(modules)}
