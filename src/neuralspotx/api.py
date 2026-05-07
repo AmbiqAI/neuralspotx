@@ -2,12 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from . import module_discovery, operations, project_config
 from .metadata import load_yaml, validate_nsx_module_metadata
+from .subprocess_utils import timeout_budget
 
 PathLike = str | Path
 
@@ -44,12 +45,21 @@ class AppActionRequest:
         board: Optional board override.
         build_dir: Optional build directory override.
         toolchain: Optional toolchain override (``gcc``, ``armclang``).
+        timeout_s: Per-subprocess wall-clock budget (seconds).  ``None``
+            disables the timeout.  When the budget elapses, the entire
+            child process group is SIGTERM/SIGKILL'd and
+            :class:`NSXError` is raised.
+
+    ``timeout_s`` is keyword-only so subclasses (e.g. :class:`AppBuildRequest`)
+    can keep their existing positional argument order.  Construct with
+    ``AppBuildRequest(app_dir, target="all", jobs=4, timeout_s=300)``.
     """
 
     app_dir: PathLike
     board: str | None = None
     build_dir: PathLike | None = None
     toolchain: str | None = None
+    timeout_s: float | None = field(default=None, kw_only=True)
 
 
 @dataclass(slots=True)
@@ -72,6 +82,59 @@ class AppCleanRequest(AppActionRequest):
     """Request parameters for cleaning an app build."""
 
     full: bool = False
+
+
+@dataclass(slots=True)
+class AppLockRequest:
+    """Request parameters for resolving and writing ``nsx.lock``.
+
+    Attributes:
+        app_dir: App directory containing ``nsx.yml``.
+        update: Re-resolve module constraints to current upstream HEAD/tag.
+        modules: When given alongside ``update``, only re-resolve these.
+        check: Read-only mode — fail if ``nsx.lock`` would change.
+        quiet: Suppress the post-write summary print.
+        timeout_s: Per-subprocess wall-clock budget (seconds).
+    """
+
+    app_dir: PathLike
+    update: bool = False
+    modules: list[str] | None = None
+    check: bool = False
+    quiet: bool = False
+    timeout_s: float | None = None
+
+
+@dataclass(slots=True)
+class AppSyncRequest:
+    """Request parameters for materialising ``modules/`` from ``nsx.lock``.
+
+    Attributes:
+        app_dir: App directory containing ``nsx.lock``.
+        frozen: Read-only mode — verify content hashes, do not modify.
+        force: Re-vendor every module even if content_hash matches.
+        timeout_s: Per-subprocess wall-clock budget (seconds).  Applied
+            to every individual ``git clone`` / ``git fetch`` invoked
+            during the sync.
+    """
+
+    app_dir: PathLike
+    frozen: bool = False
+    force: bool = False
+    timeout_s: float | None = None
+
+
+@dataclass(slots=True)
+class AppOutdatedRequest:
+    """Request parameters for the ``nsx outdated`` report.
+
+    Attributes:
+        app_dir: App directory containing ``nsx.lock``.
+        as_json: Emit a machine-readable JSON report instead of a table.
+    """
+
+    app_dir: PathLike
+    as_json: bool = False
 
 
 @dataclass(slots=True)
@@ -127,6 +190,8 @@ class ModuleInitRequest:
 def _invoke(func, *args, **kwargs) -> None:
     """Invoke an NSX operation and normalize ``SystemExit`` into ``NSXError``."""
 
+    import subprocess
+
     try:
         func(*args, **kwargs)
     except SystemExit as exc:
@@ -134,6 +199,28 @@ def _invoke(func, *args, **kwargs) -> None:
         if code in (None, 0):
             return
         raise NSXError(str(code)) from None
+    except subprocess.TimeoutExpired as exc:
+        cmd = exc.cmd
+        cmd_str = " ".join(cmd) if isinstance(cmd, list) else str(cmd)
+        raise NSXError(f"Subprocess timed out after {exc.timeout}s: {cmd_str}") from None
+
+
+def _invoke_with_return(func, *args, **kwargs):
+    """Invoke an NSX operation that returns a value, with ``SystemExit`` normalisation."""
+
+    import subprocess
+
+    try:
+        return func(*args, **kwargs)
+    except SystemExit as exc:
+        code = exc.code
+        if code in (None, 0):
+            return None
+        raise NSXError(str(code)) from None
+    except subprocess.TimeoutExpired as exc:
+        cmd = exc.cmd
+        cmd_str = " ".join(cmd) if isinstance(cmd, list) else str(cmd)
+        raise NSXError(f"Subprocess timed out after {exc.timeout}s: {cmd_str}") from None
 
 
 def create_app(
@@ -187,23 +274,33 @@ def configure_app(
     board: str | None = None,
     build_dir: PathLike | None = None,
     toolchain: str | None = None,
+    timeout_s: float | None = None,
 ) -> None:
-    """Configure an app build directory with CMake."""
+    """Configure an app build directory with CMake.
+
+    *timeout_s* sets a wall-clock budget for the underlying ``cmake``
+    subprocess; the whole process group is killed on timeout.
+    """
 
     request = (
         app_dir
         if isinstance(app_dir, AppActionRequest)
         else AppActionRequest(
-            app_dir=app_dir, board=board, build_dir=build_dir, toolchain=toolchain
+            app_dir=app_dir,
+            board=board,
+            build_dir=build_dir,
+            toolchain=toolchain,
+            timeout_s=timeout_s,
         )
     )
-    _invoke(
-        operations.configure_app_impl,
-        Path(request.app_dir).expanduser().resolve(),
-        board=request.board,
-        build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
-        toolchain=request.toolchain,
-    )
+    with timeout_budget(request.timeout_s):
+        _invoke(
+            operations.configure_app_impl,
+            Path(request.app_dir).expanduser().resolve(),
+            board=request.board,
+            build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
+            toolchain=request.toolchain,
+        )
 
 
 def build_app(
@@ -214,8 +311,14 @@ def build_app(
     toolchain: str | None = None,
     target: str | None = None,
     jobs: int = 8,
+    timeout_s: float | None = None,
 ) -> None:
-    """Build an NSX app."""
+    """Build an NSX app.
+
+    *timeout_s* sets a wall-clock budget for each underlying
+    ``cmake`` / ``ninja`` subprocess; the whole process group is killed
+    on timeout.
+    """
 
     request = (
         app_dir
@@ -227,17 +330,19 @@ def build_app(
             toolchain=toolchain,
             target=target,
             jobs=jobs,
+            timeout_s=timeout_s,
         )
     )
-    _invoke(
-        operations.build_app_impl,
-        Path(request.app_dir).expanduser().resolve(),
-        board=request.board,
-        build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
-        toolchain=request.toolchain,
-        target=request.target,
-        jobs=request.jobs,
-    )
+    with timeout_budget(request.timeout_s):
+        _invoke(
+            operations.build_app_impl,
+            Path(request.app_dir).expanduser().resolve(),
+            board=request.board,
+            build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
+            toolchain=request.toolchain,
+            target=request.target,
+            jobs=request.jobs,
+        )
 
 
 def flash_app(
@@ -247,24 +352,36 @@ def flash_app(
     build_dir: PathLike | None = None,
     toolchain: str | None = None,
     jobs: int = 8,
+    timeout_s: float | None = None,
 ) -> None:
-    """Build and flash an NSX app."""
+    """Build and flash an NSX app.
+
+    *timeout_s* sets a wall-clock budget for each underlying ``cmake``
+    invocation (including the J-Link flash target); the whole process
+    group is killed on timeout so a hung ``JLinkExe`` cannot leak.
+    """
 
     request = (
         app_dir
         if isinstance(app_dir, AppFlashRequest)
         else AppFlashRequest(
-            app_dir=app_dir, board=board, build_dir=build_dir, toolchain=toolchain, jobs=jobs
+            app_dir=app_dir,
+            board=board,
+            build_dir=build_dir,
+            toolchain=toolchain,
+            jobs=jobs,
+            timeout_s=timeout_s,
         )
     )
-    _invoke(
-        operations.flash_app_impl,
-        Path(request.app_dir).expanduser().resolve(),
-        board=request.board,
-        build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
-        toolchain=request.toolchain,
-        jobs=request.jobs,
-    )
+    with timeout_budget(request.timeout_s):
+        _invoke(
+            operations.flash_app_impl,
+            Path(request.app_dir).expanduser().resolve(),
+            board=request.board,
+            build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
+            toolchain=request.toolchain,
+            jobs=request.jobs,
+        )
 
 
 def view_app(
@@ -573,3 +690,91 @@ def search_modules(
         toolchain=toolchain,
         include_incompatible=include_incompatible,
     )
+
+
+def lock_app(
+    app_dir: PathLike | AppLockRequest,
+    *,
+    update: bool = False,
+    modules: list[str] | None = None,
+    check: bool = False,
+    quiet: bool = False,
+    timeout_s: float | None = None,
+) -> Path:
+    """Resolve module constraints and write ``nsx.lock``.
+
+    Returns the path to the lock file (whether or not it was written).
+    *timeout_s* applies per ``git`` / ``git ls-remote`` subprocess.
+    """
+
+    request = (
+        app_dir
+        if isinstance(app_dir, AppLockRequest)
+        else AppLockRequest(
+            app_dir=app_dir,
+            update=update,
+            modules=modules,
+            check=check,
+            quiet=quiet,
+            timeout_s=timeout_s,
+        )
+    )
+    with timeout_budget(request.timeout_s):
+        return _invoke_with_return(
+            operations.lock_app_impl,
+            Path(request.app_dir).expanduser().resolve(),
+            update=request.update,
+            modules=request.modules,
+            check=request.check,
+            quiet=request.quiet,
+        )
+
+
+def sync_app(
+    app_dir: PathLike | AppSyncRequest,
+    *,
+    frozen: bool = False,
+    force: bool = False,
+    timeout_s: float | None = None,
+) -> None:
+    """Materialise ``modules/`` so it exactly matches ``nsx.lock``.
+
+    *timeout_s* applies per individual ``git clone`` / ``git fetch``
+    invoked during the sync (not to the whole sync run).
+    """
+
+    request = (
+        app_dir
+        if isinstance(app_dir, AppSyncRequest)
+        else AppSyncRequest(app_dir=app_dir, frozen=frozen, force=force, timeout_s=timeout_s)
+    )
+    with timeout_budget(request.timeout_s):
+        _invoke(
+            operations.sync_app_impl,
+            Path(request.app_dir).expanduser().resolve(),
+            frozen=request.frozen,
+            force=request.force,
+        )
+
+
+def outdated_app(
+    app_dir: PathLike | AppOutdatedRequest,
+    *,
+    as_json: bool = False,
+) -> int:
+    """Report git modules whose locked commit lags the upstream constraint.
+
+    Returns the count of outdated modules (zero when the lock is fresh).
+    """
+
+    request = (
+        app_dir
+        if isinstance(app_dir, AppOutdatedRequest)
+        else AppOutdatedRequest(app_dir=app_dir, as_json=as_json)
+    )
+    result = _invoke_with_return(
+        operations.outdated_app_impl,
+        Path(request.app_dir).expanduser().resolve(),
+        as_json=request.as_json,
+    )
+    return int(result) if result is not None else 0
