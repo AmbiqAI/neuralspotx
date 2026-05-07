@@ -9,6 +9,7 @@ import stat
 from pathlib import Path
 from typing import Any
 
+from . import module_cache
 from .metadata import (
     RegistryModuleEntry,
     is_compatible,
@@ -224,6 +225,8 @@ def _vendor_git_module_at_commit(
     module_name: str,
     registry: dict[str, Any],
     commit: str,
+    *,
+    content_hash: str | None = None,
 ) -> None:
     """Re-vendor a git module at an exact commit SHA.
 
@@ -231,6 +234,13 @@ def _vendor_git_module_at_commit(
     independent of where the module's branch currently points. A full
     clone is performed (shallow clones may not contain the commit), the
     requested commit is checked out detached, and ``.git`` is stripped.
+
+    When ``content_hash`` is provided, the on-disk module-artifact cache
+    (see :mod:`neuralspotx.module_cache`) is consulted first: a cache
+    hit avoids the network round-trip entirely. On a cache miss the
+    clone proceeds as before and the resulting tree is written back to
+    the cache for future runs. The cache is best-effort and any
+    failure transparently falls back to a fresh clone.
     """
 
     if _is_packaged_module(registry, module_name):
@@ -251,6 +261,11 @@ def _vendor_git_module_at_commit(
         )
 
     clone_dir = _module_clone_dir(app_dir, entry.project, registry)
+
+    # Fast path: try to materialise from the content-addressed cache.
+    if content_hash and module_cache.lookup(content_hash, clone_dir):
+        return
+
     if clone_dir.exists():
         _rmtree(clone_dir)
 
@@ -260,6 +275,11 @@ def _vendor_git_module_at_commit(
     git_dir = clone_dir / ".git"
     if git_dir.exists():
         _rmtree(git_dir)
+
+    # Slow path completed: seed the cache so the next caller can skip
+    # the clone. ``populate`` is best-effort; failures are silent.
+    if content_hash:
+        module_cache.populate(content_hash, clone_dir)
 
 
 def _vendor_local_module_into_app(
