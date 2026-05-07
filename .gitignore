@@ -12,3 +12,6 @@
 
 # Local benchmark capture artifacts (Joulescope, UART logs, etc.)
 examples/**/results/
+
+# NSX per-app advisory lock (created by nsx sync/lock/update)
+**/.nsx.sync.lock
