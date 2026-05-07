@@ -430,6 +430,7 @@ def doctor_impl() -> None:
                 text=True,
                 capture_output=True,
                 stdin=subprocess.DEVNULL,
+                timeout=10,
             )
             output = (probe.stdout or "") + (probe.stderr or "")
             dll_hint = _jlink_failure_hint(output)
@@ -462,6 +463,13 @@ def doctor_impl() -> None:
                     True,
                     detail="JLinkExe launched. Probe connectivity was not required for this check.",
                 )
+        except subprocess.TimeoutExpired:
+            all_ok &= _doctor_check(
+                "SEGGER J-Link runtime",
+                False,
+                detail="JLinkExe timed out (>10s).",
+                hint="JLinkExe may be hanging. Run it directly to diagnose.",
+            )
 
     if not all_ok:
         raise SystemExit("One or more required tools are missing or misconfigured.")
@@ -1690,7 +1698,7 @@ def sync_app_impl(
         if entry.kind == "local":
             try:
                 project_entry = _registry_project_entry(registry, entry.project)
-            except Exception:  # noqa: BLE001 — best-effort lookup
+            except (ValueError, KeyError, TypeError):
                 project_entry = None
 
             if project_entry is not None and project_entry.local_path:

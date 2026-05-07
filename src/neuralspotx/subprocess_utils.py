@@ -1,13 +1,38 @@
-"""Helpers for subprocess execution and tool-specific error formatting."""
+"""Helpers for subprocess execution and tool-specific error formatting.
+
+All long-running shell-outs (``cmake``, ``ninja``, ``git``, ``JLinkExe``)
+go through :func:`run` and :func:`run_capture` here so that callers get
+two guarantees out of the box:
+
+* **Process-tree kill** — children are spawned in their own process group
+  (``start_new_session=True``); on timeout we SIGTERM, then SIGKILL the
+  whole group, so a hung ``cmake`` cannot leave ``ninja`` and the
+  compiler running in the background.
+* **Caller-scoped timeout** — wrapping a region with
+  :func:`timeout_budget` sets a default wall-clock budget for every
+  subprocess inside it without having to thread a ``timeout=`` argument
+  through every helper.  An explicit ``timeout=`` kwarg always wins.
+"""
 
 from __future__ import annotations
 
+import contextlib
+import contextvars
 import os
 import shlex
+import signal
 import subprocess
+from collections.abc import Iterator
 from pathlib import Path
 
 _VERBOSE = 0
+
+# Default wall-clock budget for each subprocess inside a region wrapped
+# by :func:`timeout_budget`.  ``None`` means "no implicit timeout";
+# explicit ``timeout=`` kwargs on individual calls still apply.
+_TIMEOUT: contextvars.ContextVar[float | None] = contextvars.ContextVar(
+    "nsx_subprocess_timeout", default=None
+)
 
 
 def set_verbosity(level: int) -> None:
@@ -17,22 +42,114 @@ def set_verbosity(level: int) -> None:
     _VERBOSE = level
 
 
-def run(cmd: list[str], cwd: Path | None = None) -> None:
-    """Run a subprocess and raise on failure."""
+@contextlib.contextmanager
+def timeout_budget(seconds: float | None) -> Iterator[None]:
+    """Set a default per-subprocess wall-clock timeout for this scope.
 
-    subprocess.run(cmd, cwd=str(cwd) if cwd else None, check=True)
+    Calls to :func:`run` / :func:`run_capture` inside the ``with`` block
+    use *seconds* as their default timeout.  ``None`` clears any
+    inherited budget.
+    """
+    token = _TIMEOUT.set(seconds)
+    try:
+        yield
+    finally:
+        _TIMEOUT.reset(token)
 
 
-def run_capture(cmd: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
-    """Run a subprocess and capture its text output."""
+def _effective_timeout(explicit: float | None) -> float | None:
+    return explicit if explicit is not None else _TIMEOUT.get()
 
-    return subprocess.run(
+
+def _terminate_tree(proc: subprocess.Popen) -> None:  # type: ignore[type-arg]
+    """SIGTERM, then SIGKILL the process group rooted at *proc*.
+
+    No-op when the child is already gone.  Swallows races
+    (``ProcessLookupError`` / ``OSError``) because we only ever call
+    this from the timeout path where the goal is "make sure nothing
+    is left running".
+    """
+    if proc.poll() is not None:
+        return
+    try:
+        if os.name == "nt":
+            proc.kill()
+        else:
+            pgid = os.getpgid(proc.pid)
+            os.killpg(pgid, signal.SIGTERM)
+            try:
+                proc.wait(timeout=2)
+                return
+            except subprocess.TimeoutExpired:
+                pass
+            os.killpg(pgid, signal.SIGKILL)
+        try:
+            proc.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            pass
+    except (ProcessLookupError, OSError):
+        pass
+
+
+def run(
+    cmd: list[str],
+    cwd: Path | None = None,
+    *,
+    timeout: float | None = None,
+) -> None:
+    """Run a subprocess, raising on failure or timeout.
+
+    Honours the ambient :func:`timeout_budget` when *timeout* is None.
+    On timeout the entire process group is terminated and
+    :class:`subprocess.TimeoutExpired` is re-raised.
+    """
+    effective = _effective_timeout(timeout)
+    proc = subprocess.Popen(
         cmd,
         cwd=str(cwd) if cwd else None,
-        check=True,
-        text=True,
-        capture_output=True,
+        start_new_session=(os.name != "nt"),
     )
+    try:
+        rc = proc.wait(timeout=effective)
+    except subprocess.TimeoutExpired:
+        _terminate_tree(proc)
+        raise subprocess.TimeoutExpired(cmd, effective) from None
+    if rc != 0:
+        raise subprocess.CalledProcessError(rc, cmd)
+
+
+def run_capture(
+    cmd: list[str],
+    cwd: Path | None = None,
+    *,
+    timeout: float | None = None,
+) -> subprocess.CompletedProcess[str]:
+    """Run a subprocess and capture its text output.
+
+    Same timeout / process-tree semantics as :func:`run`.
+    """
+    effective = _effective_timeout(timeout)
+    proc = subprocess.Popen(
+        cmd,
+        cwd=str(cwd) if cwd else None,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        start_new_session=(os.name != "nt"),
+    )
+    try:
+        out, err = proc.communicate(timeout=effective)
+    except subprocess.TimeoutExpired:
+        _terminate_tree(proc)
+        # Drain any buffered output so the caller can still log it.
+        try:
+            out, err = proc.communicate(timeout=1)
+        except Exception:  # noqa: BLE001
+            out, err = "", ""
+        raise subprocess.TimeoutExpired(cmd, effective, output=out, stderr=err) from None
+    if proc.returncode != 0:
+        raise subprocess.CalledProcessError(proc.returncode, cmd, output=out, stderr=err)
+    return subprocess.CompletedProcess(cmd, proc.returncode, stdout=out, stderr=err)
 
 
 def print_captured_output(result: subprocess.CompletedProcess[str]) -> None:
