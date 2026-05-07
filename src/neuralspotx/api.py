@@ -138,6 +138,23 @@ class AppOutdatedRequest:
 
 
 @dataclass(slots=True)
+class AppUpdateRequest:
+    """Request parameters for ``nsx update`` (lock --update + sync).
+
+    Attributes:
+        app_dir: App directory containing ``nsx.yml``.
+        modules: Optional list of module names to update; ``None`` means all.
+        timeout_s: Per-subprocess wall-clock budget (seconds).  Applied
+            to every individual ``git`` subprocess invoked during the
+            re-resolve and re-vendor phases.
+    """
+
+    app_dir: PathLike
+    modules: list[str] | None = None
+    timeout_s: float | None = None
+
+
+@dataclass(slots=True)
 class ModuleChangeRequest:
     """Request parameters for adding or removing a module."""
 
@@ -416,24 +433,35 @@ def clean_app(
     build_dir: PathLike | None = None,
     toolchain: str | None = None,
     full: bool = False,
+    timeout_s: float | None = None,
 ) -> None:
-    """Clean or fully remove an app build directory."""
+    """Clean or fully remove an app build directory.
+
+    *timeout_s* sets a wall-clock budget for the underlying ``cmake``
+    clean subprocess; the whole process group is killed on timeout.
+    """
 
     request = (
         app_dir
         if isinstance(app_dir, AppCleanRequest)
         else AppCleanRequest(
-            app_dir=app_dir, board=board, build_dir=build_dir, toolchain=toolchain, full=full
+            app_dir=app_dir,
+            board=board,
+            build_dir=build_dir,
+            toolchain=toolchain,
+            full=full,
+            timeout_s=timeout_s,
         )
     )
-    _invoke(
-        operations.clean_app_impl,
-        Path(request.app_dir).expanduser().resolve(),
-        board=request.board,
-        build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
-        toolchain=request.toolchain,
-        full=request.full,
-    )
+    with timeout_budget(request.timeout_s):
+        _invoke(
+            operations.clean_app_impl,
+            Path(request.app_dir).expanduser().resolve(),
+            board=request.board,
+            build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
+            toolchain=request.toolchain,
+            full=request.full,
+        )
 
 
 def add_module(
@@ -778,3 +806,29 @@ def outdated_app(
         as_json=request.as_json,
     )
     return int(result) if result is not None else 0
+
+
+def update_app(
+    app_dir: PathLike | AppUpdateRequest,
+    *,
+    modules: list[str] | None = None,
+    timeout_s: float | None = None,
+) -> None:
+    """Re-resolve module constraints to upstream tip and re-vendor.
+
+    Equivalent to ``nsx lock --update [--module ...] && nsx sync``.
+    *timeout_s* applies per individual ``git`` subprocess invoked
+    during the re-resolve and re-vendor phases.
+    """
+
+    request = (
+        app_dir
+        if isinstance(app_dir, AppUpdateRequest)
+        else AppUpdateRequest(app_dir=app_dir, modules=modules, timeout_s=timeout_s)
+    )
+    with timeout_budget(request.timeout_s):
+        _invoke(
+            operations.update_app_impl,
+            Path(request.app_dir).expanduser().resolve(),
+            modules=request.modules,
+        )

@@ -9,7 +9,7 @@ import subprocess
 from pathlib import Path
 from typing import Any
 
-from . import module_cache, nsx_lock, operations
+from . import api, module_cache, nsx_lock, operations
 from .metadata import SUPPORTED_MODULE_TYPES, load_yaml, validate_nsx_module_metadata
 from .module_discovery import (
     resolve_module_context,
@@ -352,32 +352,35 @@ def cmd_doctor(args: argparse.Namespace) -> None:
 
 
 def cmd_configure(args: argparse.Namespace) -> None:
-    operations.configure_app_impl(
+    api.configure_app(
         resolve_app_dir(args.app_dir),
         board=args.board,
         build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
         toolchain=args.toolchain,
+        timeout_s=getattr(args, "timeout", None),
     )
 
 
 def cmd_build(args: argparse.Namespace) -> None:
-    operations.build_app_impl(
+    api.build_app(
         resolve_app_dir(args.app_dir),
         board=args.board,
         build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
         toolchain=args.toolchain,
         target=args.target,
         jobs=args.jobs,
+        timeout_s=getattr(args, "timeout", None),
     )
 
 
 def cmd_flash(args: argparse.Namespace) -> None:
-    operations.flash_app_impl(
+    api.flash_app(
         resolve_app_dir(args.app_dir),
         board=args.board,
         build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
         toolchain=args.toolchain,
         jobs=args.jobs,
+        timeout_s=getattr(args, "timeout", None),
     )
 
 
@@ -393,12 +396,13 @@ def cmd_view(args: argparse.Namespace) -> None:
 
 
 def cmd_clean(args: argparse.Namespace) -> None:
-    operations.clean_app_impl(
+    api.clean_app(
         resolve_app_dir(args.app_dir),
         board=args.board,
         build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
         toolchain=args.toolchain,
         full=args.full,
+        timeout_s=getattr(args, "timeout", None),
     )
 
 
@@ -406,19 +410,21 @@ def cmd_lock(args: argparse.Namespace) -> None:
     # `--module X` re-resolves only the named module(s); per its `--help`
     # text it implies `--update` (the modules filter is a no-op without it).
     update = bool(args.update) or bool(args.modules)
-    operations.lock_app_impl(
+    api.lock_app(
         resolve_app_dir(args.app_dir),
         update=update,
         modules=list(args.modules) if args.modules else None,
         check=bool(getattr(args, "check", False)),
+        timeout_s=getattr(args, "timeout", None),
     )
 
 
 def cmd_sync(args: argparse.Namespace) -> None:
-    operations.sync_app_impl(
+    api.sync_app(
         resolve_app_dir(args.app_dir),
         frozen=bool(args.frozen),
         force=bool(args.force),
+        timeout_s=getattr(args, "timeout", None),
     )
 
 
@@ -432,9 +438,10 @@ def cmd_outdated(args: argparse.Namespace) -> None:
 
 
 def cmd_update(args: argparse.Namespace) -> None:
-    operations.update_app_impl(
+    api.update_app(
         resolve_app_dir(args.app_dir),
         modules=list(args.modules) if args.modules else None,
+        timeout_s=getattr(args, "timeout", None),
     )
 
 
@@ -776,6 +783,22 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
+    def _add_timeout(p: argparse.ArgumentParser) -> None:
+        # Per-subprocess wall-clock budget.  Surfaced uniformly across
+        # commands that shell out to git/cmake/ninja/JLinkExe so users
+        # can bound CI/run time end-to-end.  Wired through api.py's
+        # ``timeout_budget`` context manager.
+        p.add_argument(
+            "--timeout",
+            type=float,
+            default=None,
+            metavar="SECONDS",
+            help=(
+                "Wall-clock budget per subprocess (seconds). "
+                "Kills the whole process group on timeout."
+            ),
+        )
+
     p_new = sub.add_parser("create-app", help="Create a new standalone NSX app project")
     p_new.add_argument("app_dir", help="App directory to create")
     p_new.add_argument("--board", default="apollo510_evb", help="Target board package suffix")
@@ -830,6 +853,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p_configure.add_argument(
         "--toolchain", default=None, help="Toolchain override (gcc, armclang, atfe)"
     )
+    _add_timeout(p_configure)
     p_configure.set_defaults(func=cmd_configure)
 
     p_build = sub.add_parser("build", help="Build a generated NSX app")
@@ -841,6 +865,7 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p_build.add_argument("--target", default=None, help="Optional explicit build target")
     p_build.add_argument("--jobs", type=int, default=8, help="Parallel build jobs")
+    _add_timeout(p_build)
     p_build.set_defaults(func=cmd_build)
 
     p_flash = sub.add_parser("flash", help="Build and flash a generated NSX app")
@@ -851,6 +876,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "--toolchain", default=None, help="Toolchain override (gcc, armclang, atfe)"
     )
     p_flash.add_argument("--jobs", type=int, default=8, help="Parallel build jobs")
+    _add_timeout(p_flash)
     p_flash.set_defaults(func=cmd_flash)
 
     p_view = sub.add_parser("view", help="Open the SEGGER SWO viewer for a generated NSX app")
@@ -885,6 +911,7 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Remove the full build directory instead of only running the build-system clean target",
     )
+    _add_timeout(p_clean)
     p_clean.set_defaults(func=cmd_clean)
 
     p_lock = sub.add_parser(
@@ -914,6 +941,7 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help=("Exit non-zero if nsx.lock is out of date with nsx.yml (do not write); useful in CI"),
     )
+    _add_timeout(p_lock)
     p_lock.set_defaults(func=cmd_lock)
 
     p_sync = sub.add_parser(
@@ -935,6 +963,7 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Re-vendor every module even if its content_hash matches the lock",
     )
+    _add_timeout(p_sync)
     p_sync.set_defaults(func=cmd_sync)
 
     p_outdated = sub.add_parser(
@@ -976,6 +1005,7 @@ def _build_parser() -> argparse.ArgumentParser:
         default=[],
         help="Only update the named module (may be repeated)",
     )
+    _add_timeout(p_update)
     p_update.set_defaults(func=cmd_update)
 
     p_mod = sub.add_parser(
