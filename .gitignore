@@ -9,3 +9,6 @@
 
 # Toolchain-variant build dirs (build_armclang/, build_gcc/, build_atfe/, etc.)
 **/build_*/
+
+# Local benchmark capture artifacts (Joulescope, UART logs, etc.)
+examples/**/results/

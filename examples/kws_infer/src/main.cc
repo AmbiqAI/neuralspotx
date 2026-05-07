@@ -90,9 +90,10 @@ static tflite::MicroMutableOpResolver<kNumOps> &get_resolver() {
 /* ------------------------------------------------------------------ */
 
 int main(void) {
-    // --- NSX system init: HP mode, caches, ITM/SWO, SpotManager ---
+    // --- NSX system init: LP mode, caches, ITM/SWO, SpotManager ---
     // Uses minimal HW init (skips BSP's 2-second delay) with ITM debug.
     nsx_system_config_t sys_cfg = nsx_system_development;
+    sys_cfg.perf_mode = NSX_PERF_LOW;  // 96 MHz — best energy efficiency
     sys_cfg.skip_bsp_init = true;  // fast startup, no BSP delay
     NS_TRY(nsx_system_init(&sys_cfg), "System init failed\n");
 

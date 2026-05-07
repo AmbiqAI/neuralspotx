@@ -55,10 +55,9 @@ itcm_power_loop(void *results)
     __DSB();
     __ISB();
 
-    /* Signal ACTIVE to Joulescope via GPIO (register-write macros, no HAL call) */
-    /* GPIO29 = bit0 HIGH, GPIO36 = bit1 LOW → NS_DATA_COLLECTION pattern */
-    am_hal_gpio_output_set(NS_POWER_MONITOR_GPIO_0);
-    am_hal_gpio_output_clear(NS_POWER_MONITOR_GPIO_1);
+    /* NOTE: GPIO signal intentionally NOT set here — we use the signal
+     * from portable_init()/portable_fini() to bracket the timed benchmark
+     * run.  The ITCM loop power can be measured separately if needed. */
 
     /* Drain the NVM read pipeline.  After clearing PWRENNVM, the NVM
      * controller waits for outstanding MRAM fetches to complete before
@@ -71,6 +70,13 @@ itcm_power_loop(void *results)
         volatile ee_u32 dummy = *(volatile ee_u32 *)0x00430000;
         (void)dummy;
     }
+
+    /* Brief settling delay, then signal ACTIVE for Joulescope.
+     * This is a SEPARATE measurement from the timed benchmark —
+     * it captures the ITCM-only, NVM-off steady-state power. */
+    for (volatile int i = 0; i < 100000; i++) {}
+    am_hal_gpio_output_set(NS_POWER_MONITOR_GPIO_0);
+    am_hal_gpio_output_clear(NS_POWER_MONITOR_GPIO_1);
 
     while (1) {
         iterate(results);
@@ -163,13 +169,17 @@ portable_init(core_portable *p, int *argc, char *argv[])
     nsx_system_init(&nsx_system_development);
 
 #ifndef COREMARK_HP_MODE
-    /* Switch to LP 96 MHz NOW, before the timed CoreMark run.
-     * This ensures the score matches the power measurement conditions. */
+    /* Switch to LP 96 MHz for non-HP builds */
     am_hal_pwrctrl_mcu_mode_select(AM_HAL_PWRCTRL_MCU_MODE_LOW_POWER);
 #endif
 
     /* Configure power-monitor GPIOs for Joulescope phase detection */
     ns_init_power_monitor_state();
+
+    /* Signal ACTIVE immediately — Joulescope will see the timed benchmark
+     * run as the active phase.  For GCC builds, itcm_power_loop() maintains
+     * this signal during the post-benchmark iterate loop. */
+    ns_set_power_monitor_state(NS_DATA_COLLECTION);
 
     /* Start the microsecond timer */
     ns_timer_init(&s_timer_cfg);
@@ -191,6 +201,9 @@ void
 portable_fini(core_portable *p)
 {
     p->portable_id = 0;
+
+    /* Signal SLEEP — benchmark timed run is complete */
+    ns_set_power_monitor_state(NS_IDLE);
 
     ee_printf("\n--- CoreMark complete. ---\n");
 
@@ -226,6 +239,15 @@ portable_fini(core_portable *p)
     };
     ns_power_config(&coremark_power);
 
+    /* Override CPDLP to ELP retention (SDK5-equivalent).
+     * ns_power_config() sets ELP_ON; retention saves ~100 µW. */
+    am_hal_pwrctrl_pwrmodctl_cpdlp_t cpdlp = {
+        .eRlpConfig = AM_HAL_PWRCTRL_RLP_ON,
+        .eElpConfig = AM_HAL_PWRCTRL_ELP_RET,
+        .eClpConfig = AM_HAL_PWRCTRL_CLP_ON,
+    };
+    am_hal_pwrctrl_pwrmodctl_cpdlp_config(cpdlp);
+
     /* Nuclear peripheral kill */
     am_hal_pwrctrl_control(AM_HAL_PWRCTRL_CONTROL_DIS_PERIPHS_ALL, 0);
     am_hal_pwrctrl_control(AM_HAL_PWRCTRL_CONTROL_XTAL_PWDN_DEEPSLEEP, 0);
@@ -254,9 +276,10 @@ portable_fini(core_portable *p)
     };
     am_hal_pwrctrl_sram_config(&SRAMMemCfg);
 
-    /* MRAM low-power read mode */
-    MCUCTRL->MRAMCRYPTOPWRCTRL_b.MRAM0PWRCTRL = 1;
-    MCUCTRL->MRAMCRYPTOPWRCTRL_b.MRAM0LPREN   = 1;
+    /* MRAM low-power read mode (SDK5-equivalent) */
+    MCUCTRL->MRAMCRYPTOPWRCTRL_b.MRAM0LPREN    = 1;
+    MCUCTRL->MRAMCRYPTOPWRCTRL_b.MRAM0SLPEN    = 0;
+    MCUCTRL->MRAMCRYPTOPWRCTRL_b.MRAM0PWRCTRL  = 1;
     MCUCTRL->MRAMCRYPTOPWRCTRL_b.CRYPTOCLKGATEN = 1;
 
     /* Clear debug control */

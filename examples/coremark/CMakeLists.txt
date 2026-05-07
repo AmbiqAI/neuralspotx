@@ -123,8 +123,11 @@ target_compile_definitions(coremark PRIVATE BUFFER_SIZE_UP=32768)
 # Strip the board-default linker-script flag and replace with our ITCM variant.
 # ---------------------------------------------------------------------------
 if(NSX_TOOLCHAIN_FAMILY STREQUAL "armclang")
-    # TODO: create an armclang scatter file for ITCM placement
-    message(STATUS "Skipping ITCM linker-script override for armclang (not yet ported)")
+    set(COREMARK_SCATTER "${CMAKE_CURRENT_LIST_DIR}/linker_script_itcm.sct")
+    get_target_property(_board_link_opts nsx_board_apollo510_evb_flags INTERFACE_LINK_OPTIONS)
+    list(FILTER _board_link_opts EXCLUDE REGEX "--scatter=")
+    list(APPEND _board_link_opts "--scatter=${COREMARK_SCATTER}")
+    set_property(TARGET nsx_board_apollo510_evb_flags PROPERTY INTERFACE_LINK_OPTIONS ${_board_link_opts})
 else()
     set(COREMARK_LINKER_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/linker_script_itcm.ld")
     get_target_property(_board_link_opts nsx_board_apollo510_evb_flags INTERFACE_LINK_OPTIONS)

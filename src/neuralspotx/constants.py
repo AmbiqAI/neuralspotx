@@ -17,6 +17,7 @@ DEFAULT_SOC_FOR_BOARD = {
     "apollo510_evb": "apollo510",
     "apollo510b_evb": "apollo510b",
     "apollo330mP_evb": "apollo330P",
+    "apollo330mp_evb": "apollo330P",  # lowercase alias for convenience
 }
 
 DEFAULT_TOOLCHAIN = "arm-none-eabi-gcc"
