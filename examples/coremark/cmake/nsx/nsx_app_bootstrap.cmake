@@ -53,6 +53,8 @@ function(nsx_bootstrap_app)
 
     foreach(var
         NSX_TOOLCHAIN_FAMILY
+        NSX_CPU
+        NSX_SOC_FAMILY
         NSX_STARTUP_SOURCE
         NSX_SYSTEM_SOURCE
         NSX_SEGGER_DEVICE

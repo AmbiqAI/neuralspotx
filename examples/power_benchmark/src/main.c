@@ -426,6 +426,12 @@ enter_sdk5_power_measurement(void *benchmark_arg)
     /* --- Register dump: capture final state before measurement --- */
     dump_power_registers();
 
+    /* Signal ACTIVE phase to Joulescope before entering the
+     * SDK5-mimic steady-state loop (calls iterate(benchmark_arg) —
+     * a CoreMark workload run from ITCM). */
+    am_hal_gpio_output_set(NS_POWER_MONITOR_GPIO_0);
+    am_hal_gpio_output_clear(NS_POWER_MONITOR_GPIO_1);
+
     /* --- Run forever in SDK5-identical state --- */
     while (1) {
         iterate(benchmark_arg);
@@ -507,6 +513,9 @@ main(void)
      * 2 s delay, am_hal_pwrctrl_low_power_init, caches, SIMOBUCK_INIT,
      * temp 25 °C, clkmgr board info, HFRC/HFRC2 config. */
     am_bsp_low_power_init();
+
+    /* Configure power-monitor GPIOs for Joulescope phase detection. */
+    ns_init_power_monitor_state();
 
     /* UART output (SDK5 uses UART, not SWO) */
     am_bsp_uart_printf_enable();
