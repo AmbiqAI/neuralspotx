@@ -89,6 +89,7 @@ compose these primitives.
 from __future__ import annotations
 
 import datetime as _dt
+import enum
 import hashlib
 import json
 import os
@@ -109,6 +110,34 @@ _HASH_EXCLUDE_DIRS = frozenset({".git", "__pycache__", ".pytest_cache", ".DS_Sto
 
 
 # ---------------------------------------------------------------------------
+# Lock kind enum
+# ---------------------------------------------------------------------------
+
+
+class LockKind(str, enum.Enum):
+    """Resolution kind for a single lock entry.
+
+    Mixed with ``str`` so existing code that compares ``entry.kind ==
+    "git"`` keeps working unchanged. New code should prefer the enum
+    members (``LockKind.GIT``) for static checking and refactor safety.
+    """
+
+    GIT = "git"
+    PACKAGED = "packaged"
+    LOCAL = "local"
+    VENDORED = "vendored"
+    UNRESOLVED = "unresolved"
+
+    def __str__(self) -> str:  # pragma: no cover — trivial
+        return self.value
+
+
+# Public, hashable set of valid kind strings, useful for parser
+# validation without depending on the enum API.
+LOCK_KINDS: frozenset[str] = frozenset(k.value for k in LockKind)
+
+
+# ---------------------------------------------------------------------------
 # Dataclasses
 # ---------------------------------------------------------------------------
 
@@ -118,7 +147,7 @@ class ResolvedModule:
     """Resolution record for one module."""
 
     project: str
-    kind: str  # "git" | "packaged" | "local" | "vendored" | "unresolved"
+    kind: str  # see :class:`LockKind` for the valid values
     constraint: str
     vendored_at: str
     content_hash: str
@@ -134,17 +163,17 @@ class ResolvedModule:
             "content_hash": self.content_hash,
             "acquired_at": self.acquired_at,
         }
-        if self.kind in ("git", "unresolved"):
+        if self.kind in (LockKind.GIT, LockKind.UNRESOLVED):
             head: dict[str, Any] = {"url": self.url}
             if self.tag:
                 head["tag"] = self.tag
             head["commit"] = self.commit
             resolved = {**head, **resolved}
-        elif self.kind == "packaged" and self.tool_version:
+        elif self.kind == LockKind.PACKAGED and self.tool_version:
             resolved = {"tool_version": self.tool_version, **resolved}
         return {
             "project": self.project,
-            "kind": self.kind,
+            "kind": str(self.kind),
             "constraint": self.constraint,
             "resolved": resolved,
         }
@@ -461,9 +490,22 @@ def hash_git_artifact(url: str, commit: str, *, use_cache: bool = True) -> str:
         result = hash_tree(clone_dir)
 
     if use_cache:
-        cache = _read_artifact_hash_cache()
-        cache[cache_key] = result
-        _write_artifact_hash_cache(cache)
+        from .file_lock import file_mutex
+
+        cache_path = _git_artifact_hash_cache_path()
+        lock_path = cache_path.with_suffix(cache_path.suffix + ".lock")
+        try:
+            with file_mutex(lock_path):
+                cache = _read_artifact_hash_cache()
+                cache[cache_key] = result
+                _write_artifact_hash_cache(cache)
+        except OSError:
+            # Best-effort: fall back to an unsynchronised RMW. Cache
+            # entries are content-addressed and immutable per key, so
+            # a lost update only costs a future re-clone.
+            cache = _read_artifact_hash_cache()
+            cache[cache_key] = result
+            _write_artifact_hash_cache(cache)
     return result
 
 

@@ -338,7 +338,7 @@ def cmd_commands(args: argparse.Namespace) -> None:
 
 
 def cmd_create_app(args: argparse.Namespace) -> None:
-    operations.create_app_impl(
+    api.create_app(
         Path(args.app_dir).expanduser().resolve(),
         board=args.board,
         soc=args.soc,
@@ -348,7 +348,7 @@ def cmd_create_app(args: argparse.Namespace) -> None:
 
 
 def cmd_doctor(args: argparse.Namespace) -> None:
-    operations.doctor_impl()
+    api.doctor()
 
 
 def cmd_configure(args: argparse.Namespace) -> None:
@@ -385,13 +385,14 @@ def cmd_flash(args: argparse.Namespace) -> None:
 
 
 def cmd_view(args: argparse.Namespace) -> None:
-    operations.view_app_impl(
+    api.view_app(
         resolve_app_dir(args.app_dir),
         board=args.board,
         build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
         toolchain=args.toolchain,
         reset_on_open=not args.no_reset_on_open,
         reset_delay_ms=args.reset_delay_ms,
+        timeout_s=getattr(args, "timeout", None),
     )
 
 
@@ -429,9 +430,10 @@ def cmd_sync(args: argparse.Namespace) -> None:
 
 
 def cmd_outdated(args: argparse.Namespace) -> None:
-    n = operations.outdated_app_impl(
+    n = api.outdated_app(
         resolve_app_dir(args.app_dir),
         as_json=bool(getattr(args, "json", False)),
+        timeout_s=getattr(args, "timeout", None),
     )
     if args.exit_code and n:
         raise SystemExit(1)
@@ -617,7 +619,7 @@ def cmd_module_describe(args: argparse.Namespace) -> None:
 
 
 def cmd_module_add(args: argparse.Namespace) -> None:
-    operations.add_module_impl(
+    api.add_module(
         resolve_app_dir(args.app_dir),
         args.module,
         local=getattr(args, "local", False),
@@ -627,7 +629,7 @@ def cmd_module_add(args: argparse.Namespace) -> None:
 
 
 def cmd_module_remove(args: argparse.Namespace) -> None:
-    operations.remove_module_impl(
+    api.remove_module(
         resolve_app_dir(args.app_dir),
         args.module,
         dry_run=args.dry_run,
@@ -635,15 +637,15 @@ def cmd_module_remove(args: argparse.Namespace) -> None:
 
 
 def cmd_module_update(args: argparse.Namespace) -> None:
-    operations.update_modules_impl(
+    api.update_modules(
         resolve_app_dir(args.app_dir),
-        module_name=args.module,
+        module=args.module,
         dry_run=args.dry_run,
     )
 
 
 def cmd_module_register(args: argparse.Namespace) -> None:
-    operations.register_module_impl(
+    api.register_module(
         resolve_app_dir(args.app_dir),
         args.module,
         metadata=Path(args.metadata).expanduser(),
@@ -660,7 +662,7 @@ def cmd_module_register(args: argparse.Namespace) -> None:
 
 
 def cmd_module_init(args: argparse.Namespace) -> None:
-    operations.init_module_impl(
+    api.init_module(
         Path(args.module_dir).expanduser().resolve(),
         module_name=args.name,
         module_type=args.type,
@@ -897,6 +899,7 @@ def _build_parser() -> argparse.ArgumentParser:
         default=400,
         help="Milliseconds to wait after opening the SWO viewer before issuing reset",
     )
+    _add_timeout(p_view)
     p_view.set_defaults(func=cmd_view)
 
     p_clean = sub.add_parser("clean", help="Clean a generated NSX app build directory")
@@ -986,6 +989,7 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Emit machine-readable JSON instead of the human-readable table",
     )
+    _add_timeout(p_outdated)
     p_outdated.set_defaults(func=cmd_outdated)
 
     p_update = sub.add_parser(
