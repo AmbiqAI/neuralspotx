@@ -1,5 +1,31 @@
 # Changelog
 
+## [0.5.1](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.5.0...neuralspotx-v0.5.1) (2026-05-08)
+
+
+### Features
+
+* **api:** per-call timeout_s with process-group kill on expiry ([#23](https://github.com/AmbiqAI/neuralspotx/issues/23)) ([0be0cc6](https://github.com/AmbiqAI/neuralspotx/commit/0be0cc68877a2b239c06a24278ce2b44ebd1d3c0))
+* **cache:** content-addressed cache for vendored module artifacts ([#22](https://github.com/AmbiqAI/neuralspotx/issues/22)) ([6093aca](https://github.com/AmbiqAI/neuralspotx/commit/6093aca95a3ab23c27585ecf6c6020ba915349ce))
+* **examples:** multi-toolchain prebuilts + power-benchmark tuning ([#24](https://github.com/AmbiqAI/neuralspotx/issues/24)) ([d9dca55](https://github.com/AmbiqAI/neuralspotx/commit/d9dca558a5405e3de6a83a43a9803128cb31b9bc))
+* **nsx:** review-driven fixes + Py3.12 rmtree fix + nsx-core v0.2.0 bump ([#29](https://github.com/AmbiqAI/neuralspotx/issues/29)) ([a94c877](https://github.com/AmbiqAI/neuralspotx/commit/a94c877e40f86c53bb661da9543bb02ffe3301d2))
+
+
+### Bug Fixes
+
+* **nsx-lock:** atomic writes, read-only --check, per-app lock, viewer cleanup ([#26](https://github.com/AmbiqAI/neuralspotx/issues/26)) ([eb1541e](https://github.com/AmbiqAI/neuralspotx/commit/eb1541e2cb20eb85f34daf4755924d3cc50676ee))
+
+
+### Performance Improvements
+
+* **nsx:** parallel resolve_ref + hash_git_artifact + outdated ([#27](https://github.com/AmbiqAI/neuralspotx/issues/27)) ([74007dd](https://github.com/AmbiqAI/neuralspotx/commit/74007dd7e0834fd1529b56e773a2fd9f26e5ae87))
+* **nsx:** persistent TTL cache for resolve_ref (git ls-remote) ([fecf000](https://github.com/AmbiqAI/neuralspotx/commit/fecf0002abe5848dffcd4892293fd7973d94f06a))
+
+
+### Documentation
+
+* lead with app-centric flow; demote clone-the-repo path ([#19](https://github.com/AmbiqAI/neuralspotx/issues/19)) ([a5d0cd1](https://github.com/AmbiqAI/neuralspotx/commit/a5d0cd1c7afb33d17b1357876f36eb322e1c5511))
+
 ## [0.5.0](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.4.0...neuralspotx-v0.5.0) (2026-04-30)
 
 
