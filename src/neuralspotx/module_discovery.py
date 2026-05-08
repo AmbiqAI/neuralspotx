@@ -7,6 +7,7 @@ compatibility.  Both the public API and the CLI delegate here.
 
 from __future__ import annotations
 
+import enum
 import re
 from pathlib import Path
 from typing import Any
@@ -25,6 +26,28 @@ from .project_config import (
 )
 
 # ------------------------------------------------------------------
+# Scope enum
+# ------------------------------------------------------------------
+
+
+class Scope(str, enum.Enum):
+    """Module-discovery scope.
+
+    ``PACKAGED`` — only the bundled NSX module registry is consulted.
+    ``APP_EFFECTIVE`` — the app's ``nsx.yml`` overrides are merged in.
+
+    Mixed with ``str`` so existing code that compares ``scope == "packaged"``
+    keeps working unchanged.
+    """
+
+    PACKAGED = "packaged"
+    APP_EFFECTIVE = "app-effective"
+
+    def __str__(self) -> str:  # pragma: no cover — trivial
+        return self.value
+
+
+# ------------------------------------------------------------------
 # Module context resolution
 # ------------------------------------------------------------------
 
@@ -36,19 +59,20 @@ def resolve_module_context(
     """Build the registry / enabled-set pair for module queries.
 
     Returns ``(registry, enabled_names, resolved_app_dir, scope_label)``.
-    *scope_label* is ``"packaged"`` when no app is involved, or
-    ``"app-effective"`` when an app's overrides are merged in.
+    *scope_label* is :attr:`Scope.PACKAGED` when no app is involved, or
+    :attr:`Scope.APP_EFFECTIVE` when an app's overrides are merged in.
+    Both members compare equal to their legacy string spellings.
     """
 
     base_registry = _load_registry()
 
     if app_dir is None:
-        return base_registry, set(), None, "packaged"
+        return base_registry, set(), None, Scope.PACKAGED
 
     nsx_cfg = _load_app_cfg(app_dir)
     registry = _effective_registry(base_registry, nsx_cfg)
     enabled = set(_module_names_from_nsx(nsx_cfg))
-    return registry, enabled, app_dir, "app-effective"
+    return registry, enabled, app_dir, Scope.APP_EFFECTIVE
 
 
 # ------------------------------------------------------------------

@@ -107,7 +107,25 @@ def _check_nsx_version_compatibility(cfg: dict[str, Any], cfg_path: Path) -> Non
 
 
 def _read_yaml(path: Path) -> dict[str, Any]:
-    return yaml.safe_load(path.read_text(encoding="utf-8"))
+    """Parse *path* as YAML and require a mapping (dict) at the root.
+
+    Empty files, non-mapping roots, and YAML parse errors all surface
+    as a deterministic ``SystemExit`` with the offending path so the
+    user gets a clear, actionable error rather than an opaque
+    ``AttributeError`` deep in a ``.get()`` call later on.
+    """
+
+    try:
+        loaded = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except yaml.YAMLError as exc:
+        raise SystemExit(f"{path}: invalid YAML: {exc}") from None
+    if loaded is None:
+        raise SystemExit(f"{path}: file is empty or contains only comments")
+    if not isinstance(loaded, dict):
+        raise SystemExit(
+            f"{path}: expected a YAML mapping at the root, got {type(loaded).__name__}"
+        )
+    return loaded
 
 
 def _write_yaml(path: Path, data: dict[str, Any]) -> None:

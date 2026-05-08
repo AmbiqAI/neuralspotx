@@ -2,22 +2,35 @@
 
 from __future__ import annotations
 
+import enum
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 import yaml
 
-SUPPORTED_MODULE_TYPES = {
-    "sdk_provider",
-    "soc",
-    "board",
-    "runtime",
-    "portable_api",
-    "algorithm",
-    "tooling",
-    "backend_specific",
-}
+
+class ModuleType(str, enum.Enum):
+    """Kind of NSX module declared in ``nsx-module.yaml``.
+
+    Mixed with ``str`` so existing code that compares
+    ``module["type"] == "runtime"`` keeps working unchanged.
+    """
+
+    SDK_PROVIDER = "sdk_provider"
+    SOC = "soc"
+    BOARD = "board"
+    RUNTIME = "runtime"
+    PORTABLE_API = "portable_api"
+    ALGORITHM = "algorithm"
+    TOOLING = "tooling"
+    BACKEND_SPECIFIC = "backend_specific"
+
+    def __str__(self) -> str:  # pragma: no cover — trivial
+        return self.value
+
+
+SUPPORTED_MODULE_TYPES = frozenset(t.value for t in ModuleType)
 
 
 @dataclass(frozen=True)

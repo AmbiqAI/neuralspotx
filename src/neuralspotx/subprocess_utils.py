@@ -253,11 +253,17 @@ def git_clone_at_commit(url: str, dest: Path, commit: str) -> None:
         # git pack/index files can be read-only on Windows; clear the
         # write bit and retry the original failing op (which may be
         # ``os.unlink`` for files or ``os.rmdir`` for directories) so
-        # rmtree can finish in both cases.
+        # rmtree can finish in both cases. On Python 3.12+ rmtree may
+        # call fd-based syscalls (e.g. ``os.open(path, flags)``) that
+        # require multiple positional args; in that case ``_func(_path)``
+        # raises TypeError, which we swallow.
         try:
             os.chmod(_path, stat.S_IWRITE)
-            _func(_path)
         except OSError:
+            pass
+        try:
+            _func(_path)
+        except (OSError, TypeError):
             pass
 
     def _robust_rmtree(path: Path) -> None:

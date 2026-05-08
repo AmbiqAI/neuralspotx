@@ -10,10 +10,11 @@ Semantics
 * Advisory only: an exclusive whole-file lock that another ``nsx``
   process will block on until released. Any other tool that doesn't
   participate (e.g. a developer manually editing files) is unaffected.
-* Best-effort: if the platform-specific lock primitive is unavailable
-  or fails for non-recoverable reasons, the context manager logs a
-  warning and proceeds without a lock. NSX should never crash because
-  of a missing lock primitive.
+* Fail-closed: if the platform-specific lock primitive raises an
+  unexpected error, NSX raises :class:`AppLockUnavailableError`
+  rather than silently proceeding without synchronisation. Set
+  ``NSX_LOCK_FAIL_OPEN=1`` to opt back into the legacy fail-open
+  behaviour on platforms where the primitive is genuinely missing.
 * Per-app: callers pass the app directory. The lockfile lives at
   ``<app_dir>/.nsx.sync.lock`` (matched in the example app
   ``.gitignore``). The file is created on demand and left in place
@@ -74,8 +75,21 @@ def app_lock(app_dir: Path, *, blocking: bool = True) -> Iterator[None]:
             locked = True
         except AppLockBusyError:
             raise
-        except Exception as exc:  # noqa: BLE001 — best-effort fallback
-            _warn_once(f"file lock unavailable ({exc}); proceeding without it.")
+        except Exception as exc:  # noqa: BLE001 — primitive failure
+            # Fail-closed by default: the call paths that take this lock
+            # (``lock`` / ``sync`` / ``update``) are exactly the ones
+            # where racing writers can corrupt ``nsx.lock`` and
+            # ``modules/``. Surface a typed error so callers must
+            # consciously opt out.
+            if os.environ.get("NSX_LOCK_FAIL_OPEN") in ("1", "true", "TRUE", "yes"):
+                _warn_once(
+                    f"file lock unavailable ({exc}); proceeding without it (NSX_LOCK_FAIL_OPEN=1).",
+                )
+            else:
+                raise AppLockUnavailableError(
+                    f"file lock primitive unavailable for {path}: {exc}. "
+                    "Set NSX_LOCK_FAIL_OPEN=1 to bypass on legacy platforms."
+                ) from exc
         _held_paths.add(key)
         try:
             yield
@@ -98,6 +112,48 @@ _held_paths: set[str] = set()
 
 class AppLockBusyError(RuntimeError):
     """Raised by :func:`app_lock` in non-blocking mode when busy."""
+
+
+class AppLockUnavailableError(RuntimeError):
+    """Raised when the lock primitive is unavailable and fail-open is off."""
+
+
+@contextlib.contextmanager
+def file_mutex(path: Path) -> Iterator[None]:
+    """Acquire an exclusive blocking lock on *path* for the with-block.
+
+    A lower-level cousin of :func:`app_lock` for serialising
+    read-modify-write sequences on shared on-disk artifacts (e.g.
+    user-cache JSON files). Differences vs ``app_lock``:
+
+    * Always blocking and always per-call (no reentrancy bookkeeping).
+    * Always fail-closed: if the lock primitive raises, that error
+      propagates. ``NSX_LOCK_FAIL_OPEN`` does not apply here because
+      the call sites are tight critical sections, not user-facing
+      flows we want to keep alive on broken platforms.
+    * The caller chooses the lockfile path explicitly. Typically a
+      ``<artifact>.lock`` sidecar next to the file being mutated.
+
+    The lockfile is created on demand and left in place after release;
+    only its OS-level lock state matters.
+    """
+
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(str(path), os.O_RDWR | os.O_CREAT, 0o644)
+    try:
+        _platform_lock(fd, blocking=True)
+        try:
+            yield
+        finally:
+            try:
+                _platform_unlock(fd)
+            except Exception:  # noqa: BLE001
+                pass
+    finally:
+        try:
+            os.close(fd)
+        except OSError:
+            pass
 
 
 # ---------------------------------------------------------------------------

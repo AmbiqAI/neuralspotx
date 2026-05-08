@@ -112,6 +112,7 @@ function(nsx_apply_toolchain_flags flags_target)
         # --------------------------------------------------------
         target_compile_options(${flags_target} INTERFACE
             ${_arch_flags}
+            -fshort-enums
             -ffunction-sections
             -fdata-sections
             -fomit-frame-pointer
@@ -126,6 +127,7 @@ function(nsx_apply_toolchain_flags flags_target)
 
         target_compile_definitions(${flags_target} INTERFACE
             gcc
+            NSX_TOOLCHAIN_GCC
         )
 
         target_link_options(${flags_target} INTERFACE

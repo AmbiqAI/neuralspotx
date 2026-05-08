@@ -74,7 +74,7 @@ projects:
   nsx-core:
     name: nsx-core
     url: https://github.com/AmbiqAI/nsx-core.git
-    revision: v0.1.0
+    revision: nsx-core-v0.2.0
     path: modules/nsx-core
   nsx-harness:
     name: nsx-harness
@@ -249,7 +249,7 @@ modules:
     metadata: src/neuralspotx/boards/apollo4p_blue_kxr_evb/nsx-module.yaml
   nsx-core:
     project: nsx-core
-    revision: v0.1.0
+    revision: nsx-core-v0.2.0
     metadata: modules/nsx-core/nsx-module.yaml
   nsx-harness:
     project: nsx-harness

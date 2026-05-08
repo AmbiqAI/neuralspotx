@@ -20,10 +20,13 @@ flag means "go to the network and re-resolve everything".
 
 from __future__ import annotations
 
+import contextlib
+import contextvars
 import json
 import os
 import tempfile
 import time
+from collections.abc import Iterator
 from pathlib import Path
 
 # ---------------------------------------------------------------------------
@@ -33,9 +36,23 @@ from pathlib import Path
 _ENV_TTL = "NSX_RESOLVE_TTL"
 _DEFAULT_TTL: float = 300.0  # 5 minutes
 
+# Per-call override that takes precedence over the env var. Scoped via
+# ``ttl_override`` context manager so concurrent callers can set their
+# own TTL without mutating process-global ``os.environ``.
+_ttl_override: contextvars.ContextVar[float | None] = contextvars.ContextVar(
+    "nsx_resolve_ttl_override", default=None
+)
+
 
 def _ttl_seconds() -> float:
-    """Return the configured TTL; 0 means cache disabled."""
+    """Return the configured TTL; 0 means cache disabled.
+
+    Resolution order: contextvar override (set by :func:`ttl_override`),
+    then ``NSX_RESOLVE_TTL`` env var, then the built-in default.
+    """
+    override = _ttl_override.get()
+    if override is not None:
+        return max(float(override), 0.0)
     raw = os.environ.get(_ENV_TTL)
     if raw is None:
         return _DEFAULT_TTL
@@ -44,6 +61,26 @@ def _ttl_seconds() -> float:
     except (ValueError, TypeError):
         return _DEFAULT_TTL
     return max(val, 0.0)
+
+
+@contextlib.contextmanager
+def ttl_override(seconds: float | None) -> Iterator[None]:
+    """Temporarily override the resolve-cache TTL for the current context.
+
+    Pass ``None`` to keep the existing behaviour (env var / default).
+    Pass ``0`` to disable the cache for the duration of the block.
+    Safe under concurrent callers: implemented with ``ContextVar`` so
+    overrides do not leak between threads or async tasks.
+    """
+
+    if seconds is None:
+        yield
+        return
+    token = _ttl_override.set(float(seconds))
+    try:
+        yield
+    finally:
+        _ttl_override.reset(token)
 
 
 # ---------------------------------------------------------------------------
@@ -144,17 +181,38 @@ def get(url: str, ref: str) -> tuple[str, str | None] | None:
 
 
 def put(url: str, ref: str, sha: str, kind: str | None) -> None:
-    """Store a resolve result with the current timestamp."""
+    """Store a resolve result with the current timestamp.
+
+    Serialises read-modify-write under a sidecar file lock so concurrent
+    ``nsx`` processes can't drop each other's entries (last-writer-wins
+    on the full JSON snapshot would otherwise lose updates).
+    """
     ttl = _ttl_seconds()
     if ttl == 0:
         return
     key = _cache_key(url, ref)
-    entries = _read_cache()
-    # Prune stale entries while we're at it (keep at most 1000)
-    now = time.time()
-    entries = {k: v for k, v in entries.items() if (now - v[2]) < ttl}
-    entries[key] = (sha, kind, now)
-    _write_cache(entries)
+
+    from .file_lock import file_mutex
+
+    lock_path = _cache_path().with_suffix(_cache_path().suffix + ".lock")
+    try:
+        with file_mutex(lock_path):
+            entries = _read_cache()
+            # Prune stale entries while we're at it.
+            now = time.time()
+            entries = {k: v for k, v in entries.items() if (now - v[2]) < ttl}
+            entries[key] = (sha, kind, now)
+            _write_cache(entries)
+    except OSError:
+        # Cache is best-effort; if locking the sidecar fails, fall
+        # back to an unsynchronised write rather than failing the
+        # caller. The atomic ``os.replace`` in ``_write_cache`` still
+        # guarantees no torn file.
+        entries = _read_cache()
+        now = time.time()
+        entries = {k: v for k, v in entries.items() if (now - v[2]) < ttl}
+        entries[key] = (sha, kind, now)
+        _write_cache(entries)
 
 
 def invalidate_all() -> None:

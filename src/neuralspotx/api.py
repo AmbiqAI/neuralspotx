@@ -14,7 +14,86 @@ PathLike = str | Path
 
 
 class NSXError(RuntimeError):
-    """Raised when an NSX workflow operation fails."""
+    """Raised when an NSX workflow operation fails.
+
+    The base of the NSX exception hierarchy.  Subclasses provide finer-grained
+    classification while remaining catchable via ``except NSXError``:
+
+    * :class:`NSXTimeoutError` — a subprocess exceeded its wall-clock budget.
+    * :class:`NSXConfigError` — invalid or missing app/registry configuration.
+    * :class:`NSXResolutionError` — git-ref resolution / lock-file mismatch.
+    * :class:`NSXLockError` — could not acquire the per-app advisory lock.
+    * :class:`NSXModuleError` — module not found / dependency closure failure.
+    * :class:`NSXToolchainError` — missing or unsupported toolchain.
+    """
+
+
+class NSXTimeoutError(NSXError):
+    """Raised when an NSX subprocess exceeded its ``timeout_s`` budget."""
+
+    def __init__(
+        self, message: str, *, command: str | None = None, timeout_s: float | None = None
+    ) -> None:
+        super().__init__(message)
+        self.command = command
+        self.timeout_s = timeout_s
+
+
+class NSXConfigError(NSXError):
+    """Raised for invalid or missing app / registry configuration."""
+
+
+class NSXResolutionError(NSXError):
+    """Raised for git-ref resolution or lock-file consistency failures."""
+
+
+class NSXLockError(NSXError):
+    """Raised when the per-app advisory lock cannot be acquired."""
+
+
+class NSXModuleError(NSXError):
+    """Raised for module-name lookup or dependency-closure failures."""
+
+
+class NSXToolchainError(NSXError):
+    """Raised for missing or unsupported toolchain configuration."""
+
+
+# Internal: mapping from leading message substrings to exception subclasses.
+# This lets us upgrade legacy ``raise SystemExit("...")`` sites incrementally
+# without rewriting every operation up-front.  Order matters — first match wins.
+_ERROR_CLASSIFIERS: tuple[tuple[str, type[NSXError]], ...] = (
+    ("App lock unavailable", NSXLockError),
+    ("Could not acquire app lock", NSXLockError),
+    ("Unknown module", NSXModuleError),
+    ("Module not found", NSXModuleError),
+    ("Module name must not be empty", NSXModuleError),
+    ("Module directory already exists", NSXModuleError),
+    ("Module path already exists", NSXModuleError),
+    ("Unknown toolchain", NSXToolchainError),
+    ("Unsupported toolchain", NSXToolchainError),
+    ("Toolchain not found", NSXToolchainError),
+    ("Toolchain ", NSXToolchainError),
+    ("Could not resolve", NSXResolutionError),
+    ("Failed to resolve", NSXResolutionError),
+    ("ls-remote", NSXResolutionError),
+    ("nsx.lock", NSXResolutionError),
+    ("nsx.yml", NSXConfigError),
+    ("registry.lock", NSXConfigError),
+    ("nsx-module.yaml", NSXConfigError),
+    ("schema_version", NSXConfigError),
+    ("App directory", NSXConfigError),
+    ("Profile ", NSXConfigError),
+)
+
+
+def _classify(message: str) -> type[NSXError]:
+    """Pick the most specific NSXError subclass for *message*."""
+
+    for prefix, cls in _ERROR_CLASSIFIERS:
+        if prefix in message:
+            return cls
+    return NSXError
 
 
 @dataclass(slots=True)
@@ -60,6 +139,22 @@ class AppActionRequest:
     build_dir: PathLike | None = None
     toolchain: str | None = None
     timeout_s: float | None = field(default=None, kw_only=True)
+
+
+@dataclass(slots=True)
+class AppViewRequest(AppActionRequest):
+    """Request parameters for launching the SWO viewer.
+
+    Attributes:
+        reset_on_open: When True (default), reset the target once the
+            viewer attaches. Avoids a race where SWO is silent until
+            the next reset.
+        reset_delay_ms: Delay between attaching the viewer and issuing
+            the reset, in milliseconds.
+    """
+
+    reset_on_open: bool = True
+    reset_delay_ms: int = 400
 
 
 @dataclass(slots=True)
@@ -135,10 +230,14 @@ class AppOutdatedRequest:
     Attributes:
         app_dir: App directory containing ``nsx.lock``.
         as_json: Emit a machine-readable JSON report instead of a table.
+        timeout_s: Per-subprocess wall-clock budget (seconds). Applied
+            to each ``git ls-remote`` invoked while comparing locked
+            commits to upstream tips. ``None`` disables the timeout.
     """
 
     app_dir: PathLike
     as_json: bool = False
+    timeout_s: float | None = None
 
 
 @dataclass(slots=True)
@@ -165,6 +264,8 @@ class ModuleChangeRequest:
     app_dir: PathLike
     module: str
     dry_run: bool = False
+    local: bool = False
+    vendored: bool = False
 
 
 @dataclass(slots=True)
@@ -219,11 +320,16 @@ def _invoke(func, *args, **kwargs) -> None:
         code = exc.code
         if code in (None, 0):
             return
-        raise NSXError(str(code)) from None
+        message = str(code)
+        raise _classify(message)(message) from None
     except subprocess.TimeoutExpired as exc:
         cmd = exc.cmd
         cmd_str = " ".join(cmd) if isinstance(cmd, list) else str(cmd)
-        raise NSXError(f"Subprocess timed out after {exc.timeout}s: {cmd_str}") from None
+        raise NSXTimeoutError(
+            f"Subprocess timed out after {exc.timeout}s: {cmd_str}",
+            command=cmd_str,
+            timeout_s=float(exc.timeout) if exc.timeout is not None else None,
+        ) from None
 
 
 def _invoke_with_return(func, *args, **kwargs):
@@ -237,11 +343,16 @@ def _invoke_with_return(func, *args, **kwargs):
         code = exc.code
         if code in (None, 0):
             return None
-        raise NSXError(str(code)) from None
+        message = str(code)
+        raise _classify(message)(message) from None
     except subprocess.TimeoutExpired as exc:
         cmd = exc.cmd
         cmd_str = " ".join(cmd) if isinstance(cmd, list) else str(cmd)
-        raise NSXError(f"Subprocess timed out after {exc.timeout}s: {cmd_str}") from None
+        raise NSXTimeoutError(
+            f"Subprocess timed out after {exc.timeout}s: {cmd_str}",
+            command=cmd_str,
+            timeout_s=float(exc.timeout) if exc.timeout is not None else None,
+        ) from None
 
 
 def create_app(
@@ -406,28 +517,40 @@ def flash_app(
 
 
 def view_app(
-    app_dir: PathLike | AppActionRequest,
+    app_dir: PathLike | AppViewRequest,
     *,
     board: str | None = None,
     build_dir: PathLike | None = None,
     toolchain: str | None = None,
+    reset_on_open: bool = True,
+    reset_delay_ms: int = 400,
+    timeout_s: float | None = None,
 ) -> None:
     """Launch the SEGGER SWO viewer for an app."""
 
     request = (
         app_dir
-        if isinstance(app_dir, AppActionRequest)
-        else AppActionRequest(
-            app_dir=app_dir, board=board, build_dir=build_dir, toolchain=toolchain
+        if isinstance(app_dir, AppViewRequest)
+        else AppViewRequest(
+            app_dir=app_dir,
+            board=board,
+            build_dir=build_dir,
+            toolchain=toolchain,
+            reset_on_open=reset_on_open,
+            reset_delay_ms=reset_delay_ms,
+            timeout_s=timeout_s,
         )
     )
-    _invoke(
-        operations.view_app_impl,
-        Path(request.app_dir).expanduser().resolve(),
-        board=request.board,
-        build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
-        toolchain=request.toolchain,
-    )
+    with timeout_budget(request.timeout_s):
+        _invoke(
+            operations.view_app_impl,
+            Path(request.app_dir).expanduser().resolve(),
+            board=request.board,
+            build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
+            toolchain=request.toolchain,
+            reset_on_open=request.reset_on_open,
+            reset_delay_ms=request.reset_delay_ms,
+        )
 
 
 def clean_app(
@@ -473,6 +596,8 @@ def add_module(
     module: str | None = None,
     *,
     dry_run: bool = False,
+    local: bool = False,
+    vendored: bool = False,
 ) -> None:
     """Add a module to an app."""
 
@@ -483,14 +608,18 @@ def add_module(
             app_dir=app_dir,
             module=module or "",
             dry_run=dry_run,
+            local=local,
+            vendored=vendored,
         )
     )
     if not request.module:
-        raise NSXError("add_module requires a module name")
+        raise NSXModuleError("add_module requires a module name")
     _invoke(
         operations.add_module_impl,
         Path(request.app_dir).expanduser().resolve(),
         request.module,
+        local=request.local,
+        vendored=request.vendored,
         dry_run=request.dry_run,
     )
 
@@ -513,7 +642,7 @@ def remove_module(
         )
     )
     if not request.module:
-        raise NSXError("remove_module requires a module name")
+        raise NSXModuleError("remove_module requires a module name")
     _invoke(
         operations.remove_module_impl,
         Path(request.app_dir).expanduser().resolve(),
@@ -579,7 +708,7 @@ def register_module(
         )
     )
     if not request.module or not request.metadata or not request.project:
-        raise NSXError("register_module requires module, metadata, and project")
+        raise NSXModuleError("register_module requires module, metadata, and project")
     _invoke(
         operations.register_module_impl,
         Path(request.app_dir).expanduser().resolve(),
@@ -657,7 +786,7 @@ def validate_module_metadata(
         data = load_yaml(path)
         validate_nsx_module_metadata(data, str(path))
     except (ValueError, SystemExit) as exc:
-        raise NSXError(str(exc)) from None
+        raise NSXConfigError(str(exc)) from None
     return data
 
 
@@ -756,29 +885,19 @@ def lock_app(
         )
     )
 
-    # Apply per-call resolve TTL override via env var (scoped to this call).
-    import os
+    # Apply per-call resolve TTL override via contextvar (concurrency-safe;
+    # does not mutate process-global ``os.environ``).
+    from . import _resolve_cache
 
-    _ttl_env_key = "NSX_RESOLVE_TTL"
-    _prev_ttl = os.environ.get(_ttl_env_key)
-    if request.resolve_ttl_s is not None:
-        os.environ[_ttl_env_key] = str(request.resolve_ttl_s)
-    try:
-        with timeout_budget(request.timeout_s):
-            return _invoke_with_return(
-                operations.lock_app_impl,
-                Path(request.app_dir).expanduser().resolve(),
-                update=request.update,
-                modules=request.modules,
-                check=request.check,
-                quiet=request.quiet,
-            )
-    finally:
-        if request.resolve_ttl_s is not None:
-            if _prev_ttl is None:
-                os.environ.pop(_ttl_env_key, None)
-            else:
-                os.environ[_ttl_env_key] = _prev_ttl
+    with _resolve_cache.ttl_override(request.resolve_ttl_s), timeout_budget(request.timeout_s):
+        return _invoke_with_return(
+            operations.lock_app_impl,
+            Path(request.app_dir).expanduser().resolve(),
+            update=request.update,
+            modules=request.modules,
+            check=request.check,
+            quiet=request.quiet,
+        )
 
 
 def sync_app(
@@ -812,22 +931,26 @@ def outdated_app(
     app_dir: PathLike | AppOutdatedRequest,
     *,
     as_json: bool = False,
+    timeout_s: float | None = None,
 ) -> int:
     """Report git modules whose locked commit lags the upstream constraint.
 
     Returns the count of outdated modules (zero when the lock is fresh).
+    *timeout_s* applies per ``git ls-remote`` subprocess invoked while
+    comparing locked commits to upstream tips.
     """
 
     request = (
         app_dir
         if isinstance(app_dir, AppOutdatedRequest)
-        else AppOutdatedRequest(app_dir=app_dir, as_json=as_json)
+        else AppOutdatedRequest(app_dir=app_dir, as_json=as_json, timeout_s=timeout_s)
     )
-    result = _invoke_with_return(
-        operations.outdated_app_impl,
-        Path(request.app_dir).expanduser().resolve(),
-        as_json=request.as_json,
-    )
+    with timeout_budget(request.timeout_s):
+        result = _invoke_with_return(
+            operations.outdated_app_impl,
+            Path(request.app_dir).expanduser().resolve(),
+            as_json=request.as_json,
+        )
     return int(result) if result is not None else 0
 
 

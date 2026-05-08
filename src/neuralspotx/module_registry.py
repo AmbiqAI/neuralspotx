@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
+import contextlib
+import contextvars
 import copy
 import os
 import shutil
 import stat
+from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
@@ -33,6 +36,52 @@ from .subprocess_utils import (
 )
 from .tooling import require_tool as _require_tool
 
+# ---------------------------------------------------------------------------
+# Operation-scope metadata cache
+# ---------------------------------------------------------------------------
+#
+# ``_load_module_metadata`` parses + validates ``nsx-module.yaml`` from
+# disk on every call.  Discovery flows (``list_modules``,
+# ``search_modules``, ``describe_module``) and dependency-closure flows
+# (``_resolve_module_closure``, ``_module_dependents``) hit it many
+# times per command for the same module.  We cache results inside an
+# explicit operation scope so:
+#
+#   * Long-lived processes that embed NSX (helia-profiler, etc.) can't
+#     accidentally consume stale on-disk metadata between runs — the
+#     cache only exists while a ``with metadata_cache_scope():`` is
+#     active.
+#   * Concurrent callers don't share a cache (``ContextVar`` is
+#     thread/async-task local).
+#
+# Keyed by ``(module_name, str(app_dir) or "")``; the registry itself
+# is captured by the caller's choice to enter the scope, so we don't
+# need to key on it.
+
+_metadata_scope: contextvars.ContextVar[dict[tuple[str, str], dict[str, Any]] | None] = (
+    contextvars.ContextVar("nsx_metadata_scope", default=None)
+)
+
+
+@contextlib.contextmanager
+def metadata_cache_scope() -> Iterator[None]:
+    """Enable per-operation memoization of ``_load_module_metadata``.
+
+    Within this with-block, repeated calls to load a given
+    ``(module_name, app_dir)`` pair return the cached parse without
+    re-reading or re-validating ``nsx-module.yaml``. Nested scopes are
+    no-ops (the outermost scope owns the cache).
+    """
+
+    if _metadata_scope.get() is not None:
+        yield
+        return
+    token = _metadata_scope.set({})
+    try:
+        yield
+    finally:
+        _metadata_scope.reset(token)
+
 
 def _rmtree(path: Path) -> None:
     """Remove a directory tree, handling read-only files on Windows.
@@ -42,8 +91,14 @@ def _rmtree(path: Path) -> None:
     """
 
     def _on_rm_error(_func, _path, _exc_info):  # noqa: ANN001
-        os.chmod(_path, stat.S_IWRITE)
-        os.unlink(_path)
+        try:
+            os.chmod(_path, stat.S_IWRITE)
+        except OSError:
+            pass
+        try:
+            os.unlink(_path)
+        except (OSError, TypeError):
+            pass
 
     shutil.rmtree(path, onerror=_on_rm_error)
 
@@ -108,10 +163,21 @@ def _load_module_metadata(
     registry: dict[str, Any],
     app_dir: Path | None = None,
 ) -> dict[str, Any]:
+    cache = _metadata_scope.get()
+    cache_key: tuple[str, str] | None = None
+    if cache is not None:
+        cache_key = (module_name, str(app_dir) if app_dir is not None else "")
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+
     entry = registry_entry_for_module(registry, module_name)
     metadata_path = _module_metadata_path(module_name, entry, registry, app_dir=app_dir)
     data = _read_yaml(metadata_path)
     validate_nsx_module_metadata(data, str(metadata_path))
+
+    if cache is not None and cache_key is not None:
+        cache[cache_key] = data
     return data
 
 
@@ -589,6 +655,24 @@ def _resolve_module_closure(
     registry: dict[str, Any],
     default_toolchain: str,
 ) -> list[str]:
+    with metadata_cache_scope():
+        return _resolve_module_closure_inner(
+            seed_modules,
+            app_dir=app_dir,
+            nsx_cfg=nsx_cfg,
+            registry=registry,
+            default_toolchain=default_toolchain,
+        )
+
+
+def _resolve_module_closure_inner(
+    seed_modules: list[str],
+    *,
+    app_dir: Path | None,
+    nsx_cfg: dict[str, Any],
+    registry: dict[str, Any],
+    default_toolchain: str,
+) -> list[str]:
     target = nsx_cfg.get("target", {})
     board = target.get("board")
     soc = target.get("soc")
@@ -673,13 +757,14 @@ def _module_dependents(
 ) -> dict[str, set[str]]:
     skip = local_modules or set()
     dependents = {name: set() for name in module_names}
-    for name in module_names:
-        if name in skip:
-            continue
-        metadata = _load_module_metadata(name, registry, app_dir=app_dir)
-        for dep in metadata["depends"]["required"]:
-            if dep in dependents:
-                dependents[dep].add(name)
+    with metadata_cache_scope():
+        for name in module_names:
+            if name in skip:
+                continue
+            metadata = _load_module_metadata(name, registry, app_dir=app_dir)
+            for dep in metadata["depends"]["required"]:
+                if dep in dependents:
+                    dependents[dep].add(name)
     return dependents
 
 
@@ -688,17 +773,28 @@ def _update_nsx_cfg_modules(
     module_names: list[str],
     registry: dict[str, Any],
 ) -> None:
-    # Preserve existing local module entries — they don't come from
-    # the registry and must keep their ``local: true`` flag.
-    existing_local: dict[str, dict[str, Any]] = {}
+    # Preserve existing opaque module entries — they don't come from
+    # the registry and must keep their identifying flags:
+    #   * ``local: true``                  (path-linked external dir)
+    #   * ``source: { vendored: true }``   (committed inside the app tree)
+    # Without this, ``add``/``remove``/``update`` rewrites could drop
+    # the ``local`` flag or fail when the module isn't in the registry.
+    existing_opaque: dict[str, dict[str, Any]] = {}
     for item in nsx_cfg.get("modules", []):
-        if isinstance(item, dict) and item.get("local"):
-            existing_local[item["name"]] = item
+        if not isinstance(item, dict):
+            continue
+        name = item.get("name")
+        if not isinstance(name, str):
+            continue
+        source = item.get("source") if isinstance(item.get("source"), dict) else None
+        is_vendored = bool(source and source.get("vendored") is True)
+        if item.get("local") or is_vendored:
+            existing_opaque[name] = item
 
     new_modules: list[dict[str, Any]] = []
     for name in _unique_preserving_order(module_names):
-        if name in existing_local:
-            new_modules.append(existing_local[name])
+        if name in existing_opaque:
+            new_modules.append(existing_opaque[name])
         else:
             new_modules.append(_module_record(name, registry))
     nsx_cfg["modules"] = new_modules
@@ -778,13 +874,14 @@ def _module_discovery_records(
     app_dir: Path | None = None,
     include_metadata: bool = True,
 ) -> list[dict[str, Any]]:
-    return [
-        _module_discovery_record(
-            name,
-            registry,
-            app_dir=app_dir,
-            enabled=name in enabled,
-            include_metadata=include_metadata,
-        )
-        for name in sorted(registry["modules"].keys())
-    ]
+    with metadata_cache_scope():
+        return [
+            _module_discovery_record(
+                name,
+                registry,
+                app_dir=app_dir,
+                enabled=name in enabled,
+                include_metadata=include_metadata,
+            )
+            for name in sorted(registry["modules"].keys())
+        ]

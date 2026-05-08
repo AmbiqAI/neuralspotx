@@ -343,8 +343,15 @@ def _on_rm_error(_func, _path, _exc_info):  # noqa: ANN001
 
     try:
         os.chmod(_path, _stat.S_IWRITE)
-        _func(_path)
     except OSError:
+        pass
+    # Retry the failing op. On Python 3.12+ shutil.rmtree uses fd-based
+    # syscalls (e.g. ``os.open(path, flags)``) which require multiple
+    # positional args; calling ``_func(_path)`` then raises TypeError.
+    # Swallow it -- the next rmtree pass will retry the parent.
+    try:
+        _func(_path)
+    except (OSError, TypeError):
         pass
 
 
