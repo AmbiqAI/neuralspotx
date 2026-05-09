@@ -230,25 +230,31 @@ Layering in practice:
 
 ---
 
-## Recommended Remediation Roadmap
+## Remediation Checklist
 
-### Now
-1. Fix `_read_yaml`/`_load_app_cfg` to enforce mapping root and emit deterministic validation errors.
-2. Fix `_update_nsx_cfg_modules` to preserve vendored entries (parallel to existing local preservation), and add targeted tests.
-3. Replace API TTL env mutation with explicit parameter plumbing into resolve functions, or a `contextvar`-based cache TTL override.
-4. Make `app_lock` fail-closed for lock/sync/update by default; opt-out only via explicit env flag for legacy platforms.
-5. Route all CLI mutating commands through API wrappers (including `create-app`, `view`, `outdated`, module subcommands) or ensure equivalent timeout/error policy.
-6. Correct doctor `CalledProcessError` branch to report degraded/fail unless explicit success criteria are met.
+Items are sequenced so each builds on previous work. Check off as completed.
 
-### Next
-1. Introduce enums/dataclasses for `LockKind`, `ModuleType`, `Scope`, and discovery/search records.
-2. Add operation-scope metadata caching to avoid repeated YAML load/validation on large registries.
-3. Harden cache update behavior under concurrency (file locks or append-log compaction strategy).
-4. Add timeout support for `outdated` and `view` at CLI/API levels.
-5. Add focused tests for malformed config, CLI/API parity, cache concurrency, and doctor error classification.
-
-### Later
-1. Unify config/registry models into typed domain objects and reduce `dict[str, Any]` spread.
-2. Split CLI command graph metadata into typed command descriptors reusable by API docs and command listing output.
-3. Consolidate board/toolchain/provider mapping logic between Python and CMake into a single source of truth.
-4. ~~Add structured error classes replacing deep `SystemExit` usage in internal layers to improve embeddability and composability.~~ **(M4 — done)** `NSXError` now MI from `SystemExit, RuntimeError`; classes extracted to `_errors.py` to break import cycles; `tooling`, `subprocess_utils`, `project_config` and `module_registry` raise typed errors directly. Legacy `except SystemExit:` handlers (CLI wrapper, prior tests) keep working unchanged. `operations.py` and `cli.py` raise sites deferred — `_classify` backstop in `api._invoke` still routes those.
+- [x] **R1. YAML root validation.** Enforce mapping root in `_read_yaml`/`_load_app_cfg`; emit deterministic `NSXConfigError` for empty/list/scalar/malformed files. *(PR #30–33)*
+- [x] **R2. Vendored module preservation.** Fix `_update_nsx_cfg_modules` to preserve vendored entries through remove/update rewrites; add targeted tests. *(PR #30)*
+- [x] **R3. TTL env mutation → contextvar.** Replace `os.environ` mutation for per-call resolve TTL with `contextvars.ContextVar`-based `ttl_override()`. *(PR #30)*
+- [x] **R4. Fail-closed app lock.** `app_lock` raises `AppLockUnavailableError` on lock-primitive errors by default; opt-out only via `NSX_LOCK_FAIL_OPEN=1`. *(PR #30)*
+- [x] **R5. Doctor error classification.** `CalledProcessError` branch reports FAIL unless explicit success criteria met. *(PR #30)*
+- [x] **R6. CLI→API routing.** Route all CLI mutating commands through API wrappers so they share timeout/error policy. *(PR #30)*
+- [x] **R7. Enums for stringly-typed constants.** `Toolchain`, `Scope`, `ModuleType`, `OutdatedStatus`, `ProfileStatus` enums with `str`-mixin backward compat. *(PR #32–34)*
+- [x] **R8. Timeout support for `outdated`/`view`.** `AppOutdatedRequest.timeout_s` and `AppViewRequest.timeout_s` plumbed through API and CLI `--timeout`. *(PR #35)*
+- [x] **R9. Structured error hierarchy.** `NSXError(RuntimeError)` + typed subclasses (`NSXConfigError`, `NSXLockError`, etc.) in `_errors.py`; all `raise SystemExit` sites migrated; `_classify`/`_invoke` plumbing deleted; CLI `main()` catches `NSXError` at boundary. *(PR #30–37, M1–M6)*
+- [x] **R10. Lock-integrity CI stability.** `nsx-tooling` hash symmetric exclusion of autogen files (`modules.cmake`). *(PR #36)*
+- [ ] **R11. Cache concurrency hardening.** Resolve-cache and artifact-hash-cache use read-modify-write without inter-process coordination; concurrent writers drop entries. Add file-lock or append-log compaction. Refs: `_resolve_cache.py:145`, `nsx_lock.py:367`.
+- [ ] **R12. Operation-scope metadata caching.** Module discovery/search re-deserializes metadata for entire registries on every call. Add scoped memoization to avoid repeated YAML load/validate in `module_registry` and `module_discovery`. Refs: `module_discovery.py:283`, `module_registry.py:621`.
+- [ ] **R13. Typed domain objects for config/registry.** Replace `dict[str, Any]` spread with `AppConfig`, `ModuleSource`, `ModuleRegistryOverride` dataclasses. Reduces fragile string-key access across `project_config`, `module_registry`, `operations`. Refs: `project_config.py:28`, `module_discovery.py:283`.
+- [ ] **R14. `LockKind` enum.** Replace stringly-typed `kind: str` on `ResolvedModule` with a proper enum (`git`, `packaged`, `local`, `vendored`, `unresolved`). Ref: `nsx_lock.py:121`.
+- [ ] **R15. Typed module discovery/search records.** Replace dict blobs returned by `list_modules`/`search_modules`/`describe_module` with `ModuleRecord`/`SearchMatch` dataclasses. Ref: `module_discovery.py:283`, `api.py` return types.
+- [ ] **R16. Typed CLI command descriptors.** Split command graph metadata out of nested dicts into `CommandHint` dataclass + `CommandCategory`/`CommandScope` enums. Ref: `cli.py:32`.
+- [ ] **R17. Board/toolchain/provider single source of truth.** Consolidate Python constants and CMake conditionals into one authoritative mapping (generated or shared). Refs: `constants.py`, `nsx_sdk_providers.cmake`, `nsx_toolchain_flags.cmake`.
+- [ ] **R18. CLI/API parity tests.** Verify all CLI commands route through API and share timeout/error normalization. Cover `view`, `outdated`, `module` subcommands. Ref: `test_public_api_surface.py`.
+- [ ] **R19. Cache concurrency tests.** Add inter-process and threaded tests for resolve-cache and artifact-hash-cache under concurrent writers. Refs: `test_resolve_cache.py`, `test_module_cache.py`.
+- [ ] **R20. `extract_view_command` resilience tests.** Cover varied Ninja generator formatting to prevent regressions on short-scan-window parsing. Ref: `subprocess_utils.py:319`.
+- [ ] **R21. Compatibility alias cleanup in `operations`.** Remove legacy shim aliases that duplicate naming and expose internal seams. Ref: `operations.py:102`.
+- [ ] **R22. Decouple `main` from package root exports.** Stop re-exporting CLI `main` from `neuralspotx.__init__` to separate library and runtime concerns. Ref: `__init__.py:37`.
+- [ ] **R23. Prefetch error visibility.** Narrow `except Exception` in parallel prefetch to specific expected failures; log root cause instead of silently retrying serially. Ref: `operations.py:1243`.
+- [ ] **R24. `create_app` rollback on failure.** Add cleanup/recovery marker so interrupted bootstrap doesn't leave half-generated app state. Ref: `operations.py:192`.
