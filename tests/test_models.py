@@ -1,6 +1,12 @@
 from __future__ import annotations
 
-from neuralspotx.models import AppConfig, ModuleRegistryOverride
+from neuralspotx.models import (
+    AppConfig,
+    DiscoveryRecord,
+    ModuleRegistryOverride,
+    SearchMatch,
+    SearchResult,
+)
 
 
 def test_app_config_classifies_module_sources() -> None:
@@ -50,3 +56,86 @@ def test_module_registry_override_merges_valid_entries_only() -> None:
     }
     assert 3 not in merged["projects"]
     assert "bad" not in merged["modules"]
+
+
+def test_discovery_record_to_dict_core_only() -> None:
+    record = DiscoveryRecord(
+        name="nsx-core",
+        project="nsx-core",
+        revision="main",
+        metadata="modules/nsx-core/nsx-module.yaml",
+        enabled=False,
+    )
+    d = record.to_dict()
+    assert d == {
+        "name": "nsx-core",
+        "project": "nsx-core",
+        "revision": "main",
+        "metadata": "modules/nsx-core/nsx-module.yaml",
+        "enabled": False,
+    }
+    assert "metadata_available" not in d
+
+
+def test_discovery_record_to_dict_with_metadata() -> None:
+    record = DiscoveryRecord(
+        name="nsx-uart",
+        project="nsx-uart",
+        revision="main",
+        metadata="m.yaml",
+        enabled=True,
+        metadata_available=True,
+        module={"name": "nsx-uart", "type": "library", "version": "1.0.0"},
+        build={"cmake": {"targets": ["nsx-uart"]}},
+        depends={"required": [], "optional": []},
+        compatibility={"boards": ["*"], "socs": ["*"], "toolchains": ["*"]},
+        summary="UART driver",
+    )
+    d = record.to_dict()
+    assert d["metadata_available"] is True
+    assert d["module"]["type"] == "library"
+    assert d["summary"] == "UART driver"
+    assert "support" not in d  # None values are omitted
+
+
+def test_discovery_record_to_dict_with_error() -> None:
+    record = DiscoveryRecord(
+        name="nsx-bad",
+        project="nsx-bad",
+        revision="main",
+        metadata=None,
+        enabled=False,
+        metadata_error="Could not load metadata.",
+    )
+    d = record.to_dict()
+    assert d["metadata_available"] is False
+    assert d["metadata_error"] == "Could not load metadata."
+    assert "module" not in d
+
+
+def test_search_result_from_record_and_to_dict() -> None:
+    record = DiscoveryRecord(
+        name="nsx-core",
+        project="nsx-core",
+        revision="main",
+        metadata="m.yaml",
+        enabled=False,
+        metadata_available=True,
+        module={"name": "nsx-core", "type": "core", "version": "0.1.0"},
+        build={"cmake": {"targets": ["nsx-core"]}},
+        depends={"required": [], "optional": []},
+        compatibility={"boards": ["*"], "socs": ["*"], "toolchains": ["*"]},
+    )
+    match = SearchMatch(field="name", term="core", value="nsx-core")
+    result = SearchResult.from_record(record, score=20, matches=(match,), compatible=True)
+    assert result.name == "nsx-core"
+    assert result.score == 20
+    assert result.compatible is True
+    assert len(result.matches) == 1
+    assert result.matches[0].field == "name"
+
+    d = result.to_dict()
+    assert d["score"] == 20
+    assert d["compatible"] is True
+    assert d["matches"] == [{"field": "name", "term": "core", "value": "nsx-core"}]
+    assert d["metadata_available"] is True

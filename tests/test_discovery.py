@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 import yaml
 
+from neuralspotx.models import DiscoveryRecord
 from neuralspotx.module_discovery import (
     compatibility_matches,
     describe_module,
@@ -178,35 +179,40 @@ class TestResolveTargetContext:
 
 
 class TestCompatibilityMatches:
+    def _record(self, **kwargs: object) -> DiscoveryRecord:
+        defaults = dict(name="test", project="test", revision="main", metadata=None, enabled=False)
+        defaults.update(kwargs)
+        return DiscoveryRecord(**defaults)  # type: ignore[arg-type]
+
     def test_returns_none_without_metadata(self) -> None:
-        record = {"metadata_available": False}
+        record = self._record(metadata_available=False)
         assert compatibility_matches(record, {"board": "a"}) is None
 
     def test_returns_none_without_target(self) -> None:
-        record = {"metadata_available": True, "compatibility": {}}
+        record = self._record(metadata_available=True, compatibility={})
         assert compatibility_matches(record, None) is None
 
     def test_compatible_wildcard(self) -> None:
-        record = {
-            "metadata_available": True,
-            "compatibility": {
+        record = self._record(
+            metadata_available=True,
+            compatibility={
                 "boards": ["*"],
                 "socs": ["*"],
                 "toolchains": ["*"],
             },
-        }
+        )
         ctx = {"board": "x", "soc": "y", "toolchain": "z"}
         assert compatibility_matches(record, ctx) is True
 
     def test_incompatible_soc(self) -> None:
-        record = {
-            "metadata_available": True,
-            "compatibility": {
+        record = self._record(
+            metadata_available=True,
+            compatibility={
                 "boards": ["*"],
                 "socs": ["apollo510"],
                 "toolchains": ["*"],
             },
-        }
+        )
         ctx = {"board": "x", "soc": "apollo3", "toolchain": "gcc"}
         assert compatibility_matches(record, ctx) is False
 
@@ -221,7 +227,7 @@ class TestDiscoveryAPI:
         modules = list_modules()
         assert isinstance(modules, list)
         assert len(modules) > 0
-        names = {m["name"] for m in modules}
+        names = {m.name for m in modules}
         assert "nsx-core" in names
 
     def test_list_modules_registry_only(self) -> None:
@@ -231,9 +237,9 @@ class TestDiscoveryAPI:
 
     def test_describe_module_known(self) -> None:
         record = describe_module("nsx-core")
-        assert record["name"] == "nsx-core"
+        assert record.name == "nsx-core"
         # Without app_dir, metadata may not resolve (packaged registry only)
-        assert "name" in record and "project" in record
+        assert record.name and record.project
 
     def test_describe_module_unknown_raises(self) -> None:
         with pytest.raises(ValueError):
@@ -243,7 +249,7 @@ class TestDiscoveryAPI:
         results = search_modules("core")
         assert isinstance(results, list)
         assert len(results) > 0
-        assert all("score" in r for r in results)
+        assert all(r.score > 0 for r in results)
 
     def test_search_modules_empty_query(self) -> None:
         results = search_modules("")

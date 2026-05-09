@@ -13,6 +13,7 @@ from typing import Any
 from . import api, module_cache, nsx_lock, operations
 from ._errors import NSXConfigError, NSXError, NSXModuleError
 from .metadata import SUPPORTED_MODULE_TYPES, load_yaml, validate_nsx_module_metadata
+from .models import DiscoveryRecord, SearchResult
 from .module_discovery import (
     resolve_module_context,
     resolve_target_context,
@@ -457,43 +458,51 @@ def _resolve_cli_app_dir(app_dir_arg: str | None) -> Path | None:
     return resolve_app_dir(app_dir_arg)
 
 
-def _print_module_detail(record: dict) -> None:
-    print(f"Module: {record['name']}")
-    print(f"Project: {record['project']}")
-    print(f"Revision: {record['revision']}")
-    print(f"Metadata: {record['metadata']}")
-    print(f"Enabled: {'yes' if record['enabled'] else 'no'}")
-    if not record.get("metadata_available"):
-        if "metadata_error" in record:
-            print(f"Metadata available: no ({record['metadata_error']})")
+def _print_module_detail(record: DiscoveryRecord) -> None:
+    print(f"Module: {record.name}")
+    print(f"Project: {record.project}")
+    print(f"Revision: {record.revision}")
+    print(f"Metadata: {record.metadata}")
+    print(f"Enabled: {'yes' if record.enabled else 'no'}")
+    if not record.metadata_available:
+        if record.metadata_error is not None:
+            print(f"Metadata available: no ({record.metadata_error})")
         return
 
-    module = record["module"]
+    module = record.module
+    if module is None:
+        return
     print(f"Type: {module['type']}")
     print(f"Version: {module['version']}")
     if "category" in module:
         print(f"Category: {module['category']}")
     if "provider" in module:
         print(f"Provider: {module['provider']}")
-    if "summary" in record:
-        print(f"Summary: {record['summary']}")
-    if "capabilities" in record:
-        print(f"Capabilities: {', '.join(record['capabilities'])}")
-    if "use_cases" in record:
-        print(f"Use cases: {', '.join(record['use_cases'])}")
-    print(f"Targets: {', '.join(record['build']['cmake']['targets'])}")
-    print(f"Required deps: {', '.join(record['depends']['required']) or '(none)'}")
-    print(f"Optional deps: {', '.join(record['depends']['optional']) or '(none)'}")
-    print(f"Boards: {', '.join(record['compatibility']['boards'])}")
-    print(f"SoCs: {', '.join(record['compatibility']['socs'])}")
-    print(f"Toolchains: {', '.join(record['compatibility']['toolchains'])}")
-    if "provides" in record:
+    if record.summary is not None:
+        print(f"Summary: {record.summary}")
+    if record.capabilities is not None:
+        print(f"Capabilities: {', '.join(record.capabilities)}")
+    if record.use_cases is not None:
+        print(f"Use cases: {', '.join(record.use_cases)}")
+    build = record.build
+    depends = record.depends
+    compatibility = record.compatibility
+    if build is not None:
+        print(f"Targets: {', '.join(build['cmake']['targets'])}")
+    if depends is not None:
+        print(f"Required deps: {', '.join(depends['required']) or '(none)'}")
+        print(f"Optional deps: {', '.join(depends['optional']) or '(none)'}")
+    if compatibility is not None:
+        print(f"Boards: {', '.join(compatibility['boards'])}")
+        print(f"SoCs: {', '.join(compatibility['socs'])}")
+        print(f"Toolchains: {', '.join(compatibility['toolchains'])}")
+    if record.provides is not None:
         print("Provides:")
-        print(json.dumps(record["provides"], indent=2, sort_keys=True))
+        print(json.dumps(record.provides, indent=2, sort_keys=True))
 
 
 def _print_module_search_results(
-    results: list[dict[str, Any]], target_context: dict[str, str] | None
+    results: list[SearchResult], target_context: dict[str, str] | None
 ) -> None:
     if target_context:
         print(
@@ -505,24 +514,22 @@ def _print_module_search_results(
         return
 
     for result in results:
-        compat = result.get("compatible")
         compat_text = (
             "compatible"
-            if compat is True
+            if result.compatible is True
             else "incompatible"
-            if compat is False
+            if result.compatible is False
             else "compatibility-unknown"
         )
-        print(f"- {result['name']} (score={result['score']}, {compat_text})")
-        if result.get("metadata_available"):
-            module = result["module"]
-            print(
-                f"  type={module['type']} project={result['project']} targets={', '.join(result['build']['cmake']['targets'])}"
-            )
-        if result["matches"]:
-            preview = ", ".join(
-                f"{item['field']}={item['value']}" for item in result["matches"][:4]
-            )
+        print(f"- {result.name} (score={result.score}, {compat_text})")
+        if result.metadata_available:
+            module = result.module
+            if module is not None:
+                build = result.build
+                targets = ", ".join(build["cmake"]["targets"]) if build is not None else ""
+                print(f"  type={module['type']} project={result.project} targets={targets}")
+        if result.matches:
+            preview = ", ".join(f"{m.field}={m.value}" for m in result.matches[:4])
             print(f"  matched: {preview}")
 
 
@@ -549,7 +556,7 @@ def cmd_module_search(args: argparse.Namespace) -> None:
             "app_dir": str(resolved_app) if resolved_app else None,
             "query": args.query,
             "target_context": target_ctx,
-            "results": results,
+            "results": [r.to_dict() for r in results],
         }
         print(json.dumps(payload, indent=2, sort_keys=True))
         return
@@ -573,12 +580,15 @@ def cmd_module_list(args: argparse.Namespace) -> None:
         payload = {
             "scope": scope,
             "app_dir": str(resolved_app) if resolved_app else None,
-            "modules": _module_discovery_records(
-                registry,
-                enabled,
-                app_dir=resolved_app,
-                include_metadata=True,
-            ),
+            "modules": [
+                r.to_dict()
+                for r in _module_discovery_records(
+                    registry,
+                    enabled,
+                    app_dir=resolved_app,
+                    include_metadata=True,
+                )
+            ],
         }
         print(json.dumps(payload, indent=2, sort_keys=True))
         return
@@ -612,7 +622,7 @@ def cmd_module_describe(args: argparse.Namespace) -> None:
         payload = {
             "scope": scope,
             "app_dir": str(resolved_app) if resolved_app else None,
-            "module": record,
+            "module": record.to_dict(),
         }
         print(json.dumps(payload, indent=2, sort_keys=True))
         return
