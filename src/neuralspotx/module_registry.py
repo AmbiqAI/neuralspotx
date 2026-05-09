@@ -14,7 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from . import module_cache
-from ._errors import NSXConfigError, NSXModuleError, NSXResolutionError
+from ._errors import NSXConfigError, NSXError, NSXModuleError, NSXResolutionError
 from .metadata import (
     RegistryModuleEntry,
     is_compatible,
@@ -841,7 +841,7 @@ def _module_discovery_record(
 
     try:
         metadata = _load_module_metadata(module_name, registry, app_dir=app_dir)
-    except SystemExit as exc:
+    except NSXError as exc:
         record["metadata_available"] = False
         if app_dir is None:
             record["metadata_error"] = (

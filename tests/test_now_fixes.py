@@ -24,7 +24,14 @@ from pathlib import Path
 
 import pytest
 
-from neuralspotx import _resolve_cache, file_lock, module_registry, project_config
+from neuralspotx import (
+    NSXConfigError,
+    NSXError,
+    _resolve_cache,
+    file_lock,
+    module_registry,
+    project_config,
+)
 
 # ---------------------------------------------------------------------------
 # 1. YAML root validation
@@ -35,25 +42,25 @@ class TestReadYamlRoot:
     def test_empty_file_is_clear_error(self, tmp_path: Path) -> None:
         path = tmp_path / "nsx.yml"
         path.write_text("", encoding="utf-8")
-        with pytest.raises(SystemExit, match="empty"):
+        with pytest.raises(NSXConfigError, match="empty"):
             project_config._read_yaml(path)
 
     def test_list_root_is_rejected(self, tmp_path: Path) -> None:
         path = tmp_path / "nsx.yml"
         path.write_text("- a\n- b\n", encoding="utf-8")
-        with pytest.raises(SystemExit, match="mapping"):
+        with pytest.raises(NSXConfigError, match="mapping"):
             project_config._read_yaml(path)
 
     def test_scalar_root_is_rejected(self, tmp_path: Path) -> None:
         path = tmp_path / "nsx.yml"
         path.write_text("just-a-string\n", encoding="utf-8")
-        with pytest.raises(SystemExit, match="mapping"):
+        with pytest.raises(NSXConfigError, match="mapping"):
             project_config._read_yaml(path)
 
     def test_invalid_yaml_is_caught(self, tmp_path: Path) -> None:
         path = tmp_path / "nsx.yml"
         path.write_text("foo: : :\n", encoding="utf-8")
-        with pytest.raises(SystemExit, match="invalid YAML"):
+        with pytest.raises(NSXConfigError, match="invalid YAML"):
             project_config._read_yaml(path)
 
     def test_mapping_round_trips(self, tmp_path: Path) -> None:
@@ -230,10 +237,10 @@ class TestDoctorJLinkRuntime:
 
         monkeypatch.setattr(subprocess, "run", fake_run)
 
-        # doctor_impl raises SystemExit when any check fails — that's
+        # doctor_impl raises NSXError when any check fails — that's
         # the expected behaviour here. We just need to confirm the
         # printed J-Link runtime line is marked FAIL, not OK.
-        with pytest.raises(SystemExit):
+        with pytest.raises(NSXError):
             operations.doctor_impl()
         out = capsys.readouterr().out
         # The J-Link runtime check should appear and be marked FAIL,

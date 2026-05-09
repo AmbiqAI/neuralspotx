@@ -26,6 +26,8 @@ import sys
 from collections.abc import Iterator
 from pathlib import Path
 
+from ._errors import NSXTimeoutError
+
 _VERBOSE = 0
 
 # Default wall-clock budget for each subprocess inside a region wrapped
@@ -50,10 +52,22 @@ def timeout_budget(seconds: float | None) -> Iterator[None]:
     Calls to :func:`run` / :func:`run_capture` inside the ``with`` block
     use *seconds* as their default timeout.  ``None`` clears any
     inherited budget.
+
+    Any :class:`subprocess.TimeoutExpired` raised inside the block is
+    translated into :class:`NSXTimeoutError` so callers can rely on the
+    typed exception hierarchy.
     """
     token = _TIMEOUT.set(seconds)
     try:
         yield
+    except subprocess.TimeoutExpired as exc:
+        cmd = exc.cmd
+        cmd_str = " ".join(cmd) if isinstance(cmd, list) else str(cmd)
+        raise NSXTimeoutError(
+            f"Subprocess timed out after {exc.timeout}s: {cmd_str}",
+            command=cmd_str,
+            timeout_s=float(exc.timeout) if exc.timeout is not None else None,
+        ) from None
     finally:
         _TIMEOUT.reset(token)
 

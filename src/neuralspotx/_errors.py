@@ -13,17 +13,13 @@ The public surface is re-exported from :mod:`neuralspotx.api` and
 from __future__ import annotations
 
 
-class NSXError(SystemExit, RuntimeError):
+class NSXError(RuntimeError):
     """Raised when an NSX workflow operation fails.
 
-    Inherits from both :class:`SystemExit` and :class:`RuntimeError` so
-    the same exception object satisfies legacy ``except SystemExit:``
-    handlers (the CLI top-level wrapper, pre-existing tests,
-    ``pipx``/``argparse`` semantics) **and** new typed handlers
-    (``except NSXError:``, ``except NSXLockError:``).  Library internals
-    can migrate from ``raise SystemExit(msg)`` to
-    ``raise NSX*Error(msg)`` site-by-site without breaking either
-    consumer.
+    Library consumers catch typed errors via ``except NSXError:`` (or one
+    of the more specific subclasses below).  The CLI wrapper translates
+    these into a non-zero process exit code at the top level; embedders
+    handle them as ordinary Python exceptions.
     """
 
 

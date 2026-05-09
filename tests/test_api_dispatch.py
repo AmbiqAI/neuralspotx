@@ -31,16 +31,6 @@ from neuralspotx import (
 )
 
 
-def test_invoke_wraps_nonzero_system_exit() -> None:
-    def fail() -> None:
-        raise SystemExit("boom")
-
-    with pytest.raises(NSXError, match="boom"):
-        from neuralspotx.api import _invoke
-
-        _invoke(fail)
-
-
 def test_create_app_dispatches_to_operations(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

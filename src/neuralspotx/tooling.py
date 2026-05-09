@@ -45,8 +45,7 @@ def require_tool(name: str) -> None:
         name: Executable base name.
 
     Raises:
-        NSXToolchainError: If the tool cannot be resolved.  Also catchable as
-            :class:`SystemExit` for legacy CLI handlers.
+        NSXToolchainError: If the tool cannot be resolved.
     """
 
     from ._errors import NSXToolchainError

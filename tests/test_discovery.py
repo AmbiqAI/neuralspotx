@@ -348,11 +348,12 @@ class TestValidateModuleMetadata:
     def test_cli_validate_invalid(self, tmp_path: Path) -> None:
         import argparse
 
+        from neuralspotx import NSXError
         from neuralspotx.cli import cmd_module_validate
 
         metadata = tmp_path / "nsx-module.yaml"
         metadata.write_text("schema_version: 1\nmodule:\n  name: bad\n", encoding="utf-8")
-        with pytest.raises(SystemExit, match="Validation failed"):
+        with pytest.raises(NSXError, match="Validation failed"):
             cmd_module_validate(argparse.Namespace(metadata=str(metadata), json=False))
 
 

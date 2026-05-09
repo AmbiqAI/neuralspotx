@@ -6,6 +6,7 @@ import argparse
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -1288,7 +1289,15 @@ def main(argv: list[str] | None = None) -> int:
     except subprocess.CalledProcessError as exc:
         if VERBOSE > 0:
             raise
-        raise NSXError(format_subprocess_error(exc, context="Command")) from None
+        sys.stderr.write(f"error: {format_subprocess_error(exc, context='Command')}\n")
+        return 1
     except nsx_lock.LegacyLockError as exc:
-        raise NSXConfigError(str(exc)) from None
+        sys.stderr.write(f"error: {exc}\n")
+        return 1
+    except NSXError as exc:
+        # Typed library errors: print message (if any) and exit non-zero.
+        msg = str(exc)
+        if msg and msg != "1":
+            sys.stderr.write(f"error: {msg}\n")
+        return 1
     return 0

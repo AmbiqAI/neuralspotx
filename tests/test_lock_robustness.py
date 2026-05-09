@@ -18,6 +18,7 @@ from pathlib import Path
 
 import pytest
 
+from neuralspotx import NSXError
 from neuralspotx.file_lock import AppLockBusyError, app_lock, app_lock_path
 from neuralspotx.nsx_lock import NsxLock, ResolvedModule, write_lock
 
@@ -203,7 +204,7 @@ class TestLockCheckReadOnly:
         # exit non-zero, but it must not have written cmake/nsx/ or
         # modules.cmake along the way.
         monkeypatch.chdir(app)
-        with pytest.raises(SystemExit):
+        with pytest.raises(NSXError):
             lock_app_impl(app, check=True)
 
         # The point of the test: read-only mode created none of the
