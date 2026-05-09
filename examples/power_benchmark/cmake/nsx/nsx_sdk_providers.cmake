@@ -17,27 +17,31 @@ function(nsx_select_sdk_provider board_name)
     set(NSX_AMBIQSUITE_R5_ROOT "" CACHE PATH "Path to AmbiqSuite R5 root")
 
     if(NSX_SDK_PROVIDER STREQUAL "")
+        # Case-insensitive board match: users may pass APOLLO510_EVB or
+        # apollo330MP_evb on the CMake command line.  Compare against the
+        # lowercased canonical board name.
+        string(TOLOWER "${board_name}" _board_lc)
         if(
-            board_name STREQUAL "apollo3_evb"
-            OR board_name STREQUAL "apollo3_evb_cygnus"
-            OR board_name STREQUAL "apollo3p_evb"
-            OR board_name STREQUAL "apollo3p_evb_cygnus"
+            _board_lc STREQUAL "apollo3_evb"
+            OR _board_lc STREQUAL "apollo3_evb_cygnus"
+            OR _board_lc STREQUAL "apollo3p_evb"
+            OR _board_lc STREQUAL "apollo3p_evb_cygnus"
         )
             set(NSX_SDK_PROVIDER "ambiqsuite-r3")
         elseif(
-            board_name STREQUAL "apollo4b_blue_evb"
-            OR board_name STREQUAL "apollo4l_evb"
-            OR board_name STREQUAL "apollo4l_blue_evb"
-            OR board_name STREQUAL "apollo4p_evb"
-            OR board_name STREQUAL "apollo4p_blue_kbr_evb"
-            OR board_name STREQUAL "apollo4p_blue_kxr_evb"
+            _board_lc STREQUAL "apollo4b_blue_evb"
+            OR _board_lc STREQUAL "apollo4l_evb"
+            OR _board_lc STREQUAL "apollo4l_blue_evb"
+            OR _board_lc STREQUAL "apollo4p_evb"
+            OR _board_lc STREQUAL "apollo4p_blue_kbr_evb"
+            OR _board_lc STREQUAL "apollo4p_blue_kxr_evb"
         )
             set(NSX_SDK_PROVIDER "ambiqsuite-r4")
         elseif(
-            board_name STREQUAL "apollo5b_evb"
-            OR board_name STREQUAL "apollo510_evb"
-            OR board_name STREQUAL "apollo510b_evb"
-            OR board_name STREQUAL "apollo330mP_evb"
+            _board_lc STREQUAL "apollo5b_evb"
+            OR _board_lc STREQUAL "apollo510_evb"
+            OR _board_lc STREQUAL "apollo510b_evb"
+            OR _board_lc STREQUAL "apollo330mp_evb"
         )
             set(NSX_SDK_PROVIDER "ambiqsuite-r5")
         else()

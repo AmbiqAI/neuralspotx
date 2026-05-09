@@ -19,8 +19,46 @@ DEFAULT_SOC_FOR_BOARD = {
     "apollo510_evb": "apollo510",
     "apollo510b_evb": "apollo510b",
     "apollo330mP_evb": "apollo330P",
-    "apollo330mp_evb": "apollo330P",  # lowercase alias for convenience
 }
+
+# Canonical (case-correct) board identifiers.  Most are already lowercase, but
+# ``apollo330mP_evb`` carries a load-bearing capital ``P`` (filesystem dir,
+# CMake target name, package name in nsx-modules).  Inputs from the CLI / API
+# / nsx.yml are normalized to these via :func:`normalize_board`.
+BOARDS: tuple[str, ...] = tuple(DEFAULT_SOC_FOR_BOARD.keys())
+
+# Canonical SoC identifiers (load-bearing case for ``apollo330P``).
+SOCS: tuple[str, ...] = tuple(dict.fromkeys(DEFAULT_SOC_FOR_BOARD.values()))
+
+# Lower-cased lookup tables for case-insensitive normalization at input
+# boundaries.  Built once at import; never mutated.
+_BOARD_LOOKUP: dict[str, str] = {b.lower(): b for b in BOARDS}
+_SOC_LOOKUP: dict[str, str] = {s.lower(): s for s in SOCS}
+
+
+def normalize_board(value: str | None) -> str | None:
+    """Return the canonical spelling of *value* (case-insensitive match).
+
+    Unknown boards are returned unchanged so the existing downstream
+    error paths (e.g. SoC inference, board.cmake selection) can surface
+    a domain-specific message.  Falsy inputs pass through unchanged.
+    """
+
+    if not value:
+        return value
+    return _BOARD_LOOKUP.get(value.lower(), value)
+
+
+def normalize_soc(value: str | None) -> str | None:
+    """Return the canonical spelling of *value* (case-insensitive match).
+
+    Unknown SoCs are returned unchanged; see :func:`normalize_board`.
+    """
+
+    if not value:
+        return value
+    return _SOC_LOOKUP.get(value.lower(), value)
+
 
 DEFAULT_TOOLCHAIN = "arm-none-eabi-gcc"
 

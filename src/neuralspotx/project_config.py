@@ -13,7 +13,7 @@ from typing import Any
 
 import yaml
 
-from .constants import PACKAGED_PROJECT_NAME
+from .constants import PACKAGED_PROJECT_NAME, normalize_board
 from .metadata import load_registry_lock
 from .models import ProjectEntry
 from .subprocess_utils import run
@@ -437,6 +437,7 @@ def _resolve_app_context(args: argparse.Namespace) -> tuple[Path, dict[str, Any]
     board = args.board or nsx_cfg.get("target", {}).get("board")
     if not isinstance(board, str) or not board:
         raise SystemExit("Unable to determine target board from args or nsx.yml")
+    board = normalize_board(board)
     return app_dir, nsx_cfg, app_name, board
 
 
