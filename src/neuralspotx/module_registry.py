@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any
 
 from . import module_cache
+from ._errors import NSXConfigError, NSXModuleError, NSXResolutionError
 from .metadata import (
     RegistryModuleEntry,
     is_compatible,
@@ -126,7 +127,7 @@ def _module_metadata_path(
     if metadata.is_absolute():
         if metadata.exists():
             return metadata
-        raise SystemExit(
+        raise NSXResolutionError(
             f"Unable to locate nsx-module.yaml for module '{module_name}' at "
             f"absolute path '{metadata}'"
         )
@@ -158,7 +159,7 @@ def _module_metadata_path(
     searched = [str(metadata)]
     if app_dir:
         searched.append(str(_module_clone_dir(app_dir, registry_entry.project, registry)))
-    raise SystemExit(
+    raise NSXResolutionError(
         f"Unable to locate nsx-module.yaml for module '{module_name}'. "
         f"Searched: {', '.join(searched)}"
     )
@@ -251,7 +252,7 @@ def _ensure_module_cloned(
 
     url = project_entry.url
     if not url:
-        raise SystemExit(
+        raise NSXConfigError(
             f"Module '{module_name}' project '{entry.project}' has no URL in registry. "
             "Cannot clone."
         )
@@ -328,7 +329,7 @@ def _vendor_git_module_at_commit(
 
     url = project_entry.url
     if not url:
-        raise SystemExit(
+        raise NSXConfigError(
             f"Module '{module_name}' project '{entry.project}' has no URL in registry; cannot sync."
         )
 
@@ -481,12 +482,12 @@ def _resolve_profile(registry: dict[str, Any], board: str) -> dict[str, Any]:
     name = _starter_profile_name(board)
     profiles = registry["starter_profiles"]
     if name not in profiles:
-        raise SystemExit(
+        raise NSXConfigError(
             f"No starter profile for board '{board}' in registry.lock (expected profile '{name}')."
         )
     profile = profiles[name]
     if not isinstance(profile, dict):
-        raise SystemExit(f"Invalid profile entry '{name}' in registry.lock")
+        raise NSXConfigError(f"Invalid profile entry '{name}' in registry.lock")
     return profile
 
 
@@ -512,13 +513,13 @@ def _generate_nsx_config(
     profile = _resolve_profile(registry, board)
     profile_modules = profile.get("modules", [])
     if not isinstance(profile_modules, list):
-        raise SystemExit(f"Invalid modules list in profile for board '{board}'")
+        raise NSXConfigError(f"Invalid modules list in profile for board '{board}'")
     profile_project_overrides = profile.get("project_overrides", {})
     if not isinstance(profile_project_overrides, dict):
-        raise SystemExit(f"Invalid project_overrides mapping in profile for board '{board}'")
+        raise NSXConfigError(f"Invalid project_overrides mapping in profile for board '{board}'")
     profile_module_overrides = profile.get("module_overrides", {})
     if not isinstance(profile_module_overrides, dict):
-        raise SystemExit(f"Invalid module_overrides mapping in profile for board '{board}'")
+        raise NSXConfigError(f"Invalid module_overrides mapping in profile for board '{board}'")
 
     return {
         "schema_version": 1,
@@ -546,14 +547,14 @@ def _generate_nsx_config(
 def _module_names_from_nsx(nsx_cfg: dict[str, Any]) -> list[str]:
     modules = nsx_cfg.get("modules", [])
     if not isinstance(modules, list):
-        raise SystemExit("nsx.yml: 'modules' must be a list")
+        raise NSXConfigError("nsx.yml: 'modules' must be a list")
     names: list[str] = []
     for idx, item in enumerate(modules):
         if not isinstance(item, dict):
-            raise SystemExit(f"nsx.yml: modules[{idx}] must be a mapping")
+            raise NSXConfigError(f"nsx.yml: modules[{idx}] must be a mapping")
         name = item.get("name")
         if not isinstance(name, str):
-            raise SystemExit(f"nsx.yml: modules[{idx}].name must be a string")
+            raise NSXConfigError(f"nsx.yml: modules[{idx}].name must be a string")
         names.append(name)
     return names
 
@@ -623,7 +624,7 @@ def _validate_board_module_dep_policy(
         if dep_meta["module"]["type"] == "soc":
             soc_count += 1
     if soc_count != 1:
-        raise SystemExit(
+        raise NSXModuleError(
             f"Board module '{module_name}' must depend on exactly one soc module. "
             f"Found soc dependency count={soc_count}"
         )
@@ -647,7 +648,7 @@ def _validate_sdk_provider_policy(
         if meta.get("module", {}).get("type") == "sdk_provider"
     ]
     if required_provider not in provider_names:
-        raise SystemExit(
+        raise NSXModuleError(
             f"Module '{module_name}' requires SDK provider '{required_provider}' "
             "but it is not enabled in the resolved dependency closure."
         )
@@ -684,9 +685,9 @@ def _resolve_module_closure_inner(
     soc = target.get("soc")
     toolchain = nsx_cfg.get("toolchain", default_toolchain)
     if not isinstance(board, str) or not isinstance(soc, str):
-        raise SystemExit("nsx.yml missing target.board or target.soc")
+        raise NSXConfigError("nsx.yml missing target.board or target.soc")
     if not isinstance(toolchain, str):
-        raise SystemExit("nsx.yml toolchain must be a string")
+        raise NSXConfigError("nsx.yml toolchain must be a string")
 
     local_names = _local_module_names(nsx_cfg)
     vendored_names = _vendored_module_names(nsx_cfg)
@@ -706,14 +707,14 @@ def _resolve_module_closure_inner(
             resolved.append(module_name)
             return
         if module_name in visiting:
-            raise SystemExit(f"Dependency cycle detected at module '{module_name}'")
+            raise NSXModuleError(f"Dependency cycle detected at module '{module_name}'")
         visiting.add(module_name)
 
         module_meta = _load_module_metadata(module_name, registry, app_dir=app_dir)
         metadata_cache[module_name] = module_meta
 
         if not module_meta["support"]["ambiqsuite"]:
-            raise SystemExit(
+            raise NSXModuleError(
                 f"Module '{module_name}' is not NSX-eligible (support.ambiqsuite=false)"
             )
         if not is_compatible(
@@ -722,7 +723,7 @@ def _resolve_module_closure_inner(
             soc=soc,
             toolchain=toolchain,
         ):
-            raise SystemExit(
+            raise NSXModuleError(
                 f"Module '{module_name}' is incompatible with "
                 f"board={board}, soc={soc}, toolchain={toolchain}"
             )
@@ -747,7 +748,7 @@ def _resolve_module_closure_inner(
         if meta.get("module", {}).get("type") == "sdk_provider"
     ]
     if len(sdk_providers) > 1:
-        raise SystemExit(
+        raise NSXModuleError(
             "Multiple SDK providers resolved in module closure: " + ", ".join(sorted(sdk_providers))
         )
 

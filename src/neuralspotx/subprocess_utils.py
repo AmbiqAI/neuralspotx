@@ -285,7 +285,11 @@ def git_clone_at_commit(url: str, dest: Path, commit: str) -> None:
     # leftover files from a prior interrupted run.
     _robust_rmtree(dest)
     if dest.exists():
-        raise SystemExit(f"git_clone_at_commit: refusing to operate on non-empty path {dest}")
+        from ._errors import NSXResolutionError
+
+        raise NSXResolutionError(
+            f"git_clone_at_commit: refusing to operate on non-empty path {dest}"
+        )
     dest.parent.mkdir(parents=True, exist_ok=True)
     try:
         run(["git", "init", "--quiet", str(dest)])
@@ -297,7 +301,11 @@ def git_clone_at_commit(url: str, dest: Path, commit: str) -> None:
         # unreachable from any ref tip. Fall back to a full clone.
         _robust_rmtree(dest)
         if dest.exists():
-            raise SystemExit(f"git_clone_at_commit: failed to remove stale partial clone at {dest}")
+            from ._errors import NSXResolutionError
+
+            raise NSXResolutionError(
+                f"git_clone_at_commit: failed to remove stale partial clone at {dest}"
+            )
         run(["git", "clone", url, str(dest)])
         run(["git", "checkout", "--detach", commit], cwd=dest)
 
@@ -329,7 +337,9 @@ def extract_view_command(build_dir: Path, target: str) -> list[str]:
 
     ninja_file = build_dir / "build.ninja"
     if not ninja_file.exists():
-        raise SystemExit(f"Missing build.ninja in build directory: {build_dir}")
+        from ._errors import NSXConfigError
+
+        raise NSXConfigError(f"Missing build.ninja in build directory: {build_dir}")
 
     lines = ninja_file.read_text(encoding="utf-8").splitlines()
     block_header = f"build CMakeFiles/{target}"
@@ -345,6 +355,8 @@ def extract_view_command(build_dir: Path, target: str) -> list[str]:
                 return shlex.split(command_text, posix=(os.name != "nt"))
         break
 
-    raise SystemExit(
+    from ._errors import NSXConfigError
+
+    raise NSXConfigError(
         f"Unable to resolve the SEGGER SWO viewer command for target '{target}' from {ninja_file}"
     )

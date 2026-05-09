@@ -251,4 +251,4 @@ Layering in practice:
 1. Unify config/registry models into typed domain objects and reduce `dict[str, Any]` spread.
 2. Split CLI command graph metadata into typed command descriptors reusable by API docs and command listing output.
 3. Consolidate board/toolchain/provider mapping logic between Python and CMake into a single source of truth.
-4. Add structured error classes replacing deep `SystemExit` usage in internal layers to improve embeddability and composability.
+4. ~~Add structured error classes replacing deep `SystemExit` usage in internal layers to improve embeddability and composability.~~ **(M4 — done)** `NSXError` now MI from `SystemExit, RuntimeError`; classes extracted to `_errors.py` to break import cycles; `tooling`, `subprocess_utils`, `project_config` and `module_registry` raise typed errors directly. Legacy `except SystemExit:` handlers (CLI wrapper, prior tests) keep working unchanged. `operations.py` and `cli.py` raise sites deferred — `_classify` backstop in `api._invoke` still routes those.

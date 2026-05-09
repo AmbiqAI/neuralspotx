@@ -7,56 +7,19 @@ from pathlib import Path
 from typing import Any
 
 from . import module_discovery, operations, project_config
+from ._errors import (
+    NSXConfigError,
+    NSXError,
+    NSXLockError,
+    NSXModuleError,
+    NSXResolutionError,
+    NSXTimeoutError,
+    NSXToolchainError,
+)
 from .metadata import load_yaml, validate_nsx_module_metadata
 from .subprocess_utils import timeout_budget
 
 PathLike = str | Path
-
-
-class NSXError(RuntimeError):
-    """Raised when an NSX workflow operation fails.
-
-    The base of the NSX exception hierarchy.  Subclasses provide finer-grained
-    classification while remaining catchable via ``except NSXError``:
-
-    * :class:`NSXTimeoutError` — a subprocess exceeded its wall-clock budget.
-    * :class:`NSXConfigError` — invalid or missing app/registry configuration.
-    * :class:`NSXResolutionError` — git-ref resolution / lock-file mismatch.
-    * :class:`NSXLockError` — could not acquire the per-app advisory lock.
-    * :class:`NSXModuleError` — module not found / dependency closure failure.
-    * :class:`NSXToolchainError` — missing or unsupported toolchain.
-    """
-
-
-class NSXTimeoutError(NSXError):
-    """Raised when an NSX subprocess exceeded its ``timeout_s`` budget."""
-
-    def __init__(
-        self, message: str, *, command: str | None = None, timeout_s: float | None = None
-    ) -> None:
-        super().__init__(message)
-        self.command = command
-        self.timeout_s = timeout_s
-
-
-class NSXConfigError(NSXError):
-    """Raised for invalid or missing app / registry configuration."""
-
-
-class NSXResolutionError(NSXError):
-    """Raised for git-ref resolution or lock-file consistency failures."""
-
-
-class NSXLockError(NSXError):
-    """Raised when the per-app advisory lock cannot be acquired."""
-
-
-class NSXModuleError(NSXError):
-    """Raised for module-name lookup or dependency-closure failures."""
-
-
-class NSXToolchainError(NSXError):
-    """Raised for missing or unsupported toolchain configuration."""
 
 
 # Internal: mapping from leading message substrings to exception subclasses.
