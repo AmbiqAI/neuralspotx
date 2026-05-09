@@ -21,6 +21,7 @@ from .metadata import (
     registry_entry_for_module,
     validate_nsx_module_metadata,
 )
+from .models import AppConfig
 from .project_config import (
     _is_packaged_module,
     _metadata_path_relative_to_project,
@@ -545,18 +546,7 @@ def _generate_nsx_config(
 
 
 def _module_names_from_nsx(nsx_cfg: dict[str, Any]) -> list[str]:
-    modules = nsx_cfg.get("modules", [])
-    if not isinstance(modules, list):
-        raise NSXConfigError("nsx.yml: 'modules' must be a list")
-    names: list[str] = []
-    for idx, item in enumerate(modules):
-        if not isinstance(item, dict):
-            raise NSXConfigError(f"nsx.yml: modules[{idx}] must be a mapping")
-        name = item.get("name")
-        if not isinstance(name, str):
-            raise NSXConfigError(f"nsx.yml: modules[{idx}].name must be a string")
-        names.append(name)
-    return names
+    return AppConfig.from_mapping(nsx_cfg).module_names()
 
 
 def _is_local_module(nsx_cfg: dict[str, Any], module_name: str) -> bool:
@@ -566,10 +556,7 @@ def _is_local_module(nsx_cfg: dict[str, Any], module_name: str) -> bool:
     are source-controlled with the app, and are NOT acquired from a registry
     or git remote.
     """
-    for item in nsx_cfg.get("modules", []):
-        if isinstance(item, dict) and item.get("name") == module_name:
-            return bool(item.get("local"))
-    return False
+    return module_name in AppConfig.from_mapping(nsx_cfg).local_module_names()
 
 
 def _local_module_names(nsx_cfg: dict[str, Any]) -> set[str]:
@@ -581,11 +568,7 @@ def _local_module_names(nsx_cfg: dict[str, Any]) -> set[str]:
     ``local: true`` plus a ``module_registry.modules.<name>.local_path``
     override -- so both spellings are picked up here.
     """
-    return {
-        item["name"]
-        for item in nsx_cfg.get("modules", [])
-        if isinstance(item, dict) and isinstance(item.get("name"), str) and item.get("local")
-    }
+    return AppConfig.from_mapping(nsx_cfg).local_module_names()
 
 
 def _vendored_module_names(nsx_cfg: dict[str, Any]) -> set[str]:
@@ -595,17 +578,7 @@ def _vendored_module_names(nsx_cfg: dict[str, Any]) -> set[str]:
     source-controlled with the app, and are NEVER touched by ``nsx sync``
     — useful for AOT-generated modules and custom third-party drops.
     """
-    names: set[str] = set()
-    for item in nsx_cfg.get("modules", []):
-        if not isinstance(item, dict):
-            continue
-        name = item.get("name")
-        if not isinstance(name, str):
-            continue
-        source = item.get("source")
-        if isinstance(source, dict) and source.get("vendored") is True:
-            names.add(name)
-    return names
+    return AppConfig.from_mapping(nsx_cfg).vendored_module_names()
 
 
 def _validate_board_module_dep_policy(
@@ -786,22 +759,12 @@ def _update_nsx_cfg_modules(
     #   * ``source: { vendored: true }``   (committed inside the app tree)
     # Without this, ``add``/``remove``/``update`` rewrites could drop
     # the ``local`` flag or fail when the module isn't in the registry.
-    existing_opaque: dict[str, dict[str, Any]] = {}
-    for item in nsx_cfg.get("modules", []):
-        if not isinstance(item, dict):
-            continue
-        name = item.get("name")
-        if not isinstance(name, str):
-            continue
-        source = item.get("source") if isinstance(item.get("source"), dict) else None
-        is_vendored = bool(source and source.get("vendored") is True)
-        if item.get("local") or is_vendored:
-            existing_opaque[name] = item
+    existing_opaque = AppConfig.from_mapping(nsx_cfg).opaque_modules()
 
     new_modules: list[dict[str, Any]] = []
     for name in _unique_preserving_order(module_names):
         if name in existing_opaque:
-            new_modules.append(existing_opaque[name])
+            new_modules.append(existing_opaque[name].to_mapping())
         else:
             new_modules.append(_module_record(name, registry))
     nsx_cfg["modules"] = new_modules
