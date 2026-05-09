@@ -22,6 +22,7 @@ import os
 import shlex
 import signal
 import subprocess
+import sys
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -269,7 +270,13 @@ def git_clone_at_commit(url: str, dest: Path, commit: str) -> None:
     def _robust_rmtree(path: Path) -> None:
         import shutil
 
-        if path.exists():
+        if not path.exists():
+            return
+        # ``onerror=`` is deprecated in 3.12 and removed in 3.14. The
+        # callback ignores the third arg's shape so it works for both APIs.
+        if sys.version_info >= (3, 12):
+            shutil.rmtree(path, onexc=_on_rm_error)
+        else:
             shutil.rmtree(path, onerror=_on_rm_error)
 
     # Match ``git clone`` semantics: fail-fast on stale state. If

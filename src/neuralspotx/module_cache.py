@@ -59,6 +59,7 @@ from __future__ import annotations
 import os
 import re
 import shutil
+import sys
 import tempfile
 from pathlib import Path
 
@@ -356,5 +357,11 @@ def _on_rm_error(_func, _path, _exc_info):  # noqa: ANN001
 
 
 def _rmtree(path: Path) -> None:
-    if path.exists():
+    if not path.exists():
+        return
+    # ``onerror=`` is deprecated in 3.12 and removed in 3.14. The
+    # callback ignores the third arg's shape so it works for both APIs.
+    if sys.version_info >= (3, 12):
+        shutil.rmtree(path, onexc=_on_rm_error)
+    else:
         shutil.rmtree(path, onerror=_on_rm_error)
