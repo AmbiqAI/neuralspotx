@@ -15,6 +15,7 @@ from neuralspotx import (
     AppCreateRequest,
     ModuleInitRequest,
     ModuleRegisterRequest,
+    NSXError,
     add_module,
     build_app,
     clean_app,
@@ -184,7 +185,7 @@ def test_app_major_version_mismatch_requires_bypass(
     monkeypatch.setattr("neuralspotx.project_config._nsx_tool_version", lambda: "1.2.3")
     monkeypatch.delenv("NSX_ALLOW_VERSION_MISMATCH", raising=False)
 
-    with pytest.raises(SystemExit, match="NSX_ALLOW_VERSION_MISMATCH=1"):
+    with pytest.raises(NSXError, match="NSX_ALLOW_VERSION_MISMATCH=1"):
         _ = _load_app_cfg(app_dir)
 
     monkeypatch.setenv("NSX_ALLOW_VERSION_MISMATCH", "1")

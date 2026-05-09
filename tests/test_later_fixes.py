@@ -5,15 +5,12 @@ Covers:
 * New string-mixed enums: ``Toolchain``, ``Scope``, ``ModuleType``,
   ``OutdatedStatus``, ``ProfileStatus``.  Each must compare equal to its
   legacy string spelling so existing call sites keep working.
-* Structured exception hierarchy: ``NSXError`` and its new subclasses,
-  including ``NSXTimeoutError`` mapping from ``subprocess.TimeoutExpired``
-  via the API ``_invoke`` adapter.
+* Structured exception hierarchy: ``NSXError`` and its new subclasses.
 """
 
 from __future__ import annotations
 
 import json
-import subprocess
 
 import pytest
 
@@ -25,7 +22,6 @@ from neuralspotx import (
     NSXResolutionError,
     NSXTimeoutError,
     NSXToolchainError,
-    api,
 )
 from neuralspotx.constants import SUPPORTED_TOOLCHAINS, TOOLCHAIN_VALUES, Toolchain
 from neuralspotx.metadata import SUPPORTED_MODULE_TYPES, ModuleType
@@ -152,74 +148,3 @@ class TestExceptionHierarchy:
         exc = NSXTimeoutError("oops", command="git fetch", timeout_s=12.5)
         assert exc.command == "git fetch"
         assert exc.timeout_s == 12.5
-
-
-class TestInvokeMapsTimeout:
-    def test_timeout_expired_becomes_nsx_timeout_error(self):
-        def boom():
-            raise subprocess.TimeoutExpired(cmd=["git", "fetch", "x"], timeout=7)
-
-        with pytest.raises(NSXTimeoutError) as ei:
-            api._invoke(boom)
-        assert ei.value.timeout_s == 7.0
-        assert "git fetch x" in (ei.value.command or "")
-
-    def test_invoke_with_return_also_maps_timeout(self):
-        def boom():
-            raise subprocess.TimeoutExpired(cmd="git ls-remote", timeout=3)
-
-        with pytest.raises(NSXTimeoutError):
-            api._invoke_with_return(boom)
-
-
-class TestInvokeClassifiesSystemExit:
-    def test_lock_message_classified(self):
-        def boom():
-            raise SystemExit("App lock unavailable: another nsx is running")
-
-        with pytest.raises(NSXLockError):
-            api._invoke(boom)
-
-    def test_module_message_classified(self):
-        def boom():
-            raise SystemExit("Unknown module 'foo'")
-
-        with pytest.raises(NSXModuleError):
-            api._invoke(boom)
-
-    def test_toolchain_message_classified(self):
-        def boom():
-            raise SystemExit("Unknown toolchain 'rustc'")
-
-        with pytest.raises(NSXToolchainError):
-            api._invoke(boom)
-
-    def test_resolution_message_classified(self):
-        def boom():
-            raise SystemExit("Failed to resolve ref 'main'")
-
-        with pytest.raises(NSXResolutionError):
-            api._invoke(boom)
-
-    def test_config_message_classified(self):
-        def boom():
-            raise SystemExit("nsx.yml: missing required key 'profile'")
-
-        with pytest.raises(NSXConfigError):
-            api._invoke(boom)
-
-    def test_unclassified_falls_back_to_base(self):
-        def boom():
-            raise SystemExit("something opaque happened")
-
-        with pytest.raises(NSXError) as ei:
-            api._invoke(boom)
-        # Falls back to the base class — not any of the subclasses.
-        assert type(ei.value) is NSXError
-
-    def test_zero_exit_is_silent(self):
-        def ok():
-            raise SystemExit(0)
-
-        # Should not raise.
-        api._invoke(ok)

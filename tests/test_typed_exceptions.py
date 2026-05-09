@@ -1,15 +1,12 @@
-"""Tests for M4 — typed exceptions backed by ``SystemExit`` multi-inheritance.
+"""Tests for the typed-exception hierarchy.
 
 These tests pin the contract that:
 
-1. ``NSXError`` IS-A both :class:`SystemExit` and :class:`RuntimeError`,
-   so existing ``except SystemExit:`` handlers (CLI wrapper, prior tests,
-   third-party embedders) continue to catch typed errors unchanged.
+1. ``NSXError`` IS-A :class:`RuntimeError`, and every typed subclass
+   (``NSXLockError``, ``NSXConfigError``, ...) IS-A ``NSXError``.
 2. The migrated raise sites in ``tooling``, ``project_config``,
    ``module_registry`` and ``subprocess_utils`` raise the *typed*
-   subclass, not bare ``SystemExit``.
-3. ``SystemExit.code`` is populated from the message argument so legacy
-   ``exc.code`` consumers keep working.
+   subclass.
 """
 
 from __future__ import annotations
@@ -45,26 +42,18 @@ _ALL_ERRORS = (
 
 class TestHierarchy:
     @pytest.mark.parametrize("cls", _ALL_ERRORS)
-    def test_is_systemexit_and_runtimeerror(self, cls):
-        assert issubclass(cls, SystemExit)
+    def test_is_runtimeerror(self, cls):
         assert issubclass(cls, RuntimeError)
+        assert not issubclass(cls, SystemExit)
 
     @pytest.mark.parametrize("cls", _ALL_ERRORS)
-    def test_legacy_systemexit_handler_still_catches(self, cls):
-        """Pre-M4 ``except SystemExit:`` handlers must keep working."""
-        if cls is NSXTimeoutError:
-            instance = cls("msg")
-        else:
-            instance = cls("msg")
+    def test_subclasses_caught_via_base(self, cls):
+        with pytest.raises(NSXError):
+            raise cls("msg")
 
-        with pytest.raises(SystemExit):
-            raise instance
-
-    def test_code_attribute_populated_from_message(self):
-        # SystemExit semantics: first positional arg becomes ``code``.
-        # Embedders that rely on ``exc.code`` must keep working.
-        assert NSXLockError("lock busy").code == "lock busy"
-        assert NSXConfigError("bad yaml").code == "bad yaml"
+    def test_message_preserved(self):
+        assert str(NSXLockError("lock busy")) == "lock busy"
+        assert str(NSXConfigError("bad yaml")) == "bad yaml"
 
 
 class TestMigratedSites:
@@ -154,16 +143,16 @@ class TestMigratedSites:
 
 
 class TestDualCatchability:
-    """Each migrated site is catchable as both the typed class AND ``SystemExit``."""
+    """Each migrated site is catchable as both the typed subclass and ``NSXError``."""
 
     def test_toolchain_error_dual_catch(self):
         with pytest.raises(NSXToolchainError):
             tooling.require_tool("nsx-definitely-not-a-real-binary-xyz")
-        with pytest.raises(SystemExit):
+        with pytest.raises(NSXError):
             tooling.require_tool("nsx-definitely-not-a-real-binary-xyz")
 
     def test_config_error_dual_catch(self, tmp_path: Path):
         with pytest.raises(NSXConfigError):
             project_config._require_app_config(tmp_path)
-        with pytest.raises(SystemExit):
+        with pytest.raises(NSXError):
             project_config._require_app_config(tmp_path)

@@ -111,8 +111,8 @@ def _read_yaml(path: Path) -> dict[str, Any]:
     """Parse *path* as YAML and require a mapping (dict) at the root.
 
     Empty files, non-mapping roots, and YAML parse errors all surface
-    as a deterministic ``SystemExit`` with the offending path so the
-    user gets a clear, actionable error rather than an opaque
+    as a deterministic :class:`NSXConfigError` with the offending path
+    so the user gets a clear, actionable error rather than an opaque
     ``AttributeError`` deep in a ``.get()`` call later on.
     """
 

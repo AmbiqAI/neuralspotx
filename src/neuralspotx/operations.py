@@ -1621,9 +1621,8 @@ def lock_app_impl(
         modules: When given alongside ``update``, only re-resolve these.
         check: Read-only mode. Resolve as usual but, instead of writing,
             compare against the on-disk ``nsx.lock`` and raise
-            ``SystemExit`` (with a non-zero status) when they would
-            differ. Useful in CI to assert that ``nsx.lock`` is up to
-            date with ``nsx.yml``.
+            :class:`NSXError` when they would differ. Useful in CI to
+            assert that ``nsx.lock`` is up to date with ``nsx.yml``.
         quiet: Suppress the post-write "Wrote ... / modules: ..."
             summary print. Useful when ``nsx lock`` is invoked
             implicitly by another command (e.g. the lock-missing path
@@ -1776,7 +1775,7 @@ def sync_app_impl(
     Args:
         frozen: Read-only mode. Verify that the on-disk vendored tree
             matches each lock entry's ``content_hash`` and raise
-            ``SystemExit`` on any mismatch instead of correcting it.
+            :class:`NSXError` on any mismatch instead of correcting it.
             Also raises if ``nsx.yml`` has changed since ``nsx.lock``
             was written (manifest-hash drift). This does NOT detect
             upstream drift on its own — ``nsx outdated`` is the tool

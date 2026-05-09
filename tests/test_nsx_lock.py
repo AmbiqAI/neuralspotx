@@ -14,7 +14,7 @@ from typing import Any
 import pytest
 import yaml
 
-from neuralspotx import operations
+from neuralspotx import NSXError, operations
 from neuralspotx.nsx_lock import LegacyLockError, ResolutionError, read_lock
 from neuralspotx.operations import (
     add_module_impl,
@@ -113,9 +113,9 @@ class TestVendoredKind:
         # Mutate vendored content -> hash diverges.
         (app / "modules" / "my-vend" / "hello.txt").write_text("CHANGED")
 
-        with pytest.raises(SystemExit) as exc:
+        with pytest.raises(NSXError) as exc:
             lock_app_impl(app, check=True)
-        assert exc.value.code == 1
+        assert str(exc.value) == "1"
 
     def test_check_detects_added_module(self, app: Path) -> None:
         _make_vendored(app, "v1")
@@ -130,9 +130,9 @@ class TestVendoredKind:
                 {"name": "v2", "source": {"vendored": True}},
             ],
         )
-        with pytest.raises(SystemExit) as exc:
+        with pytest.raises(NSXError) as exc:
             lock_app_impl(app, check=True)
-        assert exc.value.code == 1
+        assert str(exc.value) == "1"
 
     def test_check_detects_removed_module(self, app: Path) -> None:
         _make_vendored(app, "v1")
@@ -147,9 +147,9 @@ class TestVendoredKind:
         lock_app_impl(app)
 
         _write_nsx_yml(app, [{"name": "v1", "source": {"vendored": True}}])
-        with pytest.raises(SystemExit) as exc:
+        with pytest.raises(NSXError) as exc:
             lock_app_impl(app, check=True)
-        assert exc.value.code == 1
+        assert str(exc.value) == "1"
 
 
 # ---------------------------------------------------------------------------
@@ -172,7 +172,7 @@ class TestSyncFrozen:
 
         (app / "modules" / "my-vend" / "hello.txt").write_text("MUTATED")
 
-        with pytest.raises(SystemExit):
+        with pytest.raises(NSXError):
             sync_app_impl(app, frozen=True)
 
     def test_no_lock_sync_then_frozen_passes(self, app: Path, tmp_path: Path) -> None:
@@ -286,7 +286,7 @@ class TestSyncFrozen:
         (ext / "src.c").write_text("// v2")
 
         # --frozen must surface the upstream drift.
-        with pytest.raises(SystemExit):
+        with pytest.raises(NSXError):
             sync_app_impl(app, frozen=True)
 
         # A plain sync must update the mirror to match current source.

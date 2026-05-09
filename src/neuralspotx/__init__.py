@@ -1,5 +1,14 @@
 """Canonical Python package for neuralspotx tooling."""
 
+from ._errors import (
+    NSXConfigError,
+    NSXError,
+    NSXLockError,
+    NSXModuleError,
+    NSXResolutionError,
+    NSXTimeoutError,
+    NSXToolchainError,
+)
 from .api import (
     AppActionRequest,
     AppBuildRequest,
@@ -15,13 +24,6 @@ from .api import (
     ModuleInitRequest,
     ModuleRegisterRequest,
     ModuleUpdateRequest,
-    NSXConfigError,
-    NSXError,
-    NSXLockError,
-    NSXModuleError,
-    NSXResolutionError,
-    NSXTimeoutError,
-    NSXToolchainError,
     add_module,
     build_app,
     clean_app,

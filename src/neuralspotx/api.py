@@ -10,53 +10,12 @@ from . import module_discovery, operations, project_config
 from ._errors import (
     NSXConfigError,
     NSXError,
-    NSXLockError,
     NSXModuleError,
-    NSXResolutionError,
-    NSXTimeoutError,
-    NSXToolchainError,
 )
 from .metadata import load_yaml, validate_nsx_module_metadata
 from .subprocess_utils import timeout_budget
 
 PathLike = str | Path
-
-
-# Internal: mapping from leading message substrings to exception subclasses.
-# This lets us upgrade legacy ``raise SystemExit("...")`` sites incrementally
-# without rewriting every operation up-front.  Order matters — first match wins.
-_ERROR_CLASSIFIERS: tuple[tuple[str, type[NSXError]], ...] = (
-    ("App lock unavailable", NSXLockError),
-    ("Could not acquire app lock", NSXLockError),
-    ("Unknown module", NSXModuleError),
-    ("Module not found", NSXModuleError),
-    ("Module name must not be empty", NSXModuleError),
-    ("Module directory already exists", NSXModuleError),
-    ("Module path already exists", NSXModuleError),
-    ("Unknown toolchain", NSXToolchainError),
-    ("Unsupported toolchain", NSXToolchainError),
-    ("Toolchain not found", NSXToolchainError),
-    ("Toolchain ", NSXToolchainError),
-    ("Could not resolve", NSXResolutionError),
-    ("Failed to resolve", NSXResolutionError),
-    ("ls-remote", NSXResolutionError),
-    ("nsx.lock", NSXResolutionError),
-    ("nsx.yml", NSXConfigError),
-    ("registry.lock", NSXConfigError),
-    ("nsx-module.yaml", NSXConfigError),
-    ("schema_version", NSXConfigError),
-    ("App directory", NSXConfigError),
-    ("Profile ", NSXConfigError),
-)
-
-
-def _classify(message: str) -> type[NSXError]:
-    """Pick the most specific NSXError subclass for *message*."""
-
-    for prefix, cls in _ERROR_CLASSIFIERS:
-        if prefix in message:
-            return cls
-    return NSXError
 
 
 @dataclass(slots=True)
@@ -272,58 +231,6 @@ class ModuleInitRequest:
     force: bool = False
 
 
-def _invoke(func, *args, **kwargs) -> None:
-    """Invoke an NSX operation and normalize ``SystemExit`` into ``NSXError``."""
-
-    import subprocess
-
-    try:
-        func(*args, **kwargs)
-    except NSXError:
-        # Typed errors raised directly by operations/cli pass through unchanged.
-        raise
-    except SystemExit as exc:
-        code = exc.code
-        if code in (None, 0):
-            return
-        message = str(code)
-        raise _classify(message)(message) from None
-    except subprocess.TimeoutExpired as exc:
-        cmd = exc.cmd
-        cmd_str = " ".join(cmd) if isinstance(cmd, list) else str(cmd)
-        raise NSXTimeoutError(
-            f"Subprocess timed out after {exc.timeout}s: {cmd_str}",
-            command=cmd_str,
-            timeout_s=float(exc.timeout) if exc.timeout is not None else None,
-        ) from None
-
-
-def _invoke_with_return(func, *args, **kwargs):
-    """Invoke an NSX operation that returns a value, with ``SystemExit`` normalisation."""
-
-    import subprocess
-
-    try:
-        return func(*args, **kwargs)
-    except NSXError:
-        # Typed errors raised directly by operations/cli pass through unchanged.
-        raise
-    except SystemExit as exc:
-        code = exc.code
-        if code in (None, 0):
-            return None
-        message = str(code)
-        raise _classify(message)(message) from None
-    except subprocess.TimeoutExpired as exc:
-        cmd = exc.cmd
-        cmd_str = " ".join(cmd) if isinstance(cmd, list) else str(cmd)
-        raise NSXTimeoutError(
-            f"Subprocess timed out after {exc.timeout}s: {cmd_str}",
-            command=cmd_str,
-            timeout_s=float(exc.timeout) if exc.timeout is not None else None,
-        ) from None
-
-
 def create_app(
     app_dir: PathLike | AppCreateRequest,
     *,
@@ -353,8 +260,7 @@ def create_app(
             no_bootstrap=no_bootstrap,
         )
     )
-    _invoke(
-        operations.create_app_impl,
+    operations.create_app_impl(
         Path(request.app_dir).expanduser().resolve(),
         board=request.board,
         soc=request.soc,
@@ -366,7 +272,7 @@ def create_app(
 def doctor() -> None:
     """Run the NSX environment diagnostics."""
 
-    _invoke(operations.doctor_impl)
+    operations.doctor_impl()
 
 
 def configure_app(
@@ -395,8 +301,7 @@ def configure_app(
         )
     )
     with timeout_budget(request.timeout_s):
-        _invoke(
-            operations.configure_app_impl,
+        operations.configure_app_impl(
             Path(request.app_dir).expanduser().resolve(),
             board=request.board,
             build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
@@ -435,8 +340,7 @@ def build_app(
         )
     )
     with timeout_budget(request.timeout_s):
-        _invoke(
-            operations.build_app_impl,
+        operations.build_app_impl(
             Path(request.app_dir).expanduser().resolve(),
             board=request.board,
             build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
@@ -475,8 +379,7 @@ def flash_app(
         )
     )
     with timeout_budget(request.timeout_s):
-        _invoke(
-            operations.flash_app_impl,
+        operations.flash_app_impl(
             Path(request.app_dir).expanduser().resolve(),
             board=request.board,
             build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
@@ -511,8 +414,7 @@ def view_app(
         )
     )
     with timeout_budget(request.timeout_s):
-        _invoke(
-            operations.view_app_impl,
+        operations.view_app_impl(
             Path(request.app_dir).expanduser().resolve(),
             board=request.board,
             build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
@@ -550,8 +452,7 @@ def clean_app(
         )
     )
     with timeout_budget(request.timeout_s):
-        _invoke(
-            operations.clean_app_impl,
+        operations.clean_app_impl(
             Path(request.app_dir).expanduser().resolve(),
             board=request.board,
             build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
@@ -583,8 +484,7 @@ def add_module(
     )
     if not request.module:
         raise NSXModuleError("add_module requires a module name")
-    _invoke(
-        operations.add_module_impl,
+    operations.add_module_impl(
         Path(request.app_dir).expanduser().resolve(),
         request.module,
         local=request.local,
@@ -612,8 +512,7 @@ def remove_module(
     )
     if not request.module:
         raise NSXModuleError("remove_module requires a module name")
-    _invoke(
-        operations.remove_module_impl,
+    operations.remove_module_impl(
         Path(request.app_dir).expanduser().resolve(),
         request.module,
         dry_run=request.dry_run,
@@ -637,8 +536,7 @@ def update_modules(
             dry_run=dry_run,
         )
     )
-    _invoke(
-        operations.update_modules_impl,
+    operations.update_modules_impl(
         Path(request.app_dir).expanduser().resolve(),
         module_name=request.module,
         dry_run=request.dry_run,
@@ -678,8 +576,7 @@ def register_module(
     )
     if not request.module or not request.metadata or not request.project:
         raise NSXModuleError("register_module requires module, metadata, and project")
-    _invoke(
-        operations.register_module_impl,
+    operations.register_module_impl(
         Path(request.app_dir).expanduser().resolve(),
         request.module,
         metadata=Path(request.metadata).expanduser(),
@@ -726,8 +623,7 @@ def init_module(
             force=force,
         )
     )
-    _invoke(
-        operations.init_module_impl,
+    operations.init_module_impl(
         Path(request.module_dir).expanduser().resolve(),
         module_name=request.module_name,
         module_type=request.module_type,
@@ -754,7 +650,9 @@ def validate_module_metadata(
     try:
         data = load_yaml(path)
         validate_nsx_module_metadata(data, str(path))
-    except (ValueError, SystemExit) as exc:
+    except NSXError:
+        raise
+    except ValueError as exc:
         raise NSXConfigError(str(exc)) from None
     return data
 
@@ -859,8 +757,7 @@ def lock_app(
     from . import _resolve_cache
 
     with _resolve_cache.ttl_override(request.resolve_ttl_s), timeout_budget(request.timeout_s):
-        return _invoke_with_return(
-            operations.lock_app_impl,
+        return operations.lock_app_impl(
             Path(request.app_dir).expanduser().resolve(),
             update=request.update,
             modules=request.modules,
@@ -888,8 +785,7 @@ def sync_app(
         else AppSyncRequest(app_dir=app_dir, frozen=frozen, force=force, timeout_s=timeout_s)
     )
     with timeout_budget(request.timeout_s):
-        _invoke(
-            operations.sync_app_impl,
+        operations.sync_app_impl(
             Path(request.app_dir).expanduser().resolve(),
             frozen=request.frozen,
             force=request.force,
@@ -915,8 +811,7 @@ def outdated_app(
         else AppOutdatedRequest(app_dir=app_dir, as_json=as_json, timeout_s=timeout_s)
     )
     with timeout_budget(request.timeout_s):
-        result = _invoke_with_return(
-            operations.outdated_app_impl,
+        result = operations.outdated_app_impl(
             Path(request.app_dir).expanduser().resolve(),
             as_json=request.as_json,
         )
@@ -942,8 +837,7 @@ def update_app(
         else AppUpdateRequest(app_dir=app_dir, modules=modules, timeout_s=timeout_s)
     )
     with timeout_budget(request.timeout_s):
-        _invoke(
-            operations.update_app_impl,
+        operations.update_app_impl(
             Path(request.app_dir).expanduser().resolve(),
             modules=request.modules,
         )
