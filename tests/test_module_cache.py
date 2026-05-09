@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -374,3 +375,142 @@ class TestVendorGitIntegration:
         assert state["calls"] == 1
         clone_dir = app_dir / "modules" / "demo-proj"
         assert (clone_dir / "file.txt").read_text() == "fresh"
+
+
+# ---------------------------------------------------------------------------
+# R19: Concurrency tests
+# ---------------------------------------------------------------------------
+
+_VALID_HASH_PREFIX = "sha256:"
+
+
+def _make_source_tree(root: Path, name: str, content: str = "hello") -> Path:
+    """Create a simple source tree for cache population."""
+    src = root / name
+    src.mkdir(parents=True, exist_ok=True)
+    (src / "file.txt").write_text(content)
+    (src / "sub").mkdir(exist_ok=True)
+    (src / "sub" / "nested.txt").write_text(f"nested-{name}")
+    return src
+
+
+class TestModuleCacheConcurrencyR19:
+    def test_concurrent_populate_same_digest(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Multiple threads populating the same digest must produce one valid entry."""
+        monkeypatch.setenv("NSX_CACHE_DIR", str(tmp_path / "cache"))
+        monkeypatch.delenv("NSX_DISABLE_MODULE_CACHE", raising=False)
+
+        digest = _VALID_HASH_PREFIX + "aa" + "1" * 62
+        n_threads = 8
+        barrier = threading.Barrier(n_threads)
+        errors: list[str] = []
+
+        def worker(idx: int) -> None:
+            src = _make_source_tree(tmp_path / "sources", f"src-{idx}")
+            barrier.wait()
+            try:
+                module_cache.populate(digest, src)
+            except Exception as exc:
+                errors.append(f"worker {idx}: {exc}")
+
+        threads = [threading.Thread(target=worker, args=(i,)) for i in range(n_threads)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert not errors, f"populate errors: {errors}"
+
+        # The cache entry must exist and be a valid directory
+        entry = module_cache.cache_entry_for_hash(digest)
+        assert entry.is_dir()
+        assert (entry / "file.txt").exists()
+
+        # lookup must succeed
+        dest = tmp_path / "dest"
+        assert module_cache.lookup(digest, dest) is True
+        assert (dest / "file.txt").exists()
+
+        # No leftover temp directories
+        shard = entry.parent
+        leftovers = [p for p in shard.iterdir() if ".tmp." in p.name]
+        assert not leftovers, f"temp dirs left behind: {leftovers}"
+
+    def test_concurrent_populate_different_digests(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Concurrent populates for different digests must not interfere."""
+        monkeypatch.setenv("NSX_CACHE_DIR", str(tmp_path / "cache"))
+        monkeypatch.delenv("NSX_DISABLE_MODULE_CACHE", raising=False)
+
+        n_threads = 6
+        barrier = threading.Barrier(n_threads)
+        digests = [_VALID_HASH_PREFIX + f"{i:02d}" + "2" * 62 for i in range(n_threads)]
+        errors: list[str] = []
+
+        def worker(idx: int) -> None:
+            src = _make_source_tree(tmp_path / "sources", f"mod-{idx}", content=f"content-{idx}")
+            barrier.wait()
+            try:
+                module_cache.populate(digests[idx], src)
+            except Exception as exc:
+                errors.append(f"worker {idx}: {exc}")
+
+        threads = [threading.Thread(target=worker, args=(i,)) for i in range(n_threads)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert not errors
+
+        # Every digest should be independently cached
+        for i, digest in enumerate(digests):
+            dest = tmp_path / f"lookup-{i}"
+            assert module_cache.lookup(digest, dest) is True
+            assert (dest / "file.txt").read_text() == f"content-{i}"
+
+    def test_concurrent_lookup_during_populate(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """lookup() racing with populate() must return False or a complete tree."""
+        monkeypatch.setenv("NSX_CACHE_DIR", str(tmp_path / "cache"))
+        monkeypatch.delenv("NSX_DISABLE_MODULE_CACHE", raising=False)
+
+        digest = _VALID_HASH_PREFIX + "bb" + "3" * 62
+        n_lookups = 6
+        iterations = 20
+        barrier = threading.Barrier(1 + n_lookups)
+        errors: list[str] = []
+
+        def populator() -> None:
+            barrier.wait()
+            for i in range(iterations):
+                src = _make_source_tree(tmp_path / "pop-sources", f"iter-{i}", content=f"v{i}")
+                module_cache.populate(digest, src)
+
+        def looker(idx: int) -> None:
+            barrier.wait()
+            for i in range(iterations):
+                dest = tmp_path / f"look-{idx}-{i}"
+                try:
+                    hit = module_cache.lookup(digest, dest)
+                    if hit:
+                        # Must be a complete tree
+                        if not (dest / "file.txt").exists():
+                            errors.append(f"looker {idx} iter {i}: hit but missing file.txt")
+                        if not (dest / "sub" / "nested.txt").exists():
+                            errors.append(f"looker {idx} iter {i}: hit but missing nested.txt")
+                except Exception as exc:
+                    errors.append(f"looker {idx} iter {i}: {exc}")
+
+        threads = [threading.Thread(target=populator)]
+        threads += [threading.Thread(target=looker, args=(i,)) for i in range(n_lookups)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+
+        assert not errors, f"lookup errors during populate: {errors}"
