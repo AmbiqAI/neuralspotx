@@ -673,6 +673,39 @@ class TestPackagedDriftRegression:
         assert not stomp.exists(), "sync did not repair mutated packaged tree"
         assert hash_tree(vendored_at) == lock.modules[mod].content_hash
 
+    def test_nsx_tooling_hash_stable_across_apps(self, tmp_path: Path) -> None:
+        """``nsx-tooling`` content_hash must NOT depend on the app's module list.
+
+        Regression for the ``lock-integrity`` CI failure: previously
+        ``_write_app_module_file`` injected an app-specific
+        ``modules.cmake`` into ``cmake/nsx/`` after ``_copy_packaged_tree``,
+        and the post-sync verification re-hashed the destination tree
+        including that overlay — producing a different "got" hash for
+        every app's ``NSX_APP_MODULES`` list and a perpetual drift
+        warning. The fix excludes auto-generated overlays from the
+        packaged-module hash.
+        """
+
+        def lock_one(modules: list[str]) -> str:
+            d = tmp_path / f"app_{len(modules)}_{abs(hash(tuple(modules))) % 10000}"
+            d.mkdir()
+            _write_nsx_yml(d, [{"name": m} for m in modules])
+            lock_app_impl(d)
+            sync_app_impl(d)
+            # `lock --check` must succeed (no drift).
+            lock_app_impl(d, check=True)
+            lk = read_lock(d)
+            assert lk is not None
+            return lk.modules["nsx-tooling"].content_hash
+
+        h_a = lock_one(["nsx-tooling"])
+        h_b = lock_one(["nsx-tooling", "nsx-utils"])
+        h_c = lock_one(["nsx-tooling", "nsx-core", "nsx-harness"])
+        assert h_a == h_b == h_c, (
+            "nsx-tooling content_hash drifts with app's module list "
+            f"(got {h_a!r}, {h_b!r}, {h_c!r})"
+        )
+
 
 # ---------------------------------------------------------------------------
 # `nsx module add --vendored` scaffold
