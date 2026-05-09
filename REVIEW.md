@@ -254,10 +254,10 @@ Items are sequenced so each builds on previous work. Check off as completed.
 - [x] **R18. CLI/API parity tests.** ~~Verify all CLI commands route through API and share timeout/error normalization.~~ 15 parity tests + 2 gap-documenting tests for `cmd_module_list`/`cmd_module_validate` API bypass. *(PR #42)*
 - [x] **R19. Cache concurrency tests.** Add inter-process and threaded tests for resolve-cache and artifact-hash-cache under concurrent writers. Refs: `test_resolve_cache.py`, `test_module_cache.py`.
 - [x] **R20. `extract_view_command` resilience tests.** Cover varied Ninja generator formatting to prevent regressions on short-scan-window parsing. Ref: `subprocess_utils.py:319`.
-- [ ] **R21. Compatibility alias cleanup in `operations`.** Remove legacy shim aliases that duplicate naming and expose internal seams. Ref: `operations.py:102`.
-- [ ] **R22. Decouple `main` from package root exports.** Stop re-exporting CLI `main` from `neuralspotx.__init__` to separate library and runtime concerns. Ref: `__init__.py:37`.
-- [ ] **R23. Prefetch error visibility.** Narrow `except Exception` in parallel prefetch to specific expected failures; log root cause instead of silently retrying serially. Ref: `operations.py:1243`.
-- [ ] **R24. `create_app` rollback on failure.** Add cleanup/recovery marker so interrupted bootstrap doesn't leave half-generated app state. Ref: `operations.py:192`.
+- [x] **R21. Compatibility alias cleanup in `operations`.** Remove legacy shim aliases that duplicate naming and expose internal seams. Ref: `operations.py:102`.
+- [x] **R22. Decouple `main` from package root exports.** Stop re-exporting CLI `main` from `neuralspotx.__init__` to separate library and runtime concerns. Ref: `__init__.py:37`.
+- [x] **R23. Prefetch error visibility.** Narrow `except Exception` in parallel prefetch to specific expected failures; log root cause instead of silently retrying serially. Ref: `operations.py:1243`.
+- [x] **R24. `create_app` rollback on failure.** Add cleanup/recovery marker so interrupted bootstrap doesn't leave half-generated app state. Ref: `operations.py:192`.
 - [ ] **R25. Decompose `operations.py` into `operations/` package.** The 2215-line monolith mixes four distinct concern clusters. Convert to an `operations/` package with sub-modules; `__init__.py` re-exports all public names for full backward compatibility (`from neuralspotx import operations` / `operations.lock_app_impl(...)` unchanged).
 
   **Proposed sub-modules** (dependency DAG — no cycles):
