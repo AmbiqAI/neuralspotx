@@ -8,6 +8,7 @@ import copy
 import os
 import shutil
 import stat
+import sys
 from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
@@ -100,7 +101,12 @@ def _rmtree(path: Path) -> None:
         except (OSError, TypeError):
             pass
 
-    shutil.rmtree(path, onerror=_on_rm_error)
+    # ``onerror=`` is deprecated in 3.12 and removed in 3.14. The
+    # callback ignores the third arg's shape so it works for both APIs.
+    if sys.version_info >= (3, 12):
+        shutil.rmtree(path, onexc=_on_rm_error)
+    else:
+        shutil.rmtree(path, onerror=_on_rm_error)
 
 
 def _module_metadata_path(
