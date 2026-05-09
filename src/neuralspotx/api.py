@@ -13,6 +13,7 @@ from ._errors import (
     NSXModuleError,
 )
 from .metadata import load_yaml, validate_nsx_module_metadata
+from .models import DiscoveryRecord, SearchResult
 from .subprocess_utils import timeout_budget
 
 PathLike = str | Path
@@ -676,7 +677,7 @@ def list_modules(
     app_dir: PathLike | None = None,
     registry_only: bool = False,
     include_metadata: bool = True,
-) -> list[dict[str, Any]]:
+) -> list[DiscoveryRecord]:
     """List available modules from the effective registry context."""
 
     return module_discovery.list_modules(
@@ -690,7 +691,7 @@ def describe_module(
     module: str,
     *,
     app_dir: PathLike | None = None,
-) -> dict[str, Any]:
+) -> DiscoveryRecord:
     """Describe a single module from the effective registry context."""
 
     return module_discovery.describe_module(
@@ -707,7 +708,7 @@ def search_modules(
     soc: str | None = None,
     toolchain: str | None = None,
     include_incompatible: bool = False,
-) -> list[dict[str, Any]]:
+) -> list[SearchResult]:
     """Search modules by keyword and target compatibility context."""
 
     return module_discovery.search_modules(

@@ -48,6 +48,7 @@ from .api import (
     view_app,
 )
 from .cli import main
+from .models import DiscoveryRecord, SearchMatch, SearchResult
 from .nsx_lock import LockKind
 
 __all__ = [
@@ -61,6 +62,7 @@ __all__ = [
     "AppSyncRequest",
     "AppUpdateRequest",
     "AppViewRequest",
+    "DiscoveryRecord",
     "ModuleChangeRequest",
     "ModuleInitRequest",
     "ModuleRegisterRequest",
@@ -72,6 +74,8 @@ __all__ = [
     "NSXResolutionError",
     "NSXTimeoutError",
     "NSXToolchainError",
+    "SearchMatch",
+    "SearchResult",
     "add_module",
     "build_app",
     "clean_app",

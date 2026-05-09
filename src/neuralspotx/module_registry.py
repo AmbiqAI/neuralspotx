@@ -21,7 +21,7 @@ from .metadata import (
     registry_entry_for_module,
     validate_nsx_module_metadata,
 )
-from .models import AppConfig
+from .models import AppConfig, DiscoveryRecord
 from .project_config import (
     _is_packaged_module,
     _metadata_path_relative_to_project,
@@ -790,36 +790,29 @@ def _module_discovery_record(
     app_dir: Path | None = None,
     enabled: bool = False,
     include_metadata: bool = True,
-) -> dict[str, Any]:
+) -> DiscoveryRecord:
     entry = registry_entry_for_module(registry, module_name)
-    record: dict[str, Any] = {
-        "name": module_name,
-        "project": entry.project,
-        "revision": entry.revision,
-        "metadata": entry.metadata,
-        "enabled": enabled,
-    }
+    core = dict(
+        name=module_name,
+        project=entry.project,
+        revision=entry.revision,
+        metadata=entry.metadata,
+        enabled=enabled,
+    )
     if not include_metadata:
-        return record
+        return DiscoveryRecord(**core)
 
     try:
         metadata = _load_module_metadata(module_name, registry, app_dir=app_dir)
     except NSXError as exc:
-        record["metadata_available"] = False
-        if app_dir is None:
-            record["metadata_error"] = (
-                f"{exc} Provide --app-dir to resolve external module metadata."
-            )
-        else:
-            record["metadata_error"] = str(exc)
-        return record
+        error_msg = (
+            f"{exc} Provide --app-dir to resolve external module metadata."
+            if app_dir is None
+            else str(exc)
+        )
+        return DiscoveryRecord(**core, metadata_error=error_msg)
 
-    record["metadata_available"] = True
-    record["module"] = copy.deepcopy(metadata["module"])
-    record["support"] = copy.deepcopy(metadata["support"])
-    record["build"] = copy.deepcopy(metadata["build"])
-    record["depends"] = copy.deepcopy(metadata["depends"])
-    record["compatibility"] = copy.deepcopy(metadata["compatibility"])
+    kwargs: dict[str, Any] = {}
     for key in (
         "summary",
         "capabilities",
@@ -830,11 +823,21 @@ def _module_discovery_record(
         "composition_hints",
     ):
         if key in metadata:
-            record[key] = copy.deepcopy(metadata[key])
+            kwargs[key] = copy.deepcopy(metadata[key])
     for key in ("provides", "constraints", "integrations"):
         if key in metadata:
-            record[key] = copy.deepcopy(metadata[key])
-    return record
+            kwargs[key] = copy.deepcopy(metadata[key])
+
+    return DiscoveryRecord(
+        **core,
+        metadata_available=True,
+        module=copy.deepcopy(metadata["module"]),
+        support=copy.deepcopy(metadata["support"]),
+        build=copy.deepcopy(metadata["build"]),
+        depends=copy.deepcopy(metadata["depends"]),
+        compatibility=copy.deepcopy(metadata["compatibility"]),
+        **kwargs,
+    )
 
 
 def _module_discovery_records(
@@ -843,7 +846,7 @@ def _module_discovery_records(
     *,
     app_dir: Path | None = None,
     include_metadata: bool = True,
-) -> list[dict[str, Any]]:
+) -> list[DiscoveryRecord]:
     with metadata_cache_scope():
         return [
             _module_discovery_record(
