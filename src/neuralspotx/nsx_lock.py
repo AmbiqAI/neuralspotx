@@ -108,6 +108,14 @@ LOCK_SCHEMA_VERSION = 3
 # Files/dirs to exclude when hashing a vendored module tree.
 _HASH_EXCLUDE_DIRS = frozenset({".git", "__pycache__", ".pytest_cache", ".DS_Store"})
 
+# Auto-generated overlays written into ``app_dir/cmake/nsx/`` by
+# ``_write_app_module_file`` after ``_copy_packaged_tree``. These files
+# are not part of the packaged ``nsx-tooling`` wheel resource and must
+# be excluded when hashing the materialized tree, otherwise every app
+# produces a different content hash purely because of its own
+# ``NSX_APP_MODULES`` list.
+NSX_TOOLING_AUTOGEN_FILES = frozenset({"modules.cmake"})
+
 
 # ---------------------------------------------------------------------------
 # Lock kind enum
@@ -327,30 +335,39 @@ def write_lock(app_dir: Path, lock: NsxLock) -> Path:
 # ---------------------------------------------------------------------------
 
 
-def _iter_files(root: Path) -> Iterable[Path]:
-    """Yield files under *root*, skipping excluded directories."""
+def _iter_files(root: Path, *, exclude_names: frozenset[str] = frozenset()) -> Iterable[Path]:
+    """Yield files under *root*, skipping excluded directories and names."""
 
     for child in sorted(root.rglob("*")):
         if not child.is_file():
             continue
+        rel_parts = child.relative_to(root).parts
         # Skip if any path component is excluded.
-        if any(part in _HASH_EXCLUDE_DIRS for part in child.relative_to(root).parts):
+        if any(part in _HASH_EXCLUDE_DIRS for part in rel_parts):
+            continue
+        # Skip top-level files matching exclude_names. Restricted to the
+        # top level so a same-named file deeper in the tree is still hashed.
+        if len(rel_parts) == 1 and rel_parts[0] in exclude_names:
             continue
         yield child
 
 
-def hash_tree(root: Path) -> str:
+def hash_tree(root: Path, *, exclude_names: frozenset[str] = frozenset()) -> str:
     """Return a deterministic ``sha256:<hex>`` over the file tree at *root*.
 
     The hash digests the sorted list of ``(posix-relpath, file-sha256)`` tuples,
     so it is stable across platforms and ignores file metadata.
+
+    *exclude_names* lists top-level filenames to omit from the hash (e.g.
+    auto-generated overlay files that are not part of the upstream
+    artifact).
     """
 
     if not root.exists():
         return "sha256:" + hashlib.sha256(b"").hexdigest()
 
     h = hashlib.sha256()
-    for f in _iter_files(root):
+    for f in _iter_files(root, exclude_names=exclude_names):
         rel = f.relative_to(root).as_posix()
         file_h = hashlib.sha256()
         with f.open("rb") as fh:

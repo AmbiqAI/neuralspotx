@@ -43,6 +43,7 @@ from .module_registry import (
     _vendored_module_names,
 )
 from .nsx_lock import (
+    NSX_TOOLING_AUTOGEN_FILES,
     NsxLock,
     ResolutionError,
     ResolvedModule,
@@ -1464,7 +1465,7 @@ def _build_lock_for_app(
                 kind="packaged",
                 constraint="packaged",
                 vendored_at=rel,
-                content_hash=hash_tree(source_dir),
+                content_hash=hash_tree(source_dir, exclude_names=NSX_TOOLING_AUTOGEN_FILES),
                 acquired_at=utcnow_iso(),
                 tool_version=tool_version,
             )
@@ -2064,7 +2065,11 @@ def _sync_app_impl_unlocked(
             continue
         if (app_dir / entry.vendored_at) != cmake_nsx:
             continue
-        post_hash = hash_tree(cmake_nsx) if cmake_nsx.exists() else None
+        post_hash = (
+            hash_tree(cmake_nsx, exclude_names=NSX_TOOLING_AUTOGEN_FILES)
+            if cmake_nsx.exists()
+            else None
+        )
         if post_hash != entry.content_hash:
             print(
                 f"warning: upstream for '{name}' has drifted since lock "
