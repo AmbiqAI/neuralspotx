@@ -155,7 +155,7 @@ class ResolvedModule:
     """Resolution record for one module."""
 
     project: str
-    kind: str  # see :class:`LockKind` for the valid values
+    kind: LockKind
     constraint: str
     vendored_at: str
     content_hash: str
@@ -191,9 +191,14 @@ class ResolvedModule:
         if not isinstance(data, dict):
             raise ValueError(f"Invalid lock entry for module '{name}'")
         resolved = data.get("resolved") or {}
+        raw_kind = data.get("kind", "git")
+        try:
+            kind = LockKind(raw_kind)
+        except ValueError:
+            kind = LockKind.GIT  # graceful fallback for unknown kinds
         return cls(
             project=data.get("project", ""),
-            kind=data.get("kind", "git"),
+            kind=kind,
             constraint=str(data.get("constraint", "")),
             vendored_at=resolved.get("vendored_at", ""),
             content_hash=resolved.get("content_hash", ""),

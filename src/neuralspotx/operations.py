@@ -44,6 +44,7 @@ from .module_registry import (
 )
 from .nsx_lock import (
     NSX_TOOLING_AUTOGEN_FILES,
+    LockKind,
     NsxLock,
     ResolutionError,
     ResolvedModule,
@@ -1287,7 +1288,7 @@ def _build_lock_for_app(
             prev = prev_modules.get(nm)
             if (
                 prev
-                and prev.kind == "git"
+                and prev.kind == LockKind.GIT
                 and prev.constraint == cons
                 and prev.url == proj.url
                 and prev.commit
@@ -1329,7 +1330,7 @@ def _build_lock_for_app(
             prev = prev_modules.get(nm)
             if (
                 prev
-                and prev.kind == "git"
+                and prev.kind == LockKind.GIT
                 and prev.constraint == cons
                 and prev.url == proj.url
                 and prev.commit
@@ -1390,7 +1391,7 @@ def _build_lock_for_app(
                     break
             lock.modules[name] = ResolvedModule(
                 project=project_key,
-                kind="vendored",
+                kind=LockKind.VENDORED,
                 constraint="vendored",
                 vendored_at=rel,
                 content_hash=hash_tree(vendored_dir),
@@ -1434,7 +1435,7 @@ def _build_lock_for_app(
                 )
             lock.modules[name] = ResolvedModule(
                 project=project_key,
-                kind="local",
+                kind=LockKind.LOCAL,
                 constraint=constraint,
                 vendored_at=rel,
                 content_hash=hash_tree(hash_root),
@@ -1462,7 +1463,7 @@ def _build_lock_for_app(
             )
             lock.modules[name] = ResolvedModule(
                 project=entry.project,
-                kind="packaged",
+                kind=LockKind.PACKAGED,
                 constraint="packaged",
                 vendored_at=rel,
                 content_hash=hash_tree(source_dir, exclude_names=NSX_TOOLING_AUTOGEN_FILES),
@@ -1494,7 +1495,7 @@ def _build_lock_for_app(
                     )
                 lock.modules[name] = ResolvedModule(
                     project=entry.project,
-                    kind="local",
+                    kind=LockKind.LOCAL,
                     constraint=constraint,
                     vendored_at=rel,
                     content_hash=hash_tree(source_dir),
@@ -1510,7 +1511,7 @@ def _build_lock_for_app(
         tag: str | None
         if (
             previous_entry
-            and previous_entry.kind == "git"
+            and previous_entry.kind == LockKind.GIT
             and previous_entry.constraint == constraint
             and previous_entry.url == url
             and previous_entry.commit
@@ -1545,7 +1546,7 @@ def _build_lock_for_app(
                     fallback_hash = hash_tree(vendored_dir)  # empty-tree sha
                 lock.modules[name] = ResolvedModule(
                     project=entry.project,
-                    kind="unresolved",
+                    kind=LockKind.UNRESOLVED,
                     constraint=constraint,
                     vendored_at=rel,
                     content_hash=fallback_hash,
@@ -1572,7 +1573,7 @@ def _build_lock_for_app(
         cache_key = (url, commit)
         if (
             previous_entry
-            and previous_entry.kind == "git"
+            and previous_entry.kind == LockKind.GIT
             and previous_entry.url == url
             and previous_entry.commit == commit
             and previous_entry.content_hash
@@ -1592,7 +1593,7 @@ def _build_lock_for_app(
 
         lock.modules[name] = ResolvedModule(
             project=entry.project,
-            kind="git",
+            kind=LockKind.GIT,
             constraint=constraint,
             vendored_at=rel,
             content_hash=content_hash,
@@ -1704,11 +1705,11 @@ def _lock_app_impl_unlocked(
     print(
         f"Wrote {path.relative_to(app_dir.parent) if path.is_relative_to(app_dir.parent) else path}"
     )
-    n_git = sum(1 for m in lock.modules.values() if m.kind == "git")
-    n_pkg = sum(1 for m in lock.modules.values() if m.kind == "packaged")
-    n_loc = sum(1 for m in lock.modules.values() if m.kind == "local")
-    n_ven = sum(1 for m in lock.modules.values() if m.kind == "vendored")
-    n_unres = sum(1 for m in lock.modules.values() if m.kind == "unresolved")
+    n_git = sum(1 for m in lock.modules.values() if m.kind == LockKind.GIT)
+    n_pkg = sum(1 for m in lock.modules.values() if m.kind == LockKind.PACKAGED)
+    n_loc = sum(1 for m in lock.modules.values() if m.kind == LockKind.LOCAL)
+    n_ven = sum(1 for m in lock.modules.values() if m.kind == LockKind.VENDORED)
+    n_unres = sum(1 for m in lock.modules.values() if m.kind == LockKind.UNRESOLVED)
     parts = [f"{n_git} git", f"{n_pkg} packaged", f"{n_loc} local"]
     if n_ven:
         parts.append(f"{n_ven} vendored")
@@ -1846,9 +1847,9 @@ def _sync_app_impl_unlocked(
         # --local`` writes ``local: true`` without an override) — fall
         # back to the lock-recorded path in that case so
         # ``_resolved_module_path()`` doesn't raise.
-        if entry.kind in ("vendored", "unresolved"):
+        if entry.kind in (LockKind.VENDORED, LockKind.UNRESOLVED):
             vendored_dir = app_dir / entry.vendored_at
-        elif entry.kind == "local":
+        elif entry.kind == LockKind.LOCAL:
             try:
                 vendored_dir = _resolved_module_path(app_dir, name, registry)
             except ValueError:
@@ -1861,7 +1862,7 @@ def _sync_app_impl_unlocked(
             vendored_dir = _resolved_module_path(app_dir, name, registry)
 
         # ----- vendored: source IS modules/<name>/; verify only -----
-        if entry.kind == "vendored":
+        if entry.kind == LockKind.VENDORED:
             if not vendored_dir.exists():
                 # Vendored modules are not fetchable -- the source IS
                 # the in-tree directory. A missing path means the
@@ -1886,7 +1887,7 @@ def _sync_app_impl_unlocked(
             continue
 
         # ----- unresolved: upstream unreachable; verify only -----
-        if entry.kind == "unresolved":
+        if entry.kind == LockKind.UNRESOLVED:
             if not vendored_dir.exists():
                 # Upstream is unreachable by definition for unresolved
                 # entries; we cannot repair a missing tree from any
@@ -1929,7 +1930,7 @@ def _sync_app_impl_unlocked(
             continue
 
         # ----- local: upstream is a source path or modules/<name>/ -----
-        if entry.kind == "local":
+        if entry.kind == LockKind.LOCAL:
             try:
                 project_entry = _registry_project_entry(registry, entry.project)
             except (ValueError, KeyError, TypeError):
@@ -2010,9 +2011,9 @@ def _sync_app_impl_unlocked(
                 f"({entry.vendored_at}). Refusing to modify under --frozen."
             )
 
-        if entry.kind == "packaged":
+        if entry.kind == LockKind.PACKAGED:
             _vendor_packaged_module_into_app(app_dir, name, registry)
-        elif entry.kind == "git":
+        elif entry.kind == LockKind.GIT:
             # Re-vendor at the exact locked commit (not the branch tip).
             if entry.commit:
                 _vendor_git_module_at_commit(
@@ -2060,7 +2061,7 @@ def _sync_app_impl_unlocked(
     # any) reflects the final on-disk state, not the pre-refresh state.
     cmake_nsx = app_dir / "cmake" / "nsx"
     for name, entry in lock.modules.items():
-        if entry.kind != "packaged":
+        if entry.kind != LockKind.PACKAGED:
             continue
         if (app_dir / entry.vendored_at) != cmake_nsx:
             continue
@@ -2108,7 +2109,7 @@ def outdated_app_impl(app_dir: Path, *, as_json: bool = False) -> int:
     candidates = [
         (name, entry)
         for name, entry in sorted(lock.modules.items())
-        if entry.kind == "git" and entry.url
+        if entry.kind == LockKind.GIT and entry.url
     ]
     upstream_jobs: dict[tuple[str, str], None] = {}
     for _name, entry in candidates:
@@ -2127,7 +2128,7 @@ def outdated_app_impl(app_dir: Path, *, as_json: bool = False) -> int:
         upstream_results = dict(zip(upstream_keys, results, strict=True))
 
     for name, entry in sorted(lock.modules.items()):
-        if entry.kind != "git":
+        if entry.kind != LockKind.GIT:
             continue
         if not entry.url:
             skipped.append((name, "no url"))
