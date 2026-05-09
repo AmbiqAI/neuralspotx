@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from . import api, module_cache, nsx_lock, operations
+from ._errors import NSXConfigError, NSXError, NSXModuleError
 from .metadata import SUPPORTED_MODULE_TYPES, load_yaml, validate_nsx_module_metadata
 from .module_discovery import (
     resolve_module_context,
@@ -436,7 +437,7 @@ def cmd_outdated(args: argparse.Namespace) -> None:
         timeout_s=getattr(args, "timeout", None),
     )
     if args.exit_code and n:
-        raise SystemExit(1)
+        raise NSXError(1)
 
 
 def cmd_update(args: argparse.Namespace) -> None:
@@ -563,7 +564,7 @@ def cmd_module_search(args: argparse.Namespace) -> None:
 
 def cmd_module_list(args: argparse.Namespace) -> None:
     if args.app_dir is None and not args.registry_only:
-        raise SystemExit("nsx module list requires --app-dir unless --registry-only is used")
+        raise NSXConfigError("nsx module list requires --app-dir unless --registry-only is used")
 
     app_dir = None if args.registry_only else _resolve_cli_app_dir(args.app_dir)
     registry, enabled, resolved_app, scope = resolve_module_context(app_dir=app_dir)
@@ -604,7 +605,7 @@ def cmd_module_describe(args: argparse.Namespace) -> None:
             include_metadata=True,
         )
     except ValueError as exc:
-        raise SystemExit(str(exc)) from None
+        raise NSXModuleError(str(exc)) from None
 
     if args.json:
         payload = {
@@ -681,11 +682,11 @@ def cmd_module_validate(args: argparse.Namespace) -> None:
     try:
         data = load_yaml(metadata_path)
     except ValueError as exc:
-        raise SystemExit(str(exc)) from None
+        raise NSXConfigError(str(exc)) from None
     try:
         validate_nsx_module_metadata(data, str(metadata_path))
     except ValueError as exc:
-        raise SystemExit(f"Validation failed: {exc}") from None
+        raise NSXConfigError(f"Validation failed: {exc}") from None
 
     if args.json:
         print(
@@ -1287,7 +1288,7 @@ def main(argv: list[str] | None = None) -> int:
     except subprocess.CalledProcessError as exc:
         if VERBOSE > 0:
             raise
-        raise SystemExit(format_subprocess_error(exc, context="Command")) from None
+        raise NSXError(format_subprocess_error(exc, context="Command")) from None
     except nsx_lock.LegacyLockError as exc:
-        raise SystemExit(str(exc)) from None
+        raise NSXConfigError(str(exc)) from None
     return 0

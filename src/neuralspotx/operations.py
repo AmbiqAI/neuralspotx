@@ -13,6 +13,13 @@ import subprocess
 import time
 from pathlib import Path
 
+from ._errors import (
+    NSXConfigError,
+    NSXError,
+    NSXModuleError,
+    NSXResolutionError,
+    NSXToolchainError,
+)
 from .constants import (
     DEFAULT_SOC_FOR_BOARD,
     DEFAULT_TOOLCHAIN,
@@ -176,15 +183,15 @@ def create_app_impl(
     board = normalize_board(board)
     soc = normalize_soc(soc) or DEFAULT_SOC_FOR_BOARD.get(board)
     if soc is None:
-        raise SystemExit(f"Unable to infer --soc for board '{board}'. Pass --soc explicitly.")
+        raise NSXConfigError(f"Unable to infer --soc for board '{board}'. Pass --soc explicitly.")
 
     template_root = resources.files("neuralspotx.templates").joinpath("external_app")
     with resources.as_file(template_root) as src_template:
         if not src_template.exists():
-            raise SystemExit(f"Template directory not found: {src_template}")
+            raise NSXConfigError(f"Template directory not found: {src_template}")
 
         if app_dir.exists() and any(app_dir.iterdir()) and not force:
-            raise SystemExit(f"App directory already exists and is not empty: {app_dir}")
+            raise NSXConfigError(f"App directory already exists and is not empty: {app_dir}")
 
         app_dir.mkdir(parents=True, exist_ok=True)
         render_template_tree(
@@ -290,12 +297,12 @@ def init_module_impl(
 
     module_name = (module_name or module_dir.name).strip()
     if not module_name:
-        raise SystemExit("Module name must not be empty.")
+        raise NSXModuleError("Module name must not be empty.")
 
     if module_dir.exists() and not module_dir.is_dir():
-        raise SystemExit(f"Module path already exists and is not a directory: {module_dir}")
+        raise NSXModuleError(f"Module path already exists and is not a directory: {module_dir}")
     if module_dir.exists() and any(module_dir.iterdir()) and not force:
-        raise SystemExit(f"Module directory already exists and is not empty: {module_dir}")
+        raise NSXModuleError(f"Module directory already exists and is not empty: {module_dir}")
 
     dependency_names = _unique_preserving_order(dependencies or [])
     board_names = _unique_preserving_order(boards or ["*"])
@@ -317,7 +324,7 @@ def init_module_impl(
     template_root = resources.files("neuralspotx.templates").joinpath("module_skeleton")
     with resources.as_file(template_root) as src_template:
         if not src_template.exists():
-            raise SystemExit(f"Template directory not found: {src_template}")
+            raise NSXConfigError(f"Template directory not found: {src_template}")
 
         module_dir.mkdir(parents=True, exist_ok=True)
         render_template_tree(
@@ -525,7 +532,7 @@ def doctor_impl() -> None:
             )
 
     if not all_ok:
-        raise SystemExit("One or more required tools are missing or misconfigured.")
+        raise NSXToolchainError("One or more required tools are missing or misconfigured.")
 
 
 def _scaffold_vendored_module(target_dir: Path, module_name: str) -> None:
@@ -682,7 +689,7 @@ def flash_app_impl(
     try:
         result = _run_capture(cmd)
     except subprocess.CalledProcessError as exc:
-        raise SystemExit(format_subprocess_error(exc, context="Flash")) from None
+        raise NSXError(format_subprocess_error(exc, context="Flash")) from None
     _print_captured_output(result)
     return resolved_build_dir
 
@@ -741,11 +748,11 @@ def view_app_impl(
                             viewer_proc.wait(timeout=2)
                         except subprocess.TimeoutExpired:
                             viewer_proc.kill()
-                    raise SystemExit(format_subprocess_error(exc, context="Reset")) from None
+                    raise NSXError(format_subprocess_error(exc, context="Reset")) from None
                 _print_captured_output(result)
         viewer_proc.wait()
     except subprocess.CalledProcessError as exc:
-        raise SystemExit(format_subprocess_error(exc, context="View")) from None
+        raise NSXError(format_subprocess_error(exc, context="View")) from None
     except KeyboardInterrupt:
         # Ctrl-C must take the viewer down with us; otherwise SWO/RTT
         # subprocesses can keep running detached and hold the SEGGER
@@ -816,14 +823,14 @@ def add_module_impl(
     """
 
     if local and vendored:
-        raise SystemExit("--local and --vendored are mutually exclusive")
+        raise NSXConfigError("--local and --vendored are mutually exclusive")
 
     nsx_cfg = _load_app_cfg(app_dir)
 
     if vendored:
         existing = _module_names_from_nsx(nsx_cfg)
         if module_name in existing:
-            raise SystemExit(f"Module '{module_name}' is already enabled in nsx.yml")
+            raise NSXModuleError(f"Module '{module_name}' is already enabled in nsx.yml")
         target_dir = app_dir / "modules" / module_name
         if dry_run:
             print(f"[dry-run] would scaffold vendored module: {module_name}")
@@ -849,7 +856,7 @@ def add_module_impl(
         # Local modules bypass registry resolution entirely.
         existing = _module_names_from_nsx(nsx_cfg)
         if module_name in existing:
-            raise SystemExit(f"Module '{module_name}' is already enabled in nsx.yml")
+            raise NSXModuleError(f"Module '{module_name}' is already enabled in nsx.yml")
         if dry_run:
             print(f"[dry-run] would add local module: {module_name}")
             return existing + [module_name]
@@ -901,7 +908,7 @@ def remove_module_impl(
     registry = _effective_registry(_load_registry(), nsx_cfg)
     enabled = _module_names_from_nsx(nsx_cfg)
     if module_name not in enabled:
-        raise SystemExit(f"Module '{module_name}' is not enabled in nsx.yml")
+        raise NSXModuleError(f"Module '{module_name}' is not enabled in nsx.yml")
 
     local_names = _local_module_names(nsx_cfg)
 
@@ -940,7 +947,7 @@ def remove_module_impl(
 
     blockers = sorted(name for name in dependents.get(module_name, set()) if name in current)
     if blockers:
-        raise SystemExit(
+        raise NSXModuleError(
             f"Cannot remove '{module_name}'; required by enabled module(s): {', '.join(blockers)}"
         )
 
@@ -1006,9 +1013,9 @@ def update_modules_impl(
     current = set(current_modules)
     if module_name:
         if module_name not in current:
-            raise SystemExit(f"Module '{module_name}' is not enabled in nsx.yml")
+            raise NSXModuleError(f"Module '{module_name}' is not enabled in nsx.yml")
         if module_name in local_names:
-            raise SystemExit(
+            raise NSXModuleError(
                 f"Module '{module_name}' is a local module and cannot be updated from registry"
             )
         to_update = {module_name}
@@ -1064,26 +1071,26 @@ def register_module_impl(
     if not metadata_path.is_absolute():
         metadata_path = (app_dir / metadata_path).resolve()
     if not metadata_path.exists():
-        raise SystemExit(f"Metadata file does not exist: {metadata_path}")
+        raise NSXConfigError(f"Metadata file does not exist: {metadata_path}")
 
     module_data = _read_yaml(metadata_path)
     validate_nsx_module_metadata(module_data, str(metadata_path))
     declared_name = module_data.get("module", {}).get("name")
     if declared_name != module_name:
-        raise SystemExit(
+        raise NSXConfigError(
             f"Metadata module name mismatch: expected '{module_name}', found '{declared_name}'"
         )
 
     project_name = project
     project_entry: ProjectEntry
     if project_local_path and (project_url or project_revision or project_path):
-        raise SystemExit(
+        raise NSXConfigError(
             "Use either --project-local-path OR (--project-url --project-revision --project-path), not both."
         )
     if project_local_path:
         local_path = project_local_path.resolve()
         if not local_path.exists():
-            raise SystemExit(f"--project-local-path does not exist: {local_path}")
+            raise NSXConfigError(f"--project-local-path does not exist: {local_path}")
         project_entry = ProjectEntry(
             name=project_name,
             local_path=str(local_path),
@@ -1102,14 +1109,14 @@ def register_module_impl(
         if existing.url:
             project_entry = existing
         else:
-            raise SystemExit(
+            raise NSXResolutionError(
                 f"Project '{project_name}' is not in registry. "
                 "Provide --project-local-path OR --project-url."
             )
 
     current_modules = registry.get("modules", {})
     if module_name in current_modules and not override:
-        raise SystemExit(
+        raise NSXModuleError(
             f"Module '{module_name}' already exists in effective registry. "
             "Use --override to replace it for this app."
         )
@@ -1117,11 +1124,11 @@ def register_module_impl(
     target_cfg = copy.deepcopy(nsx_cfg)
     module_registry = target_cfg.setdefault("module_registry", {})
     if not isinstance(module_registry, dict):
-        raise SystemExit("nsx.yml: module_registry must be a mapping")
+        raise NSXConfigError("nsx.yml: module_registry must be a mapping")
     projects = module_registry.setdefault("projects", {})
     modules = module_registry.setdefault("modules", {})
     if not isinstance(projects, dict) or not isinstance(modules, dict):
-        raise SystemExit("nsx.yml: module_registry.projects/modules must be mappings")
+        raise NSXConfigError("nsx.yml: module_registry.projects/modules must be mappings")
 
     projects[project_name] = project_entry.to_mapping()
     modules[module_name] = ModuleEntry(
@@ -1367,7 +1374,7 @@ def _build_lock_for_app(
         if name in vendored_names:
             vendored_dir = app_dir / "modules" / name
             if not vendored_dir.exists():
-                raise SystemExit(
+                raise NSXModuleError(
                     f"Module '{name}' declares source: {{ vendored: true }} "
                     f"but {vendored_dir.relative_to(app_dir)}/ is missing. "
                     "Add the module's files (e.g. via `nsx module add --vendored`) "
@@ -1421,7 +1428,7 @@ def _build_lock_for_app(
             # in-tree locals).
             hash_root = source_dir if source_dir is not None else vendored_dir
             if not hash_root.exists():
-                raise SystemExit(
+                raise NSXModuleError(
                     f"Local module '{name}' source '{hash_root}' does not exist; cannot lock."
                 )
             lock.modules[name] = ResolvedModule(
@@ -1480,7 +1487,7 @@ def _build_lock_for_app(
                 )
                 source_dir = Path(project_entry.local_path).expanduser().resolve()
                 if not source_dir.exists():
-                    raise SystemExit(
+                    raise NSXResolutionError(
                         f"Local project '{entry.project}' source '{source_dir}' does "
                         "not exist; cannot lock."
                     )
@@ -1493,7 +1500,7 @@ def _build_lock_for_app(
                     acquired_at=utcnow_iso(),
                 )
                 continue
-            raise SystemExit(
+            raise NSXResolutionError(
                 f"Module '{name}' project '{entry.project}' has no URL in registry; cannot lock."
             )
 
@@ -1577,7 +1584,7 @@ def _build_lock_for_app(
             try:
                 content_hash = hash_git_artifact(url, commit)
             except Exception as exc:  # noqa: BLE001 \u2014 surface as actionable error
-                raise SystemExit(
+                raise NSXResolutionError(
                     f"Failed to compute upstream hash for '{name}' ({url} @ {commit}): {exc}"
                 ) from exc
             git_artifact_hash_cache[cache_key] = content_hash
@@ -1689,7 +1696,7 @@ def _lock_app_impl_unlocked(
         for line in diff:
             print(f"  {line}")
         print("Run `nsx lock` to refresh.")
-        raise SystemExit(1)
+        raise NSXError(1)
 
     path = write_lock(app_dir, lock)
     if quiet:
@@ -1797,7 +1804,7 @@ def _sync_app_impl_unlocked(
     lock = read_lock(app_dir)
     if lock is None:
         if frozen:
-            raise SystemExit(
+            raise NSXConfigError(
                 f"{app_dir / 'nsx.lock'} not found. Run `nsx lock` first (or drop --frozen)."
             )
         # No lock yet — generate one. Unlike the v2 design, this is
@@ -1819,7 +1826,7 @@ def _sync_app_impl_unlocked(
     current_manifest_hash = hash_manifest(app_dir / "nsx.yml")
     if lock.manifest_hash and lock.manifest_hash != current_manifest_hash:
         if frozen:
-            raise SystemExit(
+            raise NSXConfigError(
                 "nsx.yml has changed since nsx.lock was written. "
                 "Run `nsx lock` to refresh, or drop --frozen."
             )
@@ -1860,7 +1867,7 @@ def _sync_app_impl_unlocked(
                 # the in-tree directory. A missing path means the
                 # user deleted committed content; sync cannot repair
                 # it without a checkout/restore.
-                raise SystemExit(
+                raise NSXModuleError(
                     f"Vendored module '{name}' is missing on disk "
                     f"({entry.vendored_at}). Restore the directory "
                     "(e.g. `git checkout -- modules/`) before running sync."
@@ -1873,7 +1880,7 @@ def _sync_app_impl_unlocked(
                     "or revert the changes."
                 )
                 if frozen:
-                    raise SystemExit(msg)
+                    raise NSXModuleError(msg)
                 print(f"warning: {msg}")
             vendored_paths.add(vendored_dir)
             continue
@@ -1884,7 +1891,7 @@ def _sync_app_impl_unlocked(
                 # Upstream is unreachable by definition for unresolved
                 # entries; we cannot repair a missing tree from any
                 # source.
-                raise SystemExit(
+                raise NSXModuleError(
                     f"Unresolved module '{name}' is missing on disk "
                     f"({entry.vendored_at}) and upstream {entry.url} is "
                     "unreachable. Restore the vendored directory or "
@@ -1897,7 +1904,7 @@ def _sync_app_impl_unlocked(
                     f"({entry.vendored_at}); upstream {entry.url} is not reachable."
                 )
                 if frozen:
-                    raise SystemExit(msg)
+                    raise NSXModuleError(msg)
                 print(f"warning: {msg}")
             vendored_paths.add(vendored_dir)
             continue
@@ -1917,7 +1924,7 @@ def _sync_app_impl_unlocked(
                     "refresh the lock."
                 )
                 if frozen:
-                    raise SystemExit(msg)
+                    raise NSXModuleError(msg)
                 print(f"warning: {msg}")
             continue
 
@@ -1940,7 +1947,7 @@ def _sync_app_impl_unlocked(
                 # drifted to a hash equal to the lock's old value.)
                 source_dir = Path(project_entry.local_path).expanduser().resolve()
                 if not source_dir.exists():
-                    raise SystemExit(
+                    raise NSXModuleError(
                         f"Local source for module '{name}' is missing: "
                         f"{source_dir} does not exist. "
                         f"Restore the path or re-register the project with "
@@ -1957,7 +1964,7 @@ def _sync_app_impl_unlocked(
                         f"{source_hash}); run `nsx lock` to re-record."
                     )
                     if frozen:
-                        raise SystemExit(msg)
+                        raise NSXModuleError(msg)
                     print(f"warning: {msg}")
 
                 # Mirror is already in sync with current source: skip.
@@ -1966,7 +1973,7 @@ def _sync_app_impl_unlocked(
                     continue
 
                 if frozen:
-                    raise SystemExit(
+                    raise NSXModuleError(
                         f"Local module '{name}' mirror at {entry.vendored_at} "
                         f"does not match source {source_dir}. Refusing under "
                         "--frozen."
@@ -1986,7 +1993,7 @@ def _sync_app_impl_unlocked(
                     "or revert the changes."
                 )
                 if frozen:
-                    raise SystemExit(msg)
+                    raise NSXModuleError(msg)
                 print(f"warning: {msg}")
             vendored_paths.add(vendored_dir)
             continue
@@ -1998,7 +2005,7 @@ def _sync_app_impl_unlocked(
             continue
 
         if frozen:
-            raise SystemExit(
+            raise NSXModuleError(
                 f"Module '{name}' on-disk content does not match nsx.lock "
                 f"({entry.vendored_at}). Refusing to modify under --frozen."
             )
@@ -2080,7 +2087,7 @@ def outdated_app_impl(app_dir: Path, *, as_json: bool = False) -> int:
 
     lock = read_lock(app_dir)
     if lock is None:
-        raise SystemExit(f"{app_dir / 'nsx.lock'} not found. Run `nsx lock` first.")
+        raise NSXConfigError(f"{app_dir / 'nsx.lock'} not found. Run `nsx lock` first.")
 
     rows: list[tuple[str, str, str, str, str]] = []  # name, constraint, locked, upstream, status
     full_rows: list[dict[str, str]] = []

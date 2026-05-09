@@ -279,6 +279,9 @@ def _invoke(func, *args, **kwargs) -> None:
 
     try:
         func(*args, **kwargs)
+    except NSXError:
+        # Typed errors raised directly by operations/cli pass through unchanged.
+        raise
     except SystemExit as exc:
         code = exc.code
         if code in (None, 0):
@@ -302,6 +305,9 @@ def _invoke_with_return(func, *args, **kwargs):
 
     try:
         return func(*args, **kwargs)
+    except NSXError:
+        # Typed errors raised directly by operations/cli pass through unchanged.
+        raise
     except SystemExit as exc:
         code = exc.code
         if code in (None, 0):

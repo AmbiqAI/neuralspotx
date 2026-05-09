@@ -26,6 +26,7 @@ from neuralspotx import (
     NSXResolutionError,
     NSXTimeoutError,
     NSXToolchainError,
+    operations,
     project_config,
     tooling,
 )
@@ -90,6 +91,66 @@ class TestMigratedSites:
     def test_subprocess_utils_missing_ninja_raises_config_error(self, tmp_path):
         with pytest.raises(NSXConfigError, match="Missing build.ninja"):
             extract_view_command(tmp_path, target="anything")
+
+    # ----- operations.py migrated sites -----
+
+    def test_operations_create_app_missing_soc_raises_config_error(self, tmp_path):
+        # Board "unknown" has no default SoC mapping → NSXConfigError.
+        with pytest.raises(NSXConfigError, match="Unable to infer --soc"):
+            operations.create_app_impl(
+                tmp_path / "myapp",
+                board="not-a-real-board",
+                soc=None,
+                force=False,
+                no_bootstrap=True,
+            )
+
+    def test_operations_init_module_empty_name_raises_module_error(self, tmp_path):
+        with pytest.raises(NSXModuleError, match="Module name must not be empty"):
+            operations.init_module_impl(
+                tmp_path,
+                module_name="   ",
+                force=True,
+            )
+
+    def test_operations_outdated_missing_lock_raises_config_error(self, tmp_path):
+        # nsx.yml exists but no nsx.lock → NSXConfigError.
+        (tmp_path / "nsx.yml").write_text(
+            "app:\n  name: t\n  board: apollo510_evb\n  soc: apollo510\nmodules: []\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(NSXConfigError, match="nsx.lock.*not found"):
+            operations.outdated_app_impl(tmp_path)
+
+    def test_operations_sync_frozen_missing_lock_raises_config_error(self, tmp_path):
+        (tmp_path / "nsx.yml").write_text(
+            "app:\n  name: t\n  board: apollo510_evb\n  soc: apollo510\nmodules: []\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(NSXConfigError, match="nsx.lock.*not found"):
+            operations.sync_app_impl(tmp_path, frozen=True)
+
+    # ----- cli.py migrated sites -----
+
+    def test_cli_module_list_without_app_dir_raises_config_error(self):
+        from neuralspotx import cli
+
+        ns = type(
+            "Args",
+            (),
+            {"app_dir": None, "registry_only": False, "json": False},
+        )()
+        with pytest.raises(NSXConfigError, match="requires --app-dir"):
+            cli.cmd_module_list(ns)
+
+    def test_cli_module_validate_invalid_yaml_raises_config_error(self, tmp_path):
+        from neuralspotx import cli
+
+        bad = tmp_path / "nsx-module.yaml"
+        bad.write_text(": : not yaml :\n", encoding="utf-8")
+        ns = type("Args", (), {"metadata": str(bad), "json": False})()
+        with pytest.raises(NSXConfigError):
+            cli.cmd_module_validate(ns)
 
 
 class TestDualCatchability:
