@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import dataclasses
+import enum
 from dataclasses import dataclass
 from typing import Any
 
@@ -283,6 +284,53 @@ class AppConfig:
 
     def opaque_modules(self) -> dict[str, AppModule]:
         return {module.name: module for module in self.modules if module.is_opaque}
+
+
+# ------------------------------------------------------------------
+# CLI command descriptors
+# ------------------------------------------------------------------
+
+
+class CommandCategory(str, enum.Enum):
+    """Category tag for CLI command graph hints."""
+
+    ENTRYPOINT = "entrypoint"
+    DISCOVERY = "discovery"
+    APP_CREATION = "app-creation"
+    DIAGNOSTICS = "diagnostics"
+    BUILD = "build"
+    DEPLOY = "deploy"
+    MODULES = "modules"
+    MAINTENANCE = "maintenance"
+
+
+class CommandScope(str, enum.Enum):
+    """Scope tag for CLI command graph hints."""
+
+    GLOBAL = "global"
+    APP = "app"
+    ENVIRONMENT = "environment"
+    FILESYSTEM = "filesystem"
+
+
+@dataclass(frozen=True)
+class CommandHint:
+    """Typed metadata hint for a CLI command in the command graph."""
+
+    category: CommandCategory
+    scope: CommandScope
+    next_commands: tuple[str, ...] = ()
+    alias_for: str | None = None
+
+    def to_dict(self) -> dict[str, str | list[str]]:
+        out: dict[str, str | list[str]] = {
+            "category": self.category.value,
+            "scope": self.scope.value,
+            "next_commands": list(self.next_commands),
+        }
+        if self.alias_for is not None:
+            out["alias_for"] = self.alias_for
+        return out
 
 
 # ------------------------------------------------------------------

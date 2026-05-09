@@ -13,7 +13,7 @@ from typing import Any
 from . import api, module_cache, nsx_lock, operations
 from ._errors import NSXConfigError, NSXError, NSXModuleError
 from .metadata import SUPPORTED_MODULE_TYPES, load_yaml, validate_nsx_module_metadata
-from .models import DiscoveryRecord, SearchResult
+from .models import CommandCategory, CommandHint, CommandScope, DiscoveryRecord, SearchResult
 from .module_discovery import (
     resolve_module_context,
     resolve_target_context,
@@ -31,161 +31,83 @@ from .subprocess_utils import format_subprocess_error
 
 VERBOSE = 0
 
+_C = CommandCategory
+_S = CommandScope
 
-_COMMAND_GRAPH_HINTS: dict[str, dict[str, Any]] = {
-    "": {
-        "category": "entrypoint",
-        "scope": "global",
-        "next_commands": ["nsx doctor", "nsx create-app"],
-    },
-    "commands": {
-        "category": "discovery",
-        "scope": "global",
-        "next_commands": ["nsx module list --json", "nsx module describe <module> --json"],
-    },
-    "create-app": {
-        "category": "app-creation",
-        "scope": "app",
-        "next_commands": ["nsx configure", "nsx module list", "nsx module add"],
-    },
-    "new": {
-        "category": "app-creation",
-        "scope": "app",
-        "alias_for": "nsx create-app",
-        "next_commands": ["nsx configure", "nsx module list", "nsx module add"],
-    },
-    "doctor": {
-        "category": "diagnostics",
-        "scope": "environment",
-        "next_commands": ["nsx create-app", "nsx configure"],
-    },
-    "configure": {
-        "category": "build",
-        "scope": "app",
-        "next_commands": ["nsx build", "nsx flash", "nsx view", "nsx module list"],
-    },
-    "build": {
-        "category": "build",
-        "scope": "app",
-        "next_commands": ["nsx flash", "nsx view", "nsx clean"],
-    },
-    "flash": {
-        "category": "deploy",
-        "scope": "app",
-        "next_commands": ["nsx view"],
-    },
-    "view": {
-        "category": "deploy",
-        "scope": "app",
-        "next_commands": ["nsx build", "nsx flash"],
-    },
-    "clean": {
-        "category": "build",
-        "scope": "app",
-        "next_commands": ["nsx configure", "nsx build"],
-    },
-    "lock": {
-        "category": "modules",
-        "scope": "app",
-        "next_commands": ["nsx sync", "nsx configure", "nsx build"],
-    },
-    "sync": {
-        "category": "modules",
-        "scope": "app",
-        "next_commands": ["nsx configure", "nsx build", "nsx flash"],
-    },
-    "outdated": {
-        "category": "modules",
-        "scope": "app",
-        "next_commands": ["nsx update", "nsx lock --update"],
-    },
-    "update": {
-        "category": "modules",
-        "scope": "app",
-        "next_commands": ["nsx configure", "nsx build", "nsx flash"],
-    },
-    "module": {
-        "category": "modules",
-        "scope": "app",
-        "next_commands": [
+_COMMAND_GRAPH_HINTS: dict[str, CommandHint] = {
+    "": CommandHint(_C.ENTRYPOINT, _S.GLOBAL, ("nsx doctor", "nsx create-app")),
+    "commands": CommandHint(
+        _C.DISCOVERY, _S.GLOBAL, ("nsx module list --json", "nsx module describe <module> --json")
+    ),
+    "create-app": CommandHint(
+        _C.APP_CREATION, _S.APP, ("nsx configure", "nsx module list", "nsx module add")
+    ),
+    "new": CommandHint(
+        _C.APP_CREATION,
+        _S.APP,
+        ("nsx configure", "nsx module list", "nsx module add"),
+        alias_for="nsx create-app",
+    ),
+    "doctor": CommandHint(_C.DIAGNOSTICS, _S.ENVIRONMENT, ("nsx create-app", "nsx configure")),
+    "configure": CommandHint(
+        _C.BUILD, _S.APP, ("nsx build", "nsx flash", "nsx view", "nsx module list")
+    ),
+    "build": CommandHint(_C.BUILD, _S.APP, ("nsx flash", "nsx view", "nsx clean")),
+    "flash": CommandHint(_C.DEPLOY, _S.APP, ("nsx view",)),
+    "view": CommandHint(_C.DEPLOY, _S.APP, ("nsx build", "nsx flash")),
+    "clean": CommandHint(_C.BUILD, _S.APP, ("nsx configure", "nsx build")),
+    "lock": CommandHint(_C.MODULES, _S.APP, ("nsx sync", "nsx configure", "nsx build")),
+    "sync": CommandHint(_C.MODULES, _S.APP, ("nsx configure", "nsx build", "nsx flash")),
+    "outdated": CommandHint(_C.MODULES, _S.APP, ("nsx update", "nsx lock --update")),
+    "update": CommandHint(_C.MODULES, _S.APP, ("nsx configure", "nsx build", "nsx flash")),
+    "module": CommandHint(
+        _C.MODULES,
+        _S.APP,
+        (
             "nsx module list",
             "nsx module describe",
             "nsx module init <module-dir>",
             "nsx module add",
-        ],
-    },
-    "module list": {
-        "category": "modules",
-        "scope": "app",
-        "next_commands": [
+        ),
+    ),
+    "module list": CommandHint(
+        _C.MODULES,
+        _S.APP,
+        (
             "nsx module describe <module>",
             "nsx module add <module>",
             "nsx module register <module>",
-        ],
-    },
-    "module describe": {
-        "category": "modules",
-        "scope": "app",
-        "next_commands": ["nsx module add <module>", "nsx configure", "nsx build"],
-    },
-    "module search": {
-        "category": "modules",
-        "scope": "app",
-        "next_commands": [
-            "nsx module describe <module>",
-            "nsx module add <module>",
-            "nsx configure",
-        ],
-    },
-    "module add": {
-        "category": "modules",
-        "scope": "app",
-        "next_commands": ["nsx configure", "nsx build", "nsx flash"],
-    },
-    "module remove": {
-        "category": "modules",
-        "scope": "app",
-        "next_commands": ["nsx configure", "nsx build"],
-    },
-    "module update": {
-        "category": "modules",
-        "scope": "app",
-        "next_commands": ["nsx configure", "nsx build"],
-    },
-    "module register": {
-        "category": "modules",
-        "scope": "app",
-        "next_commands": ["nsx module add <module>", "nsx configure", "nsx build"],
-    },
-    "module init": {
-        "category": "modules",
-        "scope": "filesystem",
-        "next_commands": [
+        ),
+    ),
+    "module describe": CommandHint(
+        _C.MODULES, _S.APP, ("nsx module add <module>", "nsx configure", "nsx build")
+    ),
+    "module search": CommandHint(
+        _C.MODULES,
+        _S.APP,
+        ("nsx module describe <module>", "nsx module add <module>", "nsx configure"),
+    ),
+    "module add": CommandHint(_C.MODULES, _S.APP, ("nsx configure", "nsx build", "nsx flash")),
+    "module remove": CommandHint(_C.MODULES, _S.APP, ("nsx configure", "nsx build")),
+    "module update": CommandHint(_C.MODULES, _S.APP, ("nsx configure", "nsx build")),
+    "module register": CommandHint(
+        _C.MODULES, _S.APP, ("nsx module add <module>", "nsx configure", "nsx build")
+    ),
+    "module init": CommandHint(
+        _C.MODULES,
+        _S.FILESYSTEM,
+        (
             "nsx module validate <metadata>",
             "nsx module register <module>",
             "nsx module add <module>",
-        ],
-    },
-    "module validate": {
-        "category": "modules",
-        "scope": "global",
-        "next_commands": ["nsx module register <module>", "nsx module add <module>"],
-    },
-    "cache": {
-        "category": "maintenance",
-        "scope": "global",
-        "next_commands": ["nsx cache info", "nsx cache clean"],
-    },
-    "cache info": {
-        "category": "maintenance",
-        "scope": "global",
-        "next_commands": ["nsx cache clean"],
-    },
-    "cache clean": {
-        "category": "maintenance",
-        "scope": "global",
-        "next_commands": ["nsx sync"],
-    },
+        ),
+    ),
+    "module validate": CommandHint(
+        _C.MODULES, _S.GLOBAL, ("nsx module register <module>", "nsx module add <module>")
+    ),
+    "cache": CommandHint(_C.MAINTENANCE, _S.GLOBAL, ("nsx cache info", "nsx cache clean")),
+    "cache info": CommandHint(_C.MAINTENANCE, _S.GLOBAL, ("nsx cache clean",)),
+    "cache clean": CommandHint(_C.MAINTENANCE, _S.GLOBAL, ("nsx sync",)),
 }
 
 
@@ -199,9 +121,9 @@ def _json_safe(value: Any) -> Any:
     return str(value)
 
 
-def _command_hint(path: list[str]) -> dict[str, Any]:
+def _command_hint(path: list[str]) -> CommandHint | None:
     key = " ".join(path)
-    return dict(_COMMAND_GRAPH_HINTS.get(key, {}))
+    return _COMMAND_GRAPH_HINTS.get(key)
 
 
 def _argument_record(action: argparse.Action) -> dict[str, Any]:
@@ -285,7 +207,9 @@ def _command_record(
         },
         "subcommands": subcommands,
     }
-    record.update(_command_hint(path))
+    hint = _command_hint(path)
+    if hint is not None:
+        record.update(hint.to_dict())
     return record
 
 
@@ -321,7 +245,9 @@ def _command_graph(parser: argparse.ArgumentParser) -> dict[str, Any]:
         },
         "commands": commands,
     }
-    graph.update(_command_hint([]))
+    hint = _command_hint([])
+    if hint is not None:
+        graph.update(hint.to_dict())
     return graph
 
 
