@@ -258,3 +258,25 @@ Items are sequenced so each builds on previous work. Check off as completed.
 - [ ] **R22. Decouple `main` from package root exports.** Stop re-exporting CLI `main` from `neuralspotx.__init__` to separate library and runtime concerns. Ref: `__init__.py:37`.
 - [ ] **R23. Prefetch error visibility.** Narrow `except Exception` in parallel prefetch to specific expected failures; log root cause instead of silently retrying serially. Ref: `operations.py:1243`.
 - [ ] **R24. `create_app` rollback on failure.** Add cleanup/recovery marker so interrupted bootstrap doesn't leave half-generated app state. Ref: `operations.py:192`.
+- [ ] **R25. Decompose `operations.py` into `operations/` package.** The 2215-line monolith mixes four distinct concern clusters. Convert to an `operations/` package with sub-modules; `__init__.py` re-exports all public names for full backward compatibility (`from neuralspotx import operations` / `operations.lock_app_impl(...)` unchanged).
+
+  **Proposed sub-modules** (dependency DAG — no cycles):
+
+  | Sub-module | Contents | ~Lines | Internal deps |
+  |------------|----------|--------|---------------|
+  | `_common.py` | `VERBOSE`, `set_verbosity()`, compat aliases (R21), `OutdatedStatus`, `ProfileStatus` | 60 | — |
+  | `_app_lifecycle.py` | `create_app_impl`, `init_module_impl`, `_module_package_name`, `_module_target_name` | 210 | `_common` |
+  | `_doctor.py` | `doctor_impl` | 175 | `_common` |
+  | `_build.py` | `configure/build/flash/view/clean_app_impl`, `_resolve_build_context`, `_ensure_app_modules`, `_scaffold_vendored_module` | 270 | `_common`, `_sync` |
+  | `_modules.py` | `add/remove/update/register_module_impl` | 360 | `_common`, `_lock` |
+  | `_lock.py` | `_resolved_module_path`, `_build_lock_for_app`, `lock_app_impl`, `_lock_app_impl_unlocked`, `_diff_locks` | 540 | `_common` |
+  | `_sync.py` | `sync_app_impl`, `_sync_app_impl_unlocked`, `outdated_app_impl`, `update_app_impl` | 430 | `_common`, `_lock` |
+
+  **Dependency DAG:**
+  ```
+  _common  ← (everything)
+  _lock    ← _build, _modules, _sync
+  _sync    ← _build
+  ```
+
+  **Phasing:** Can be done in a single PR (pure mechanical move + `__init__.py` re-export shim). No behavioral changes. R21 (alias cleanup) and R23 (prefetch error narrowing) become scoped to their new sub-modules and can land before or after.
