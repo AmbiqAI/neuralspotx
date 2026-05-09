@@ -24,8 +24,10 @@ Semantics
 from __future__ import annotations
 
 import contextlib
+import contextvars
 import os
 import sys
+import threading
 from collections.abc import Iterator
 from pathlib import Path
 
@@ -57,8 +59,12 @@ def app_lock(app_dir: Path, *, blocking: bool = True) -> Iterator[None]:
     """
 
     key = str(app_dir.resolve())
-    if key in _held_paths:
-        # Already locked by an outer scope in this process; just run.
+    held = _held_paths.get()
+    if key in held:
+        # Already locked by an outer scope in this same thread / async
+        # task; just run.  Reentrancy is intentionally per-context, not
+        # process-global -- two threads racing on the same app dir must
+        # each acquire the OS-level lock.
         yield
         return
 
@@ -90,11 +96,11 @@ def app_lock(app_dir: Path, *, blocking: bool = True) -> Iterator[None]:
                     f"file lock primitive unavailable for {path}: {exc}. "
                     "Set NSX_LOCK_FAIL_OPEN=1 to bypass on legacy platforms."
                 ) from exc
-        _held_paths.add(key)
+        token = _held_paths.set(held | {key})
         try:
             yield
         finally:
-            _held_paths.discard(key)
+            _held_paths.reset(token)
     finally:
         if locked:
             try:
@@ -107,7 +113,14 @@ def app_lock(app_dir: Path, *, blocking: bool = True) -> Iterator[None]:
             pass
 
 
-_held_paths: set[str] = set()
+# Per-context reentrancy tracking.  A ``ContextVar`` holding an
+# immutable ``frozenset`` gives each thread / asyncio task its own view,
+# so two concurrent callers cannot mistake each other's lock for their
+# own and skip the OS-level acquire.
+_held_paths: contextvars.ContextVar[frozenset[str]] = contextvars.ContextVar(
+    "nsx_file_lock_held_paths",
+    default=frozenset(),
+)
 
 
 class AppLockBusyError(RuntimeError):
@@ -162,12 +175,14 @@ def file_mutex(path: Path) -> Iterator[None]:
 
 
 _warned: set[str] = set()
+_warned_lock = threading.Lock()
 
 
 def _warn_once(msg: str) -> None:
-    if msg in _warned:
-        return
-    _warned.add(msg)
+    with _warned_lock:
+        if msg in _warned:
+            return
+        _warned.add(msg)
     print(f"warning: {msg}", file=sys.stderr)
 
 
