@@ -11,6 +11,7 @@ These tests pin the contract that:
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 import pytest
@@ -118,6 +119,172 @@ class TestMigratedSites:
         )
         with pytest.raises(NSXConfigError, match="nsx.lock.*not found"):
             operations.sync_app_impl(tmp_path, frozen=True)
+
+
+# ---------------------------------------------------------------------------
+# R20: extract_view_command resilience tests
+# ---------------------------------------------------------------------------
+
+# Realistic Ninja block templates for testing varied generator output.
+_SIMPLE_NINJA = """\
+build CMakeFiles/{target}.dir/dummy: phony
+  pool = console
+build CMakeFiles/{target}: CUSTOM_COMMAND
+  COMMAND = cd /path/to/build && {cmd}
+  DESC = Launching SWO viewer
+  restat = 1
+"""
+
+_NO_CD_PREFIX = """\
+build CMakeFiles/{target}: CUSTOM_COMMAND
+  COMMAND = {cmd}
+  DESC = Launching viewer
+"""
+
+_EXTRA_VARS_BEFORE_COMMAND = """\
+build CMakeFiles/{target}: CUSTOM_COMMAND
+  DESC = viewer
+  pool = console
+  depfile = CMakeFiles/{target}.d
+  COMMAND = cd /build && {cmd}
+  restat = 1
+"""
+
+_LEADING_WHITESPACE = """\
+build CMakeFiles/{target}: CUSTOM_COMMAND
+    COMMAND = cd /some/dir && {cmd}
+    DESC = view
+"""
+
+_TARGET_AT_END_OF_FILE = """\
+# some preamble
+rule CUSTOM_COMMAND
+  command = $COMMAND
+
+build CMakeFiles/other_target: CUSTOM_COMMAND
+  COMMAND = echo hello
+
+build CMakeFiles/{target}: CUSTOM_COMMAND
+  COMMAND = cd /x && {cmd}
+"""
+
+_MULTIPLE_CHAIN = """\
+build CMakeFiles/{target}: CUSTOM_COMMAND
+  COMMAND = cd /build && set FOO=bar && {cmd}
+"""
+
+
+class TestExtractViewCommandResilience:
+    """R20: Cover varied Ninja generator formatting."""
+
+    @pytest.mark.parametrize(
+        "template",
+        [
+            _SIMPLE_NINJA,
+            _NO_CD_PREFIX,
+            _EXTRA_VARS_BEFORE_COMMAND,
+            _LEADING_WHITESPACE,
+            _TARGET_AT_END_OF_FILE,
+        ],
+        ids=["simple", "no-cd-prefix", "extra-vars-before", "leading-whitespace", "target-at-eof"],
+    )
+    def test_extracts_command_from_varied_formats(self, tmp_path, template):
+        target = "myapp_view"
+        cmd = "/opt/segger/JLinkSWOViewerCLExe -device AMA4B2KK -itmport 0"
+        ninja = template.format(target=target, cmd=cmd)
+        (tmp_path / "build.ninja").write_text(ninja, encoding="utf-8")
+
+        result = extract_view_command(tmp_path, target)
+        assert result[0] == "/opt/segger/JLinkSWOViewerCLExe"
+        assert "-device" in result
+        assert "AMA4B2KK" in result
+
+    def test_command_without_cd_chain(self, tmp_path):
+        """COMMAND without && prefix returns the full command."""
+        target = "app_view"
+        ninja = _NO_CD_PREFIX.format(target=target, cmd="/usr/bin/viewer --port 0")
+        (tmp_path / "build.ninja").write_text(ninja, encoding="utf-8")
+
+        result = extract_view_command(tmp_path, target)
+        assert result == ["/usr/bin/viewer", "--port", "0"]
+
+    def test_multiple_chain_takes_after_first_ampersand(self, tmp_path):
+        """When COMMAND has multiple && chains, text after first && is used."""
+        target = "app_view"
+        ninja = _MULTIPLE_CHAIN.format(target=target, cmd="/usr/bin/viewer --arg val")
+        (tmp_path / "build.ninja").write_text(ninja, encoding="utf-8")
+
+        result = extract_view_command(tmp_path, target)
+        # "cd /build && set FOO=bar && /usr/bin/viewer --arg val"
+        # After first &&: "set FOO=bar && /usr/bin/viewer --arg val"
+        assert result[0] == "set"
+
+    def test_target_not_found_raises_config_error(self, tmp_path):
+        (tmp_path / "build.ninja").write_text(
+            "build CMakeFiles/other: CUSTOM_COMMAND\n  COMMAND = echo hi\n",
+            encoding="utf-8",
+        )
+        with pytest.raises(NSXConfigError, match="Unable to resolve"):
+            extract_view_command(tmp_path, "nonexistent_target")
+
+    def test_block_without_command_raises_config_error(self, tmp_path):
+        """Target block exists but has no COMMAND = line within scan window."""
+        target = "app_view"
+        ninja = f"build CMakeFiles/{target}: CUSTOM_COMMAND\n"
+        # Add 10 lines of non-COMMAND content (exceeds 7-line scan window)
+        ninja += "".join(f"  VAR{i} = val{i}\n" for i in range(10))
+        (tmp_path / "build.ninja").write_text(ninja, encoding="utf-8")
+
+        with pytest.raises(NSXConfigError, match="Unable to resolve"):
+            extract_view_command(tmp_path, target)
+
+    def test_command_within_scan_window_boundary(self, tmp_path):
+        """COMMAND on exactly the 7th line after header is still found."""
+        target = "app_view"
+        ninja = f"build CMakeFiles/{target}: CUSTOM_COMMAND\n"
+        # 6 padding lines + COMMAND on 7th = lines[idx+1 : idx+8] includes it
+        ninja += "".join(f"  PAD{i} = x\n" for i in range(6))
+        ninja += "  COMMAND = /usr/bin/viewer\n"
+        (tmp_path / "build.ninja").write_text(ninja, encoding="utf-8")
+
+        result = extract_view_command(tmp_path, target)
+        assert result == ["/usr/bin/viewer"]
+
+    def test_command_outside_scan_window_raises(self, tmp_path):
+        """COMMAND on the 8th line after header is outside scan window."""
+        target = "app_view"
+        ninja = f"build CMakeFiles/{target}: CUSTOM_COMMAND\n"
+        # 7 padding lines + COMMAND on 8th = lines[idx+1 : idx+8] misses it
+        ninja += "".join(f"  PAD{i} = x\n" for i in range(7))
+        ninja += "  COMMAND = /usr/bin/viewer\n"
+        (tmp_path / "build.ninja").write_text(ninja, encoding="utf-8")
+
+        with pytest.raises(NSXConfigError, match="Unable to resolve"):
+            extract_view_command(tmp_path, target)
+
+    def test_quoted_arguments_preserved(self, tmp_path):
+        """Arguments with spaces in quotes are preserved by shlex."""
+        target = "app_view"
+        cmd = '/usr/bin/viewer --label "my app" --path "/some dir/file"'
+        ninja = _NO_CD_PREFIX.format(target=target, cmd=cmd)
+        (tmp_path / "build.ninja").write_text(ninja, encoding="utf-8")
+
+        result = extract_view_command(tmp_path, target)
+        assert result[0] == "/usr/bin/viewer"
+        assert "--label" in result
+        assert "--path" in result
+        if os.name == "nt":
+            # Windows non-POSIX shlex preserves surrounding quotes
+            assert '"my app"' in result
+            assert '"/some dir/file"' in result
+        else:
+            assert "my app" in result
+            assert "/some dir/file" in result
+
+    def test_empty_build_ninja_raises_config_error(self, tmp_path):
+        (tmp_path / "build.ninja").write_text("", encoding="utf-8")
+        with pytest.raises(NSXConfigError, match="Unable to resolve"):
+            extract_view_command(tmp_path, "any_target")
 
     # ----- cli.py migrated sites -----
 
