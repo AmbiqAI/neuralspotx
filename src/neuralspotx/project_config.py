@@ -13,6 +13,7 @@ from typing import Any
 
 import yaml
 
+from ._errors import NSXConfigError, NSXToolchainError
 from .constants import PACKAGED_PROJECT_NAME, normalize_board
 from .metadata import load_registry_lock
 from .models import ProjectEntry
@@ -99,7 +100,7 @@ def _check_nsx_version_compatibility(cfg: dict[str, Any], cfg_path: Path) -> Non
         return
 
     recorded_version = nsx_info.get("version")
-    raise SystemExit(
+    raise NSXConfigError(
         f"{cfg_path}: app was created with nsx {recorded_version or recorded_major}, "
         f"but current nsx major version is {current_major}. "
         "Set NSX_ALLOW_VERSION_MISMATCH=1 to bypass this check for now."
@@ -118,11 +119,11 @@ def _read_yaml(path: Path) -> dict[str, Any]:
     try:
         loaded = yaml.safe_load(path.read_text(encoding="utf-8"))
     except yaml.YAMLError as exc:
-        raise SystemExit(f"{path}: invalid YAML: {exc}") from None
+        raise NSXConfigError(f"{path}: invalid YAML: {exc}") from None
     if loaded is None:
-        raise SystemExit(f"{path}: file is empty or contains only comments")
+        raise NSXConfigError(f"{path}: file is empty or contains only comments")
     if not isinstance(loaded, dict):
-        raise SystemExit(
+        raise NSXConfigError(
             f"{path}: expected a YAML mapping at the root, got {type(loaded).__name__}"
         )
     return loaded
@@ -328,7 +329,7 @@ def _require_app_config(app_dir: Path) -> None:
 
     if (app_dir / "nsx.yml").exists():
         return
-    raise SystemExit(
+    raise NSXConfigError(
         f"NSX app config not found: {app_dir / 'nsx.yml'}\n"
         "Run `nsx create-app <app-dir>` to create a new app."
     )
@@ -386,7 +387,7 @@ def _app_name_from_cfg(nsx_cfg: dict[str, Any]) -> str:
     project = nsx_cfg.get("project", {})
     name = project.get("name")
     if not isinstance(name, str) or not name:
-        raise SystemExit("nsx.yml missing project.name")
+        raise NSXConfigError("nsx.yml missing project.name")
     return name
 
 
@@ -411,7 +412,7 @@ def _run_cmake_configure(
     tc_file = SUPPORTED_TOOLCHAINS.get(tc)
     if tc_file is None:
         supported = ", ".join(sorted(SUPPORTED_TOOLCHAINS.keys()))
-        raise SystemExit(f"Unknown toolchain '{tc}'. Supported: {supported}")
+        raise NSXToolchainError(f"Unknown toolchain '{tc}'. Supported: {supported}")
 
     toolchain_file = app_dir / "cmake" / "nsx" / "toolchains" / tc_file
     run(
@@ -436,7 +437,7 @@ def _resolve_app_context(args: argparse.Namespace) -> tuple[Path, dict[str, Any]
     app_name = _app_name_from_cfg(nsx_cfg)
     board = args.board or nsx_cfg.get("target", {}).get("board")
     if not isinstance(board, str) or not board:
-        raise SystemExit("Unable to determine target board from args or nsx.yml")
+        raise NSXConfigError("Unable to determine target board from args or nsx.yml")
     board = normalize_board(board)
     return app_dir, nsx_cfg, app_name, board
 
@@ -444,14 +445,14 @@ def _resolve_app_context(args: argparse.Namespace) -> tuple[Path, dict[str, Any]
 def _load_app_cfg(app_dir: Path) -> dict[str, Any]:
     cfg_path = app_dir / "nsx.yml"
     if not cfg_path.exists():
-        raise SystemExit(
+        raise NSXConfigError(
             f"App config not found: {cfg_path}\n"
             "Run this command from an NSX app directory (containing nsx.yml),\n"
             "or use 'nsx create-app <app-dir>' to create a new app."
         )
     cfg = _read_yaml(cfg_path)
     if cfg.get("schema_version") != 1:
-        raise SystemExit(f"{cfg_path}: unsupported schema_version={cfg.get('schema_version')}")
+        raise NSXConfigError(f"{cfg_path}: unsupported schema_version={cfg.get('schema_version')}")
     _check_nsx_version_compatibility(cfg, cfg_path)
     _normalize_module_source(cfg)
     return cfg

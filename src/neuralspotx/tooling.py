@@ -45,11 +45,14 @@ def require_tool(name: str) -> None:
         name: Executable base name.
 
     Raises:
-        SystemExit: If the tool cannot be resolved.
+        NSXToolchainError: If the tool cannot be resolved.  Also catchable as
+            :class:`SystemExit` for legacy CLI handlers.
     """
 
+    from ._errors import NSXToolchainError
+
     if tool_path(name) is None:
-        raise SystemExit(f"Required tool not found in PATH: {name}")
+        raise NSXToolchainError(f"Required tool not found in PATH: {name}")
 
 
 def tool_cmd(name: str, *args: str) -> list[str]:
