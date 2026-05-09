@@ -48,6 +48,7 @@ from .api import (
     view_app,
 )
 from .cli import main
+from .nsx_lock import LockKind
 
 __all__ = [
     "AppActionRequest",
