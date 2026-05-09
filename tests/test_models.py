@@ -2,6 +2,9 @@ from __future__ import annotations
 
 from neuralspotx.models import (
     AppConfig,
+    CommandCategory,
+    CommandHint,
+    CommandScope,
     DiscoveryRecord,
     ModuleRegistryOverride,
     SearchMatch,
@@ -139,3 +142,37 @@ def test_search_result_from_record_and_to_dict() -> None:
     assert d["compatible"] is True
     assert d["matches"] == [{"field": "name", "term": "core", "value": "nsx-core"}]
     assert d["metadata_available"] is True
+
+
+def test_command_hint_to_dict() -> None:
+    hint = CommandHint(
+        category=CommandCategory.BUILD,
+        scope=CommandScope.APP,
+        next_commands=("nsx flash", "nsx view"),
+    )
+    d = hint.to_dict()
+    assert d == {
+        "category": "build",
+        "scope": "app",
+        "next_commands": ["nsx flash", "nsx view"],
+    }
+    assert "alias_for" not in d
+
+
+def test_command_hint_to_dict_with_alias() -> None:
+    hint = CommandHint(
+        category=CommandCategory.APP_CREATION,
+        scope=CommandScope.APP,
+        next_commands=("nsx configure",),
+        alias_for="nsx create-app",
+    )
+    d = hint.to_dict()
+    assert d["alias_for"] == "nsx create-app"
+    assert d["category"] == "app-creation"
+
+
+def test_command_category_and_scope_are_str_enums() -> None:
+    assert CommandCategory.BUILD == "build"
+    assert CommandScope.GLOBAL == "global"
+    assert isinstance(CommandCategory.MODULES, str)
+    assert isinstance(CommandScope.FILESYSTEM, str)
