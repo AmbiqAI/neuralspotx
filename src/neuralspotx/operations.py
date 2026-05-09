@@ -16,6 +16,8 @@ from pathlib import Path
 from .constants import (
     DEFAULT_SOC_FOR_BOARD,
     DEFAULT_TOOLCHAIN,
+    normalize_board,
+    normalize_soc,
 )
 from .file_lock import app_lock
 from .metadata import load_yaml, validate_nsx_module_metadata
@@ -169,7 +171,10 @@ def create_app_impl(
     base_registry = _load_registry()
     app_name = app_dir.name
 
-    soc = soc or DEFAULT_SOC_FOR_BOARD.get(board)
+    # Silently normalize case at the input boundary so users can pass
+    # ``APOLLO510`` / ``apollo330MP_EVB`` etc. without surprise failures.
+    board = normalize_board(board)
+    soc = normalize_soc(soc) or DEFAULT_SOC_FOR_BOARD.get(board)
     if soc is None:
         raise SystemExit(f"Unable to infer --soc for board '{board}'. Pass --soc explicitly.")
 
