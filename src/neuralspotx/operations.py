@@ -7,6 +7,7 @@ import copy
 import enum
 import importlib.resources as resources
 import json
+import logging
 import os
 import shutil
 import subprocess
@@ -91,12 +92,11 @@ from .tooling import (
     JLINK_SWO_NAMES,
     doctor_check,
     find_segger_tool,
-    require_tool,
-    tool_cmd,
     tool_path,
 )
 
 VERBOSE = 0
+_log = logging.getLogger(__name__)
 
 
 def set_verbosity(level: int) -> None:
@@ -109,18 +109,6 @@ def set_verbosity(level: int) -> None:
     global VERBOSE
     VERBOSE = level
     set_subprocess_verbosity(level)
-
-
-# Compatibility aliases for tests and incremental callers.
-_run = run
-_run_capture = run_capture
-_print_captured_output = print_captured_output
-_jlink_failure_hint = jlink_failure_hint
-_tool_path = tool_path
-_tool_cmd = tool_cmd
-_require_tool = require_tool
-_doctor_check = doctor_check
-_extract_view_command = extract_view_command
 
 
 # ---------------------------------------------------------------------------
@@ -195,6 +183,7 @@ def create_app_impl(
         if app_dir.exists() and any(app_dir.iterdir()) and not force:
             raise NSXConfigError(f"App directory already exists and is not empty: {app_dir}")
 
+        created_fresh = not app_dir.exists()
         app_dir.mkdir(parents=True, exist_ok=True)
         render_template_tree(
             src_template,
@@ -205,6 +194,38 @@ def create_app_impl(
                 "soc": soc,
             },
         )
+
+    try:
+        return _create_app_body(
+            app_dir,
+            app_name=app_name,
+            board=board,
+            soc=soc,
+            base_registry=base_registry,
+            no_bootstrap=no_bootstrap,
+        )
+    except Exception:
+        if created_fresh:
+            shutil.rmtree(app_dir, ignore_errors=True)
+            _log.debug("create_app: rolled back %s after failure", app_dir)
+        else:
+            _log.warning(
+                "create_app failed; %s was pre-existing and has not been removed",
+                app_dir,
+            )
+        raise
+
+
+def _create_app_body(
+    app_dir: Path,
+    *,
+    app_name: str,
+    board: str,
+    soc: str,
+    base_registry: dict,
+    no_bootstrap: bool,
+) -> Path:
+    """Inner body of create_app_impl, separated for rollback wrapping."""
 
     _copy_packaged_tree("neuralspotx", "cmake", app_dir / "cmake" / "nsx")
 
@@ -370,41 +391,41 @@ def doctor_impl() -> None:
     all_ok = True
 
     python_exe = shutil.which("python") or shutil.which("python3")
-    all_ok &= _doctor_check("Python", python_exe is not None, detail=python_exe)
-    all_ok &= _doctor_check("uv", _tool_path("uv") is not None, detail=_tool_path("uv"))
-    all_ok &= _doctor_check("cmake", _tool_path("cmake") is not None, detail=_tool_path("cmake"))
-    all_ok &= _doctor_check("ninja", _tool_path("ninja") is not None, detail=_tool_path("ninja"))
-    all_ok &= _doctor_check(
+    all_ok &= doctor_check("Python", python_exe is not None, detail=python_exe)
+    all_ok &= doctor_check("uv", tool_path("uv") is not None, detail=tool_path("uv"))
+    all_ok &= doctor_check("cmake", tool_path("cmake") is not None, detail=tool_path("cmake"))
+    all_ok &= doctor_check("ninja", tool_path("ninja") is not None, detail=tool_path("ninja"))
+    all_ok &= doctor_check(
         "git",
-        _tool_path("git") is not None,
-        detail=_tool_path("git"),
+        tool_path("git") is not None,
+        detail=tool_path("git"),
         hint="Install git.",
     )
-    all_ok &= _doctor_check(
+    all_ok &= doctor_check(
         "arm-none-eabi-gcc",
-        _tool_path("arm-none-eabi-gcc") is not None,
-        detail=_tool_path("arm-none-eabi-gcc"),
+        tool_path("arm-none-eabi-gcc") is not None,
+        detail=tool_path("arm-none-eabi-gcc"),
         hint="Install the Arm GNU toolchain and ensure it is in PATH.",
     )
 
     # armclang is optional — report but do not fail doctor when missing.
-    armclang_path = _tool_path("armclang")
-    armlink_path = _tool_path("armlink")
-    fromelf_path = _tool_path("fromelf")
+    armclang_path = tool_path("armclang")
+    armlink_path = tool_path("armlink")
+    fromelf_path = tool_path("fromelf")
     if armclang_path or armlink_path or fromelf_path:
-        _doctor_check(
+        doctor_check(
             "armclang",
             armclang_path is not None,
             detail=armclang_path,
             hint="Install Arm Compiler for Embedded (armclang) if you want the armclang toolchain.",
         )
-        _doctor_check(
+        doctor_check(
             "armlink",
             armlink_path is not None,
             detail=armlink_path,
             hint="armlink should ship alongside armclang.",
         )
-        _doctor_check(
+        doctor_check(
             "fromelf",
             fromelf_path is not None,
             detail=fromelf_path,
@@ -433,19 +454,19 @@ def doctor_impl() -> None:
             if os.path.isfile(os.path.join(atfe_bin, "newlib.cfg"))
             else None
         )
-        _doctor_check(
+        doctor_check(
             "ATfE clang",
             atfe_clang is not None,
             detail=atfe_clang,
             hint="ATFE_ROOT is set but clang not found in $ATFE_ROOT/bin.",
         )
-        _doctor_check(
+        doctor_check(
             "ATfE llvm-objcopy",
             atfe_objcopy is not None,
             detail=atfe_objcopy,
             hint="llvm-objcopy should ship alongside ATfE clang.",
         )
-        _doctor_check(
+        doctor_check(
             "ATfE newlib.cfg",
             atfe_newlib_cfg is not None,
             detail=atfe_newlib_cfg,
@@ -456,7 +477,7 @@ def doctor_impl() -> None:
 
     jlink_path = find_segger_tool(JLINK_NAMES)
     jlink_ok = jlink_path is not None
-    all_ok &= _doctor_check(
+    all_ok &= doctor_check(
         "SEGGER J-Link",
         jlink_ok,
         detail=jlink_path,
@@ -464,7 +485,7 @@ def doctor_impl() -> None:
     )
 
     swo_path = find_segger_tool(JLINK_SWO_NAMES)
-    all_ok &= _doctor_check(
+    all_ok &= doctor_check(
         "SEGGER JLinkSWOViewerCL",
         swo_path is not None,
         detail=swo_path,
@@ -482,25 +503,25 @@ def doctor_impl() -> None:
                 timeout=10,
             )
             output = (probe.stdout or "") + (probe.stderr or "")
-            dll_hint = _jlink_failure_hint(output)
+            dll_hint = jlink_failure_hint(output)
             if dll_hint:
-                all_ok &= _doctor_check(
+                all_ok &= doctor_check(
                     "SEGGER J-Link runtime",
                     False,
                     detail=dll_hint.splitlines()[0],
                     hint="Run `JLinkExe` directly and reinstall SEGGER tools if the runtime is broken.",
                 )
             else:
-                all_ok &= _doctor_check(
+                all_ok &= doctor_check(
                     "SEGGER J-Link runtime",
                     True,
                     detail="JLinkExe launched successfully.",
                 )
         except subprocess.CalledProcessError as exc:
             output = (exc.stdout or "") + (exc.stderr or "")
-            dll_hint = _jlink_failure_hint(output)
+            dll_hint = jlink_failure_hint(output)
             if dll_hint:
-                all_ok &= _doctor_check(
+                all_ok &= doctor_check(
                     "SEGGER J-Link runtime",
                     False,
                     detail=dll_hint.splitlines()[0],
@@ -516,7 +537,7 @@ def doctor_impl() -> None:
                 detail = f"JLinkExe exited with code {exc.returncode}" + (
                     f": {first_line}" if first_line else ""
                 )
-                all_ok &= _doctor_check(
+                all_ok &= doctor_check(
                     "SEGGER J-Link runtime",
                     False,
                     detail=detail,
@@ -526,7 +547,7 @@ def doctor_impl() -> None:
                     ),
                 )
         except subprocess.TimeoutExpired:
-            all_ok &= _doctor_check(
+            all_ok &= doctor_check(
                 "SEGGER J-Link runtime",
                 False,
                 detail="JLinkExe timed out (>10s).",
@@ -657,9 +678,7 @@ def build_app_impl(
             resolved_app_dir, resolved_build_dir, resolved_board, toolchain=toolchain
         )
     resolved_target = target or app_name
-    _run(
-        ["cmake", "--build", str(resolved_build_dir), "--target", resolved_target, "-j", str(jobs)]
-    )
+    run(["cmake", "--build", str(resolved_build_dir), "--target", resolved_target, "-j", str(jobs)])
     return resolved_build_dir
 
 
@@ -686,13 +705,13 @@ def flash_app_impl(
     target = f"{app_name}_flash"
     cmd = ["cmake", "--build", str(resolved_build_dir), "--target", target, "-j", str(jobs)]
     if VERBOSE > 0:
-        _run(cmd)
+        run(cmd)
         return resolved_build_dir
     try:
-        result = _run_capture(cmd)
+        result = run_capture(cmd)
     except subprocess.CalledProcessError as exc:
         raise NSXError(format_subprocess_error(exc, context="Flash")) from None
-    _print_captured_output(result)
+    print_captured_output(result)
     return resolved_build_dir
 
 
@@ -722,7 +741,7 @@ def view_app_impl(
             resolved_app_dir, resolved_build_dir, resolved_board, toolchain=toolchain
         )
     target = f"{app_name}_view"
-    view_cmd = _extract_view_command(resolved_build_dir, target)
+    view_cmd = extract_view_command(resolved_build_dir, target)
     viewer_proc: subprocess.Popen[bytes] | None = None
     try:
         viewer_proc = subprocess.Popen(view_cmd, cwd=str(resolved_build_dir))
@@ -739,10 +758,10 @@ def view_app_impl(
                 "1",
             ]
             if VERBOSE > 0:
-                _run(reset_cmd)
+                run(reset_cmd)
             else:
                 try:
-                    result = _run_capture(reset_cmd)
+                    result = run_capture(reset_cmd)
                 except subprocess.CalledProcessError as exc:
                     if viewer_proc.poll() is None:
                         viewer_proc.terminate()
@@ -751,7 +770,7 @@ def view_app_impl(
                         except subprocess.TimeoutExpired:
                             viewer_proc.kill()
                     raise NSXError(format_subprocess_error(exc, context="Reset")) from None
-                _print_captured_output(result)
+                print_captured_output(result)
         viewer_proc.wait()
     except subprocess.CalledProcessError as exc:
         raise NSXError(format_subprocess_error(exc, context="View")) from None
@@ -799,7 +818,7 @@ def clean_app_impl(
         _run_cmake_configure(
             resolved_app_dir, resolved_build_dir, resolved_board, toolchain=toolchain
         )
-    _run(["cmake", "--build", str(resolved_build_dir), "--target", "clean"])
+    run(["cmake", "--build", str(resolved_build_dir), "--target", "clean"])
     return resolved_build_dir
 
 
@@ -1277,7 +1296,8 @@ def _build_lock_for_app(
                 continue
             try:
                 ent = registry_entry_for_module(registry, nm)
-            except Exception:  # noqa: BLE001 - main loop will surface
+            except (KeyError, ValueError, TypeError) as exc:
+                _log.debug("prefetch: skipping %s (registry lookup failed: %s)", nm, exc)
                 continue
             if _is_pkg(registry, nm):
                 continue
@@ -1304,7 +1324,13 @@ def _build_lock_for_app(
         def _safe_resolve_ref(job: tuple[str, str]) -> tuple[str, str | None] | None:
             try:
                 return resolve_ref(*job)
-            except Exception:  # noqa: BLE001 - main loop handles per-module
+            except (
+                OSError,
+                subprocess.SubprocessError,
+                NSXResolutionError,
+                ResolutionError,
+            ) as exc:
+                _log.debug("prefetch: resolve_ref%s failed: %s", job, exc)
                 return None
 
         _results = parallel_map(_safe_resolve_ref, _resolve_jobs)
@@ -1319,7 +1345,8 @@ def _build_lock_for_app(
                 continue
             try:
                 ent = registry_entry_for_module(registry, nm)
-            except Exception:  # noqa: BLE001
+            except (KeyError, ValueError, TypeError) as exc:
+                _log.debug("prefetch: skipping %s (registry lookup failed: %s)", nm, exc)
                 continue
             if _is_pkg(registry, nm):
                 continue
@@ -1352,7 +1379,13 @@ def _build_lock_for_app(
         def _safe_hash(job: tuple[str, str]) -> str | None:
             try:
                 return hash_git_artifact(*job)
-            except Exception:  # noqa: BLE001 - main loop surfaces error
+            except (
+                OSError,
+                subprocess.SubprocessError,
+                NSXResolutionError,
+                ResolutionError,
+            ) as exc:
+                _log.debug("prefetch: hash_git_artifact%s failed: %s", job, exc)
                 return None
 
         _hashes = parallel_map(_safe_hash, _hash_jobs)

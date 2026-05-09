@@ -47,7 +47,6 @@ from .api import (
     validate_module_metadata,
     view_app,
 )
-from .cli import main
 from .models import DiscoveryRecord, SearchMatch, SearchResult
 from .nsx_lock import LockKind
 
@@ -88,7 +87,6 @@ __all__ = [
     "init_module",
     "list_modules",
     "lock_app",
-    "main",
     "outdated_app",
     "register_module",
     "remove_module",

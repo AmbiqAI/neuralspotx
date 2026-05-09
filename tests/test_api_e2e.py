@@ -624,7 +624,7 @@ def test_build_app_uses_shared_impl_and_triggers_configure_when_needed(
         build_calls.append(cmd)
 
     monkeypatch.setattr(operations, "_run_cmake_configure", fake_configure)
-    monkeypatch.setattr(operations, "_run", fake_run)
+    monkeypatch.setattr(operations, "run", fake_run)
 
     build_app(AppBuildRequest(app_dir=app_dir, jobs=3))
 
