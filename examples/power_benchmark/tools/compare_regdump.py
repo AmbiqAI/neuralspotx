@@ -275,11 +275,11 @@ def main():
     parser.add_argument("--label-b", default="SDK5", help="Label for file B")
     args = parser.parse_args()
 
-    text_a = Path(args.file_a).read_text()
+    text_a = Path(args.file_a).read_text(encoding="utf-8")
     regs_a = parse_nsx_dump(text_a)
 
     if args.file_b:
-        text_b = Path(args.file_b).read_text()
+        text_b = Path(args.file_b).read_text(encoding="utf-8")
         if args.sdk5_json:
             regs_b = parse_pp_json(text_b, args.snapshot)
         else:

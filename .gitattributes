@@ -1,0 +1,71 @@
+# Normalise line endings across platforms.
+#
+# Why: NSX writes generated CMake/Python artefacts (e.g.
+# `nsx_board_table.cmake`, `cmake/nsx/modules.cmake`) and asserts
+# byte-equality against committed copies in CI. Without this file,
+# Windows checkouts get CRLF in text files by default and the
+# byte-equality drift checks (e.g. `test_board_table_drift.py`) trip
+# on the first PR submitted from a Windows clone.
+#
+# `* text=auto` lets git auto-detect text vs binary, then normalises
+# everything to LF in the index. The explicit overrides below pin
+# specific extensions so the auto-detection cannot make a wrong call.
+
+* text=auto eol=lf
+
+# Source / config: always LF.
+*.py        text eol=lf
+*.pyi       text eol=lf
+*.toml      text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.cmake     text eol=lf
+*.md        text eol=lf
+*.json      text eol=lf
+*.cfg       text eol=lf
+*.ini       text eol=lf
+*.txt       text eol=lf
+*.sh        text eol=lf
+*.in        text eol=lf
+CMakeLists.txt text eol=lf
+Makefile    text eol=lf
+.gitignore  text eol=lf
+.gitattributes text eol=lf
+
+# C/C++ sources used by examples and packaged modules.
+*.c         text eol=lf
+*.h         text eol=lf
+*.cc        text eol=lf
+*.cpp       text eol=lf
+*.hpp       text eol=lf
+*.S         text eol=lf
+*.s         text eol=lf
+
+# Linker scripts and SEGGER assets are text but often hand-edited;
+# pin them so the toolchain reads identical bytes everywhere.
+*.ld        text eol=lf
+*.sct       text eol=lf
+*.JLinkScript text eol=lf
+
+# Lock files: keep LF so re-running `nsx lock` on Windows does not
+# rewrite the entire file with CRLF.
+nsx.lock    text eol=lf
+
+# Binary types — never normalise.
+*.bin       binary
+*.elf       binary
+*.tflite    binary
+*.png       binary
+*.jpg       binary
+*.gif       binary
+*.ico       binary
+*.zip       binary
+*.tar       binary
+*.tar.gz    binary
+*.tgz       binary
+*.whl       binary
+*.exe       binary
+*.dll       binary
+*.so        binary
+*.dylib     binary
+*.a         binary
