@@ -425,9 +425,12 @@ def _build_lock_for_app(
                 # entry. We cannot compute an upstream-artifact hash
                 # without the remote, so fall back to whatever is on
                 # disk now (or the previous lock's recorded hash).
-                print(
-                    f"warning: could not resolve {name} @ {constraint} "
-                    f"on {url} ({exc}); recording content-only lock entry."
+                _log.warning(
+                    "could not resolve %s @ %s on %s (%s); recording content-only lock entry.",
+                    name,
+                    constraint,
+                    url,
+                    exc,
                 )
                 vendored_dir = _resolved_module_path(app_dir, name, registry)
                 rel = (
@@ -718,16 +721,14 @@ def outdated_app_impl(app_dir: Path, *, as_json: bool = False) -> int:
         else:
             status = OutdatedStatus.OUTDATED
         rows.append((name, entry.constraint, locked[:10], upstream[:10], status))
-        full_rows.append(
-            {
-                "module": name,
-                "constraint": entry.constraint,
-                "locked": locked,
-                "upstream": upstream.lower(),
-                "status": status,
-                "url": entry.url or "",
-            }
-        )
+        full_rows.append({
+            "module": name,
+            "constraint": entry.constraint,
+            "locked": locked,
+            "upstream": upstream.lower(),
+            "status": status,
+            "url": entry.url or "",
+        })
 
     outdated = [r for r in rows if r[4] == OutdatedStatus.OUTDATED]
 
