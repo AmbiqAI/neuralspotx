@@ -7,7 +7,6 @@ and `nsx module add --vendored` scaffolding behaviour, across all five lock
 
 from __future__ import annotations
 
-import json
 from pathlib import Path
 from typing import Any
 
@@ -551,10 +550,10 @@ class TestOutdatedJson:
         # Upstream "moves".
         monkeypatch.setattr(operations._lock, "resolve_commit", lambda url, ref: upstream)
 
-        rc = outdated_app_impl(app, as_json=True)
+        report = outdated_app_impl(app)
 
-        payload = json.loads(capsys.readouterr().out)
-        assert rc == 1
+        payload = report.to_dict()
+        assert report.outdated_count == 1
         assert payload["outdated_count"] == 1
         entry = payload["checked"][0]
         assert entry["module"] == "fake-mod"
@@ -572,12 +571,10 @@ class TestOutdatedJson:
         sha = "c" * 40
         self._setup_locked_at(app, monkeypatch, capsys, sha)
 
-        rc = outdated_app_impl(app, as_json=True)
+        report = outdated_app_impl(app)
 
-        payload = json.loads(capsys.readouterr().out)
-        assert rc == 0
-        assert payload["outdated_count"] == 0
-        assert payload["checked"][0]["status"] == "up-to-date"
+        assert report.outdated_count == 0
+        assert report.checked[0].status == "up-to-date"
 
     def test_non_git_kinds_are_skipped(
         self,
@@ -589,12 +586,10 @@ class TestOutdatedJson:
         lock_app_impl(app)
         capsys.readouterr()  # drain lock's stdout
 
-        rc = outdated_app_impl(app, as_json=True)
+        report = outdated_app_impl(app)
 
-        payload = json.loads(capsys.readouterr().out)
-        assert rc == 0
-        assert payload["outdated_count"] == 0
-        assert payload["checked"] == []
+        assert report.outdated_count == 0
+        assert report.checked == ()
 
 
 # ---------------------------------------------------------------------------

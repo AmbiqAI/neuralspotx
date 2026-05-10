@@ -13,7 +13,7 @@ from ._errors import (
     NSXModuleError,
 )
 from .metadata import load_yaml, validate_nsx_module_metadata
-from .models import DiscoveryRecord, DoctorReport, SearchResult
+from .models import DiscoveryRecord, DoctorReport, OutdatedReport, SearchResult
 from .nsx_lock import NsxLock
 from .subprocess_utils import timeout_budget
 
@@ -807,10 +807,14 @@ def outdated_app(
     *,
     as_json: bool = False,
     timeout_s: float | None = None,
-) -> int:
+) -> OutdatedReport:
     """Report git modules whose locked commit lags the upstream constraint.
 
-    Returns the count of outdated modules (zero when the lock is fresh).
+    Returns an :class:`OutdatedReport` describing every git-hosted
+    module inspected (``checked``) and any that could not be resolved
+    (``skipped``). The ``as_json`` parameter is accepted for backwards
+    compatibility but no longer affects the return value — callers that
+    need machine-readable output should use ``report.to_dict()``.
     *timeout_s* applies per ``git ls-remote`` subprocess invoked while
     comparing locked commits to upstream tips.
     """
@@ -821,11 +825,9 @@ def outdated_app(
         else AppOutdatedRequest(app_dir=app_dir, as_json=as_json, timeout_s=timeout_s)
     )
     with timeout_budget(request.timeout_s):
-        result = operations.outdated_app_impl(
+        return operations.outdated_app_impl(
             Path(request.app_dir).expanduser().resolve(),
-            as_json=request.as_json,
         )
-    return int(result) if result is not None else 0
 
 
 def update_app(
