@@ -224,6 +224,11 @@ class NsxLock:
     manifest_hash: str = ""
     target: dict[str, str] = field(default_factory=dict)
     modules: dict[str, ResolvedModule] = field(default_factory=dict)
+    # Filesystem path to ``nsx.lock`` on disk. Populated by ``read_lock``
+    # and ``write_lock``; ``None`` for in-memory documents that have not
+    # yet been persisted. Excluded from equality, repr and YAML
+    # serialisation so it cannot leak back into the on-disk document.
+    path: Path | None = field(default=None, compare=False, repr=False)
 
     def to_yaml_dict(self) -> dict[str, Any]:
         return {
@@ -288,12 +293,14 @@ def read_lock(app_dir: Path, *, allow_legacy: bool = False) -> NsxLock | None:
         return None
     raw = yaml.safe_load(path.read_text(encoding="utf-8"))
     try:
-        return NsxLock.from_yaml_dict(raw or {})
+        lock = NsxLock.from_yaml_dict(raw or {})
     except LegacyLockError as exc:
         if allow_legacy:
             _log.warning("%s (regenerating)", exc)
             return None
         raise
+    lock.path = path
+    return lock
 
 
 def write_lock(app_dir: Path, lock: NsxLock) -> Path:
@@ -335,6 +342,7 @@ def write_lock(app_dir: Path, lock: NsxLock) -> Path:
         except OSError:
             pass
         raise
+    lock.path = path
     return path
 
 
