@@ -60,6 +60,64 @@ def normalize_soc(value: str | None) -> str | None:
     return _SOC_LOOKUP.get(value.lower(), value)
 
 
+# ---------------------------------------------------------------------------
+# Board → SDK provider mapping (single source of truth for R17)
+# ---------------------------------------------------------------------------
+#
+# This dict is the authoritative mapping from canonical board name to the
+# AmbiqSuite SDK provider module that supplies its low-level SDK payload.
+#
+# The CMake helper ``nsx_select_sdk_provider`` (in
+# ``src/neuralspotx/cmake/nsx_sdk_providers.cmake``) consumes the
+# generated CMake table ``nsx_board_table.cmake``, which is produced
+# from this dict by ``scripts/gen_board_table.py``. Drift between the
+# Python dict and the committed CMake table is guarded by
+# ``tests/test_board_table_drift.py``.
+
+BOARD_SDK_PROVIDER: dict[str, str] = {
+    "apollo3_evb": "ambiqsuite-r3",
+    "apollo3_evb_cygnus": "ambiqsuite-r3",
+    "apollo3p_evb": "ambiqsuite-r3",
+    "apollo3p_evb_cygnus": "ambiqsuite-r3",
+    "apollo4l_evb": "ambiqsuite-r4",
+    "apollo4l_blue_evb": "ambiqsuite-r4",
+    "apollo4b_blue_evb": "ambiqsuite-r4",
+    "apollo4p_evb": "ambiqsuite-r4",
+    "apollo4p_blue_kbr_evb": "ambiqsuite-r4",
+    "apollo4p_blue_kxr_evb": "ambiqsuite-r4",
+    "apollo5b_evb": "ambiqsuite-r5",
+    "apollo510_evb": "ambiqsuite-r5",
+    "apollo510b_evb": "ambiqsuite-r5",
+    "apollo330mP_evb": "ambiqsuite-r5",
+}
+
+
+class SDKProvider(str, enum.Enum):
+    """Canonical SDK provider identifiers."""
+
+    R3 = "ambiqsuite-r3"
+    R4 = "ambiqsuite-r4"
+    R5 = "ambiqsuite-r5"
+
+    def __str__(self) -> str:  # pragma: no cover — trivial
+        return self.value
+
+
+SDK_PROVIDERS: frozenset[str] = frozenset(p.value for p in SDKProvider)
+
+
+def board_sdk_provider(board: str | None) -> str | None:
+    """Return the SDK provider name for *board*, or ``None`` if unknown.
+
+    Accepts case-insensitive input via :func:`normalize_board`.
+    """
+
+    canonical = normalize_board(board)
+    if not canonical:
+        return None
+    return BOARD_SDK_PROVIDER.get(canonical)
+
+
 DEFAULT_TOOLCHAIN = "arm-none-eabi-gcc"
 
 SUPPORTED_TOOLCHAINS = {

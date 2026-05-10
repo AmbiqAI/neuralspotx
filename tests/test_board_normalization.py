@@ -89,7 +89,7 @@ def test_lowercase_alias_no_longer_in_default_soc_map() -> None:
 
 
 def _packaged_cmake_text() -> str:
-    pkg = resources.files("neuralspotx.cmake").joinpath("nsx_sdk_providers.cmake")
+    pkg = resources.files("neuralspotx.cmake").joinpath("nsx_board_table.cmake")
     with resources.as_file(pkg) as path:
         return Path(path).read_text(encoding="utf-8")
 
