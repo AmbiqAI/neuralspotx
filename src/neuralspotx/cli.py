@@ -30,81 +30,64 @@ from .subprocess_utils import format_subprocess_error
 _C = CommandCategory
 _S = CommandScope
 
-_COMMAND_GRAPH_HINTS: dict[str, CommandHint] = {
-    "": CommandHint(_C.ENTRYPOINT, _S.GLOBAL, ("nsx doctor", "nsx create-app")),
-    "commands": CommandHint(
-        _C.DISCOVERY, _S.GLOBAL, ("nsx module list --json", "nsx module describe <module> --json")
-    ),
-    "create-app": CommandHint(
-        _C.APP_CREATION, _S.APP, ("nsx configure", "nsx module list", "nsx module add")
-    ),
-    "new": CommandHint(
-        _C.APP_CREATION,
-        _S.APP,
-        ("nsx configure", "nsx module list", "nsx module add"),
-        alias_for="nsx create-app",
-    ),
-    "doctor": CommandHint(_C.DIAGNOSTICS, _S.ENVIRONMENT, ("nsx create-app", "nsx configure")),
-    "configure": CommandHint(
-        _C.BUILD, _S.APP, ("nsx build", "nsx flash", "nsx view", "nsx module list")
-    ),
-    "build": CommandHint(_C.BUILD, _S.APP, ("nsx flash", "nsx view", "nsx clean")),
-    "flash": CommandHint(_C.DEPLOY, _S.APP, ("nsx view",)),
-    "view": CommandHint(_C.DEPLOY, _S.APP, ("nsx build", "nsx flash")),
-    "clean": CommandHint(_C.BUILD, _S.APP, ("nsx configure", "nsx build")),
-    "lock": CommandHint(_C.MODULES, _S.APP, ("nsx sync", "nsx configure", "nsx build")),
-    "sync": CommandHint(_C.MODULES, _S.APP, ("nsx configure", "nsx build", "nsx flash")),
-    "outdated": CommandHint(_C.MODULES, _S.APP, ("nsx update", "nsx lock --update")),
-    "update": CommandHint(_C.MODULES, _S.APP, ("nsx configure", "nsx build", "nsx flash")),
-    "module": CommandHint(
-        _C.MODULES,
-        _S.APP,
-        (
-            "nsx module list",
-            "nsx module describe",
-            "nsx module init <module-dir>",
-            "nsx module add",
-        ),
-    ),
-    "module list": CommandHint(
-        _C.MODULES,
-        _S.APP,
-        (
-            "nsx module describe <module>",
-            "nsx module add <module>",
-            "nsx module register <module>",
-        ),
-    ),
-    "module describe": CommandHint(
-        _C.MODULES, _S.APP, ("nsx module add <module>", "nsx configure", "nsx build")
-    ),
-    "module search": CommandHint(
-        _C.MODULES,
-        _S.APP,
-        ("nsx module describe <module>", "nsx module add <module>", "nsx configure"),
-    ),
-    "module add": CommandHint(_C.MODULES, _S.APP, ("nsx configure", "nsx build", "nsx flash")),
-    "module remove": CommandHint(_C.MODULES, _S.APP, ("nsx configure", "nsx build")),
-    "module update": CommandHint(_C.MODULES, _S.APP, ("nsx configure", "nsx build")),
-    "module register": CommandHint(
-        _C.MODULES, _S.APP, ("nsx module add <module>", "nsx configure", "nsx build")
-    ),
-    "module init": CommandHint(
-        _C.MODULES,
-        _S.FILESYSTEM,
-        (
-            "nsx module validate <metadata>",
-            "nsx module register <module>",
-            "nsx module add <module>",
-        ),
-    ),
-    "module validate": CommandHint(
-        _C.MODULES, _S.GLOBAL, ("nsx module register <module>", "nsx module add <module>")
-    ),
-    "cache": CommandHint(_C.MAINTENANCE, _S.GLOBAL, ("nsx cache info", "nsx cache clean")),
-    "cache info": CommandHint(_C.MAINTENANCE, _S.GLOBAL, ("nsx cache clean",)),
-    "cache clean": CommandHint(_C.MAINTENANCE, _S.GLOBAL, ("nsx sync",)),
-}
+# Discovery hints declared via the ``@command_hint(path, ...)`` decorator on each
+# ``cmd_*`` handler below. Group/root paths that have no dedicated handler
+# (``""``, ``"module"``, ``"cache"``) are registered explicitly at the bottom
+# of this module via :func:`_register_group_hint`.
+_COMMAND_GRAPH_HINTS: dict[str, CommandHint] = {}
+
+
+def command_hint(
+    path: str,
+    category: CommandCategory,
+    scope: CommandScope,
+    *next_commands: str,
+    alias_for: str | None = None,
+):
+    """Register a :class:`CommandHint` for *path* and tag the handler.
+
+    Keeps each command's discovery metadata co-located with its ``cmd_*``
+    function instead of mirroring it in a far-away central table.
+    """
+
+    hint = CommandHint(category, scope, tuple(next_commands), alias_for=alias_for)
+
+    def decorator(func):
+        _COMMAND_GRAPH_HINTS[path] = hint
+        func._nsx_hint = hint  # type: ignore[attr-defined]
+        return func
+
+    return decorator
+
+
+def _register_group_hint(
+    path: str,
+    category: CommandCategory,
+    scope: CommandScope,
+    *next_commands: str,
+) -> None:
+    """Register a hint for a parser group (no leaf handler)."""
+
+    _COMMAND_GRAPH_HINTS[path] = CommandHint(category, scope, tuple(next_commands))
+
+
+_register_group_hint("", _C.ENTRYPOINT, _S.GLOBAL, "nsx doctor", "nsx create-app")
+_COMMAND_GRAPH_HINTS["new"] = CommandHint(
+    _C.APP_CREATION,
+    _S.APP,
+    ("nsx configure", "nsx module list", "nsx module add"),
+    alias_for="nsx create-app",
+)
+_register_group_hint(
+    "module",
+    _C.MODULES,
+    _S.APP,
+    "nsx module list",
+    "nsx module describe",
+    "nsx module init <module-dir>",
+    "nsx module add",
+)
+_register_group_hint("cache", _C.MAINTENANCE, _S.GLOBAL, "nsx cache info", "nsx cache clean")
 
 
 def _json_safe(value: Any) -> Any:
@@ -247,6 +230,13 @@ def _command_graph(parser: argparse.ArgumentParser) -> dict[str, Any]:
     return graph
 
 
+@command_hint(
+    "commands",
+    _C.DISCOVERY,
+    _S.GLOBAL,
+    "nsx module list --json",
+    "nsx module describe <module> --json",
+)
 def cmd_commands(args: argparse.Namespace) -> None:
     graph = _command_graph(_build_parser())
     if args.json:
@@ -262,6 +252,14 @@ def cmd_commands(args: argparse.Namespace) -> None:
             print(f"  next: {', '.join(next_commands)}")
 
 
+@command_hint(
+    "create-app",
+    _C.APP_CREATION,
+    _S.APP,
+    "nsx configure",
+    "nsx module list",
+    "nsx module add",
+)
 def cmd_create_app(args: argparse.Namespace) -> None:
     api.create_app(
         Path(args.app_dir).expanduser().resolve(),
@@ -272,10 +270,20 @@ def cmd_create_app(args: argparse.Namespace) -> None:
     )
 
 
+@command_hint("doctor", _C.DIAGNOSTICS, _S.ENVIRONMENT, "nsx create-app", "nsx configure")
 def cmd_doctor(args: argparse.Namespace) -> None:
     api.doctor()
 
 
+@command_hint(
+    "configure",
+    _C.BUILD,
+    _S.APP,
+    "nsx build",
+    "nsx flash",
+    "nsx view",
+    "nsx module list",
+)
 def cmd_configure(args: argparse.Namespace) -> None:
     api.configure_app(
         resolve_app_dir(args.app_dir),
@@ -286,6 +294,7 @@ def cmd_configure(args: argparse.Namespace) -> None:
     )
 
 
+@command_hint("build", _C.BUILD, _S.APP, "nsx flash", "nsx view", "nsx clean")
 def cmd_build(args: argparse.Namespace) -> None:
     api.build_app(
         resolve_app_dir(args.app_dir),
@@ -298,6 +307,7 @@ def cmd_build(args: argparse.Namespace) -> None:
     )
 
 
+@command_hint("flash", _C.DEPLOY, _S.APP, "nsx view")
 def cmd_flash(args: argparse.Namespace) -> None:
     api.flash_app(
         resolve_app_dir(args.app_dir),
@@ -309,6 +319,7 @@ def cmd_flash(args: argparse.Namespace) -> None:
     )
 
 
+@command_hint("view", _C.DEPLOY, _S.APP, "nsx build", "nsx flash")
 def cmd_view(args: argparse.Namespace) -> None:
     api.view_app(
         resolve_app_dir(args.app_dir),
@@ -321,6 +332,7 @@ def cmd_view(args: argparse.Namespace) -> None:
     )
 
 
+@command_hint("clean", _C.BUILD, _S.APP, "nsx configure", "nsx build")
 def cmd_clean(args: argparse.Namespace) -> None:
     api.clean_app(
         resolve_app_dir(args.app_dir),
@@ -332,6 +344,7 @@ def cmd_clean(args: argparse.Namespace) -> None:
     )
 
 
+@command_hint("lock", _C.MODULES, _S.APP, "nsx sync", "nsx configure", "nsx build")
 def cmd_lock(args: argparse.Namespace) -> None:
     # `--module X` re-resolves only the named module(s); per its `--help`
     # text it implies `--update` (the modules filter is a no-op without it).
@@ -345,6 +358,7 @@ def cmd_lock(args: argparse.Namespace) -> None:
     )
 
 
+@command_hint("sync", _C.MODULES, _S.APP, "nsx configure", "nsx build", "nsx flash")
 def cmd_sync(args: argparse.Namespace) -> None:
     api.sync_app(
         resolve_app_dir(args.app_dir),
@@ -354,6 +368,7 @@ def cmd_sync(args: argparse.Namespace) -> None:
     )
 
 
+@command_hint("outdated", _C.MODULES, _S.APP, "nsx update", "nsx lock --update")
 def cmd_outdated(args: argparse.Namespace) -> None:
     n = api.outdated_app(
         resolve_app_dir(args.app_dir),
@@ -364,6 +379,7 @@ def cmd_outdated(args: argparse.Namespace) -> None:
         raise NSXError(1)
 
 
+@command_hint("update", _C.MODULES, _S.APP, "nsx configure", "nsx build", "nsx flash")
 def cmd_update(args: argparse.Namespace) -> None:
     api.update_app(
         resolve_app_dir(args.app_dir),
@@ -455,6 +471,14 @@ def _print_module_search_results(
             print(f"  matched: {preview}")
 
 
+@command_hint(
+    "module search",
+    _C.MODULES,
+    _S.APP,
+    "nsx module describe <module>",
+    "nsx module add <module>",
+    "nsx configure",
+)
 def cmd_module_search(args: argparse.Namespace) -> None:
     app_dir = _resolve_cli_app_dir(args.app_dir)
     results = api.search_modules(
@@ -492,6 +516,14 @@ def cmd_module_search(args: argparse.Namespace) -> None:
     _print_module_search_results(results, target_ctx)
 
 
+@command_hint(
+    "module list",
+    _C.MODULES,
+    _S.APP,
+    "nsx module describe <module>",
+    "nsx module add <module>",
+    "nsx module register <module>",
+)
 def cmd_module_list(args: argparse.Namespace) -> None:
     if args.app_dir is None and not args.registry_only:
         raise NSXConfigError("nsx module list requires --app-dir unless --registry-only is used")
@@ -523,6 +555,14 @@ def cmd_module_list(args: argparse.Namespace) -> None:
     )
 
 
+@command_hint(
+    "module describe",
+    _C.MODULES,
+    _S.APP,
+    "nsx module add <module>",
+    "nsx configure",
+    "nsx build",
+)
 def cmd_module_describe(args: argparse.Namespace) -> None:
     app_dir = _resolve_cli_app_dir(args.app_dir)
     _, _, resolved_app, scope = resolve_module_context(app_dir=app_dir)
@@ -543,6 +583,7 @@ def cmd_module_describe(args: argparse.Namespace) -> None:
     _print_module_detail(record)
 
 
+@command_hint("module add", _C.MODULES, _S.APP, "nsx configure", "nsx build", "nsx flash")
 def cmd_module_add(args: argparse.Namespace) -> None:
     api.add_module(
         resolve_app_dir(args.app_dir),
@@ -553,6 +594,7 @@ def cmd_module_add(args: argparse.Namespace) -> None:
     )
 
 
+@command_hint("module remove", _C.MODULES, _S.APP, "nsx configure", "nsx build")
 def cmd_module_remove(args: argparse.Namespace) -> None:
     api.remove_module(
         resolve_app_dir(args.app_dir),
@@ -561,6 +603,7 @@ def cmd_module_remove(args: argparse.Namespace) -> None:
     )
 
 
+@command_hint("module update", _C.MODULES, _S.APP, "nsx configure", "nsx build")
 def cmd_module_update(args: argparse.Namespace) -> None:
     api.update_modules(
         resolve_app_dir(args.app_dir),
@@ -569,6 +612,14 @@ def cmd_module_update(args: argparse.Namespace) -> None:
     )
 
 
+@command_hint(
+    "module register",
+    _C.MODULES,
+    _S.APP,
+    "nsx module add <module>",
+    "nsx configure",
+    "nsx build",
+)
 def cmd_module_register(args: argparse.Namespace) -> None:
     api.register_module(
         resolve_app_dir(args.app_dir),
@@ -586,6 +637,14 @@ def cmd_module_register(args: argparse.Namespace) -> None:
     )
 
 
+@command_hint(
+    "module init",
+    _C.MODULES,
+    _S.FILESYSTEM,
+    "nsx module validate <metadata>",
+    "nsx module register <module>",
+    "nsx module add <module>",
+)
 def cmd_module_init(args: argparse.Namespace) -> None:
     api.init_module(
         Path(args.module_dir).expanduser().resolve(),
@@ -601,6 +660,13 @@ def cmd_module_init(args: argparse.Namespace) -> None:
     )
 
 
+@command_hint(
+    "module validate",
+    _C.MODULES,
+    _S.GLOBAL,
+    "nsx module register <module>",
+    "nsx module add <module>",
+)
 def cmd_module_validate(args: argparse.Namespace) -> None:
     metadata_path = Path(args.metadata).expanduser().resolve()
     try:
@@ -650,6 +716,7 @@ def _dir_size_bytes(path: Path) -> int:
     return total
 
 
+@command_hint("cache info", _C.MAINTENANCE, _S.GLOBAL, "nsx cache clean")
 def cmd_cache_info(args: argparse.Namespace) -> None:
     root = module_cache.module_cache_root()
     entries = module_cache.iter_entries()
@@ -681,6 +748,7 @@ def cmd_cache_info(args: argparse.Namespace) -> None:
         print(f"  total:   {_format_bytes(total)}")
 
 
+@command_hint("cache clean", _C.MAINTENANCE, _S.GLOBAL, "nsx sync")
 def cmd_cache_clean(args: argparse.Namespace) -> None:
     if not args.yes:
         root = module_cache.module_cache_root()
