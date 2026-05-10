@@ -8,6 +8,11 @@ function(_nsx_pick_first_existing out_var)
     set(${out_var} "" PARENT_SCOPE)
 endfunction()
 
+# Board → SDK provider mapping is generated from
+# src/neuralspotx/constants.py (BOARD_SDK_PROVIDER) by
+# scripts/gen_board_table.py. Keep this include relative to this file.
+include("${CMAKE_CURRENT_LIST_DIR}/nsx_board_table.cmake")
+
 function(nsx_select_sdk_provider board_name)
     set(NSX_SDK_PROVIDER "" CACHE STRING "SDK provider module (ambiqsuite-r3|ambiqsuite-r4|ambiqsuite-r5)")
     set_property(CACHE NSX_SDK_PROVIDER PROPERTY STRINGS ambiqsuite-r3 ambiqsuite-r4 ambiqsuite-r5)
@@ -17,34 +22,8 @@ function(nsx_select_sdk_provider board_name)
     set(NSX_AMBIQSUITE_R5_ROOT "" CACHE PATH "Path to AmbiqSuite R5 root")
 
     if(NSX_SDK_PROVIDER STREQUAL "")
-        # Case-insensitive board match: users may pass APOLLO510_EVB or
-        # apollo330MP_evb on the CMake command line.  Compare against the
-        # lowercased canonical board name.
-        string(TOLOWER "${board_name}" _board_lc)
-        if(
-            _board_lc STREQUAL "apollo3_evb"
-            OR _board_lc STREQUAL "apollo3_evb_cygnus"
-            OR _board_lc STREQUAL "apollo3p_evb"
-            OR _board_lc STREQUAL "apollo3p_evb_cygnus"
-        )
-            set(NSX_SDK_PROVIDER "ambiqsuite-r3")
-        elseif(
-            _board_lc STREQUAL "apollo4b_blue_evb"
-            OR _board_lc STREQUAL "apollo4l_evb"
-            OR _board_lc STREQUAL "apollo4l_blue_evb"
-            OR _board_lc STREQUAL "apollo4p_evb"
-            OR _board_lc STREQUAL "apollo4p_blue_kbr_evb"
-            OR _board_lc STREQUAL "apollo4p_blue_kxr_evb"
-        )
-            set(NSX_SDK_PROVIDER "ambiqsuite-r4")
-        elseif(
-            _board_lc STREQUAL "apollo5b_evb"
-            OR _board_lc STREQUAL "apollo510_evb"
-            OR _board_lc STREQUAL "apollo510b_evb"
-            OR _board_lc STREQUAL "apollo330mp_evb"
-        )
-            set(NSX_SDK_PROVIDER "ambiqsuite-r5")
-        else()
+        nsx_lookup_sdk_provider("${board_name}" NSX_SDK_PROVIDER)
+        if(NSX_SDK_PROVIDER STREQUAL "")
             message(FATAL_ERROR
                 "Unable to infer SDK provider for board '${board_name}'. "
                 "Set -DNSX_SDK_PROVIDER=ambiqsuite-r3|ambiqsuite-r4|ambiqsuite-r5."
