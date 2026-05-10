@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from .._errors import NSXConfigError, NSXModuleError
+from .._logging import get_logger
 from ..file_lock import app_lock
 from ..module_registry import _update_module_clone
 from ..nsx_lock import (
@@ -24,6 +25,8 @@ from ..project_config import (
     _write_modules_gitignore,
 )
 from ._lock import _resolved_module_path, lock_app_impl
+
+_log = get_logger(__name__)
 
 
 def _ensure_app_modules(app_dir: Path) -> None:
@@ -99,7 +102,7 @@ def _sync_app_impl_unlocked(
         # the wheel resource for packaged, the source path for local),
         # so the recorded content_hash is correct without ``modules/``
         # being populated first.
-        print("note: nsx.lock not found; generating from manifest.")
+        _log.info("nsx.lock not found; generating from manifest.")
         lock_app_impl(app_dir, quiet=True)
         lock = read_lock(app_dir)
         assert lock is not None  # noqa: S101 — invariant guaranteed by lock_app_impl
@@ -116,7 +119,7 @@ def _sync_app_impl_unlocked(
                 "nsx.yml has changed since nsx.lock was written. "
                 "Run `nsx lock` to refresh, or drop --frozen."
             )
-        print("warning: nsx.yml has changed since nsx.lock was written; run `nsx lock` to refresh.")
+        _log.warning("nsx.yml has changed since nsx.lock was written; run `nsx lock` to refresh.")
 
     changed = 0
     # Track resolved vendored directories so two module entries that
@@ -167,7 +170,7 @@ def _sync_app_impl_unlocked(
                 )
                 if frozen:
                     raise NSXModuleError(msg)
-                print(f"warning: {msg}")
+                _log.warning("%s", msg)
             vendored_paths.add(vendored_dir)
             continue
 
@@ -191,7 +194,7 @@ def _sync_app_impl_unlocked(
                 )
                 if frozen:
                     raise NSXModuleError(msg)
-                print(f"warning: {msg}")
+                _log.warning("%s", msg)
             vendored_paths.add(vendored_dir)
             continue
 
@@ -211,7 +214,7 @@ def _sync_app_impl_unlocked(
                 )
                 if frozen:
                     raise NSXModuleError(msg)
-                print(f"warning: {msg}")
+                _log.warning("%s", msg)
             continue
 
         # ----- local: upstream is a source path or modules/<name>/ -----
@@ -251,7 +254,7 @@ def _sync_app_impl_unlocked(
                     )
                     if frozen:
                         raise NSXModuleError(msg)
-                    print(f"warning: {msg}")
+                    _log.warning("%s", msg)
 
                 # Mirror is already in sync with current source: skip.
                 if not force and on_disk_hash == source_hash:
@@ -280,7 +283,7 @@ def _sync_app_impl_unlocked(
                 )
                 if frozen:
                     raise NSXModuleError(msg)
-                print(f"warning: {msg}")
+                _log.warning("%s", msg)
             vendored_paths.add(vendored_dir)
             continue
 
@@ -325,10 +328,12 @@ def _sync_app_impl_unlocked(
         if vendored_dir != app_dir / "cmake" / "nsx":
             post_hash = hash_tree(vendored_dir) if vendored_dir.exists() else None
             if post_hash != entry.content_hash:
-                print(
-                    f"warning: upstream for '{name}' has drifted since lock "
-                    f"(expected {entry.content_hash}, got {post_hash}); "
-                    "run `nsx lock` to re-record."
+                _log.warning(
+                    "upstream for '%s' has drifted since lock "
+                    "(expected %s, got %s); run `nsx lock` to re-record.",
+                    name,
+                    entry.content_hash,
+                    post_hash,
                 )
         vendored_paths.add(vendored_dir)
         changed += 1
@@ -356,10 +361,12 @@ def _sync_app_impl_unlocked(
             else None
         )
         if post_hash != entry.content_hash:
-            print(
-                f"warning: upstream for '{name}' has drifted since lock "
-                f"(expected {entry.content_hash}, got {post_hash}); "
-                "run `nsx lock` to re-record."
+            _log.warning(
+                "upstream for '%s' has drifted since lock "
+                "(expected %s, got %s); run `nsx lock` to re-record.",
+                name,
+                entry.content_hash,
+                post_hash,
             )
 
     if changed:

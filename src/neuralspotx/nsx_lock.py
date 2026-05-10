@@ -100,7 +100,10 @@ from typing import Any, Iterable
 
 import yaml
 
+from ._logging import get_logger
 from .subprocess_utils import run_capture
+
+_log = get_logger(__name__)
 
 LOCK_FILENAME = "nsx.lock"
 LOCK_SCHEMA_VERSION = 3
@@ -288,7 +291,7 @@ def read_lock(app_dir: Path, *, allow_legacy: bool = False) -> NsxLock | None:
         return NsxLock.from_yaml_dict(raw or {})
     except LegacyLockError as exc:
         if allow_legacy:
-            print(f"warning: {exc} (regenerating)")
+            _log.warning("%s (regenerating)", exc)
             return None
         raise
 

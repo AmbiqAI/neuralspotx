@@ -12,6 +12,7 @@ from typing import Any
 
 from . import api, module_cache, nsx_lock, operations
 from ._errors import NSXConfigError, NSXError, NSXModuleError
+from ._logging import configure_logging
 from .metadata import SUPPORTED_MODULE_TYPES, load_yaml, validate_nsx_module_metadata
 from .models import CommandCategory, CommandHint, CommandScope, DiscoveryRecord, SearchResult
 from .module_discovery import (
@@ -721,6 +722,12 @@ def _build_parser() -> argparse.ArgumentParser:
         default=0,
         help="Increase CLI verbosity. Repeat for more detail.",
     )
+    parser.add_argument(
+        "-q",
+        "--quiet",
+        action="store_true",
+        help="Suppress informational and warning logs (errors still surface).",
+    )
     sub = parser.add_subparsers(dest="command", required=True)
 
     def _add_timeout(p: argparse.ArgumentParser) -> None:
@@ -1219,6 +1226,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     global VERBOSE
     VERBOSE = args.verbose
+    configure_logging(args.verbose, quiet=args.quiet)
     operations.set_verbosity(args.verbose)
     try:
         args.func(args)
