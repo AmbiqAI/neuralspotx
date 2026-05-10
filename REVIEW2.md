@@ -69,7 +69,7 @@ The rest of this document is structured like the previous `REVIEW.md`: numbered,
 - [ ] **F1. `nsx_select_sdk_provider` provider-side branching.** After R17 the board → provider lookup is table-driven, but the per-provider root/version/target chooser ([nsx_sdk_providers.cmake L34–L74](src/neuralspotx/cmake/nsx_sdk_providers.cmake#L34)) is still an if/elseif chain. Generate a second table from a single Python source, mirroring R17.
 - [ ] **F2. `nsx_toolchain_flags.cmake` should split per family.** Three large branches in one 150-line file; each is independently complex. Move to `toolchains/{gcc,armclang,atfe}.cmake` and `include()` based on `NSX_TOOLCHAIN_FAMILY`.
 - [ ] **F3. Emit a CMake preset per app on `nsx configure`.** Today users cannot run `cmake --preset` — they have to invoke `nsx`. Generating `CMakePresets.json` from the configured board/toolchain enables every IDE (CLion, VS, vscode-cmake-tools) to drive builds natively.
-- [ ] **F4. The `cmake/nsx/` vendored copy must be diffable.** Currently each app has its own copy of `nsx_sdk_providers.cmake`/`nsx_board_table.cmake`/`nsx_toolchain_flags.cmake` (three files × 8 examples = 24 copies). Vendoring is correct; **add a CI check** that diff-matches every example's `cmake/nsx/` against `src/neuralspotx/cmake/`. Stops the next R17-style drift before it ships.
+- [x] **F4. The `cmake/nsx/` vendored copy must be diffable.** Currently each app has its own copy of `nsx_sdk_providers.cmake`/`nsx_board_table.cmake`/`nsx_toolchain_flags.cmake` (three files × 8 examples = 24 copies). Vendoring is correct; **add a CI check** that diff-matches every example's `cmake/nsx/` against `src/neuralspotx/cmake/`. Stops the next R17-style drift before it ships.
 
 ## G. Recursive disclosure of complexity (UX)
 
