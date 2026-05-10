@@ -121,7 +121,10 @@ jobs:
           -q
           --ignore=tests/test_example_builds.py
 
-
+  # ---------------------------------------------------------------
+  # Example builds — full toolchain on each OS.
+  # ---------------------------------------------------------------
+  example-builds:
     strategy:
       fail-fast: false
       matrix:
