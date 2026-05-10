@@ -310,11 +310,56 @@ jobs:
           done
 
   # ---------------------------------------------------------------
+  # Vendored cmake/nsx drift check (REVIEW2 F4).
+  #
+  # Each example's `cmake/nsx/` is a per-app vendored copy of
+  # `src/neuralspotx/cmake/`. The tree itself is gitignored and
+  # materialized by `nsx sync` at build time. This job runs `nsx sync`
+  # on every example and then byte-compares the resulting tree against
+  # the canonical source. It catches:
+  #   * regressions in the sync/copy logic that quietly mojibake or
+  #     truncate a vendored file (the R17 failure class), and
+  #   * orphan files in `cmake/nsx/` that no longer exist canonically.
+  # The per-app `modules.cmake` is intentionally excluded from the diff.
+  # ---------------------------------------------------------------
+  cmake-vendor-diff:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install neuralspotx
+        run: uv sync --group test
+
+      - name: Materialize vendored cmake/nsx trees
+        run: |
+          for app in examples/*/; do
+            [ -f "$app/nsx.yml" ] || continue
+            [ -f "$app/nsx.lock" ] || continue
+            echo "::group::sync $app"
+            uv run --group test nsx sync --app-dir "$app"
+            echo "::endgroup::"
+          done
+
+      - name: Diff vendored cmake/nsx vs canonical src/neuralspotx/cmake
+        run: uv run --group test python scripts/check_vendored_cmake.py
+
+  # ---------------------------------------------------------------
   # Gate — single required-check for branch protection
   # ---------------------------------------------------------------
   lint-and-test:
     if: always()
-    needs: [lint, unit-tests, example-builds, lock-integrity]
+    needs: [lint, unit-tests, example-builds, lock-integrity, cmake-vendor-diff]
     runs-on: ubuntu-latest
     steps:
       - name: Decide status
@@ -323,7 +368,8 @@ jobs:
           if [[ "${{ needs.lint.result }}" != "success" ]] ||
              [[ "${{ needs.unit-tests.result }}" != "success" ]] ||
              [[ "${{ needs.example-builds.result }}" != "success" ]] ||
-             [[ "${{ needs.lock-integrity.result }}" != "success" ]]; then
+             [[ "${{ needs.lock-integrity.result }}" != "success" ]] ||
+             [[ "${{ needs.cmake-vendor-diff.result }}" != "success" ]]; then
             echo "One or more CI jobs failed."
             exit 1
           fi
