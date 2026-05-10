@@ -14,7 +14,14 @@ from . import api, module_cache, nsx_lock, operations
 from ._errors import NSXConfigError, NSXError, NSXModuleError, NSXToolchainError
 from ._logging import configure_logging
 from .metadata import SUPPORTED_MODULE_TYPES, load_yaml, validate_nsx_module_metadata
-from .models import CommandCategory, CommandHint, CommandScope, DiscoveryRecord, SearchResult
+from .models import (
+    CommandCategory,
+    CommandHint,
+    CommandScope,
+    DiscoveryRecord,
+    OutdatedReport,
+    SearchResult,
+)
 from .module_discovery import (
     resolve_module_context,
     resolve_target_context,
@@ -372,13 +379,54 @@ def cmd_sync(args: argparse.Namespace) -> None:
 
 @command_hint("outdated", _C.MODULES, _S.APP, "nsx update", "nsx lock --update")
 def cmd_outdated(args: argparse.Namespace) -> None:
-    n = api.outdated_app(
+    report = api.outdated_app(
         resolve_app_dir(args.app_dir),
-        as_json=bool(getattr(args, "json", False)),
         timeout_s=getattr(args, "timeout", None),
     )
-    if args.exit_code and n:
+    if getattr(args, "json", False):
+        import json as _json
+
+        print(_json.dumps(report.to_dict(), indent=2))
+    else:
+        _render_outdated_report(report)
+    if args.exit_code and report.outdated_count:
         raise NSXError(1)
+
+
+def _render_outdated_report(report: OutdatedReport) -> None:
+    """Render an :class:`OutdatedReport` to stdout (text format)."""
+
+    rows = [
+        (m.name, m.constraint, m.locked[:10], m.upstream[:10], str(m.status))
+        for m in report.checked
+    ]
+    if not rows and not report.skipped:
+        print("No git modules to check.")
+        return
+
+    name_w = max((len(r[0]) for r in rows), default=4)
+    cons_w = max((len(r[1]) for r in rows), default=10)
+    header = f"{'module'.ljust(name_w)}  {'constraint'.ljust(cons_w)}  {'locked'.ljust(10)}  {'upstream'.ljust(10)}  status"
+    print(header)
+    print("-" * len(header))
+    for r in rows:
+        print(
+            f"{r[0].ljust(name_w)}  {r[1].ljust(cons_w)}  {r[2].ljust(10)}  {r[3].ljust(10)}  {r[4]}"
+        )
+
+    if report.skipped:
+        print()
+        for skip in report.skipped:
+            print(f"skipped: {skip.name} ({skip.reason})")
+
+    print()
+    outdated = report.outdated
+    if outdated:
+        names = ", ".join(m.name for m in outdated)
+        print(f"{len(outdated)} outdated: {names}")
+        print("Run `nsx update` (all) or `nsx update --module <name>` to refresh.")
+    else:
+        print("All git modules are up-to-date with their constraints.")
 
 
 @command_hint("update", _C.MODULES, _S.APP, "nsx configure", "nsx build", "nsx flash")

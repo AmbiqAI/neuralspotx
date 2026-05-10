@@ -13,6 +13,7 @@ from .._errors import (
 )
 from ..constants import DEFAULT_TOOLCHAIN
 from ..file_lock import app_lock
+from ..models import OutdatedModule, OutdatedReport, OutdatedSkip
 from ..module_registry import (
     _local_module_names,
     _module_names_from_nsx,
@@ -662,20 +663,19 @@ def _diff_locks(previous: NsxLock | None, fresh: NsxLock) -> list[str]:
     return diffs
 
 
-def outdated_app_impl(app_dir: Path, *, as_json: bool = False) -> int:
+def outdated_app_impl(app_dir: Path) -> OutdatedReport:
     """Report git modules whose locked commit lags behind the upstream constraint.
 
-    Returns the number of outdated modules so callers (e.g. CI) can use
-    the exit code as a signal.
+    Returns an ``OutdatedReport`` with one ``OutdatedModule`` per
+    git-hosted entry inspected and one ``OutdatedSkip`` per entry that
+    could not be resolved (no URL, ``git ls-remote`` failure, etc.).
+    The CLI layer (``cmd_outdated``) is responsible for rendering the
+    table or JSON; this function performs no I/O on stdout.
     """
 
     lock = read_lock(app_dir)
     if lock is None:
         raise NSXConfigError(f"{app_dir / 'nsx.lock'} not found. Run `nsx lock` first.")
-
-    rows: list[tuple[str, str, str, str, str]] = []  # name, constraint, locked, upstream, status
-    full_rows: list[dict[str, str]] = []
-    skipped: list[tuple[str, str]] = []
 
     # Parallel prefetch of upstream commits --------------------------------
     # ``resolve_commit`` is one ``git ls-remote`` per call; for an app
@@ -706,71 +706,33 @@ def outdated_app_impl(app_dir: Path, *, as_json: bool = False) -> int:
         results = parallel_map(_safe_resolve, upstream_keys)
         upstream_results = dict(zip(upstream_keys, results, strict=True))
 
+    checked: list[OutdatedModule] = []
+    skipped: list[OutdatedSkip] = []
+
     for name, entry in sorted(lock.modules.items()):
         if entry.kind != LockKind.GIT:
             continue
         if not entry.url:
-            skipped.append((name, "no url"))
+            skipped.append(OutdatedSkip(name=name, reason="no url"))
             continue
         sha, err = upstream_results.get(
             (entry.url, entry.tag or entry.constraint), (None, "unresolved")
         )
         if sha is None:
-            skipped.append((name, err or "unresolved"))
+            skipped.append(OutdatedSkip(name=name, reason=err or "unresolved"))
             continue
-        upstream = sha
+        upstream = sha.lower()
         locked = (entry.commit or "").lower()
-        if upstream.lower() == locked:
-            status = OutdatedStatus.UP_TO_DATE
-        else:
-            status = OutdatedStatus.OUTDATED
-        rows.append((name, entry.constraint, locked[:10], upstream[:10], status))
-        full_rows.append({
-            "module": name,
-            "constraint": entry.constraint,
-            "locked": locked,
-            "upstream": upstream.lower(),
-            "status": status,
-            "url": entry.url or "",
-        })
-
-    outdated = [r for r in rows if r[4] == OutdatedStatus.OUTDATED]
-
-    if as_json:
-        import json
-
-        payload = {
-            "checked": full_rows,
-            "skipped": [{"module": n, "reason": r} for n, r in skipped],
-            "outdated_count": len(outdated),
-        }
-        print(json.dumps(payload, indent=2))
-        return len(outdated)
-
-    if not rows and not skipped:
-        print("No git modules to check.")
-        return 0
-
-    name_w = max((len(r[0]) for r in rows), default=4)
-    cons_w = max((len(r[1]) for r in rows), default=10)
-    header = f"{'module'.ljust(name_w)}  {'constraint'.ljust(cons_w)}  {'locked'.ljust(10)}  {'upstream'.ljust(10)}  status"
-    print(header)
-    print("-" * len(header))
-    for r in rows:
-        print(
-            f"{r[0].ljust(name_w)}  {r[1].ljust(cons_w)}  {r[2].ljust(10)}  {r[3].ljust(10)}  {r[4]}"
+        status = OutdatedStatus.UP_TO_DATE if upstream == locked else OutdatedStatus.OUTDATED
+        checked.append(
+            OutdatedModule(
+                name=name,
+                constraint=entry.constraint,
+                locked=locked,
+                upstream=upstream,
+                status=status,
+                url=entry.url or "",
+            )
         )
 
-    if skipped:
-        print()
-        for name, reason in skipped:
-            print(f"skipped: {name} ({reason})")
-
-    print()
-    if outdated:
-        names = ", ".join(r[0] for r in outdated)
-        print(f"{len(outdated)} outdated: {names}")
-        print("Run `nsx update` (all) or `nsx update --module <name>` to refresh.")
-    else:
-        print("All git modules are up-to-date with their constraints.")
-    return len(outdated)
+    return OutdatedReport(checked=tuple(checked), skipped=tuple(skipped))

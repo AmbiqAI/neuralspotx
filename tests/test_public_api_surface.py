@@ -289,9 +289,11 @@ class TestCliApiParity:
         self._nsx_yml(tmp_path)
         calls: list[dict[str, object]] = []
 
-        def fake(app_dir: object, **kw: object) -> int:
+        from neuralspotx.models import OutdatedReport
+
+        def fake(app_dir: object, **kw: object) -> OutdatedReport:
             calls.append({"app_dir": app_dir, **kw})
-            return 0
+            return OutdatedReport(checked=())
 
         monkeypatch.setattr(cli.api, "outdated_app", fake)
         cli.cmd_outdated(
