@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from . import api, module_cache, nsx_lock, operations
-from ._errors import NSXConfigError, NSXError, NSXModuleError
+from ._errors import NSXConfigError, NSXError, NSXModuleError, NSXToolchainError
 from ._logging import configure_logging
 from .metadata import SUPPORTED_MODULE_TYPES, load_yaml, validate_nsx_module_metadata
 from .models import CommandCategory, CommandHint, CommandScope, DiscoveryRecord, SearchResult
@@ -272,7 +272,9 @@ def cmd_create_app(args: argparse.Namespace) -> None:
 
 @command_hint("doctor", _C.DIAGNOSTICS, _S.ENVIRONMENT, "nsx create-app", "nsx configure")
 def cmd_doctor(args: argparse.Namespace) -> None:
-    api.doctor()
+    report = api.doctor()
+    if not report.ok:
+        raise NSXToolchainError("One or more required tools are missing or misconfigured.")
 
 
 @command_hint(

@@ -13,7 +13,7 @@ from ._errors import (
     NSXModuleError,
 )
 from .metadata import load_yaml, validate_nsx_module_metadata
-from .models import DiscoveryRecord, SearchResult
+from .models import DiscoveryRecord, DoctorReport, SearchResult
 from .nsx_lock import NsxLock
 from .subprocess_utils import timeout_budget
 
@@ -271,10 +271,17 @@ def create_app(
     )
 
 
-def doctor() -> None:
-    """Run the NSX environment diagnostics."""
+def doctor() -> DoctorReport:
+    """Run the NSX environment diagnostics.
 
-    operations.doctor_impl()
+    Returns the structured :class:`DoctorReport`. Never raises on a
+    failed check — embedders are expected to inspect ``report.ok`` and
+    decide how to react. The CLI handler raises
+    :class:`~neuralspotx._errors.NSXToolchainError` so ``nsx doctor``
+    keeps its historic non-zero exit code.
+    """
+
+    return operations.doctor_impl()
 
 
 def configure_app(

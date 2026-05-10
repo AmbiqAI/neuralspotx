@@ -142,8 +142,15 @@ class TestCliApiParity:
         assert calls[0]["board"] == "apollo510_evb"
 
     def test_cmd_doctor_routes_through_api(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from neuralspotx.models import DoctorReport
+
         called = []
-        monkeypatch.setattr(cli.api, "doctor", lambda: called.append(True))
+
+        def fake_doctor() -> DoctorReport:
+            called.append(True)
+            return DoctorReport(checks=())
+
+        monkeypatch.setattr(cli.api, "doctor", fake_doctor)
         cli.cmd_doctor(cli.argparse.Namespace())
         assert called
 

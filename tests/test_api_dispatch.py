@@ -64,9 +64,12 @@ def test_create_app_dispatches_to_operations(
 def test_doctor_dispatch(monkeypatch: pytest.MonkeyPatch) -> None:
     doctor_calls = 0
 
-    def fake_doctor() -> None:
+    def fake_doctor() -> object:
         nonlocal doctor_calls
         doctor_calls += 1
+        from neuralspotx.models import DoctorReport
+
+        return DoctorReport(checks=())
 
     monkeypatch.setattr(operations, "doctor_impl", fake_doctor)
 
@@ -244,20 +247,18 @@ def test_module_register_dispatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
         override: bool = False,
         dry_run: bool = False,
     ) -> None:
-        calls.append(
-            (
-                app_dir,
-                module,
-                metadata,
-                project,
-                project_url,
-                project_revision,
-                project_path,
-                project_local_path,
-                override,
-                dry_run,
-            )
-        )
+        calls.append((
+            app_dir,
+            module,
+            metadata,
+            project,
+            project_url,
+            project_revision,
+            project_path,
+            project_local_path,
+            override,
+            dry_run,
+        ))
 
     monkeypatch.setattr(operations, "register_module_impl", fake_register)
 
@@ -325,20 +326,18 @@ def test_module_init_dispatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
         toolchains: list[str] | None = None,
         force: bool = False,
     ) -> None:
-        calls.append(
-            (
-                module_dir,
-                module_name,
-                module_type,
-                summary,
-                version,
-                dependencies,
-                boards,
-                socs,
-                toolchains,
-                force,
-            )
-        )
+        calls.append((
+            module_dir,
+            module_name,
+            module_type,
+            summary,
+            version,
+            dependencies,
+            boards,
+            socs,
+            toolchains,
+            force,
+        ))
 
     monkeypatch.setattr(operations, "init_module_impl", fake_init)
 

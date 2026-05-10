@@ -333,6 +333,57 @@ class CommandHint:
         return out
 
 
+@dataclass(frozen=True)
+class DoctorCheck:
+    """One environment / toolchain check produced by ``api.doctor()``.
+
+    *required* discriminates checks that gate ``ok`` (e.g. ``cmake``)
+    from informational ones (e.g. ATfE when ``ATFE_ROOT`` is set, or
+    individual armclang components when the toolchain was detected).
+    """
+
+    label: str
+    ok: bool
+    required: bool = True
+    detail: str | None = None
+    hint: str | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "label": self.label,
+            "ok": self.ok,
+            "required": self.required,
+            "detail": self.detail,
+            "hint": self.hint,
+        }
+
+
+@dataclass(frozen=True)
+class DoctorReport:
+    """Aggregate result returned by ``api.doctor()``.
+
+    ``ok`` is ``True`` iff every *required* check passed.
+    ``checks`` preserves the order in which checks ran so embedders can
+    render a deterministic table. ``notes`` carries free-form lines
+    (e.g. "ATfE toolchain not detected — optional") for parity with the
+    historic CLI output.
+    """
+
+    checks: tuple[DoctorCheck, ...]
+    notes: tuple[str, ...] = ()
+
+    @property
+    def ok(self) -> bool:
+        return all(c.ok for c in self.checks if c.required)
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "ok": self.ok,
+            "checks": [c.to_dict() for c in self.checks],
+            "notes": list(self.notes),
+        }
+
+
 # ------------------------------------------------------------------
 # Module discovery records
 # ------------------------------------------------------------------
