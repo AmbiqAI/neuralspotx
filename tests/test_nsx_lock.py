@@ -60,14 +60,14 @@ def _write_nsx_yml(
     }
     if registry_overrides:
         cfg["module_registry"] = registry_overrides
-    (app_dir / "nsx.yml").write_text(yaml.safe_dump(cfg, sort_keys=False))
+    (app_dir / "nsx.yml").write_text(yaml.safe_dump(cfg, sort_keys=False), encoding="utf-8")
 
 
 def _make_vendored(app_dir: Path, name: str, content: str = "hi") -> None:
     """Create a vendored module dir with one file."""
     mod = app_dir / "modules" / name
     mod.mkdir(parents=True, exist_ok=True)
-    (mod / "hello.txt").write_text(content)
+    (mod / "hello.txt").write_text(content, encoding="utf-8")
 
 
 @pytest.fixture
@@ -111,7 +111,7 @@ class TestVendoredKind:
         lock_app_impl(app)
 
         # Mutate vendored content -> hash diverges.
-        (app / "modules" / "my-vend" / "hello.txt").write_text("CHANGED")
+        (app / "modules" / "my-vend" / "hello.txt").write_text("CHANGED", encoding="utf-8")
 
         with pytest.raises(NSXError) as exc:
             lock_app_impl(app, check=True)
@@ -170,7 +170,7 @@ class TestSyncFrozen:
         _write_nsx_yml(app, [{"name": "my-vend", "source": {"vendored": True}}])
         lock_app_impl(app)
 
-        (app / "modules" / "my-vend" / "hello.txt").write_text("MUTATED")
+        (app / "modules" / "my-vend" / "hello.txt").write_text("MUTATED", encoding="utf-8")
 
         with pytest.raises(NSXError):
             sync_app_impl(app, frozen=True)
@@ -186,8 +186,8 @@ class TestSyncFrozen:
         """
         ext = tmp_path / "ext-source"
         ext.mkdir()
-        (ext / "src.c").write_text("// local source")
-        (ext / "nsx-module.yaml").write_text("schema_version: 1\n")
+        (ext / "src.c").write_text("// local source", encoding="utf-8")
+        (ext / "nsx-module.yaml").write_text("schema_version: 1\n", encoding="utf-8")
 
         _write_nsx_yml(app, [{"name": "my-local", "source": {"path": str(ext)}}])
 
@@ -199,9 +199,9 @@ class TestSyncFrozen:
         assert (app / "modules" / "my-local" / "src.c").exists()
 
         # Lock must not be rewritten by sync; --frozen verifies cleanly.
-        before_text = (app / "nsx.lock").read_text()
+        before_text = (app / "nsx.lock").read_text(encoding="utf-8")
         sync_app_impl(app, frozen=True)  # must not raise
-        assert (app / "nsx.lock").read_text() == before_text
+        assert (app / "nsx.lock").read_text(encoding="utf-8") == before_text
 
     def test_frozen_does_not_rewrite_lock(self, app: Path) -> None:
         """`sync --frozen` is read-only — it must never write nsx.lock."""
@@ -211,12 +211,12 @@ class TestSyncFrozen:
 
         lock_path_ = app / "nsx.lock"
         before_mtime = lock_path_.stat().st_mtime_ns
-        before_text = lock_path_.read_text()
+        before_text = lock_path_.read_text(encoding="utf-8")
 
         sync_app_impl(app, frozen=True)
 
         assert lock_path_.stat().st_mtime_ns == before_mtime
-        assert lock_path_.read_text() == before_text
+        assert lock_path_.read_text(encoding="utf-8") == before_text
 
     def test_noop_sync_does_not_rewrite_lock(self, app: Path) -> None:
         """A no-op `nsx sync` (nothing changed) must not bump nsx.lock."""
@@ -225,11 +225,11 @@ class TestSyncFrozen:
         lock_app_impl(app)
 
         lock_path_ = app / "nsx.lock"
-        before_text = lock_path_.read_text()
+        before_text = lock_path_.read_text(encoding="utf-8")
 
         sync_app_impl(app)  # nothing to do
 
-        assert lock_path_.read_text() == before_text
+        assert lock_path_.read_text(encoding="utf-8") == before_text
 
     def test_sync_never_writes_lock(self, app: Path, tmp_path: Path) -> None:
         """Sync is pure: even when it actively re-vendors, it does not touch nsx.lock.
@@ -239,24 +239,24 @@ class TestSyncFrozen:
         """
         ext = tmp_path / "ext-source"
         ext.mkdir()
-        (ext / "src.c").write_text("// v1")
-        (ext / "nsx-module.yaml").write_text("schema_version: 1\n")
+        (ext / "src.c").write_text("// v1", encoding="utf-8")
+        (ext / "nsx-module.yaml").write_text("schema_version: 1\n", encoding="utf-8")
 
         _write_nsx_yml(app, [{"name": "my-local", "source": {"path": str(ext)}}])
         lock_app_impl(app)
         sync_app_impl(app)  # populate modules/
 
         lock_path_ = app / "nsx.lock"
-        before_text = lock_path_.read_text()
+        before_text = lock_path_.read_text(encoding="utf-8")
         before_mtime = lock_path_.stat().st_mtime_ns
 
         # Mutate modules/<name>/ so sync has work to do.
-        (app / "modules" / "my-local" / "src.c").write_text("// stomped")
+        (app / "modules" / "my-local" / "src.c").write_text("// stomped", encoding="utf-8")
 
         sync_app_impl(app, force=True)
 
         # Lock must be byte-identical even after a re-vendor.
-        assert lock_path_.read_text() == before_text
+        assert lock_path_.read_text(encoding="utf-8") == before_text
         assert lock_path_.stat().st_mtime_ns == before_mtime
 
     def test_sync_detects_local_source_drift(self, app: Path, tmp_path: Path) -> None:
@@ -273,17 +273,17 @@ class TestSyncFrozen:
         """
         ext = tmp_path / "ext-source"
         ext.mkdir()
-        (ext / "src.c").write_text("// v1")
-        (ext / "nsx-module.yaml").write_text("schema_version: 1\n")
+        (ext / "src.c").write_text("// v1", encoding="utf-8")
+        (ext / "nsx-module.yaml").write_text("schema_version: 1\n", encoding="utf-8")
 
         _write_nsx_yml(app, [{"name": "my-local", "source": {"path": str(ext)}}])
         lock_app_impl(app)
         sync_app_impl(app)
-        assert (app / "modules" / "my-local" / "src.c").read_text() == "// v1"
+        assert (app / "modules" / "my-local" / "src.c").read_text(encoding="utf-8") == "// v1"
 
         # Drift the upstream source; the on-disk mirror still matches
         # the lock's recorded content_hash (it's the v1-source hash).
-        (ext / "src.c").write_text("// v2")
+        (ext / "src.c").write_text("// v2", encoding="utf-8")
 
         # --frozen must surface the upstream drift.
         with pytest.raises(NSXError):
@@ -291,7 +291,7 @@ class TestSyncFrozen:
 
         # A plain sync must update the mirror to match current source.
         sync_app_impl(app)
-        assert (app / "modules" / "my-local" / "src.c").read_text() == "// v2"
+        assert (app / "modules" / "my-local" / "src.c").read_text(encoding="utf-8") == "// v2"
 
 
 # ---------------------------------------------------------------------------
@@ -303,8 +303,8 @@ class TestLocalKind:
     def test_lock_records_local(self, app: Path, tmp_path: Path) -> None:
         ext = tmp_path / "ext-source"
         ext.mkdir()
-        (ext / "src.c").write_text("// local source")
-        (ext / "nsx-module.yaml").write_text("schema_version: 1\n")
+        (ext / "src.c").write_text("// local source", encoding="utf-8")
+        (ext / "nsx-module.yaml").write_text("schema_version: 1\n", encoding="utf-8")
 
         _write_nsx_yml(app, [{"name": "my-local", "source": {"path": str(ext)}}])
         lock_app_impl(app)
@@ -324,7 +324,7 @@ class TestLocalKind:
         """
         mod_dir = app / "modules" / "bare-local"
         mod_dir.mkdir(parents=True)
-        (mod_dir / "src.c").write_text("// local")
+        (mod_dir / "src.c").write_text("// local", encoding="utf-8")
 
         _write_nsx_yml(app, [{"name": "bare-local", "local": True}])
 
@@ -350,8 +350,8 @@ class TestLocalKind:
         """
         ext = tmp_path / "ext-proj"
         ext.mkdir()
-        (ext / "src.c").write_text("// from local project")
-        (ext / "nsx-module.yaml").write_text("schema_version: 1\n")
+        (ext / "src.c").write_text("// from local project", encoding="utf-8")
+        (ext / "nsx-module.yaml").write_text("schema_version: 1\n", encoding="utf-8")
 
         # Keep a vendored module dir matching the project's configured
         # ``path`` (modules/local-proj/) so sync-style code paths can
@@ -360,7 +360,7 @@ class TestLocalKind:
         # source), not from this vendored directory.
         mod_dir = app / "modules" / "local-proj"
         mod_dir.mkdir(parents=True)
-        (mod_dir / "src.c").write_text("// from local project")
+        (mod_dir / "src.c").write_text("// from local project", encoding="utf-8")
 
         _write_nsx_yml(
             app,
@@ -722,7 +722,7 @@ class TestAddVendoredModule:
         assert (m_dir / "nsx-module.yaml").exists()
         assert (m_dir / "CMakeLists.txt").exists()
 
-        cfg = yaml.safe_load((app / "nsx.yml").read_text())
+        cfg = yaml.safe_load((app / "nsx.yml").read_text(encoding="utf-8"))
         names = [m["name"] for m in cfg["modules"]]
         assert "my-aot" in names
         entry = next(m for m in cfg["modules"] if m["name"] == "my-aot")
@@ -732,7 +732,7 @@ class TestAddVendoredModule:
         _write_nsx_yml(app)
         add_module_impl(app, "my-aot", vendored=True)
 
-        gitignore = (app / "modules" / ".gitignore").read_text()
+        gitignore = (app / "modules" / ".gitignore").read_text(encoding="utf-8")
         # The vendored module name must NOT appear as an active ignore line
         # (it may appear as a comment for clarity).
         for raw in gitignore.splitlines():
@@ -758,5 +758,5 @@ class TestAddVendoredModule:
         add_module_impl(app, "my-aot", vendored=True, dry_run=True)
 
         assert not (app / "modules" / "my-aot").exists()
-        cfg = yaml.safe_load((app / "nsx.yml").read_text())
+        cfg = yaml.safe_load((app / "nsx.yml").read_text(encoding="utf-8"))
         assert cfg["modules"] in (None, [])

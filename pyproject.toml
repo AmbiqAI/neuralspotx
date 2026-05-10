@@ -55,8 +55,18 @@ testpaths = ["tests"]
 [tool.ruff]
 line-length = 100
 target-version = "py310"
+preview = true
 
 [tool.ruff.lint]
+# Enable preview to pick up PLW1514 ("unspecified-encoding"), which
+# flags `open(...)`, `Path.read_text(...)`, `Path.write_text(...)`,
+# etc. without an explicit `encoding=` argument. This protects us
+# from a recurrence of the R17/Windows mojibake bug, where the
+# default locale encoding (cp1252 on Windows) silently corrupted an
+# em-dash in a generated CMake file.
+extend-select = [
+    "PLW1514",  # unspecified-encoding
+]
 select = [
     "E4",
     "E7",

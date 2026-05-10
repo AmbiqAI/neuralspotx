@@ -72,10 +72,56 @@ jobs:
           --ignore=tests/test_example_builds.py
 
   # ---------------------------------------------------------------
-  # Example builds — cross-compile examples on all three platforms
-  # Requires arm-none-eabi-gcc, cmake, and ninja.
+  # Unit tests under a non-UTF-8 locale (C/POSIX).
+  #
+  # Catches the R17 failure class: code that calls `open(...)`,
+  # `Path.read_text(...)`, or `Path.write_text(...)` without an
+  # explicit `encoding="utf-8"` falls back to the locale encoding
+  # (ANSI on Windows, ASCII under LC_ALL=C on Linux). Any non-ASCII
+  # byte (em-dash, smart quote, accented letter) then raises
+  # UnicodeDecodeError or — worse — silently mojibakes a generated
+  # artefact and trips a downstream byte-equality check.
+  #
+  # Pinned to Linux because LC_ALL=C is portable there; Windows
+  # uses chcp/Active Code Page and is exercised by the regular
+  # matrix lane above.
   # ---------------------------------------------------------------
-  example-builds:
+  unit-tests-c-locale:
+    runs-on: ubuntu-latest
+    env:
+      LC_ALL: C
+      LANG: C
+      PYTHONIOENCODING: ascii
+      PYTHONUTF8: "0"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install test dependencies
+        run: uv sync --group test
+
+      - name: Show effective locale
+        run: |
+          locale || true
+          python -c "import locale, sys; print('preferred=', locale.getpreferredencoding(False)); print('stdout=', sys.stdout.encoding); print('PYTHONUTF8=', __import__('os').environ.get('PYTHONUTF8'))"
+
+      - name: Run pytest (unit tests only) under C locale
+        run: >-
+          uv run --group test pytest tests/
+          -q
+          --ignore=tests/test_example_builds.py
+
+
     strategy:
       fail-fast: false
       matrix:

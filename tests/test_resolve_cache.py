@@ -82,17 +82,19 @@ class TestInvalidateAll:
 class TestCorruptCache:
     def test_corrupt_json_returns_miss(self, tmp_path: Path):
         cache_file = tmp_path / "resolve-ref-cache.json"
-        cache_file.write_text("not valid json {{{")
+        cache_file.write_text("not valid json {{{", encoding="utf-8")
         assert _resolve_cache.get("https://github.com/a/b", "main") is None
 
     def test_wrong_schema_returns_miss(self, tmp_path: Path):
         cache_file = tmp_path / "resolve-ref-cache.json"
-        cache_file.write_text(json.dumps(["not", "a", "dict"]))
+        cache_file.write_text(json.dumps(["not", "a", "dict"]), encoding="utf-8")
         assert _resolve_cache.get("https://github.com/a/b", "main") is None
 
     def test_malformed_entry_returns_miss(self, tmp_path: Path):
         cache_file = tmp_path / "resolve-ref-cache.json"
-        cache_file.write_text(json.dumps({"https://github.com/a/b\tmain": "not a list"}))
+        cache_file.write_text(
+            json.dumps({"https://github.com/a/b\tmain": "not a list"}), encoding="utf-8"
+        )
         assert _resolve_cache.get("https://github.com/a/b", "main") is None
 
 
@@ -103,12 +105,12 @@ class TestPruning:
         # Seed a stale entry manually
         stale_ts = time.time() - 100
         data = {"https://github.com/old\told-ref": ["x" * 40, "branch", stale_ts]}
-        cache_file.write_text(json.dumps(data))
+        cache_file.write_text(json.dumps(data), encoding="utf-8")
 
         # Put a fresh entry — the stale one should be pruned
         _resolve_cache.put("https://github.com/new", "main", "y" * 40, "branch")
 
-        raw = json.loads(cache_file.read_text())
+        raw = json.loads(cache_file.read_text(encoding="utf-8"))
         assert "https://github.com/old\told-ref" not in raw
         assert "https://github.com/new\tmain" in raw
 
@@ -242,5 +244,5 @@ class TestResolveCacheConcurrencyR19:
         # After the race, the cache file must be either absent or valid JSON.
         cache_file = tmp_path / "resolve-ref-cache.json"
         if cache_file.exists():
-            data = json.loads(cache_file.read_text())
+            data = json.loads(cache_file.read_text(encoding="utf-8"))
             assert isinstance(data, dict)

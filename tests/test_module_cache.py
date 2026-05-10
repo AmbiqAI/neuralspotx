@@ -118,10 +118,10 @@ class TestDisableSwitch:
 
 def _make_tree(root: Path) -> None:
     root.mkdir(parents=True, exist_ok=True)
-    (root / "a.txt").write_text("hello\n")
+    (root / "a.txt").write_text("hello\n", encoding="utf-8")
     sub = root / "sub"
     sub.mkdir()
-    (sub / "b.txt").write_text("world\n")
+    (sub / "b.txt").write_text("world\n", encoding="utf-8")
 
 
 @pytest.fixture
@@ -142,16 +142,16 @@ class TestPopulateLookup:
 
         dest = cache_dir / "dest"
         assert module_cache.lookup(digest, dest) is True
-        assert (dest / "a.txt").read_text() == "hello\n"
-        assert (dest / "sub" / "b.txt").read_text() == "world\n"
+        assert (dest / "a.txt").read_text(encoding="utf-8") == "hello\n"
+        assert (dest / "sub" / "b.txt").read_text(encoding="utf-8") == "world\n"
 
     def test_lookup_miss_returns_false_and_leaves_dest_alone(self, cache_dir: Path) -> None:
         dest = cache_dir / "dest"
         dest.mkdir()
-        (dest / "keep.txt").write_text("untouched")
+        (dest / "keep.txt").write_text("untouched", encoding="utf-8")
 
         assert module_cache.lookup("sha256:" + "f" * 64, dest) is False
-        assert (dest / "keep.txt").read_text() == "untouched"
+        assert (dest / "keep.txt").read_text(encoding="utf-8") == "untouched"
 
     def test_lookup_replaces_existing_dest_on_hit(self, cache_dir: Path) -> None:
         src = cache_dir / "src"
@@ -161,7 +161,7 @@ class TestPopulateLookup:
 
         dest = cache_dir / "dest"
         dest.mkdir()
-        (dest / "stale.txt").write_text("old")
+        (dest / "stale.txt").write_text("old", encoding="utf-8")
 
         assert module_cache.lookup(digest, dest) is True
         assert not (dest / "stale.txt").exists()
@@ -189,19 +189,19 @@ class TestPopulateLookup:
 
         module_cache.populate(digest, src)
         # Mutate src; second populate should be a no-op (existing entry wins).
-        (src / "a.txt").write_text("changed\n")
+        (src / "a.txt").write_text("changed\n", encoding="utf-8")
         module_cache.populate(digest, src)
 
         dest = cache_dir / "dest"
         assert module_cache.lookup(digest, dest) is True
-        assert (dest / "a.txt").read_text() == "hello\n"
+        assert (dest / "a.txt").read_text(encoding="utf-8") == "hello\n"
 
     def test_corrupt_cache_entry_is_treated_as_miss(self, cache_dir: Path) -> None:
         digest = "sha256:" + "e" * 64
         entry = module_cache.cache_entry_for_hash(digest)
         entry.parent.mkdir(parents=True, exist_ok=True)
         # Create a *file* where a directory is expected.
-        entry.write_text("not a dir")
+        entry.write_text("not a dir", encoding="utf-8")
 
         dest = cache_dir / "dest"
         assert module_cache.lookup(digest, dest) is False
@@ -273,10 +273,10 @@ def _fake_clone(payload: dict[str, str]):
         state["calls"] += 1
         Path(dest).mkdir(parents=True, exist_ok=True)
         for name, content in payload.items():
-            (Path(dest) / name).write_text(content)
+            (Path(dest) / name).write_text(content, encoding="utf-8")
         # Simulate a .git that the caller is expected to strip.
         (Path(dest) / ".git").mkdir()
-        (Path(dest) / ".git" / "HEAD").write_text("ref: refs/heads/main\n")
+        (Path(dest) / ".git" / "HEAD").write_text("ref: refs/heads/main\n", encoding="utf-8")
 
     return _clone, state
 
@@ -299,14 +299,14 @@ class TestVendorGitIntegration:
 
         assert state["calls"] == 1
         clone_dir = app_dir / "modules" / "demo-proj"
-        assert (clone_dir / "file.txt").read_text() == "v1"
+        assert (clone_dir / "file.txt").read_text(encoding="utf-8") == "v1"
         # .git must be stripped after vendor.
         assert not (clone_dir / ".git").exists()
 
         # Cache should now have an entry mirroring the stripped tree.
         entry = module_cache.cache_entry_for_hash(digest)
         assert entry.is_dir()
-        assert (entry / "file.txt").read_text() == "v1"
+        assert (entry / "file.txt").read_text(encoding="utf-8") == "v1"
         assert not (entry / ".git").exists()
 
     def test_cache_hit_skips_clone(
@@ -317,7 +317,7 @@ class TestVendorGitIntegration:
         # Pre-populate the cache.
         src = cache_dir / "prebuilt"
         src.mkdir()
-        (src / "file.txt").write_text("from-cache")
+        (src / "file.txt").write_text("from-cache", encoding="utf-8")
         digest = "sha256:" + "2" * 64
         module_cache.populate(digest, src)
 
@@ -332,7 +332,7 @@ class TestVendorGitIntegration:
 
         assert state["calls"] == 0
         clone_dir = app_dir / "modules" / "demo-proj"
-        assert (clone_dir / "file.txt").read_text() == "from-cache"
+        assert (clone_dir / "file.txt").read_text(encoding="utf-8") == "from-cache"
 
     def test_no_content_hash_bypasses_cache(
         self,
@@ -358,7 +358,7 @@ class TestVendorGitIntegration:
         # Pre-populate (without disable), then disable: lookup must miss.
         src = cache_dir / "prebuilt"
         src.mkdir()
-        (src / "file.txt").write_text("cached")
+        (src / "file.txt").write_text("cached", encoding="utf-8")
         digest = "sha256:" + "3" * 64
         module_cache.populate(digest, src)
 
@@ -374,7 +374,7 @@ class TestVendorGitIntegration:
 
         assert state["calls"] == 1
         clone_dir = app_dir / "modules" / "demo-proj"
-        assert (clone_dir / "file.txt").read_text() == "fresh"
+        assert (clone_dir / "file.txt").read_text(encoding="utf-8") == "fresh"
 
 
 # ---------------------------------------------------------------------------
@@ -388,9 +388,9 @@ def _make_source_tree(root: Path, name: str, content: str = "hello") -> Path:
     """Create a simple source tree for cache population."""
     src = root / name
     src.mkdir(parents=True, exist_ok=True)
-    (src / "file.txt").write_text(content)
+    (src / "file.txt").write_text(content, encoding="utf-8")
     (src / "sub").mkdir(exist_ok=True)
-    (src / "sub" / "nested.txt").write_text(f"nested-{name}")
+    (src / "sub" / "nested.txt").write_text(f"nested-{name}", encoding="utf-8")
     return src
 
 
@@ -470,7 +470,7 @@ class TestModuleCacheConcurrencyR19:
         for i, digest in enumerate(digests):
             dest = tmp_path / f"lookup-{i}"
             assert module_cache.lookup(digest, dest) is True
-            assert (dest / "file.txt").read_text() == f"content-{i}"
+            assert (dest / "file.txt").read_text(encoding="utf-8") == f"content-{i}"
 
     def test_concurrent_lookup_during_populate(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
