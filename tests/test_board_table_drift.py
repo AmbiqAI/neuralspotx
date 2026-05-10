@@ -51,7 +51,7 @@ def test_committed_cmake_table_matches_generator_output() -> None:
     expected = gen.render()
     # Normalize line endings: git on Windows checks out text files with
     # CRLF by default, but the generator emits LF.
-    actual = TABLE_FILE.read_text().replace("\r\n", "\n")
+    actual = TABLE_FILE.read_text(encoding="utf-8").replace("\r\n", "\n")
     assert actual == expected, (
         "nsx_board_table.cmake is stale. "
         "Run `python scripts/gen_board_table.py` and commit the result."

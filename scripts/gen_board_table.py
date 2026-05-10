@@ -64,7 +64,7 @@ def render() -> str:
 
 def main() -> int:
     content = render()
-    OUTPUT.write_text(content)
+    OUTPUT.write_text(content, encoding="utf-8", newline="\n")
     print(f"Wrote {OUTPUT.relative_to(REPO_ROOT)} ({len(BOARD_SDK_PROVIDER)} boards)")
     return 0
 
