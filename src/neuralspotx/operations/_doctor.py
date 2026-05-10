@@ -6,7 +6,7 @@ import os
 import shutil
 import subprocess
 
-from .._errors import NSXToolchainError
+from ..models import DoctorCheck, DoctorReport
 from ..subprocess_utils import jlink_failure_hint
 from ..tooling import (
     JLINK_NAMES,
@@ -17,23 +17,60 @@ from ..tooling import (
 )
 
 
-def doctor_impl() -> None:
-    """Run the NSX environment diagnostics and fail on missing prerequisites."""
+class _Reporter:
+    """Collect :class:`DoctorCheck` rows while preserving the historic
+    side-effect of printing each check immediately."""
 
-    all_ok = True
+    def __init__(self) -> None:
+        self.checks: list[DoctorCheck] = []
+        self.notes: list[str] = []
+
+    def check(
+        self,
+        label: str,
+        ok: bool,
+        *,
+        required: bool = True,
+        detail: str | None = None,
+        hint: str | None = None,
+    ) -> bool:
+        # ``doctor_check`` performs the user-visible print so the CLI
+        # output remains byte-identical; we record the structured row
+        # alongside it for embedders.
+        doctor_check(label, ok, detail=detail, hint=hint)
+        self.checks.append(
+            DoctorCheck(label=label, ok=ok, required=required, detail=detail, hint=hint)
+        )
+        return ok
+
+    def note(self, line: str) -> None:
+        print(line)
+        self.notes.append(line.strip())
+
+
+def doctor_impl() -> DoctorReport:
+    """Run the NSX environment diagnostics.
+
+    Returns the structured :class:`DoctorReport`. The CLI is responsible
+    for raising :class:`~neuralspotx._errors.NSXToolchainError` when
+    ``report.ok`` is false; ``api.doctor()`` itself never raises so
+    embedders can render or act on partial failures.
+    """
+
+    r = _Reporter()
 
     python_exe = shutil.which("python") or shutil.which("python3")
-    all_ok &= doctor_check("Python", python_exe is not None, detail=python_exe)
-    all_ok &= doctor_check("uv", tool_path("uv") is not None, detail=tool_path("uv"))
-    all_ok &= doctor_check("cmake", tool_path("cmake") is not None, detail=tool_path("cmake"))
-    all_ok &= doctor_check("ninja", tool_path("ninja") is not None, detail=tool_path("ninja"))
-    all_ok &= doctor_check(
+    r.check("Python", python_exe is not None, detail=python_exe)
+    r.check("uv", tool_path("uv") is not None, detail=tool_path("uv"))
+    r.check("cmake", tool_path("cmake") is not None, detail=tool_path("cmake"))
+    r.check("ninja", tool_path("ninja") is not None, detail=tool_path("ninja"))
+    r.check(
         "git",
         tool_path("git") is not None,
         detail=tool_path("git"),
         hint="Install git.",
     )
-    all_ok &= doctor_check(
+    r.check(
         "arm-none-eabi-gcc",
         tool_path("arm-none-eabi-gcc") is not None,
         detail=tool_path("arm-none-eabi-gcc"),
@@ -45,26 +82,29 @@ def doctor_impl() -> None:
     armlink_path = tool_path("armlink")
     fromelf_path = tool_path("fromelf")
     if armclang_path or armlink_path or fromelf_path:
-        doctor_check(
+        r.check(
             "armclang",
             armclang_path is not None,
+            required=False,
             detail=armclang_path,
             hint="Install Arm Compiler for Embedded (armclang) if you want the armclang toolchain.",
         )
-        doctor_check(
+        r.check(
             "armlink",
             armlink_path is not None,
+            required=False,
             detail=armlink_path,
             hint="armlink should ship alongside armclang.",
         )
-        doctor_check(
+        r.check(
             "fromelf",
             fromelf_path is not None,
+            required=False,
             detail=fromelf_path,
             hint="fromelf should ship alongside armclang.",
         )
     else:
-        print("  (armclang toolchain not detected — optional)")
+        r.note("  (armclang toolchain not detected — optional)")
 
     # ATfE (Arm Toolchain for Embedded) — optional.
     # ATFE_ROOT env var points to the install dir; tools are NOT on PATH.
@@ -86,30 +126,33 @@ def doctor_impl() -> None:
             if os.path.isfile(os.path.join(atfe_bin, "newlib.cfg"))
             else None
         )
-        doctor_check(
+        r.check(
             "ATfE clang",
             atfe_clang is not None,
+            required=False,
             detail=atfe_clang,
             hint="ATFE_ROOT is set but clang not found in $ATFE_ROOT/bin.",
         )
-        doctor_check(
+        r.check(
             "ATfE llvm-objcopy",
             atfe_objcopy is not None,
+            required=False,
             detail=atfe_objcopy,
             hint="llvm-objcopy should ship alongside ATfE clang.",
         )
-        doctor_check(
+        r.check(
             "ATfE newlib.cfg",
             atfe_newlib_cfg is not None,
+            required=False,
             detail=atfe_newlib_cfg,
             hint="Install the ATfE newlib overlay — extract ATfE-newlib-overlay on top of the ATfE install.",
         )
     else:
-        print("  (ATfE toolchain not detected — set ATFE_ROOT to enable; optional)")
+        r.note("  (ATfE toolchain not detected — set ATFE_ROOT to enable; optional)")
 
     jlink_path = find_segger_tool(JLINK_NAMES)
     jlink_ok = jlink_path is not None
-    all_ok &= doctor_check(
+    r.check(
         "SEGGER J-Link",
         jlink_ok,
         detail=jlink_path,
@@ -117,7 +160,7 @@ def doctor_impl() -> None:
     )
 
     swo_path = find_segger_tool(JLINK_SWO_NAMES)
-    all_ok &= doctor_check(
+    r.check(
         "SEGGER JLinkSWOViewerCL",
         swo_path is not None,
         detail=swo_path,
@@ -137,14 +180,14 @@ def doctor_impl() -> None:
             output = (probe.stdout or "") + (probe.stderr or "")
             dll_hint = jlink_failure_hint(output)
             if dll_hint:
-                all_ok &= doctor_check(
+                r.check(
                     "SEGGER J-Link runtime",
                     False,
                     detail=dll_hint.splitlines()[0],
                     hint="Run `JLinkExe` directly and reinstall SEGGER tools if the runtime is broken.",
                 )
             else:
-                all_ok &= doctor_check(
+                r.check(
                     "SEGGER J-Link runtime",
                     True,
                     detail="JLinkExe launched successfully.",
@@ -153,7 +196,7 @@ def doctor_impl() -> None:
             output = (exc.stdout or "") + (exc.stderr or "")
             dll_hint = jlink_failure_hint(output)
             if dll_hint:
-                all_ok &= doctor_check(
+                r.check(
                     "SEGGER J-Link runtime",
                     False,
                     detail=dll_hint.splitlines()[0],
@@ -169,7 +212,7 @@ def doctor_impl() -> None:
                 detail = f"JLinkExe exited with code {exc.returncode}" + (
                     f": {first_line}" if first_line else ""
                 )
-                all_ok &= doctor_check(
+                r.check(
                     "SEGGER J-Link runtime",
                     False,
                     detail=detail,
@@ -179,12 +222,11 @@ def doctor_impl() -> None:
                     ),
                 )
         except subprocess.TimeoutExpired:
-            all_ok &= doctor_check(
+            r.check(
                 "SEGGER J-Link runtime",
                 False,
                 detail="JLinkExe timed out (>10s).",
                 hint="JLinkExe may be hanging. Run it directly to diagnose.",
             )
 
-    if not all_ok:
-        raise NSXToolchainError("One or more required tools are missing or misconfigured.")
+    return DoctorReport(checks=tuple(r.checks), notes=tuple(r.notes))

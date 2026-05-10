@@ -26,7 +26,6 @@ import pytest
 
 from neuralspotx import (
     NSXConfigError,
-    NSXError,
     _resolve_cache,
     file_lock,
     module_registry,
@@ -237,11 +236,10 @@ class TestDoctorJLinkRuntime:
 
         monkeypatch.setattr(subprocess, "run", fake_run)
 
-        # doctor_impl raises NSXError when any check fails — that's
-        # the expected behaviour here. We just need to confirm the
-        # printed J-Link runtime line is marked FAIL, not OK.
-        with pytest.raises(NSXError):
-            operations.doctor_impl()
+        # doctor_impl now returns a DoctorReport (no raise) — the
+        # CLI handler is responsible for converting !ok into NSXError.
+        report = operations.doctor_impl()
+        assert report.ok is False
         out = capsys.readouterr().out
         # The J-Link runtime check should appear and be marked FAIL,
         # not OK.
