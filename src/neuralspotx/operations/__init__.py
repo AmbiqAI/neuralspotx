@@ -8,8 +8,10 @@ callers (``api``, ``cli``, tests) can continue to reference
 Sub-module layout
 -----------------
 
-* ``_common``         — VERBOSE, set_verbosity, status enums, name helpers,
-                        build-context resolver, vendored-module scaffolder.
+* ``_common``         — verbosity context (``set_verbosity``,
+                        ``get_verbosity``, ``verbosity``), status
+                        enums, name helpers, build-context resolver,
+                        vendored-module scaffolder.
 * ``_app_lifecycle``  — ``create_app_impl``, ``init_module_impl``.
 * ``_doctor``         — ``doctor_impl``.
 * ``_lock``           — ``lock_app_impl``, ``outdated_app_impl`` and helpers.
@@ -40,7 +42,7 @@ from ._build import (
     flash_app_impl,
     view_app_impl,
 )
-from ._common import OutdatedStatus, ProfileStatus, set_verbosity
+from ._common import OutdatedStatus, ProfileStatus, get_verbosity, set_verbosity, verbosity
 from ._doctor import doctor_impl
 from ._lock import lock_app_impl, outdated_app_impl
 from ._modules import (
@@ -78,5 +80,7 @@ __all__ = [
     "remove_module_impl",
     "update_modules_impl",
     # Verbosity
+    "get_verbosity",
     "set_verbosity",
+    "verbosity",
 ]

@@ -28,7 +28,12 @@ from pathlib import Path
 
 from ._errors import NSXTimeoutError
 
-_VERBOSE = 0
+# Verbosity for subprocess error formatting.  Stored in a ContextVar so
+# concurrent callers (threads, asyncio tasks, embedders) can scope their
+# own level without racing on a module-level global.
+_VERBOSITY: contextvars.ContextVar[int] = contextvars.ContextVar(
+    "nsx_subprocess_verbosity", default=0
+)
 
 # Default wall-clock budget for each subprocess inside a region wrapped
 # by :func:`timeout_budget`.  ``None`` means "no implicit timeout";
@@ -39,10 +44,26 @@ _TIMEOUT: contextvars.ContextVar[float | None] = contextvars.ContextVar(
 
 
 def set_verbosity(level: int) -> None:
-    """Set subprocess helper verbosity."""
+    """Set subprocess helper verbosity in the current context."""
 
-    global _VERBOSE
-    _VERBOSE = level
+    _VERBOSITY.set(level)
+
+
+def get_verbosity() -> int:
+    """Return the verbosity level visible to the current context."""
+
+    return _VERBOSITY.get()
+
+
+@contextlib.contextmanager
+def verbosity(level: int) -> Iterator[None]:
+    """Temporarily override subprocess verbosity for a scope."""
+
+    token = _VERBOSITY.set(level)
+    try:
+        yield
+    finally:
+        _VERBOSITY.reset(token)
 
 
 @contextlib.contextmanager
@@ -222,15 +243,16 @@ def format_subprocess_error(exc: subprocess.CalledProcessError, *, context: str)
         output_parts.append(stderr.strip())
     combined_output = "\n".join(output_parts)
 
+    verbose = _VERBOSITY.get()
     hint = jlink_failure_hint(combined_output)
     if hint:
         message = f"{context} failed.\n{hint}"
-        if _VERBOSE == 0:
+        if verbose == 0:
             message += "\nRe-run with `--verbose` for the full tool output."
         return message
 
     message = f"{context} failed with exit code {exc.returncode}."
-    if _VERBOSE == 0:
+    if verbose == 0:
         message += "\nRe-run with `--verbose` for the full subprocess traceback."
     return message
 

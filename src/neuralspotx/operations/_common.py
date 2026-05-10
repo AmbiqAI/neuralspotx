@@ -1,21 +1,30 @@
 """Shared helpers for the ``operations`` sub-package.
 
-Holds module-level state (``VERBOSE``), enums, name helpers, the
-build-context resolver, and the vendored-module scaffolder. Every
-other ``operations.*`` sub-module imports from here.
+Holds enums, name helpers, the build-context resolver, the
+vendored-module scaffolder, and the context-scoped verbosity
+accessors used by every other ``operations.*`` sub-module.
 """
 
 from __future__ import annotations
 
 import argparse
+import contextlib
+import contextvars
 import enum
 import logging
+from collections.abc import Iterator
 from pathlib import Path
 
 from ..project_config import _default_build_dir, _resolve_app_context
 from ..subprocess_utils import set_verbosity as set_subprocess_verbosity
+from ..subprocess_utils import verbosity as _subprocess_verbosity_scope
 
-VERBOSE = 0
+# Verbosity for operation-level helpers.  Stored in a ContextVar so
+# concurrent callers (threads, asyncio tasks, embedders) can scope
+# their own level without racing on a module-level global.
+_VERBOSITY: contextvars.ContextVar[int] = contextvars.ContextVar(
+    "nsx_operations_verbosity", default=0
+)
 _log = logging.getLogger(__name__)
 
 
@@ -26,9 +35,30 @@ def set_verbosity(level: int) -> None:
         level: Verbosity level from the CLI or programmatic caller.
     """
 
-    global VERBOSE
-    VERBOSE = level
+    _VERBOSITY.set(level)
     set_subprocess_verbosity(level)
+
+
+def get_verbosity() -> int:
+    """Return the verbosity level visible to the current context."""
+
+    return _VERBOSITY.get()
+
+
+@contextlib.contextmanager
+def verbosity(level: int) -> Iterator[None]:
+    """Temporarily override operation verbosity for a scope.
+
+    Also propagates to subprocess helpers so error-formatting hints
+    follow the same level inside the block.
+    """
+
+    token = _VERBOSITY.set(level)
+    with _subprocess_verbosity_scope(level):
+        try:
+            yield
+        finally:
+            _VERBOSITY.reset(token)
 
 
 # ---------------------------------------------------------------------------
