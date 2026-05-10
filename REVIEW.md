@@ -258,7 +258,7 @@ Items are sequenced so each builds on previous work. Check off as completed.
 - [x] **R22. Decouple `main` from package root exports.** Stop re-exporting CLI `main` from `neuralspotx.__init__` to separate library and runtime concerns. Ref: `__init__.py:37`.
 - [x] **R23. Prefetch error visibility.** Narrow `except Exception` in parallel prefetch to specific expected failures; log root cause instead of silently retrying serially. Ref: `operations.py:1243`.
 - [x] **R24. `create_app` rollback on failure.** Add cleanup/recovery marker so interrupted bootstrap doesn't leave half-generated app state. Ref: `operations.py:192`.
-- [ ] **R25. Decompose `operations.py` into `operations/` package.** The 2215-line monolith mixes four distinct concern clusters. Convert to an `operations/` package with sub-modules; `__init__.py` re-exports all public names for full backward compatibility (`from neuralspotx import operations` / `operations.lock_app_impl(...)` unchanged).
+- [x] **R25. Decompose `operations.py` into `operations/` package.** The 2215-line monolith mixes four distinct concern clusters. Convert to an `operations/` package with sub-modules; `__init__.py` re-exports all public names for full backward compatibility (`from neuralspotx import operations` / `operations.lock_app_impl(...)` unchanged).
 
   **Proposed sub-modules** (dependency DAG — no cycles):
 

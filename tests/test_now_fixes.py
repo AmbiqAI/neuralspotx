@@ -225,7 +225,7 @@ class TestDoctorJLinkRuntime:
 
         # Force jlink path to be discovered, swo viewer to be discovered,
         # and the subprocess probe to fail with an unrecognised message.
-        monkeypatch.setattr(operations, "find_segger_tool", lambda _names: "/fake/JLinkExe")
+        monkeypatch.setattr(operations._doctor, "find_segger_tool", lambda _names: "/fake/JLinkExe")
 
         def fake_run(*_args: object, **_kwargs: object) -> object:
             raise subprocess.CalledProcessError(

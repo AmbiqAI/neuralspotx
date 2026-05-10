@@ -404,9 +404,9 @@ class TestLocalKind:
 class TestGitKind:
     def test_git_lock_records_commit(self, app: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         fake_sha = "a" * 40
-        monkeypatch.setattr(operations, "resolve_ref", lambda url, ref: (fake_sha, "branch"))
+        monkeypatch.setattr(operations._lock, "resolve_ref", lambda url, ref: (fake_sha, "branch"))
         monkeypatch.setattr(
-            operations,
+            operations._lock,
             "hash_git_artifact",
             lambda url, commit: "sha256:" + "f" * 64,
         )
@@ -435,7 +435,7 @@ class TestGitKind:
         def _fail(url: str, ref: str) -> str:
             raise ResolutionError("offline")
 
-        monkeypatch.setattr(operations, "resolve_ref", _fail)
+        monkeypatch.setattr(operations._lock, "resolve_ref", _fail)
 
         _write_nsx_yml(
             app,
@@ -457,9 +457,9 @@ class TestGitKind:
         """An older nsx.lock on disk must not block ``nsx lock`` from regenerating."""
 
         fake_sha = "d" * 40
-        monkeypatch.setattr(operations, "resolve_ref", lambda url, ref: (fake_sha, "branch"))
+        monkeypatch.setattr(operations._lock, "resolve_ref", lambda url, ref: (fake_sha, "branch"))
         monkeypatch.setattr(
-            operations,
+            operations._lock,
             "hash_git_artifact",
             lambda url, commit: "sha256:" + "e" * 64,
         )
@@ -523,10 +523,10 @@ class TestOutdatedJson:
         capsys: pytest.CaptureFixture[str],
         sha: str,
     ) -> None:
-        monkeypatch.setattr(operations, "resolve_ref", lambda url, ref: (sha, "branch"))
-        monkeypatch.setattr(operations, "resolve_commit", lambda url, ref: sha)
+        monkeypatch.setattr(operations._lock, "resolve_ref", lambda url, ref: (sha, "branch"))
+        monkeypatch.setattr(operations._lock, "resolve_commit", lambda url, ref: sha)
         monkeypatch.setattr(
-            operations,
+            operations._lock,
             "hash_git_artifact",
             lambda url, commit: "sha256:" + "f" * 64,
         )
@@ -549,7 +549,7 @@ class TestOutdatedJson:
         self._setup_locked_at(app, monkeypatch, capsys, locked)
 
         # Upstream "moves".
-        monkeypatch.setattr(operations, "resolve_commit", lambda url, ref: upstream)
+        monkeypatch.setattr(operations._lock, "resolve_commit", lambda url, ref: upstream)
 
         rc = outdated_app_impl(app, as_json=True)
 
