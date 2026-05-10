@@ -98,7 +98,7 @@ def flash_app_impl(
         )
     target = f"{app_name}_flash"
     cmd = ["cmake", "--build", str(resolved_build_dir), "--target", target, "-j", str(jobs)]
-    if _common.VERBOSE > 0:
+    if _common.get_verbosity() > 0:
         run(cmd)
         return resolved_build_dir
     try:
@@ -151,7 +151,7 @@ def view_app_impl(
                 "-j",
                 "1",
             ]
-            if _common.VERBOSE > 0:
+            if _common.get_verbosity() > 0:
                 run(reset_cmd)
             else:
                 try:

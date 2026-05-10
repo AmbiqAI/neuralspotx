@@ -30,8 +30,6 @@ from .project_config import (
 )
 from .subprocess_utils import format_subprocess_error
 
-VERBOSE = 0
-
 _C = CommandCategory
 _S = CommandScope
 
@@ -1224,14 +1222,12 @@ def _build_parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     parser = _build_parser()
     args = parser.parse_args(argv)
-    global VERBOSE
-    VERBOSE = args.verbose
     configure_logging(args.verbose, quiet=args.quiet)
     operations.set_verbosity(args.verbose)
     try:
         args.func(args)
     except subprocess.CalledProcessError as exc:
-        if VERBOSE > 0:
+        if args.verbose > 0:
             raise
         sys.stderr.write(f"error: {format_subprocess_error(exc, context='Command')}\n")
         return 1
