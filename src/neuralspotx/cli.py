@@ -18,11 +18,8 @@ from .models import CommandCategory, CommandHint, CommandScope, DiscoveryRecord,
 from .module_discovery import (
     resolve_module_context,
     resolve_target_context,
-    search_modules,
 )
 from .module_registry import (
-    _module_discovery_record,
-    _module_discovery_records,
     _print_module_table,
 )
 from .project_config import (
@@ -460,7 +457,7 @@ def _print_module_search_results(
 
 def cmd_module_search(args: argparse.Namespace) -> None:
     app_dir = _resolve_cli_app_dir(args.app_dir)
-    results = search_modules(
+    results = api.search_modules(
         args.query,
         app_dir=app_dir,
         board=args.board,
@@ -502,18 +499,15 @@ def cmd_module_list(args: argparse.Namespace) -> None:
     app_dir = None if args.registry_only else _resolve_cli_app_dir(args.app_dir)
     registry, enabled, resolved_app, scope = resolve_module_context(app_dir=app_dir)
     if args.json:
+        records = api.list_modules(
+            app_dir=resolved_app,
+            registry_only=args.registry_only,
+            include_metadata=True,
+        )
         payload = {
             "scope": scope,
             "app_dir": str(resolved_app) if resolved_app else None,
-            "modules": [
-                r.to_dict()
-                for r in _module_discovery_records(
-                    registry,
-                    enabled,
-                    app_dir=resolved_app,
-                    include_metadata=True,
-                )
-            ],
+            "modules": [r.to_dict() for r in records],
         }
         print(json.dumps(payload, indent=2, sort_keys=True))
         return
@@ -531,15 +525,9 @@ def cmd_module_list(args: argparse.Namespace) -> None:
 
 def cmd_module_describe(args: argparse.Namespace) -> None:
     app_dir = _resolve_cli_app_dir(args.app_dir)
-    registry, enabled, resolved_app, scope = resolve_module_context(app_dir=app_dir)
+    _, _, resolved_app, scope = resolve_module_context(app_dir=app_dir)
     try:
-        record = _module_discovery_record(
-            args.module,
-            registry,
-            app_dir=resolved_app,
-            enabled=args.module in enabled,
-            include_metadata=True,
-        )
+        record = api.describe_module(args.module, app_dir=resolved_app)
     except ValueError as exc:
         raise NSXModuleError(str(exc)) from None
 
