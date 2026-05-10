@@ -14,6 +14,7 @@ from ._errors import (
 )
 from .metadata import load_yaml, validate_nsx_module_metadata
 from .models import DiscoveryRecord, SearchResult
+from .nsx_lock import NsxLock
 from .subprocess_utils import timeout_budget
 
 PathLike = str | Path
@@ -730,10 +731,11 @@ def lock_app(
     quiet: bool = False,
     timeout_s: float | None = None,
     resolve_ttl_s: float | None = None,
-) -> Path:
+) -> NsxLock:
     """Resolve module constraints and write ``nsx.lock``.
 
-    Returns the path to the lock file (whether or not it was written).
+    Returns the resolved :class:`~neuralspotx.nsx_lock.NsxLock`. The
+    filesystem path to the lock file is available on ``lock.path``.
     *timeout_s* applies per ``git`` / ``git ls-remote`` subprocess.
     *resolve_ttl_s* overrides the ``NSX_RESOLVE_TTL`` env for this call
     (e.g. ``1800`` for 30 min in long workflows; ``0`` to disable).

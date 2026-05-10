@@ -513,7 +513,7 @@ def lock_app_impl(
     modules: list[str] | None = None,
     check: bool = False,
     quiet: bool = False,
-) -> Path:
+) -> NsxLock:
     """Resolve and write ``nsx.lock`` for *app_dir*.
 
     Args:
@@ -531,7 +531,9 @@ def lock_app_impl(
             already printed its own summary.
 
     Returns:
-        The path to the (would-be) ``nsx.lock``.
+        The resolved :class:`~neuralspotx.nsx_lock.NsxLock`. The
+        filesystem path to the (would-be) ``nsx.lock`` is available
+        on ``lock.path``.
     """
 
     # ``--check`` is read-only (no writes to ``nsx.lock`` or build glue),
@@ -554,7 +556,7 @@ def _lock_app_impl_unlocked(
     modules: list[str] | None = None,
     check: bool = False,
     quiet: bool = False,
-) -> Path:
+) -> NsxLock:
     previous = read_lock(app_dir, allow_legacy=True)
     on_disk_lock = previous  # capture before update-mutation
 
@@ -592,7 +594,8 @@ def _lock_app_impl_unlocked(
         )
         if not diff:
             print(f"{rel} is up to date.")
-            return lock_file
+            lock.path = lock_file
+            return lock
         print(f"{rel} is OUT OF DATE:")
         for line in diff:
             print(f"  {line}")
@@ -600,8 +603,9 @@ def _lock_app_impl_unlocked(
         raise NSXError(1)
 
     path = write_lock(app_dir, lock)
+    # ``write_lock`` already stamps ``lock.path`` for us.
     if quiet:
-        return path
+        return lock
     print(
         f"Wrote {path.relative_to(app_dir.parent) if path.is_relative_to(app_dir.parent) else path}"
     )
@@ -616,7 +620,7 @@ def _lock_app_impl_unlocked(
     if n_unres:
         parts.append(f"{n_unres} unresolved (upstream unreachable)")
     print(f"  modules: {len(lock.modules)} ({', '.join(parts)})")
-    return path
+    return lock
 
 
 def _diff_locks(previous: NsxLock | None, fresh: NsxLock) -> list[str]:
