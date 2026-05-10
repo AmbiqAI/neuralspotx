@@ -13,7 +13,7 @@ from ._errors import (
     NSXModuleError,
 )
 from .metadata import load_yaml, validate_nsx_module_metadata
-from .models import DiscoveryRecord, DoctorReport, OutdatedReport, SearchResult
+from .models import DiscoveryRecord, DoctorReport, ModuleChange, OutdatedReport, SearchResult
 from .nsx_lock import NsxLock
 from .subprocess_utils import timeout_budget
 
@@ -477,7 +477,7 @@ def add_module(
     dry_run: bool = False,
     local: bool = False,
     vendored: bool = False,
-) -> None:
+) -> list[ModuleChange]:
     """Add a module to an app."""
 
     request = (
@@ -493,7 +493,7 @@ def add_module(
     )
     if not request.module:
         raise NSXModuleError("add_module requires a module name")
-    operations.add_module_impl(
+    return operations.add_module_impl(
         Path(request.app_dir).expanduser().resolve(),
         request.module,
         local=request.local,
@@ -507,7 +507,7 @@ def remove_module(
     module: str | None = None,
     *,
     dry_run: bool = False,
-) -> None:
+) -> list[ModuleChange]:
     """Remove a module from an app."""
 
     request = (
@@ -521,7 +521,7 @@ def remove_module(
     )
     if not request.module:
         raise NSXModuleError("remove_module requires a module name")
-    operations.remove_module_impl(
+    return operations.remove_module_impl(
         Path(request.app_dir).expanduser().resolve(),
         request.module,
         dry_run=request.dry_run,
@@ -533,7 +533,7 @@ def update_modules(
     *,
     module: str | None = None,
     dry_run: bool = False,
-) -> None:
+) -> list[ModuleChange]:
     """Refresh one or more enabled modules from the registry."""
 
     request = (
@@ -545,7 +545,7 @@ def update_modules(
             dry_run=dry_run,
         )
     )
-    operations.update_modules_impl(
+    return operations.update_modules_impl(
         Path(request.app_dir).expanduser().resolve(),
         module_name=request.module,
         dry_run=request.dry_run,
@@ -564,7 +564,7 @@ def register_module(
     project_local_path: PathLike | None = None,
     override: bool = False,
     dry_run: bool = False,
-) -> None:
+) -> ModuleChange:
     """Register an app-local module override."""
 
     request = (
@@ -585,7 +585,7 @@ def register_module(
     )
     if not request.module or not request.metadata or not request.project:
         raise NSXModuleError("register_module requires module, metadata, and project")
-    operations.register_module_impl(
+    return operations.register_module_impl(
         Path(request.app_dir).expanduser().resolve(),
         request.module,
         metadata=Path(request.metadata).expanduser(),
@@ -613,7 +613,7 @@ def init_module(
     socs: list[str] | None = None,
     toolchains: list[str] | None = None,
     force: bool = False,
-) -> None:
+) -> ModuleChange:
     """Create a standard custom-module skeleton on disk."""
 
     request = (
@@ -632,7 +632,7 @@ def init_module(
             force=force,
         )
     )
-    operations.init_module_impl(
+    return operations.init_module_impl(
         Path(request.module_dir).expanduser().resolve(),
         module_name=request.module_name,
         module_type=request.module_type,

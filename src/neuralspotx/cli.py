@@ -19,6 +19,7 @@ from .models import (
     CommandHint,
     CommandScope,
     DiscoveryRecord,
+    ModuleChange,
     OutdatedReport,
     SearchResult,
 )
@@ -429,6 +430,61 @@ def _render_outdated_report(report: OutdatedReport) -> None:
         print("All git modules are up-to-date with their constraints.")
 
 
+def _render_module_changes(
+    changes: list[ModuleChange], *, requested: str | None, verb: str
+) -> None:
+    """Render a list of :class:`ModuleChange` records to stdout.
+
+    ``verb`` is one of ``"add"`` / ``"remove"`` / ``"update"`` /
+    ``"register"`` and seeds the human-readable summary line. When
+    ``requested`` is the user-supplied module name we surface it first
+    so cascaded transitive changes are obvious.
+    """
+
+    prefix = "[dry-run] " if any(c.dry_run for c in changes) else ""
+    if not changes:
+        if verb == "update":
+            print(f"{prefix}No modules updated.")
+        else:
+            print(f"{prefix}No changes.")
+        return
+
+    primary = next(
+        (c for c in changes if requested and c.name == requested),
+        changes[0],
+    )
+    others = [c for c in changes if c is not primary]
+
+    def _summary(c: ModuleChange) -> str:
+        if c.action == "added":
+            after = f" -> {c.after}" if c.after else ""
+            return f"added '{c.name}'{after}"
+        if c.action == "removed":
+            return f"removed '{c.name}'"
+        if c.action == "updated":
+            return f"updated '{c.name}': {c.before or '?'} -> {c.after or '?'}"
+        return f"noop '{c.name}' ({c.before or 'n/a'})"
+
+    print(f"{prefix}{_summary(primary)}")
+    for c in others:
+        print(f"{prefix}  also {_summary(c)}")
+
+
+def _render_module_init(change: ModuleChange, module_dir: Path) -> None:
+    """Render the result of ``nsx module init`` with next-step hints."""
+
+    print(f"Created module skeleton '{change.name}' (version {change.after}) at: {module_dir}")
+    metadata_path = module_dir / "nsx-module.yaml"
+    print("Next steps:")
+    print("  1) Review nsx-module.yaml and fill in summary, capabilities, and compatibility")
+    print(f"  2) Run `nsx module validate {metadata_path}`")
+    print(
+        "  3) Register it into an app with `nsx module register "
+        f"{change.name} --metadata {metadata_path} --project {change.name} "
+        f"--project-local-path {module_dir} --app-dir <app-dir>`"
+    )
+
+
 @command_hint("update", _C.MODULES, _S.APP, "nsx configure", "nsx build", "nsx flash")
 def cmd_update(args: argparse.Namespace) -> None:
     api.update_app(
@@ -635,31 +691,34 @@ def cmd_module_describe(args: argparse.Namespace) -> None:
 
 @command_hint("module add", _C.MODULES, _S.APP, "nsx configure", "nsx build", "nsx flash")
 def cmd_module_add(args: argparse.Namespace) -> None:
-    api.add_module(
+    changes = api.add_module(
         resolve_app_dir(args.app_dir),
         args.module,
         local=getattr(args, "local", False),
         vendored=getattr(args, "vendored", False),
         dry_run=args.dry_run,
     )
+    _render_module_changes(changes, requested=args.module, verb="add")
 
 
 @command_hint("module remove", _C.MODULES, _S.APP, "nsx configure", "nsx build")
 def cmd_module_remove(args: argparse.Namespace) -> None:
-    api.remove_module(
+    changes = api.remove_module(
         resolve_app_dir(args.app_dir),
         args.module,
         dry_run=args.dry_run,
     )
+    _render_module_changes(changes, requested=args.module, verb="remove")
 
 
 @command_hint("module update", _C.MODULES, _S.APP, "nsx configure", "nsx build")
 def cmd_module_update(args: argparse.Namespace) -> None:
-    api.update_modules(
+    changes = api.update_modules(
         resolve_app_dir(args.app_dir),
         module=args.module,
         dry_run=args.dry_run,
     )
+    _render_module_changes(changes, requested=args.module, verb="update")
 
 
 @command_hint(
@@ -671,7 +730,7 @@ def cmd_module_update(args: argparse.Namespace) -> None:
     "nsx build",
 )
 def cmd_module_register(args: argparse.Namespace) -> None:
-    api.register_module(
+    change = api.register_module(
         resolve_app_dir(args.app_dir),
         args.module,
         metadata=Path(args.metadata).expanduser(),
@@ -685,6 +744,7 @@ def cmd_module_register(args: argparse.Namespace) -> None:
         override=args.override,
         dry_run=args.dry_run,
     )
+    _render_module_changes([change], requested=args.module, verb="register")
 
 
 @command_hint(
@@ -696,8 +756,9 @@ def cmd_module_register(args: argparse.Namespace) -> None:
     "nsx module add <module>",
 )
 def cmd_module_init(args: argparse.Namespace) -> None:
-    api.init_module(
-        Path(args.module_dir).expanduser().resolve(),
+    module_dir = Path(args.module_dir).expanduser().resolve()
+    change = api.init_module(
+        module_dir,
         module_name=args.name,
         module_type=args.type,
         summary=args.summary,
@@ -708,6 +769,7 @@ def cmd_module_init(args: argparse.Namespace) -> None:
         toolchains=args.toolchain,
         force=args.force,
     )
+    _render_module_init(change, module_dir)
 
 
 @command_hint(
