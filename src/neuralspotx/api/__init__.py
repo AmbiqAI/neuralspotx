@@ -7,15 +7,15 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from . import module_discovery, operations, project_config
-from ._errors import (
+from .. import module_discovery, operations, project_config
+from .._errors import (
     NSXConfigError,
     NSXError,
     NSXModuleError,
 )
-from ._io import Emitter, using_emitter
-from .metadata import load_yaml, validate_nsx_module_metadata
-from .models import (
+from .._io import Emitter, using_emitter
+from ..metadata import load_yaml, validate_nsx_module_metadata
+from ..models import (
     CacheCleanResult,
     CacheInfo,
     DiscoveryRecord,
@@ -24,8 +24,8 @@ from .models import (
     OutdatedReport,
     SearchResult,
 )
-from .nsx_lock import NsxLock
-from .subprocess_utils import timeout_budget
+from ..nsx_lock import NsxLock
+from ..subprocess_utils import timeout_budget
 
 PathLike = str | Path
 
@@ -789,7 +789,7 @@ def lock_app(
 
     # Apply per-call resolve TTL override via contextvar (concurrency-safe;
     # does not mutate process-global ``os.environ``).
-    from . import _resolve_cache
+    from .. import _resolve_cache
 
     with (
         using_emitter(emit),
