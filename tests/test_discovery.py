@@ -125,6 +125,7 @@ class TestResolveModuleContext:
     def test_app_effective_with_app_dir(self, tmp_path: Path) -> None:
         nsx_cfg = {
             "schema_version": 1,
+            "project": {"name": "testapp"},
             "nsx_tool_version": "0.1.0",
             "target": {"board": "apollo510_evb", "soc": "apollo510"},
             "modules": [],
@@ -162,6 +163,7 @@ class TestResolveTargetContext:
     def test_merges_with_app_config(self, tmp_path: Path) -> None:
         nsx_cfg = {
             "schema_version": 1,
+            "project": {"name": "testapp"},
             "nsx_tool_version": "0.1.0",
             "target": {"board": "apollo510_evb", "soc": "apollo510"},
             "toolchain": "arm-none-eabi-gcc",
@@ -267,29 +269,27 @@ class TestValidateModuleMetadata:
 
         metadata = tmp_path / "nsx-module.yaml"
         metadata.write_text(
-            "\n".join(
-                [
-                    "schema_version: 1",
-                    "module:",
-                    "  name: test-mod",
-                    "  type: runtime",
-                    '  version: "0.1.0"',
-                    "support:",
-                    "  ambiqsuite: true",
-                    "  zephyr: false",
-                    "build:",
-                    "  cmake:",
-                    "    package: test_mod",
-                    "    targets: [test_mod]",
-                    "depends:",
-                    "  required: []",
-                    "  optional: []",
-                    "compatibility:",
-                    '  boards: ["*"]',
-                    '  socs: ["*"]',
-                    '  toolchains: ["arm-none-eabi-gcc"]',
-                ]
-            )
+            "\n".join([
+                "schema_version: 1",
+                "module:",
+                "  name: test-mod",
+                "  type: runtime",
+                '  version: "0.1.0"',
+                "support:",
+                "  ambiqsuite: true",
+                "  zephyr: false",
+                "build:",
+                "  cmake:",
+                "    package: test_mod",
+                "    targets: [test_mod]",
+                "depends:",
+                "  required: []",
+                "  optional: []",
+                "compatibility:",
+                '  boards: ["*"]',
+                '  socs: ["*"]',
+                '  toolchains: ["arm-none-eabi-gcc"]',
+            ])
             + "\n",
             encoding="utf-8",
         )
@@ -320,29 +320,27 @@ class TestValidateModuleMetadata:
 
         metadata = tmp_path / "nsx-module.yaml"
         metadata.write_text(
-            "\n".join(
-                [
-                    "schema_version: 1",
-                    "module:",
-                    "  name: cli-test",
-                    "  type: runtime",
-                    '  version: "1.0.0"',
-                    "support:",
-                    "  ambiqsuite: true",
-                    "  zephyr: false",
-                    "build:",
-                    "  cmake:",
-                    "    package: cli_test",
-                    "    targets: [cli_test]",
-                    "depends:",
-                    "  required: []",
-                    "  optional: []",
-                    "compatibility:",
-                    '  boards: ["*"]',
-                    '  socs: ["*"]',
-                    '  toolchains: ["arm-none-eabi-gcc"]',
-                ]
-            )
+            "\n".join([
+                "schema_version: 1",
+                "module:",
+                "  name: cli-test",
+                "  type: runtime",
+                '  version: "1.0.0"',
+                "support:",
+                "  ambiqsuite: true",
+                "  zephyr: false",
+                "build:",
+                "  cmake:",
+                "    package: cli_test",
+                "    targets: [cli_test]",
+                "depends:",
+                "  required: []",
+                "  optional: []",
+                "compatibility:",
+                '  boards: ["*"]',
+                '  socs: ["*"]',
+                '  toolchains: ["arm-none-eabi-gcc"]',
+            ])
             + "\n",
             encoding="utf-8",
         )

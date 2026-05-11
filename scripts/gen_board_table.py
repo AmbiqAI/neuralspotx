@@ -50,15 +50,13 @@ def render() -> str:
         )
         branch_keyword = "elseif"
 
-    lines.extend(
-        [
-            "    else()",
-            '        set(${out_var} "" PARENT_SCOPE)',
-            "    endif()",
-            "endfunction()",
-            "",
-        ]
-    )
+    lines.extend([
+        "    else()",
+        '        set(${out_var} "" PARENT_SCOPE)',
+        "    endif()",
+        "endfunction()",
+        "",
+    ])
     return "\n".join(lines)
 
 

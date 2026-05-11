@@ -13,16 +13,14 @@ from neuralspotx.models import (
 
 
 def test_app_config_classifies_module_sources() -> None:
-    cfg = AppConfig.from_mapping(
-        {
-            "project": {"name": "demo"},
-            "modules": [
-                {"name": "nsx-uart", "project": "nsx-uart", "revision": "main"},
-                {"name": "local-demo", "source": {"path": "../local-demo"}},
-                {"name": "custom-aot", "source": {"vendored": True}},
-            ],
-        }
-    )
+    cfg = AppConfig.from_mapping({
+        "project": {"name": "demo"},
+        "modules": [
+            {"name": "nsx-uart", "project": "nsx-uart", "revision": "main"},
+            {"name": "local-demo", "source": {"path": "../local-demo"}},
+            {"name": "custom-aot", "source": {"vendored": True}},
+        ],
+    })
 
     assert cfg.project_name == "demo"
     assert cfg.module_names() == ["nsx-uart", "local-demo", "custom-aot"]
@@ -36,18 +34,16 @@ def test_module_registry_override_merges_valid_entries_only() -> None:
         "projects": {"nsx-uart": {"url": "old", "revision": "main"}},
         "modules": {"nsx-uart": {"project": "nsx-uart", "revision": "main"}},
     }
-    override = ModuleRegistryOverride.from_mapping(
-        {
-            "projects": {
-                "nsx-uart": {"url": "new"},
-                3: {"url": "ignored"},
-            },
-            "modules": {
-                "nsx-uart": {"metadata": "modules/nsx-uart/nsx-module.yaml"},
-                "bad": "ignored",
-            },
-        }
-    )
+    override = ModuleRegistryOverride.from_mapping({
+        "projects": {
+            "nsx-uart": {"url": "new"},
+            3: {"url": "ignored"},
+        },
+        "modules": {
+            "nsx-uart": {"metadata": "modules/nsx-uart/nsx-module.yaml"},
+            "bad": "ignored",
+        },
+    })
 
     merged = override.merge_into(base)
 

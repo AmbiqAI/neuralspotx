@@ -15,7 +15,7 @@ import yaml
 from ._errors import NSXConfigError, NSXToolchainError
 from .constants import PACKAGED_PROJECT_NAME, normalize_board
 from .metadata import load_registry_lock
-from .models import AppConfig, ModuleRegistryOverride, ProjectEntry
+from .models import AppConfig, ModuleRegistryOverride, NsxProject, ProjectEntry
 from .subprocess_utils import run
 
 
@@ -370,20 +370,18 @@ def _run_cmake_configure(
         raise NSXToolchainError(f"Unknown toolchain '{tc}'. Supported: {supported}")
 
     toolchain_file = app_dir / "cmake" / "nsx" / "toolchains" / tc_file
-    run(
-        [
-            "cmake",
-            "-S",
-            str(app_dir),
-            "-B",
-            str(build_dir),
-            "-G",
-            "Ninja",
-            f"-DCMAKE_TOOLCHAIN_FILE={toolchain_file}",
-            "-DCMAKE_BUILD_TYPE=Release",
-            f"-DNSX_BOARD={board}",
-        ]
-    )
+    run([
+        "cmake",
+        "-S",
+        str(app_dir),
+        "-B",
+        str(build_dir),
+        "-G",
+        "Ninja",
+        f"-DCMAKE_TOOLCHAIN_FILE={toolchain_file}",
+        "-DCMAKE_BUILD_TYPE=Release",
+        f"-DNSX_BOARD={board}",
+    ])
 
 
 def _resolve_app_context(args: argparse.Namespace) -> tuple[Path, dict[str, Any], str, str]:
@@ -406,12 +404,40 @@ def _load_app_cfg(app_dir: Path) -> dict[str, Any]:
             "Run this command from an NSX app directory (containing nsx.yml),\n"
             "or use 'nsx create-app <app-dir>' to create a new app."
         )
-    cfg = _read_yaml(cfg_path)
-    if cfg.get("schema_version") != 1:
-        raise NSXConfigError(f"{cfg_path}: unsupported schema_version={cfg.get('schema_version')}")
+    # Route every nsx.yml read through the typed loader so that
+    # structural problems surface as ``NSXConfigError(field=...)``
+    # rather than opaque ``KeyError`` / ``AttributeError`` failures
+    # deep inside the operations layer.
+    project = NsxProject.from_yaml(cfg_path)
+    cfg = project.raw
     _check_nsx_version_compatibility(cfg, cfg_path)
     _normalize_module_source(cfg)
     return cfg
+
+
+def load_project_config(path: Path) -> NsxProject:
+    """Public, typed loader for an app ``nsx.yml`` file.
+
+    Returns an :class:`~neuralspotx.models.NsxProject` instance with all
+    structural validation already applied. Errors raise
+    :class:`NSXConfigError` whose ``.field`` names the offending YAML
+    key path.
+
+    Module-source normalisation (``source: { path: ... }`` → registry
+    overrides) is applied to the underlying mapping in place so the
+    legacy operations layer continues to see the same shape it always
+    did. Use :meth:`NsxProject.to_yaml` for round-trip writes.
+    """
+
+    project = NsxProject.from_yaml(path)
+    _check_nsx_version_compatibility(project.raw, project.path)
+    _normalize_module_source(project.raw)
+    # ``_normalize_module_source`` mutates ``raw`` (specifically the
+    # ``module_registry`` block) in place, so the typed view computed
+    # by ``from_yaml`` is now stale w.r.t. ``raw``. Rebuild it from
+    # the normalized mapping to keep ``.modules`` / ``.module_registry``
+    # in sync with ``.raw``.
+    return NsxProject.from_mapping(project.raw, path=project.path)
 
 
 def _normalize_module_source(cfg: dict[str, Any]) -> None:

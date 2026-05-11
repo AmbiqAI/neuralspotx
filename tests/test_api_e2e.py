@@ -39,29 +39,27 @@ def _load_yaml(path: Path) -> dict:
 
 def _write_local_module_metadata(path: Path, module_name: str = "local-demo") -> None:
     path.write_text(
-        "\n".join(
-            [
-                "schema_version: 1",
-                "module:",
-                f"  name: {module_name}",
-                "  type: runtime",
-                '  version: "0.1.0"',
-                "support:",
-                "  ambiqsuite: true",
-                "  zephyr: false",
-                "build:",
-                "  cmake:",
-                "    package: local_demo",
-                "    targets: [local_demo]",
-                "depends:",
-                "  required: []",
-                "  optional: []",
-                "compatibility:",
-                '  boards: ["*"]',
-                '  socs: ["*"]',
-                '  toolchains: ["arm-none-eabi-gcc"]',
-            ]
-        )
+        "\n".join([
+            "schema_version: 1",
+            "module:",
+            f"  name: {module_name}",
+            "  type: runtime",
+            '  version: "0.1.0"',
+            "support:",
+            "  ambiqsuite: true",
+            "  zephyr: false",
+            "build:",
+            "  cmake:",
+            "    package: local_demo",
+            "    targets: [local_demo]",
+            "depends:",
+            "  required: []",
+            "  optional: []",
+            "compatibility:",
+            '  boards: ["*"]',
+            '  socs: ["*"]',
+            '  toolchains: ["arm-none-eabi-gcc"]',
+        ])
         + "\n",
         encoding="utf-8",
     )
@@ -114,33 +112,25 @@ def _write_searchable_module_metadata(
         '  toolchains: ["arm-none-eabi-gcc"]',
     ]
     if summary:
-        lines.extend(
-            [
-                f"summary: {summary}",
-            ]
-        )
+        lines.extend([
+            f"summary: {summary}",
+        ])
     if capabilities:
-        lines.extend(
-            [
-                "capabilities:",
-                *[f"  - {capability}" for capability in capabilities],
-            ]
-        )
+        lines.extend([
+            "capabilities:",
+            *[f"  - {capability}" for capability in capabilities],
+        ])
     if use_cases:
-        lines.extend(
-            [
-                "use_cases:",
-                *[f"  - {use_case}" for use_case in use_cases],
-            ]
-        )
+        lines.extend([
+            "use_cases:",
+            *[f"  - {use_case}" for use_case in use_cases],
+        ])
     if features:
-        lines.extend(
-            [
-                "provides:",
-                "  features:",
-                *[f"    - {feature}" for feature in features],
-            ]
-        )
+        lines.extend([
+            "provides:",
+            "  features:",
+            *[f"    - {feature}" for feature in features],
+        ])
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -330,19 +320,17 @@ def test_module_init_creates_valid_skeleton(tmp_path: Path) -> None:
 
 def test_module_init_parser_wiring() -> None:
     parser = cli._build_parser()
-    args = parser.parse_args(
-        [
-            "module",
-            "init",
-            "my-sensor-driver",
-            "--type",
-            "backend_specific",
-            "--dependency",
-            "nsx-core",
-            "--soc",
-            "apollo510",
-        ]
-    )
+    args = parser.parse_args([
+        "module",
+        "init",
+        "my-sensor-driver",
+        "--type",
+        "backend_specific",
+        "--dependency",
+        "nsx-core",
+        "--soc",
+        "apollo510",
+    ])
 
     assert args.module_dir == "my-sensor-driver"
     assert args.type == "backend_specific"
