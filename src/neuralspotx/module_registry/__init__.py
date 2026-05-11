@@ -13,16 +13,16 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
-from . import module_cache
-from ._errors import NSXConfigError, NSXError, NSXModuleError, NSXResolutionError
-from .metadata import (
+from .. import module_cache
+from .._errors import NSXConfigError, NSXError, NSXModuleError, NSXResolutionError
+from ..metadata import (
     RegistryModuleEntry,
     is_compatible,
     registry_entry_for_module,
     validate_nsx_module_metadata,
 )
-from .models import AppConfig, DiscoveryRecord
-from .project_config import (
+from ..models import AppConfig, DiscoveryRecord
+from ..project_config import (
     _is_packaged_module,
     _metadata_path_relative_to_project,
     _module_clone_dir,
@@ -33,11 +33,11 @@ from .project_config import (
     _vendored_metadata_relpath,
     _vendored_target_dir,
 )
-from .subprocess_utils import (
+from ..subprocess_utils import (
     git_clone,
     git_clone_at_commit,
 )
-from .tooling import require_tool as _require_tool
+from ..tooling import require_tool as _require_tool
 
 # ---------------------------------------------------------------------------
 # Operation-scope metadata cache

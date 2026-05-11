@@ -72,12 +72,13 @@ def test_rmtree_does_not_emit_deprecation_warning(tmp_path: Path, rmtree) -> Non
 
 def test_uses_onexc_kwarg_on_py312_plus() -> None:
     """Drift guard: source must reference the version-correct kwarg."""
-    src_root = Path(module_registry.__file__).resolve().parent
-    sources = (src_root / "module_registry.py").read_text(encoding="utf-8")
-    sources += (src_root / "module_cache.py").read_text(encoding="utf-8")
-    # subprocess_utils is a package as of phase 6 — concatenate all
-    # submodule sources so the drift check still covers the rmtree
-    # call sites wherever they live.
+    src_root = Path(module_registry.__file__).resolve().parent.parent
+    sources = (src_root / "module_cache.py").read_text(encoding="utf-8")
+    # module_registry and subprocess_utils are packages as of phase 6 —
+    # concatenate all submodule sources so the drift check still covers
+    # the rmtree call sites wherever they live.
+    for sub in sorted((src_root / "module_registry").glob("*.py")):
+        sources += sub.read_text(encoding="utf-8")
     for sub in sorted((src_root / "subprocess_utils").glob("*.py")):
         sources += sub.read_text(encoding="utf-8")
 
