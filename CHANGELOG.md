@@ -2,6 +2,39 @@
 
 ## Unreleased
 
+### Features — supply-chain hardening & SBOM ([#66](https://github.com/AmbiqAI/neuralspotx/issues/66))
+
+Three small additions make the v1 supply-chain story complete: every
+`git` invocation is restricted to safe transports, `nsx sync --frozen`
+catches mid-tree tampering by name, and apps can publish a Software
+Bill of Materials in one command.
+
+* **Pinned `git` protocol allow-list.** Every `git` invocation issued
+  by `git_clone_at_commit` and `git_clone` is now prefixed with
+  `-c protocol.allow=user -c protocol.ext.allow=never -c
+  protocol.file.allow=never`. Registry URLs are also validated in
+  Python before `git` is invoked: `ext::…`, `file://…`, `file::…`
+  and any other non-allow-listed scheme are refused with a typed
+  `NSXGitError` whose message names the offending protocol. The
+  `nsx doctor` report includes an informational line listing the
+  active allow-list flags.
+* **`nsx sync --frozen` integrity verification.** The frozen path
+  re-hashes every vendored module against its lock-recorded
+  `content_hash` and now raises the new `NSXIntegrityError`
+  (subclass of `NSXModuleError`) whose `module` attribute names the
+  offending entry. Existing `except NSXModuleError` sites continue
+  to catch the failure unchanged.
+* **`nsx sbom` (and `api.generate_sbom`).** New CLI subcommand
+  `nsx sbom [--format spdx|cyclonedx] [--output FILE]` and the
+  matching `neuralspotx.generate_sbom(app_dir, *, format="spdx") -> str`
+  emit a single-document SBOM derived from `nsx.lock`: per-module
+  upstream URL, commit SHA, and content hash. Default format is
+  SPDX 2.3 JSON; CycloneDX 1.5 JSON is also supported. License
+  metadata is currently emitted as `NOASSERTION` until a follow-up
+  phase wires it through.
+* **Public errors:** `NSXGitError`, `NSXIntegrityError`.
+* **Public callable:** `generate_sbom`.
+
 ### Features — structured event emitter & --json output ([#65](https://github.com/AmbiqAI/neuralspotx/issues/65))
 
 The Python API and CLI gain a structured output channel so embedders

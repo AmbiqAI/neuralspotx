@@ -82,6 +82,32 @@ class NSXModuleError(NSXError):
     """Raised for module-name lookup or dependency-closure failures."""
 
 
+class NSXIntegrityError(NSXModuleError):
+    """Raised when a vendored module's content hash does not match
+    the value recorded in ``nsx.lock``.
+
+    Surfaced primarily by ``nsx sync --frozen`` when the on-disk tree
+    has been mutated since the lock was written. Subclasses
+    :class:`NSXModuleError` so existing ``except NSXModuleError`` sites
+    continue to catch the failure.
+    """
+
+    def __init__(self, message: str, *, module: str | None = None) -> None:
+        super().__init__(message)
+        self.module = module
+
+
+class NSXGitError(NSXError):
+    """Raised for unsafe or rejected ``git`` operations.
+
+    Used by ``git_clone_at_commit`` to refuse registry URLs that name
+    disallowed transports such as ``ext::`` (arbitrary command
+    execution) or ``file://`` / ``file::`` (local-filesystem
+    redirection), which would otherwise bypass the registry's
+    intended ``http(s)``/``ssh``/``git`` allow-list.
+    """
+
+
 class NSXToolchainError(NSXError):
     """Raised for missing or unsupported toolchain configuration."""
 
@@ -90,6 +116,8 @@ __all__ = [
     "NSXCacheError",
     "NSXConfigError",
     "NSXError",
+    "NSXGitError",
+    "NSXIntegrityError",
     "NSXLockError",
     "NSXModuleError",
     "NSXResolutionError",

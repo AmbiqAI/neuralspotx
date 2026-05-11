@@ -71,6 +71,13 @@ def doctor_impl() -> DoctorReport:
         detail=tool_path("git"),
         hint="Install git.",
     )
+
+    # Informational: surface the active git protocol allow-list so
+    # users (and supply-chain audits) can see at a glance which
+    # transports nsx will refuse before invoking ``git``.
+    from ..subprocess_utils import GIT_PROTOCOL_ALLOWLIST_FLAGS
+
+    r.note("  git protocol allow-list: " + " ".join(GIT_PROTOCOL_ALLOWLIST_FLAGS))
     r.check(
         "arm-none-eabi-gcc",
         tool_path("arm-none-eabi-gcc") is not None,
