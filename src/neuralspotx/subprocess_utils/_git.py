@@ -274,3 +274,20 @@ def git_current_sha(repo: Path) -> str | None:
         return result.stdout.strip()
     except subprocess.CalledProcessError:
         return None
+
+
+def git_ls_remote(url: str, *refs: str) -> subprocess.CompletedProcess[str]:
+    """Run ``git ls-remote`` against *url* with transport hardening.
+
+    Validates *url* against the registry-URL allow-list (refusing
+    ``ext::``, ``file://``, ``file::``, and other disallowed
+    transports) and prefixes the invocation with
+    :data:`GIT_PROTOCOL_ALLOWLIST_FLAGS` so a malicious URL cannot
+    bypass the in-process check via a transport ``git`` would
+    otherwise honour. Returns the :class:`subprocess.CompletedProcess`
+    from :func:`run_capture`.
+    """
+
+    _validate_git_url(url)
+    cmd = ["git", *GIT_PROTOCOL_ALLOWLIST_FLAGS, "ls-remote", url, *refs]
+    return _run_capture(cmd)

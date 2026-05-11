@@ -4,7 +4,8 @@ from __future__ import annotations
 
 import subprocess
 
-from ..subprocess_utils import run_capture
+from .._errors import NSXGitError
+from ..subprocess_utils import git_ls_remote
 
 
 def resolve_commit(url: str, ref: str) -> str:
@@ -59,8 +60,13 @@ def _resolve_ref(url: str, ref: str) -> tuple[str, str | None]:
     # Pass both `<ref>` and `<ref>^{}` so annotated tags return both
     # the tag-object line and the peeled-commit line. Branches and
     # lightweight tags only return one line; the `^{}` query is a no-op.
+    # Routes through the hardened git_ls_remote helper so the registry
+    # URL is validated and the protocol allow-list is applied (parity
+    # with git_clone / git_clone_at_commit).
     try:
-        result = run_capture(["git", "ls-remote", url, ref, f"{ref}^{{}}"])
+        result = git_ls_remote(url, ref, f"{ref}^{{}}")
+    except NSXGitError as exc:
+        raise ResolutionError(str(exc)) from exc
     except subprocess.CalledProcessError as exc:
         raise ResolutionError(
             f"git ls-remote failed for {url} @ {ref}: exit {exc.returncode}"
