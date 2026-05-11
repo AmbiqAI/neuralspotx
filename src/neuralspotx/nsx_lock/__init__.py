@@ -93,6 +93,7 @@ from __future__ import annotations
 
 import datetime as _dt
 import hashlib
+from pathlib import Path
 
 import yaml
 
@@ -132,7 +133,7 @@ _log = get_logger(__name__)
 # ---------------------------------------------------------------------------
 
 
-def hash_manifest(nsx_yml_path):
+def hash_manifest(nsx_yml_path: Path) -> str:
     """Hash an ``nsx.yml`` file deterministically by re-serializing the parsed YAML.
 
     This makes the hash stable against whitespace/comment changes that

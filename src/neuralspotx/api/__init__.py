@@ -11,6 +11,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from .. import operations
+from .._errors import NSXConfigError, NSXError, NSXModuleError
 from ._app import (
     build_app,
     clean_app,
@@ -69,6 +70,9 @@ __all__ = [
     "ModuleInitRequest",
     "ModuleRegisterRequest",
     "ModuleUpdateRequest",
+    "NSXConfigError",
+    "NSXError",
+    "NSXModuleError",
     "PathLike",
     "add_module",
     "operations",
