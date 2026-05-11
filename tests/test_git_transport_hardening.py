@@ -54,6 +54,25 @@ class TestValidateGitUrl:
         with pytest.raises(NSXGitError):
             _validate_git_url("")
 
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "/tmp/repo",
+            "../repo",
+            "./repo",
+            "~/repo",
+            "C:\\repo",
+            "C:/repo",
+            "just-a-name",  # no scheme, no SCP colon
+            ":no-host",  # empty host
+            "host:",  # empty path
+            "host/with/slash:path",  # slash in host part
+        ],
+    )
+    def test_rejects_local_filesystem_paths(self, url: str) -> None:
+        with pytest.raises(NSXGitError):
+            _validate_git_url(url)
+
 
 class TestProtocolAllowListFlags:
     """Every git invocation must be prefixed with the allow-list overrides."""

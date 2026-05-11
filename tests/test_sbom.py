@@ -110,6 +110,16 @@ class TestGenerateSbomCycloneDx:
         assert "hashes" in alpha
         assert any(h["alg"] == "SHA-256" for h in alpha["hashes"])
 
+    def test_serial_number_is_rfc4122_uuid(self, app_with_lock: Path) -> None:
+        import uuid as _uuid
+
+        doc = json.loads(generate_sbom(app_with_lock, format="cyclonedx"))
+        urn = doc["serialNumber"]
+        assert urn.startswith("urn:uuid:")
+        # Must round-trip through uuid.UUID — sliced sha-256 hex would not.
+        parsed = _uuid.UUID(urn[len("urn:uuid:") :])
+        assert parsed.version == 5
+
 
 class TestGenerateSbomErrors:
     def test_missing_lock_raises(self, tmp_path: Path) -> None:
@@ -154,3 +164,39 @@ class TestSbomCli:
         assert out_path.exists()
         doc = json.loads(out_path.read_text(encoding="utf-8"))
         assert doc["bomFormat"] == "CycloneDX"
+
+
+class TestSpdxDownloadLocationGitPrefix:
+    """SPDX downloadLocation must not double-prefix ``git+``."""
+
+    def _build(self, url: str) -> str:
+        from neuralspotx.nsx_lock import LockKind, NsxLock, ResolvedModule
+        from neuralspotx.operations._sbom import _build_spdx_document
+
+        lock = NsxLock(
+            modules={
+                "mod": ResolvedModule(
+                    project="proj",
+                    kind=LockKind.GIT,
+                    constraint="main",
+                    vendored_at="modules/mod",
+                    content_hash="sha256:" + "a" * 64,
+                    acquired_at="2025-01-01T00:00:00Z",
+                    url=url,
+                    commit="deadbeef" * 5,
+                )
+            }
+        )
+        doc = _build_spdx_document(Path("/tmp/app"), lock)
+        pkg = next(p for p in doc["packages"] if p["name"] == "mod")
+        return pkg["downloadLocation"]
+
+    def test_plain_https_gets_git_prefix(self) -> None:
+        loc = self._build("https://example.com/foo.git")
+        assert loc.startswith("git+https://")
+        assert not loc.startswith("git+git+")
+
+    def test_url_already_prefixed_is_not_double_prefixed(self) -> None:
+        loc = self._build("git+https://example.com/foo.git")
+        assert loc.startswith("git+https://")
+        assert not loc.startswith("git+git+")

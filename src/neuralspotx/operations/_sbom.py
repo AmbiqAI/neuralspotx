@@ -17,6 +17,7 @@ from __future__ import annotations
 import datetime as _dt
 import hashlib
 import json
+import uuid
 from pathlib import Path
 from typing import Any, Final, Literal
 
@@ -106,7 +107,12 @@ def _build_spdx_document(app_dir: Path, lock: NsxLock) -> dict[str, Any]:
         spdxid = f"SPDXRef-Package-{_spdxid_safe(name)}"
         download_location = entry.url or _SPDX_NOASSERTION
         if entry.kind in (LockKind.GIT, LockKind.UNRESOLVED) and entry.url and entry.commit:
-            download_location = f"git+{entry.url}@{entry.commit}"
+            # Avoid ``git+git+https://...`` if the registry URL already
+            # carries an explicit ``git+`` VCS prefix.
+            base_url = entry.url
+            if not base_url.startswith("git+"):
+                base_url = f"git+{base_url}"
+            download_location = f"{base_url}@{entry.commit}"
 
         pkg: dict[str, Any] = {
             "SPDXID": spdxid,
@@ -230,12 +236,14 @@ def _build_cyclonedx_document(app_dir: Path, lock: NsxLock) -> dict[str, Any]:
 
         components.append(comp)
 
+    # CycloneDX requires an RFC 4122 UUID URN; derive it deterministically
+    # from app_name + timestamp via uuid5 so two identical inputs produce
+    # an identical (and well-formed) serial number.
+    serial_uuid = uuid.uuid5(uuid.NAMESPACE_URL, f"nsx-sbom:{app_name}:{timestamp}")
     return {
         "bomFormat": "CycloneDX",
         "specVersion": "1.5",
-        "serialNumber": (
-            f"urn:uuid:{hashlib.sha256(f'{app_name}{timestamp}'.encode('utf-8')).hexdigest()[:32]}"
-        ),
+        "serialNumber": f"urn:uuid:{serial_uuid}",
         "version": 1,
         "metadata": {
             "timestamp": timestamp,

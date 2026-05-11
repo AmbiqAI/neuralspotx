@@ -555,11 +555,41 @@ def _validate_git_url(url: str) -> None:
                 f"{sorted(_ALLOWED_GIT_URL_SCHEMES)} (or git@host:path)."
             )
 
-    # SCP-style ``git@host:path`` (no ``://``); accept.
+    # SCP-style ``[user@]host:path`` (no ``://``); accept only that
+    # form and reject bare local filesystem paths so the allow-list
+    # cannot be sidestepped by handing git a path argument.
     if "://" not in url:
         if url.startswith("file:") or lowered.startswith("file:"):
             raise NSXGitError(f"git: refusing URL {url!r}: disallowed protocol 'file'.")
-        # Bare path or ``user@host:path`` — accept (SSH).
+        # Reject obvious local-path forms before SCP-style detection:
+        # POSIX absolute (``/``), home (``~``), explicit relative
+        # (``./``, ``../``), and Windows drive prefixes (``C:\``,
+        # ``C:/``). Note: ``C:foo`` (drive letter + colon, no slash)
+        # is also a local path on Windows but indistinguishable from
+        # ``host:path`` without OS context — we reject it conservatively.
+        if url.startswith(("/", "~", "./", "../", ".\\", "..\\")):
+            raise NSXGitError(
+                f"git: refusing URL {url!r}: looks like a local filesystem "
+                "path. Allowed protocols: "
+                f"{sorted(_ALLOWED_GIT_URL_SCHEMES)} (or git@host:path)."
+            )
+        if len(url) >= 3 and url[0].isalpha() and url[1] == ":" and url[2] in ("\\", "/"):
+            raise NSXGitError(f"git: refusing URL {url!r}: looks like a Windows drive path.")
+        # Require SCP-style ``[user@]host:path`` form: a single ``:``
+        # separating a non-empty host from a non-empty path, host must
+        # not contain ``/``.
+        if ":" not in url:
+            raise NSXGitError(
+                f"git: refusing URL {url!r}: not a recognised remote. "
+                f"Allowed protocols: {sorted(_ALLOWED_GIT_URL_SCHEMES)} "
+                "(or git@host:path)."
+            )
+        host_part, _, path_part = url.partition(":")
+        if not host_part or not path_part or "/" in host_part:
+            raise NSXGitError(
+                f"git: refusing URL {url!r}: not a valid SCP-style remote "
+                "(expected ``[user@]host:path``)."
+            )
         return
 
     scheme = lowered.split("://", 1)[0]
