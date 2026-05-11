@@ -24,13 +24,11 @@ def tool_path(name: str) -> str | None:
     scripts_dir = Path(sys.executable).parent
     candidates = [scripts_dir / name]
     if sys.platform.startswith("win"):
-        candidates.extend(
-            [
-                scripts_dir / f"{name}.exe",
-                scripts_dir / f"{name}.bat",
-                scripts_dir / f"{name}.cmd",
-            ]
-        )
+        candidates.extend([
+            scripts_dir / f"{name}.exe",
+            scripts_dir / f"{name}.bat",
+            scripts_dir / f"{name}.cmd",
+        ])
 
     for candidate in candidates:
         if candidate.exists():

@@ -39,7 +39,28 @@ class NSXTimeoutError(NSXError):
 
 
 class NSXConfigError(NSXError):
-    """Raised for invalid or missing app / registry configuration."""
+    """Raised for invalid or missing app / registry configuration.
+
+    The optional ``field`` attribute names the offending YAML key path
+    (dot-separated, with ``[i]`` for list indices, e.g.
+    ``"modules[2].name"``) so structured callers can map an error back
+    to a specific location in ``nsx.yml`` without re-parsing the
+    message.
+    """
+
+    def __init__(self, message: str, *, field: str | None = None) -> None:
+        super().__init__(message)
+        self.field = field
+
+
+class NSXCacheError(NSXError):
+    """Raised when an on-disk NSX cache file is unreadable or has an
+    unsupported ``schema_version``.
+
+    Catch alongside :class:`NSXError` for general failure handling, or
+    specifically when offering remediation steps such as ``nsx cache
+    clean``.
+    """
 
 
 class NSXResolutionError(NSXError):
@@ -66,6 +87,7 @@ class NSXToolchainError(NSXError):
 
 
 __all__ = [
+    "NSXCacheError",
     "NSXConfigError",
     "NSXError",
     "NSXLockError",

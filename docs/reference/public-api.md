@@ -24,6 +24,7 @@ tagged; this page will be updated at the v1.0 release.
 | Symbol | Kind | Tier |
 |---|---|---|
 | `NSXError` | exception base | Provisional |
+| `NSXCacheError` | exception | Provisional |
 | `NSXConfigError` | exception | Provisional |
 | `NSXLockError` | exception | Provisional |
 | `NSXModuleError` | exception | Provisional |

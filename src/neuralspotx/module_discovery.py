@@ -165,13 +165,11 @@ def _search_haystacks(record: DiscoveryRecord) -> list[tuple[str, str]]:
     if module is None:
         return haystacks
 
-    haystacks.extend(
-        [
-            ("module.name", module["name"]),
-            ("module.type", module["type"]),
-            ("module.version", module["version"]),
-        ]
-    )
+    haystacks.extend([
+        ("module.name", module["name"]),
+        ("module.type", module["type"]),
+        ("module.version", module["version"]),
+    ])
     for field in ("category", "provider"):
         if field in module:
             haystacks.append((f"module.{field}", module[field]))

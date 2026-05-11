@@ -10,6 +10,7 @@ and ``__all__`` from drifting.
 """
 
 from ._errors import (
+    NSXCacheError,
     NSXConfigError,
     NSXError,
     NSXLockError,
@@ -117,6 +118,7 @@ __all__ = [
     "ProfileStatus",
     "ResolvedModule",
     # Errors
+    "NSXCacheError",
     "NSXConfigError",
     "NSXError",
     "NSXLockError",

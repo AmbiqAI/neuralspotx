@@ -2,6 +2,35 @@
 
 ## Unreleased
 
+### Features — formats freeze ([#64](https://github.com/AmbiqAI/neuralspotx/issues/64))
+
+Two on-disk formats are now versioned and validated up front so that
+post-v1.0 changes never silently break user data.
+
+* **`nsx.yml` typed loader.** New `neuralspotx.models.NsxProject` is
+  the canonical typed view of an app manifest. `NsxProject.from_yaml`
+  validates every structural field (root schema_version, project
+  mapping, project.name, target/board types, toolchain, modules list
+  with per-entry checks, module_registry, tooling, profile fields)
+  and raises `NSXConfigError` whose new `.field` attribute names the
+  offending YAML key path (e.g. `"modules[2].name"`). Unknown
+  top-level keys round-trip via `NsxProject.extra` so adding fields
+  in a future minor release is non-breaking. `NsxProject.to_yaml(path)`
+  re-emits an equivalent manifest (modulo formatting). All `nsx.yml`
+  reads inside `_load_app_cfg` now route through this loader so a bad
+  manifest surfaces as a typed, field-tagged error rather than an
+  opaque `KeyError` deep in the operations layer.
+* **`git-artifact-hashes.json` schema_version.** The user-cache file
+  at `$NSX_CACHE_DIR/git-artifact-hashes.json` now writes a v1
+  header (`{"schema_version": 1, "entries": {...}}`). The reader
+  tolerates absent headers by treating the legacy flat-mapping layout
+  as v1 (so existing user caches keep working) and aborts with the
+  new `NSXCacheError` — pointing to `nsx cache clean` — if it sees a
+  higher version than this nsx supports.
+* **New typed exception:** `NSXCacheError` (subclass of `NSXError`)
+  exported from `neuralspotx`. `NSXConfigError` gained an optional
+  `.field` attribute carrying the offending YAML key path.
+
 ### ⚠ BREAKING CHANGES — pre-1.0 compat surface removed
 
 These removals close out [#63](https://github.com/AmbiqAI/neuralspotx/issues/63)

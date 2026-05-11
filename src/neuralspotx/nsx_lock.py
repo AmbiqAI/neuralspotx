@@ -109,6 +109,12 @@ _log = get_logger(__name__)
 LOCK_FILENAME = "nsx.lock"
 LOCK_SCHEMA_VERSION = 3
 
+# Schema version of the on-disk ``git-artifact-hashes.json`` user
+# cache. Bumped when the file layout changes incompatibly so older
+# nsx releases reading a newer cache can fail with a clear
+# :class:`NSXCacheError` instead of silently dropping entries.
+_ARTIFACT_HASH_CACHE_SCHEMA_VERSION = 1
+
 # Files/dirs to exclude when hashing a vendored module tree.
 _HASH_EXCLUDE_DIRS = frozenset({".git", "__pycache__", ".pytest_cache", ".DS_Store"})
 
@@ -419,6 +425,21 @@ def _git_artifact_hash_cache_path() -> Path:
 
 
 def _read_artifact_hash_cache() -> dict[str, str]:
+    """Load the on-disk ``(url@commit) -> hash`` cache.
+
+    File layout (v1):
+
+        {"schema_version": 1, "entries": {"<url>@<commit>": "sha256:..."}}
+
+    A legacy flat-mapping layout (no ``schema_version`` key — every key
+    is a cache entry) is also accepted and treated as v1 so existing
+    user caches don't have to be discarded by this upgrade.
+
+    Any cache file with a higher ``schema_version`` than this version
+    of nsx supports surfaces as a typed :class:`NSXCacheError` so the
+    user gets actionable remediation rather than a silent reset.
+    """
+
     path = _git_artifact_hash_cache_path()
     if not path.exists():
         return {}
@@ -428,11 +449,37 @@ def _read_artifact_hash_cache() -> dict[str, str]:
         return {}
     if not isinstance(data, dict):
         return {}
-    return {k: v for k, v in data.items() if isinstance(k, str) and isinstance(v, str)}
+
+    sv = data.get("schema_version")
+    if sv is None:
+        # Legacy layout: the entire mapping is the entries dict.
+        return {k: v for k, v in data.items() if isinstance(k, str) and isinstance(v, str)}
+
+    if not isinstance(sv, int) or isinstance(sv, bool) or sv < 1:
+        # Unparseable header — treat as if absent so a future writer can
+        # overwrite without compounding the corruption.
+        return {}
+    if sv > _ARTIFACT_HASH_CACHE_SCHEMA_VERSION:
+        from ._errors import NSXCacheError
+
+        raise NSXCacheError(
+            f"{path}: cache schema_version={sv} is newer than this nsx "
+            f"supports (v{_ARTIFACT_HASH_CACHE_SCHEMA_VERSION}). "
+            "Run `nsx cache clean` (or remove the file) and retry."
+        )
+
+    entries = data.get("entries", {})
+    if not isinstance(entries, dict):
+        return {}
+    return {k: v for k, v in entries.items() if isinstance(k, str) and isinstance(v, str)}
 
 
 def _write_artifact_hash_cache(cache: dict[str, str]) -> None:
     path = _git_artifact_hash_cache_path()
+    payload = {
+        "schema_version": _ARTIFACT_HASH_CACHE_SCHEMA_VERSION,
+        "entries": cache,
+    }
     try:
         path.parent.mkdir(parents=True, exist_ok=True)
         # Atomic write with a unique temp filename so concurrent
@@ -449,7 +496,7 @@ def _write_artifact_hash_cache(cache: dict[str, str]) -> None:
         )
         try:
             with os.fdopen(fd, "w", encoding="utf-8") as fh:
-                json.dump(cache, fh, sort_keys=True, indent=2)
+                json.dump(payload, fh, sort_keys=True, indent=2)
             os.replace(tmp_name, path)
         except Exception:
             # Best-effort cleanup of the temp file on any failure.
