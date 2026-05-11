@@ -1,9 +1,10 @@
 """Shared NSX workflow operations for CLI and programmatic use.
 
-The package implements every ``*_impl`` workhorse behind ``nsx.api``
-and ``nsx`` (the CLI) in focused sub-modules. The public surface is
-re-exported here so existing callers (``api``, ``cli``, tests) can
-reference ``neuralspotx.operations.<name>`` unchanged.
+The package implements every ``*_impl`` workhorse behind
+``neuralspotx.api`` and ``nsx`` (the CLI) in focused sub-modules. The
+public surface is re-exported here so existing callers (``api``,
+``cli``, tests) can reference ``neuralspotx.operations.<name>``
+unchanged.
 
 Sub-module layout
 -----------------

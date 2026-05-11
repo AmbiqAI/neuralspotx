@@ -562,10 +562,15 @@ def _lock_app_impl_unlocked(
     try:
         previous = read_lock(app_dir)
     except NSXLockError as exc:
-        # Older on-disk schema — log and regenerate from scratch.
+        # Older / unsupported on-disk schema. Read-only paths
+        # (``check=True``) just log; ``nsx lock`` regenerates from
+        # scratch on the next write.
         from .._logging import get_logger
 
-        get_logger(__name__).warning("%s (regenerating)", exc)
+        if check:
+            get_logger(__name__).warning("%s", exc)
+        else:
+            get_logger(__name__).warning("%s (regenerating)", exc)
         previous = None
     on_disk_lock = previous  # capture before update-mutation
 

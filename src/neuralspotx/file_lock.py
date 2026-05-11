@@ -28,6 +28,8 @@ import sys
 from collections.abc import Iterator
 from pathlib import Path
 
+from ._errors import NSXLockError
+
 LOCK_FILENAME = ".nsx.sync.lock"
 
 
@@ -114,12 +116,18 @@ _held_paths: contextvars.ContextVar[frozenset[str]] = contextvars.ContextVar(
 )
 
 
-class AppLockBusyError(RuntimeError):
+class AppLockBusyError(NSXLockError):
     """Raised by :func:`app_lock` in non-blocking mode when busy."""
 
 
-class AppLockUnavailableError(RuntimeError):
-    """Raised when the lock primitive is unavailable and fail-open is off."""
+class AppLockUnavailableError(NSXLockError):
+    """Raised when the lock primitive is unavailable.
+
+    Subclasses :class:`NSXLockError` so the standard CLI / API error
+    classification (``cli.main``'s ``NSXError`` handler) routes it the
+    same way as other lock-subsystem failures rather than as an
+    unclassified ``RuntimeError``.
+    """
 
 
 @contextlib.contextmanager

@@ -6,10 +6,14 @@ For the higher-level migration plan and module matrix, see
 This page tracks how the major internal `neuralSPOT` module areas map into the
 current NSX module set.
 
-The goal is not to preserve every neuralSPOT package name. The goal is to make sure
+## Historical mapping (neuralSPOT → nsx)
+
+These tables document how the major neuralSPOT internal areas map
+into the current NSX module set. They are retrospective — the goal
+is not to preserve every neuralSPOT package name, but to make sure
 the important internal capabilities have a clear home in NSX.
 
-## Covered Baseline Areas
+### Covered baseline areas
 
 These major internal areas already have clear NSX coverage.
 
@@ -31,7 +35,7 @@ These major internal areas already have clear NSX coverage.
 | Ambiq HAL/BSP wiring | `nsx-ambiq-hal-r*`, `nsx-ambiq-bsp-r*`, `nsx-soc-hal`, `nsx-cmsis-startup` | Split into SDK-facing wrappers plus SoC/startup integration. |
 | thin common wrappers | `nsx-portable-api` | Optional migration-friendly shim for printf, delay, and interrupt helpers. |
 
-## Partially Covered Areas
+## Partially covered areas
 
 These areas have some coverage, but the full neuralSPOT feature surface is not yet
 represented as first-class NSX modules.
@@ -43,7 +47,7 @@ represented as first-class NSX modules.
 | profiling helpers spread across `ns-utils` and `ns-harness` | partial | Generic perf and PMU helpers now have dedicated modules; legacy TFLM-oriented profiling glue remains in `nsx-harness`. |
 | print and low-power print behavior | partial | Basic print paths exist; deeper legacy power-aware print behavior is not fully split out yet. |
 
-## Major neuralSPOT Areas Still Missing
+## Major neuralSPOT areas still missing
 
 These remain valid migration targets if they still matter for NSX.
 

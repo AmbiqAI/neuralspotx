@@ -13,8 +13,7 @@ from typing import Any
 import pytest
 import yaml
 
-from neuralspotx import NSXError, operations
-from neuralspotx._errors import NSXLockError
+from neuralspotx import NSXError, NSXLockError, operations
 from neuralspotx.nsx_lock import ResolutionError, read_lock
 from neuralspotx.operations import (
     add_module_impl,
