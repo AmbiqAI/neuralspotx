@@ -141,6 +141,7 @@ def test_build_and_flash_dispatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
         toolchain: str | None = None,
         target: str | None = None,
         jobs: int = 8,
+        on_line: object = None,
     ) -> None:
         build_calls.append((app_dir, board, build_dir, toolchain, target, jobs))
 
@@ -151,6 +152,7 @@ def test_build_and_flash_dispatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
         build_dir: Path | None = None,
         toolchain: str | None = None,
         jobs: int = 8,
+        on_line: object = None,
     ) -> None:
         flash_calls.append((app_dir, board, build_dir, toolchain, jobs))
 

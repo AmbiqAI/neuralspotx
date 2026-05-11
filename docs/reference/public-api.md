@@ -32,6 +32,14 @@ tagged; this page will be updated at the v1.0 release.
 | `NSXTimeoutError` | exception | Provisional |
 | `NSXToolchainError` | exception | Provisional |
 
+## Structured emitter
+
+| Symbol | Kind | Tier |
+|---|---|---|
+| `Event` | dataclass | Provisional |
+| `Emitter` | type alias (`Callable[[Event], None]`) | Provisional |
+| `default_emitter` | callable | Provisional |
+
 ## API callables
 
 | Symbol | Returns | Tier |

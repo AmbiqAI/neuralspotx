@@ -5,6 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from .._errors import NSXConfigError, NSXModuleError
+from .._io import info
 from .._logging import get_logger
 from ..file_lock import app_lock
 from ..module_registry import _update_module_clone
@@ -370,9 +371,9 @@ def _sync_app_impl_unlocked(
             )
 
     if changed:
-        print(f"Synced {changed} module{'s' if changed != 1 else ''} from nsx.lock.")
+        info(f"Synced {changed} module{'s' if changed != 1 else ''} from nsx.lock.")
     else:
-        print("All modules already match nsx.lock.")
+        info("All modules already match nsx.lock.")
 
 
 def update_app_impl(

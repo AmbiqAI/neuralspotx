@@ -24,7 +24,7 @@ import shlex
 import signal
 import subprocess
 import sys
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 from ._errors import NSXTimeoutError
@@ -276,6 +276,7 @@ def run(
     cwd: Path | None = None,
     *,
     timeout: float | None = None,
+    on_line: Callable[[str], None] | None = None,
 ) -> None:
     """Run a subprocess, raising on failure or timeout.
 
@@ -284,18 +285,43 @@ def run(
     on the new session; Windows: ``TerminateJobObject`` on a
     ``KILL_ON_JOB_CLOSE`` job) and :class:`subprocess.TimeoutExpired`
     is re-raised.
+
+    When *on_line* is supplied, stdout and stderr are merged and the
+    callback is invoked once per output line (with the trailing newline
+    stripped) as the subprocess produces it. The lines are also
+    re-emitted on the parent's stdout so the user-visible output is
+    unchanged. When *on_line* is ``None`` the subprocess inherits the
+    parent's stdio directly (legacy behaviour).
     """
     effective = _effective_timeout(timeout)
-    proc = subprocess.Popen(
-        cmd,
-        cwd=str(cwd) if cwd else None,
-        start_new_session=(os.name != "nt"),
-    )
+    if on_line is not None:
+        proc = subprocess.Popen(
+            cmd,
+            cwd=str(cwd) if cwd else None,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            bufsize=1,
+            start_new_session=(os.name != "nt"),
+        )
+    else:
+        proc = subprocess.Popen(
+            cmd,
+            cwd=str(cwd) if cwd else None,
+            start_new_session=(os.name != "nt"),
+        )
     container = _ProcessContainer()
     container.attach(proc)
     try:
         try:
-            rc = proc.wait(timeout=effective)
+            if on_line is not None and proc.stdout is not None:
+                for raw in proc.stdout:
+                    text_line = raw.rstrip("\n")
+                    on_line(text_line)
+                    sys.stdout.write(raw)
+                rc = proc.wait(timeout=effective)
+            else:
+                rc = proc.wait(timeout=effective)
         except subprocess.TimeoutExpired:
             container.terminate(proc)
             raise subprocess.TimeoutExpired(cmd, effective) from None

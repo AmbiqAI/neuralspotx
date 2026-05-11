@@ -19,6 +19,7 @@ from ._errors import (
     NSXTimeoutError,
     NSXToolchainError,
 )
+from ._io import Emitter, Event, default_emitter
 from .api import (
     AppActionRequest,
     AppBuildRequest,
@@ -126,6 +127,10 @@ __all__ = [
     "NSXResolutionError",
     "NSXTimeoutError",
     "NSXToolchainError",
+    # Structured emitter
+    "Emitter",
+    "Event",
+    "default_emitter",
     # API callables
     "add_module",
     "build_app",

@@ -2,6 +2,39 @@
 
 ## Unreleased
 
+### Features — structured event emitter & --json output ([#65](https://github.com/AmbiqAI/neuralspotx/issues/65))
+
+The Python API and CLI gain a structured output channel so embedders
+(IDE plugins, Helia profiler, CI dashboards) can render NSX progress
+without screen-scraping `print()` calls.
+
+* **`neuralspotx.Event` / `neuralspotx.Emitter`.** `Event(kind, message, data)`
+  is the new immutable carrier for everything NSX would otherwise have
+  printed. `kind` is one of `"info"` / `"warn"` / `"error"` / `"step"` /
+  `"line"`. `Emitter` is the public type alias `Callable[[Event], None]`.
+  `neuralspotx.default_emitter` routes `line` to stdout and the rest to
+  stderr.
+* **`emit=` kwarg on every printing API entry point.** `create_app`,
+  `doctor`, `configure_app`, `build_app`, `flash_app`, `view_app`,
+  `clean_app`, `lock_app`, `sync_app`, and `update_app` now accept an
+  optional `emit: Emitter | None = None` keyword. Inside each call the
+  supplied emitter is installed via a `ContextVar` so the entire nested
+  operations layer routes through it without any further plumbing. All
+  27 ad-hoc `print()` sites in `operations/` and `tooling.py` migrated
+  to the new `info()`/`warn()`/`line()` helpers.
+* **`on_line=` kwarg on `build_app` / `flash_app`.** The build and
+  flash entry points additionally accept `on_line: Callable[[str], None]`
+  which receives every subprocess line as it is produced. Subprocess
+  stdout and stderr are merged so consumers see them in temporal order;
+  the parent's stdout is still written to so user-visible output is
+  unchanged. Threaded through `subprocess_utils.run` while preserving
+  process-tree timeout and Ctrl-C semantics.
+* **`--json` output on four CLI commands.** `nsx doctor --json`,
+  `nsx cache info --json`, `nsx commands --json`, and
+  `nsx module list --json` emit a single JSON document on stdout that
+  matches the `to_dict()` shape of the corresponding dataclass. The
+  default human-readable output is unchanged.
+
 ### Features — formats freeze ([#64](https://github.com/AmbiqAI/neuralspotx/issues/64))
 
 Two on-disk formats are now versioned and validated up front so that

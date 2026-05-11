@@ -12,6 +12,7 @@ from .._errors import (
     NSXModuleError,
     NSXResolutionError,
 )
+from .._io import info
 from ..constants import DEFAULT_TOOLCHAIN
 from ..file_lock import app_lock
 from ..models import OutdatedModule, OutdatedReport, OutdatedSkip
@@ -607,20 +608,20 @@ def _lock_app_impl_unlocked(
             else lock_file
         )
         if not diff:
-            print(f"{rel} is up to date.")
+            info(f"{rel} is up to date.")
             lock.path = lock_file
             return lock
-        print(f"{rel} is OUT OF DATE:")
-        for line in diff:
-            print(f"  {line}")
-        print("Run `nsx lock` to refresh.")
+        info(f"{rel} is OUT OF DATE:")
+        for line_text in diff:
+            info(f"  {line_text}")
+        info("Run `nsx lock` to refresh.")
         raise NSXError(1)
 
     path = write_lock(app_dir, lock)
     # ``write_lock`` already stamps ``lock.path`` for us.
     if quiet:
         return lock
-    print(
+    info(
         f"Wrote {path.relative_to(app_dir.parent) if path.is_relative_to(app_dir.parent) else path}"
     )
     n_git = sum(1 for m in lock.modules.values() if m.kind == LockKind.GIT)
@@ -633,7 +634,7 @@ def _lock_app_impl_unlocked(
         parts.append(f"{n_ven} vendored")
     if n_unres:
         parts.append(f"{n_unres} unresolved (upstream unreachable)")
-    print(f"  modules: {len(lock.modules)} ({', '.join(parts)})")
+    info(f"  modules: {len(lock.modules)} ({', '.join(parts)})")
     return lock
 
 

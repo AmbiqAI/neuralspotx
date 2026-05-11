@@ -6,6 +6,7 @@ import os
 import shutil
 import subprocess
 
+from .._io import line
 from ..models import DoctorCheck, DoctorReport
 from ..subprocess_utils import jlink_failure_hint
 from ..tooling import (
@@ -43,9 +44,9 @@ class _Reporter:
         )
         return ok
 
-    def note(self, line: str) -> None:
-        print(line)
-        self.notes.append(line.strip())
+    def note(self, line_text: str) -> None:
+        line(line_text)
+        self.notes.append(line_text.strip())
 
 
 def doctor_impl() -> DoctorReport:

@@ -279,6 +279,14 @@ def cmd_create_app(args: argparse.Namespace) -> None:
 
 @command_hint("doctor", _C.DIAGNOSTICS, _S.ENVIRONMENT, "nsx create-app", "nsx configure")
 def cmd_doctor(args: argparse.Namespace) -> None:
+    if getattr(args, "json", False):
+        # Run doctor with a no-op emitter so the diagnostic line output
+        # does not pollute the JSON document on stdout.
+        report = api.doctor(emit=lambda _event: None)
+        print(json.dumps(report.to_dict(), indent=2))
+        if not report.ok:
+            raise NSXToolchainError("One or more required tools are missing or misconfigured.")
+        return
     report = api.doctor()
     if not report.ok:
         raise NSXToolchainError("One or more required tools are missing or misconfigured.")
@@ -915,6 +923,11 @@ def _build_parser() -> argparse.ArgumentParser:
     p_new_alias.set_defaults(func=cmd_create_app)
 
     p_doctor = sub.add_parser("doctor", help="Check the local NSX toolchain environment")
+    p_doctor.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit the full doctor report as machine-readable JSON",
+    )
     p_doctor.set_defaults(func=cmd_doctor)
 
     p_commands = sub.add_parser(
