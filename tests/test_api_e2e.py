@@ -318,6 +318,23 @@ def test_module_init_creates_valid_skeleton(tmp_path: Path) -> None:
     assert "int my_sensor_driver_init(void);" in header_text
 
 
+def test_module_init_default_summary_placeholder(tmp_path: Path) -> None:
+    module_dir = tmp_path / "my-widget"
+
+    init_module(
+        ModuleInitRequest(
+            module_dir=module_dir,
+            module_type="portable_api",
+        )
+    )
+
+    metadata = _load_yaml(module_dir / "nsx-module.yaml")
+    summary_val = metadata["summary"]
+    assert "my-widget" in summary_val
+    assert "add a one-line summary here" in summary_val
+    assert "TODO" not in summary_val
+
+
 def test_module_init_parser_wiring() -> None:
     parser = cli._build_parser()
     args = parser.parse_args([
