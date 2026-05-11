@@ -4,13 +4,12 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 import subprocess
 import sys
 from pathlib import Path
 from typing import Any
 
-from . import api, module_cache, nsx_lock, operations
+from . import api, nsx_lock, operations
 from ._errors import NSXConfigError, NSXError, NSXModuleError, NSXToolchainError
 from ._logging import configure_logging
 from .metadata import SUPPORTED_MODULE_TYPES, load_yaml, validate_nsx_module_metadata
@@ -816,65 +815,36 @@ def _format_bytes(n: int) -> str:
     return f"{n} B"
 
 
-def _dir_size_bytes(path: Path) -> int:
-    total = 0
-    for root, _dirs, files in os.walk(path):
-        for fname in files:
-            fpath = Path(root) / fname
-            try:
-                total += fpath.stat().st_size
-            except OSError:
-                continue
-    return total
-
-
 @command_hint("cache info", _C.MAINTENANCE, _S.GLOBAL, "nsx cache clean")
 def cmd_cache_info(args: argparse.Namespace) -> None:
-    root = module_cache.module_cache_root()
-    entries = module_cache.iter_entries()
-    disabled = module_cache.is_disabled()
+    info = api.cache_info()
 
     if args.json:
-        payload = {
-            "root": str(root),
-            "disabled": disabled,
-            "entry_count": len(entries),
-            "entries": [
-                {
-                    "digest": f"{e.parent.name}{e.name}",
-                    "path": str(e),
-                    "size_bytes": _dir_size_bytes(e),
-                }
-                for e in entries
-            ],
-        }
-        payload["total_size_bytes"] = sum(int(item["size_bytes"]) for item in payload["entries"])
-        print(json.dumps(payload, indent=2))
+        print(json.dumps(info.to_dict(), indent=2))
         return
 
-    print(f"nsx module cache: {root}")
-    print(f"  status:  {'disabled (NSX_DISABLE_MODULE_CACHE set)' if disabled else 'enabled'}")
-    print(f"  entries: {len(entries)}")
-    if entries:
-        total = sum(_dir_size_bytes(e) for e in entries)
-        print(f"  total:   {_format_bytes(total)}")
+    print(f"nsx module cache: {info.root}")
+    status = "disabled (NSX_DISABLE_MODULE_CACHE set)" if info.disabled else "enabled"
+    print(f"  status:  {status}")
+    print(f"  entries: {info.entry_count}")
+    if info.entries:
+        print(f"  total:   {_format_bytes(info.total_size_bytes)}")
 
 
 @command_hint("cache clean", _C.MAINTENANCE, _S.GLOBAL, "nsx sync")
 def cmd_cache_clean(args: argparse.Namespace) -> None:
     if not args.yes:
-        root = module_cache.module_cache_root()
-        entries = module_cache.iter_entries()
-        if not entries:
-            print(f"nsx module cache at {root} is already empty.")
+        preview = api.clean_cache(dry_run=True)
+        if preview.removed_count == 0:
+            print(f"nsx module cache at {preview.root} is already empty.")
             return
         print(
-            f"This will delete {len(entries)} cached module artifact(s) "
-            f"under {root}. Re-run with --yes to confirm."
+            f"This will delete {preview.removed_count} cached module artifact(s) "
+            f"under {preview.root}. Re-run with --yes to confirm."
         )
         return
-    removed = module_cache.clear()
-    print(f"Removed {removed} cached module artifact(s).")
+    result = api.clean_cache()
+    print(f"Removed {result.removed_count} cached module artifact(s).")
 
 
 def _build_parser() -> argparse.ArgumentParser:

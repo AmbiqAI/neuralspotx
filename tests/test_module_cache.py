@@ -514,3 +514,71 @@ class TestModuleCacheConcurrencyR19:
             t.join()
 
         assert not errors, f"lookup errors during populate: {errors}"
+
+
+# ---------------------------------------------------------------------------
+# Public api.cache_info / api.clean_cache wrappers
+# ---------------------------------------------------------------------------
+
+
+class TestPublicCacheApi:
+    def test_cache_info_returns_typed_snapshot(self, cache_dir: Path) -> None:
+        from neuralspotx import api
+        from neuralspotx.models import CacheInfo
+
+        src = cache_dir / "src"
+        _make_tree(src)
+        for prefix in ("aa", "bb"):
+            module_cache.populate("sha256:" + prefix + "0" * 62, src)
+
+        info = api.cache_info()
+        assert isinstance(info, CacheInfo)
+        assert info.disabled is False
+        assert info.entry_count == 2
+        assert info.total_size_bytes > 0
+        digests = sorted(e.digest for e in info.entries)
+        assert digests == [
+            "aa" + "0" * 62,
+            "bb" + "0" * 62,
+        ]
+        # to_dict matches CacheInfo's own properties
+        d = info.to_dict()
+        assert d["entry_count"] == 2
+        assert d["total_size_bytes"] == info.total_size_bytes
+
+    def test_clean_cache_dry_run_preserves_entries(self, cache_dir: Path) -> None:
+        from neuralspotx import api
+        from neuralspotx.models import CacheCleanResult
+
+        src = cache_dir / "src"
+        _make_tree(src)
+        module_cache.populate("sha256:" + "cc" + "0" * 62, src)
+
+        result = api.clean_cache(dry_run=True)
+        assert isinstance(result, CacheCleanResult)
+        assert result.dry_run is True
+        assert result.removed_count == 1
+        # Nothing was actually removed.
+        assert len(module_cache.iter_entries()) == 1
+
+    def test_clean_cache_removes_entries(self, cache_dir: Path) -> None:
+        from neuralspotx import api
+
+        src = cache_dir / "src"
+        _make_tree(src)
+        for prefix in ("dd", "ee", "ff"):
+            module_cache.populate("sha256:" + prefix + "0" * 62, src)
+
+        result = api.clean_cache()
+        assert result.dry_run is False
+        assert result.removed_count == 3
+        assert module_cache.iter_entries() == []
+
+    def test_cache_info_reflects_disabled_env(
+        self, cache_dir: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from neuralspotx import api
+
+        monkeypatch.setenv("NSX_DISABLE_MODULE_CACHE", "1")
+        info = api.cache_info()
+        assert info.disabled is True
