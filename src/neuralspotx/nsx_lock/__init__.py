@@ -100,9 +100,9 @@ from typing import Any, Iterable
 
 import yaml
 
-from ._errors import NSXLockError
-from ._logging import get_logger
-from .subprocess_utils import run_capture
+from .._errors import NSXLockError
+from .._logging import get_logger
+from ..subprocess_utils import run_capture
 
 _log = get_logger(__name__)
 
@@ -460,7 +460,7 @@ def _read_artifact_hash_cache() -> dict[str, str]:
         # overwrite without compounding the corruption.
         return {}
     if sv > _ARTIFACT_HASH_CACHE_SCHEMA_VERSION:
-        from ._errors import NSXCacheError
+        from .._errors import NSXCacheError
 
         raise NSXCacheError(
             f"{path}: cache schema_version={sv} is newer than this nsx "
@@ -547,7 +547,7 @@ def hash_git_artifact(url: str, commit: str, *, use_cache: bool = True) -> str:
     # detection that some tests stub out).
     import tempfile
 
-    from .subprocess_utils import git_clone_at_commit
+    from ..subprocess_utils import git_clone_at_commit
 
     with tempfile.TemporaryDirectory(prefix="nsx-lock-") as tmp:
         clone_dir = Path(tmp) / "clone"
@@ -562,7 +562,7 @@ def hash_git_artifact(url: str, commit: str, *, use_cache: bool = True) -> str:
         result = hash_tree(clone_dir)
 
     if use_cache:
-        from .file_lock import file_mutex
+        from ..file_lock import file_mutex
 
         cache_path = _git_artifact_hash_cache_path()
         lock_path = cache_path.with_suffix(cache_path.suffix + ".lock")
@@ -620,7 +620,7 @@ def resolve_ref(url: str, ref: str, *, bypass_cache: bool = False) -> tuple[str,
         return ref.lower(), "sha"
 
     if not bypass_cache:
-        from . import _resolve_cache
+        from .. import _resolve_cache
 
         cached = _resolve_cache.get(url, ref)
         if cached is not None:
@@ -628,7 +628,7 @@ def resolve_ref(url: str, ref: str, *, bypass_cache: bool = False) -> tuple[str,
 
     result = _resolve_ref(url, ref)
 
-    from . import _resolve_cache
+    from .. import _resolve_cache
 
     _resolve_cache.put(url, ref, result[0], result[1])
     return result
