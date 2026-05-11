@@ -463,6 +463,7 @@ class TestCliApiParityGaps:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
     ) -> None:
         """cmd_module_list bypasses api.list_modules — uses _module_discovery_records directly."""
+        from neuralspotx.cli import _cmd_module
         from neuralspotx.module_discovery import resolve_module_context
 
         calls: list[bool] = []
@@ -472,7 +473,7 @@ class TestCliApiParityGaps:
             calls.append(True)
             return original(*a, **kw)
 
-        monkeypatch.setattr(cli, "resolve_module_context", spy)
+        monkeypatch.setattr(_cmd_module, "resolve_module_context", spy)
         # --registry-only avoids needing an nsx.yml
         cli.cmd_module_list(cli.argparse.Namespace(app_dir=None, registry_only=True, json=False))
         assert calls, "cmd_module_list should call resolve_module_context (not api.list_modules)"
@@ -481,14 +482,16 @@ class TestCliApiParityGaps:
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """cmd_module_validate bypasses api.validate_module_metadata — calls load_yaml directly."""
+        from neuralspotx.cli import _cmd_module
+
         load_calls: list[object] = []
-        original_load = cli.load_yaml
+        original_load = _cmd_module.load_yaml
 
         def spy(path: object) -> object:
             load_calls.append(path)
             return original_load(path)
 
-        monkeypatch.setattr(cli, "load_yaml", spy)
+        monkeypatch.setattr(_cmd_module, "load_yaml", spy)
         meta = tmp_path / "nsx-module.yaml"
         meta.write_text(
             "schema_version: 1\n"

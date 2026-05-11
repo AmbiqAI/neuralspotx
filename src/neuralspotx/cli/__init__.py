@@ -1,4 +1,18 @@
-"""NSX CLI — create and manage bare-metal Ambiq applications."""
+"""NSX CLI — create and manage bare-metal Ambiq applications.
+
+Public entry point. The ``cmd_*`` handlers and supporting helpers are
+split across sibling modules to keep this file scoped to argparse wiring
+and the high-level workflow handlers (create-app / doctor / build /
+flash / lock / sync / outdated / update / sbom):
+
+* :mod:`._hints` — shared ``@command_hint`` decorator + registry.
+* :mod:`._render` — stateless formatting / JSON / introspection helpers.
+* :mod:`._cmd_module` — every ``nsx module …`` handler.
+* :mod:`._cmd_cache` — every ``nsx cache …`` handler.
+
+All public names (``main``, every ``cmd_*`` handler) remain importable
+from ``neuralspotx.cli`` for backwards compatibility.
+"""
 
 from __future__ import annotations
 
@@ -7,76 +21,31 @@ import json
 import subprocess
 import sys
 from pathlib import Path
-from typing import Any
 
-from . import api, operations
-from ._errors import NSXConfigError, NSXError, NSXModuleError, NSXToolchainError
-from ._logging import configure_logging
-from .metadata import SUPPORTED_MODULE_TYPES, load_yaml, validate_nsx_module_metadata
-from .models import (
-    CommandCategory,
-    CommandHint,
-    CommandScope,
-    DiscoveryRecord,
-    ModuleChange,
-    OutdatedReport,
-    SearchResult,
+from .. import api, operations
+from .._errors import NSXError, NSXToolchainError
+from .._logging import configure_logging
+from ..metadata import SUPPORTED_MODULE_TYPES
+from ..models import CommandCategory, CommandHint, CommandScope, OutdatedReport
+from ..project_config import resolve_app_dir
+from ..subprocess_utils import format_subprocess_error
+from ._cmd_cache import cmd_cache_clean, cmd_cache_info
+from ._cmd_module import (
+    cmd_module_add,
+    cmd_module_describe,
+    cmd_module_init,
+    cmd_module_list,
+    cmd_module_register,
+    cmd_module_remove,
+    cmd_module_search,
+    cmd_module_update,
+    cmd_module_validate,
 )
-from .module_discovery import (
-    resolve_module_context,
-    resolve_target_context,
-)
-from .module_registry import (
-    _print_module_table,
-)
-from .project_config import (
-    resolve_app_dir,
-)
-from .subprocess_utils import format_subprocess_error
+from ._hints import _COMMAND_GRAPH_HINTS, _register_group_hint, command_hint
+from ._render import _command_graph, _render_outdated_report
 
 _C = CommandCategory
 _S = CommandScope
-
-# Discovery hints declared via the ``@command_hint(path, ...)`` decorator on each
-# ``cmd_*`` handler below. Group/root paths that have no dedicated handler
-# (``""``, ``"module"``, ``"cache"``) are registered explicitly at the bottom
-# of this module via :func:`_register_group_hint`.
-_COMMAND_GRAPH_HINTS: dict[str, CommandHint] = {}
-
-
-def command_hint(
-    path: str,
-    category: CommandCategory,
-    scope: CommandScope,
-    *next_commands: str,
-    alias_for: str | None = None,
-):
-    """Register a :class:`CommandHint` for *path* and tag the handler.
-
-    Keeps each command's discovery metadata co-located with its ``cmd_*``
-    function instead of mirroring it in a far-away central table.
-    """
-
-    hint = CommandHint(category, scope, tuple(next_commands), alias_for=alias_for)
-
-    def decorator(func):
-        _COMMAND_GRAPH_HINTS[path] = hint
-        func._nsx_hint = hint  # type: ignore[attr-defined]
-        return func
-
-    return decorator
-
-
-def _register_group_hint(
-    path: str,
-    category: CommandCategory,
-    scope: CommandScope,
-    *next_commands: str,
-) -> None:
-    """Register a hint for a parser group (no leaf handler)."""
-
-    _COMMAND_GRAPH_HINTS[path] = CommandHint(category, scope, tuple(next_commands))
-
 
 _register_group_hint("", _C.ENTRYPOINT, _S.GLOBAL, "nsx doctor", "nsx create-app")
 _COMMAND_GRAPH_HINTS["new"] = CommandHint(
@@ -95,146 +64,6 @@ _register_group_hint(
     "nsx module add",
 )
 _register_group_hint("cache", _C.MAINTENANCE, _S.GLOBAL, "nsx cache info", "nsx cache clean")
-
-
-def _json_safe(value: Any) -> Any:
-    if isinstance(value, (str, int, float, bool)) or value is None:
-        return value
-    if isinstance(value, (list, tuple)):
-        return [_json_safe(item) for item in value]
-    if isinstance(value, dict):
-        return {str(key): _json_safe(item) for key, item in value.items()}
-    return str(value)
-
-
-def _command_hint(path: list[str]) -> CommandHint | None:
-    key = " ".join(path)
-    return _COMMAND_GRAPH_HINTS.get(key)
-
-
-def _argument_record(action: argparse.Action) -> dict[str, Any]:
-    record: dict[str, Any] = {
-        "dest": action.dest,
-        "required": bool(getattr(action, "required", False)),
-    }
-    if getattr(action, "help", None) not in (None, argparse.SUPPRESS):
-        record["help"] = action.help
-    if getattr(action, "metavar", None) is not None:
-        record["metavar"] = _json_safe(action.metavar)
-    if getattr(action, "choices", None) is not None:
-        record["choices"] = _json_safe(list(action.choices))
-    if getattr(action, "default", argparse.SUPPRESS) is not argparse.SUPPRESS:
-        record["default"] = _json_safe(action.default)
-    if getattr(action, "nargs", None) is not None:
-        record["nargs"] = _json_safe(action.nargs)
-    if action.option_strings:
-        record["kind"] = "option"
-        record["flags"] = list(action.option_strings)
-    else:
-        record["kind"] = "positional"
-        record["name"] = action.dest
-    return record
-
-
-def _subparsers_action(parser: argparse.ArgumentParser) -> argparse._SubParsersAction | None:
-    for action in parser._actions:
-        if isinstance(action, argparse._SubParsersAction):
-            return action
-    return None
-
-
-def _command_record(
-    parser: argparse.ArgumentParser,
-    *,
-    path: list[str],
-    summary: str | None = None,
-) -> dict[str, Any]:
-    options: list[dict[str, Any]] = []
-    positionals: list[dict[str, Any]] = []
-    subcommands: list[dict[str, Any]] = []
-
-    subparsers = _subparsers_action(parser)
-    help_lookup: dict[str, str | None] = {}
-    if subparsers is not None:
-        for choice_action in subparsers._choices_actions:
-            help_lookup[choice_action.dest] = choice_action.help
-
-    for action in parser._actions:
-        if isinstance(action, argparse._HelpAction):
-            continue
-        if isinstance(action, argparse._SubParsersAction):
-            continue
-        record = _argument_record(action)
-        if record["kind"] == "option":
-            options.append(record)
-        else:
-            positionals.append(record)
-
-    if subparsers is not None:
-        for name in sorted(subparsers.choices.keys()):
-            subcommands.append(
-                _command_record(
-                    subparsers.choices[name],
-                    path=path + [name],
-                    summary=help_lookup.get(name),
-                )
-            )
-
-    record = {
-        "name": path[-1] if path else "nsx",
-        "command": "nsx" if not path else f"nsx {' '.join(path)}",
-        "path": path,
-        "summary": summary,
-        "description": parser.description,
-        "usage": parser.format_usage().strip(),
-        "arguments": {
-            "positionals": positionals,
-            "options": options,
-        },
-        "subcommands": subcommands,
-    }
-    hint = _command_hint(path)
-    if hint is not None:
-        record.update(hint.to_dict())
-    return record
-
-
-def _command_graph(parser: argparse.ArgumentParser) -> dict[str, Any]:
-    subparsers = _subparsers_action(parser)
-    commands: list[dict[str, Any]] = []
-    help_lookup: dict[str, str | None] = {}
-    if subparsers is not None:
-        for choice_action in subparsers._choices_actions:
-            help_lookup[choice_action.dest] = choice_action.help
-        for name in sorted(subparsers.choices.keys()):
-            commands.append(
-                _command_record(
-                    subparsers.choices[name],
-                    path=[name],
-                    summary=help_lookup.get(name),
-                )
-            )
-
-    graph = {
-        "command": "nsx",
-        "summary": parser.description,
-        "workflow": {
-            "recommended_start": ["nsx doctor", "nsx create-app"],
-            "typical_lifecycle": [
-                "nsx create-app",
-                "nsx configure",
-                "nsx build",
-                "nsx flash",
-                "nsx view",
-                "nsx module add",
-            ],
-        },
-        "commands": commands,
-    }
-    hint = _command_hint([])
-    if hint is not None:
-        graph.update(hint.to_dict())
-    return graph
 
 
 @command_hint(
@@ -387,109 +216,16 @@ def cmd_sync(args: argparse.Namespace) -> None:
 
 @command_hint("outdated", _C.MODULES, _S.APP, "nsx update", "nsx lock --update")
 def cmd_outdated(args: argparse.Namespace) -> None:
-    report = api.outdated_app(
+    report: OutdatedReport = api.outdated_app(
         resolve_app_dir(args.app_dir),
         timeout_s=getattr(args, "timeout", None),
     )
     if getattr(args, "json", False):
-        import json as _json
-
-        print(_json.dumps(report.to_dict(), indent=2))
+        print(json.dumps(report.to_dict(), indent=2))
     else:
         _render_outdated_report(report)
     if args.exit_code and report.outdated_count:
         raise NSXError(1)
-
-
-def _render_outdated_report(report: OutdatedReport) -> None:
-    """Render an :class:`OutdatedReport` to stdout (text format)."""
-
-    rows = [
-        (m.name, m.constraint, m.locked[:10], m.upstream[:10], str(m.status))
-        for m in report.checked
-    ]
-    if not rows and not report.skipped:
-        print("No git modules to check.")
-        return
-
-    name_w = max((len(r[0]) for r in rows), default=4)
-    cons_w = max((len(r[1]) for r in rows), default=10)
-    header = f"{'module'.ljust(name_w)}  {'constraint'.ljust(cons_w)}  {'locked'.ljust(10)}  {'upstream'.ljust(10)}  status"
-    print(header)
-    print("-" * len(header))
-    for r in rows:
-        print(
-            f"{r[0].ljust(name_w)}  {r[1].ljust(cons_w)}  {r[2].ljust(10)}  {r[3].ljust(10)}  {r[4]}"
-        )
-
-    if report.skipped:
-        print()
-        for skip in report.skipped:
-            print(f"skipped: {skip.name} ({skip.reason})")
-
-    print()
-    outdated = report.outdated
-    if outdated:
-        names = ", ".join(m.name for m in outdated)
-        print(f"{len(outdated)} outdated: {names}")
-        print("Run `nsx update` (all) or `nsx update --module <name>` to refresh.")
-    else:
-        print("All git modules are up-to-date with their constraints.")
-
-
-def _render_module_changes(
-    changes: list[ModuleChange], *, requested: str | None, verb: str
-) -> None:
-    """Render a list of :class:`ModuleChange` records to stdout.
-
-    ``verb`` is one of ``"add"`` / ``"remove"`` / ``"update"`` /
-    ``"register"`` and seeds the human-readable summary line. When
-    ``requested`` is the user-supplied module name we surface it first
-    so cascaded transitive changes are obvious.
-    """
-
-    prefix = "[dry-run] " if any(c.dry_run for c in changes) else ""
-    if not changes:
-        if verb == "update":
-            print(f"{prefix}No modules updated.")
-        else:
-            print(f"{prefix}No changes.")
-        return
-
-    primary = next(
-        (c for c in changes if requested and c.name == requested),
-        changes[0],
-    )
-    others = [c for c in changes if c is not primary]
-
-    def _summary(c: ModuleChange) -> str:
-        if c.action == "added":
-            after = f" -> {c.after}" if c.after else ""
-            return f"added '{c.name}'{after}"
-        if c.action == "removed":
-            return f"removed '{c.name}'"
-        if c.action == "updated":
-            return f"updated '{c.name}': {c.before or '?'} -> {c.after or '?'}"
-        return f"noop '{c.name}' ({c.before or 'n/a'})"
-
-    print(f"{prefix}{_summary(primary)}")
-    for c in others:
-        print(f"{prefix}  also {_summary(c)}")
-
-
-def _render_module_init(change: ModuleChange, module_dir: Path) -> None:
-    """Render the result of ``nsx module init`` with next-step hints."""
-
-    print(f"Created module skeleton '{change.name}' (version {change.after}) at: {module_dir}")
-    metadata_path = module_dir / "nsx-module.yaml"
-    print("Next steps:")
-    print("  1) Review nsx-module.yaml and fill in summary, capabilities, and compatibility")
-    print(f"  2) Run `nsx module validate {metadata_path}`")
-    print(
-        "  3) Register it into an app with `nsx module register "
-        f"{change.name} --metadata {metadata_path} --project {change.name} "
-        f"--project-local-path {module_dir} --app-dir <app-dir>`"
-    )
 
 
 @command_hint("update", _C.MODULES, _S.APP, "nsx configure", "nsx build", "nsx flash")
@@ -499,360 +235,6 @@ def cmd_update(args: argparse.Namespace) -> None:
         modules=list(args.modules) if args.modules else None,
         timeout_s=getattr(args, "timeout", None),
     )
-
-
-def _resolve_cli_app_dir(app_dir_arg: str | None) -> Path | None:
-    """Resolve CLI --app-dir to a Path, or None when not supplied."""
-
-    if app_dir_arg is None:
-        return None
-    return resolve_app_dir(app_dir_arg)
-
-
-def _print_module_detail(record: DiscoveryRecord) -> None:
-    print(f"Module: {record.name}")
-    print(f"Project: {record.project}")
-    print(f"Revision: {record.revision}")
-    print(f"Metadata: {record.metadata}")
-    print(f"Enabled: {'yes' if record.enabled else 'no'}")
-    if not record.metadata_available:
-        if record.metadata_error is not None:
-            print(f"Metadata available: no ({record.metadata_error})")
-        return
-
-    module = record.module
-    if module is None:
-        return
-    print(f"Type: {module['type']}")
-    print(f"Version: {module['version']}")
-    if "category" in module:
-        print(f"Category: {module['category']}")
-    if "provider" in module:
-        print(f"Provider: {module['provider']}")
-    if record.summary is not None:
-        print(f"Summary: {record.summary}")
-    if record.capabilities is not None:
-        print(f"Capabilities: {', '.join(record.capabilities)}")
-    if record.use_cases is not None:
-        print(f"Use cases: {', '.join(record.use_cases)}")
-    build = record.build
-    depends = record.depends
-    compatibility = record.compatibility
-    if build is not None:
-        print(f"Targets: {', '.join(build['cmake']['targets'])}")
-    if depends is not None:
-        print(f"Required deps: {', '.join(depends['required']) or '(none)'}")
-        print(f"Optional deps: {', '.join(depends['optional']) or '(none)'}")
-    if compatibility is not None:
-        print(f"Boards: {', '.join(compatibility['boards'])}")
-        print(f"SoCs: {', '.join(compatibility['socs'])}")
-        print(f"Toolchains: {', '.join(compatibility['toolchains'])}")
-    if record.provides is not None:
-        print("Provides:")
-        print(json.dumps(record.provides, indent=2, sort_keys=True))
-
-
-def _print_module_search_results(
-    results: list[SearchResult], target_context: dict[str, str] | None
-) -> None:
-    if target_context:
-        print(
-            "Target context: "
-            + ", ".join(f"{key}={value}" for key, value in target_context.items())
-        )
-    if not results:
-        print("No modules matched the query.")
-        return
-
-    for result in results:
-        compat_text = (
-            "compatible"
-            if result.compatible is True
-            else "incompatible"
-            if result.compatible is False
-            else "compatibility-unknown"
-        )
-        print(f"- {result.name} (score={result.score}, {compat_text})")
-        if result.metadata_available:
-            module = result.module
-            if module is not None:
-                build = result.build
-                targets = ", ".join(build["cmake"]["targets"]) if build is not None else ""
-                print(f"  type={module['type']} project={result.project} targets={targets}")
-        if result.matches:
-            preview = ", ".join(f"{m.field}={m.value}" for m in result.matches[:4])
-            print(f"  matched: {preview}")
-
-
-@command_hint(
-    "module search",
-    _C.MODULES,
-    _S.APP,
-    "nsx module describe <module>",
-    "nsx module add <module>",
-    "nsx configure",
-)
-def cmd_module_search(args: argparse.Namespace) -> None:
-    app_dir = _resolve_cli_app_dir(args.app_dir)
-    results = api.search_modules(
-        args.query,
-        app_dir=app_dir,
-        board=args.board,
-        soc=args.soc,
-        toolchain=args.toolchain,
-        include_incompatible=args.include_incompatible,
-    )
-    if args.json:
-        target_ctx = resolve_target_context(
-            app_dir=app_dir,
-            board=args.board,
-            soc=args.soc,
-            toolchain=args.toolchain,
-        )
-        _, _, resolved_app, scope = resolve_module_context(app_dir=app_dir)
-        payload = {
-            "scope": scope,
-            "app_dir": str(resolved_app) if resolved_app else None,
-            "query": args.query,
-            "target_context": target_ctx,
-            "results": [r.to_dict() for r in results],
-        }
-        print(json.dumps(payload, indent=2, sort_keys=True))
-        return
-
-    target_ctx = resolve_target_context(
-        app_dir=app_dir,
-        board=args.board,
-        soc=args.soc,
-        toolchain=args.toolchain,
-    )
-    _print_module_search_results(results, target_ctx)
-
-
-@command_hint(
-    "module list",
-    _C.MODULES,
-    _S.APP,
-    "nsx module describe <module>",
-    "nsx module add <module>",
-    "nsx module register <module>",
-)
-def cmd_module_list(args: argparse.Namespace) -> None:
-    if args.app_dir is None and not args.registry_only:
-        raise NSXConfigError("nsx module list requires --app-dir unless --registry-only is used")
-
-    app_dir = None if args.registry_only else _resolve_cli_app_dir(args.app_dir)
-    registry, enabled, resolved_app, scope = resolve_module_context(app_dir=app_dir)
-    if args.json:
-        records = api.list_modules(
-            app_dir=resolved_app,
-            registry_only=args.registry_only,
-            include_metadata=True,
-        )
-        payload = {
-            "scope": scope,
-            "app_dir": str(resolved_app) if resolved_app else None,
-            "modules": [r.to_dict() for r in records],
-        }
-        print(json.dumps(payload, indent=2, sort_keys=True))
-        return
-
-    _print_module_table(
-        registry,
-        enabled,
-        heading=(
-            "NSX modules in the packaged registry:"
-            if scope == "packaged"
-            else "NSX modules in the active registry (* = enabled for this app):"
-        ),
-    )
-
-
-@command_hint(
-    "module describe",
-    _C.MODULES,
-    _S.APP,
-    "nsx module add <module>",
-    "nsx configure",
-    "nsx build",
-)
-def cmd_module_describe(args: argparse.Namespace) -> None:
-    app_dir = _resolve_cli_app_dir(args.app_dir)
-    _, _, resolved_app, scope = resolve_module_context(app_dir=app_dir)
-    try:
-        record = api.describe_module(args.module, app_dir=resolved_app)
-    except ValueError as exc:
-        raise NSXModuleError(str(exc)) from None
-
-    if args.json:
-        payload = {
-            "scope": scope,
-            "app_dir": str(resolved_app) if resolved_app else None,
-            "module": record.to_dict(),
-        }
-        print(json.dumps(payload, indent=2, sort_keys=True))
-        return
-
-    _print_module_detail(record)
-
-
-@command_hint("module add", _C.MODULES, _S.APP, "nsx configure", "nsx build", "nsx flash")
-def cmd_module_add(args: argparse.Namespace) -> None:
-    changes = api.add_module(
-        resolve_app_dir(args.app_dir),
-        args.module,
-        local=getattr(args, "local", False),
-        vendored=getattr(args, "vendored", False),
-        dry_run=args.dry_run,
-    )
-    _render_module_changes(changes, requested=args.module, verb="add")
-
-
-@command_hint("module remove", _C.MODULES, _S.APP, "nsx configure", "nsx build")
-def cmd_module_remove(args: argparse.Namespace) -> None:
-    changes = api.remove_module(
-        resolve_app_dir(args.app_dir),
-        args.module,
-        dry_run=args.dry_run,
-    )
-    _render_module_changes(changes, requested=args.module, verb="remove")
-
-
-@command_hint("module update", _C.MODULES, _S.APP, "nsx configure", "nsx build")
-def cmd_module_update(args: argparse.Namespace) -> None:
-    changes = api.update_modules(
-        resolve_app_dir(args.app_dir),
-        module=args.module,
-        dry_run=args.dry_run,
-    )
-    _render_module_changes(changes, requested=args.module, verb="update")
-
-
-@command_hint(
-    "module register",
-    _C.MODULES,
-    _S.APP,
-    "nsx module add <module>",
-    "nsx configure",
-    "nsx build",
-)
-def cmd_module_register(args: argparse.Namespace) -> None:
-    change = api.register_module(
-        resolve_app_dir(args.app_dir),
-        args.module,
-        metadata=Path(args.metadata).expanduser(),
-        project=args.project,
-        project_url=args.project_url,
-        project_revision=args.project_revision,
-        project_path=args.project_path,
-        project_local_path=Path(args.project_local_path).expanduser().resolve()
-        if args.project_local_path
-        else None,
-        override=args.override,
-        dry_run=args.dry_run,
-    )
-    _render_module_changes([change], requested=args.module, verb="register")
-
-
-@command_hint(
-    "module init",
-    _C.MODULES,
-    _S.FILESYSTEM,
-    "nsx module validate <metadata>",
-    "nsx module register <module>",
-    "nsx module add <module>",
-)
-def cmd_module_init(args: argparse.Namespace) -> None:
-    module_dir = Path(args.module_dir).expanduser().resolve()
-    change = api.init_module(
-        module_dir,
-        module_name=args.name,
-        module_type=args.type,
-        summary=args.summary,
-        version=args.version,
-        dependencies=args.dependency,
-        boards=args.board,
-        socs=args.soc,
-        toolchains=args.toolchain,
-        force=args.force,
-    )
-    _render_module_init(change, module_dir)
-
-
-@command_hint(
-    "module validate",
-    _C.MODULES,
-    _S.GLOBAL,
-    "nsx module register <module>",
-    "nsx module add <module>",
-)
-def cmd_module_validate(args: argparse.Namespace) -> None:
-    metadata_path = Path(args.metadata).expanduser().resolve()
-    try:
-        data = load_yaml(metadata_path)
-    except ValueError as exc:
-        raise NSXConfigError(str(exc)) from None
-    try:
-        validate_nsx_module_metadata(data, str(metadata_path))
-    except ValueError as exc:
-        raise NSXConfigError(f"Validation failed: {exc}") from None
-
-    if args.json:
-        print(
-            json.dumps(
-                {
-                    "valid": True,
-                    "path": str(metadata_path),
-                    "module": data.get("module", {}).get("name"),
-                },
-                indent=2,
-            )
-        )
-    else:
-        module_name = data.get("module", {}).get("name", "(unknown)")
-        print(f"Valid: {metadata_path} (module: {module_name})")
-
-
-def _format_bytes(n: int) -> str:
-    units = ("B", "KiB", "MiB", "GiB", "TiB")
-    size = float(n)
-    for unit in units:
-        if size < 1024.0 or unit == units[-1]:
-            return f"{size:.1f} {unit}" if unit != "B" else f"{int(size)} {unit}"
-        size /= 1024.0
-    return f"{n} B"
-
-
-@command_hint("cache info", _C.MAINTENANCE, _S.GLOBAL, "nsx cache clean")
-def cmd_cache_info(args: argparse.Namespace) -> None:
-    info = api.cache_info()
-
-    if args.json:
-        print(json.dumps(info.to_dict(), indent=2))
-        return
-
-    print(f"nsx module cache: {info.root}")
-    status = "disabled (NSX_DISABLE_MODULE_CACHE set)" if info.disabled else "enabled"
-    print(f"  status:  {status}")
-    print(f"  entries: {info.entry_count}")
-    if info.entries:
-        print(f"  total:   {_format_bytes(info.total_size_bytes)}")
-
-
-@command_hint("cache clean", _C.MAINTENANCE, _S.GLOBAL, "nsx sync")
-def cmd_cache_clean(args: argparse.Namespace) -> None:
-    if not args.yes:
-        preview = api.clean_cache(dry_run=True)
-        if preview.removed_count == 0:
-            print(f"nsx module cache at {preview.root} is already empty.")
-            return
-        print(
-            f"This will delete {preview.removed_count} cached module artifact(s) "
-            f"under {preview.root}. Re-run with --yes to confirm."
-        )
-        return
-    result = api.clean_cache()
-    print(f"Removed {result.removed_count} cached module artifact(s).")
 
 
 @command_hint("sbom", _C.DISCOVERY, _S.APP, "nsx lock", "nsx sync")
