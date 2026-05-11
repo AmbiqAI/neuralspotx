@@ -855,6 +855,21 @@ def cmd_cache_clean(args: argparse.Namespace) -> None:
     print(f"Removed {result.removed_count} cached module artifact(s).")
 
 
+@command_hint("sbom", _C.DISCOVERY, _S.APP, "nsx lock", "nsx sync")
+def cmd_sbom(args: argparse.Namespace) -> None:
+    document = api.generate_sbom(
+        resolve_app_dir(args.app_dir),
+        format=args.format,
+    )
+    if args.output:
+        out_path = Path(args.output).expanduser().resolve()
+        out_path.parent.mkdir(parents=True, exist_ok=True)
+        out_path.write_text(document, encoding="utf-8")
+        print(f"Wrote {args.format.upper()} SBOM to {out_path}")
+    else:
+        print(document)
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="NSX helper for creating and building bare-metal Ambiq apps"
@@ -1366,6 +1381,31 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Confirm deletion (required; without it the command is a dry-run)",
     )
     p_cache_clean.set_defaults(func=cmd_cache_clean)
+
+    p_sbom = sub.add_parser(
+        "sbom",
+        help="Generate a Software Bill of Materials from nsx.lock",
+        description=(
+            "Read nsx.lock and emit a single-document SBOM describing "
+            "every vendored module by upstream URL, commit SHA, and "
+            "content hash."
+        ),
+    )
+    p_sbom.add_argument("--app-dir", default=".", help="App directory containing nsx.lock")
+    p_sbom.add_argument(
+        "--format",
+        choices=("spdx", "cyclonedx"),
+        default="spdx",
+        help="SBOM format (default: spdx — SPDX 2.3 JSON)",
+    )
+    p_sbom.add_argument(
+        "--output",
+        "-o",
+        default=None,
+        metavar="FILE",
+        help="Write SBOM to FILE instead of stdout",
+    )
+    p_sbom.set_defaults(func=cmd_sbom)
 
     return parser
 

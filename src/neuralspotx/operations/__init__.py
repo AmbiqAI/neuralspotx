@@ -43,6 +43,7 @@ from . import (  # noqa: F401
     _doctor,
     _lock,
     _modules,
+    _sbom,
     _sync,
 )
 from ._app_lifecycle import create_app_impl, init_module_impl
@@ -63,6 +64,7 @@ from ._modules import (
     remove_module_impl,
     update_modules_impl,
 )
+from ._sbom import generate_sbom_impl
 from ._sync import sync_app_impl, update_app_impl
 
 __all__ = [
@@ -94,6 +96,8 @@ __all__ = [
     "register_module_impl",
     "remove_module_impl",
     "update_modules_impl",
+    # SBOM
+    "generate_sbom_impl",
     # Verbosity
     "get_verbosity",
     "set_verbosity",

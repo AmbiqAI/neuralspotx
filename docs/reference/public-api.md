@@ -26,6 +26,8 @@ tagged; this page will be updated at the v1.0 release.
 | `NSXError` | exception base | Provisional |
 | `NSXCacheError` | exception | Provisional |
 | `NSXConfigError` | exception | Provisional |
+| `NSXGitError` | exception | Provisional |
+| `NSXIntegrityError` | exception (subclass of `NSXModuleError`) | Provisional |
 | `NSXLockError` | exception | Provisional |
 | `NSXModuleError` | exception | Provisional |
 | `NSXResolutionError` | exception | Provisional |
@@ -66,6 +68,7 @@ tagged; this page will be updated at the v1.0 release.
 | `validate_module_metadata` | `dict` | Provisional |
 | `cache_info` | `CacheInfo` | Provisional |
 | `clean_cache` | `CacheCleanResult` | Provisional |
+| `generate_sbom` | `str` (JSON) | Provisional |
 | `find_app_root` | `Path \| None` | Provisional |
 | `resolve_app_dir` | `Path` | Provisional |
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .._errors import NSXConfigError, NSXModuleError
+from .._errors import NSXConfigError, NSXIntegrityError, NSXModuleError
 from .._io import info
 from .._logging import get_logger
 from ..file_lock import app_lock
@@ -170,7 +170,7 @@ def _sync_app_impl_unlocked(
                     "or revert the changes."
                 )
                 if frozen:
-                    raise NSXModuleError(msg)
+                    raise NSXIntegrityError(msg, module=name)
                 _log.warning("%s", msg)
             vendored_paths.add(vendored_dir)
             continue
@@ -194,7 +194,7 @@ def _sync_app_impl_unlocked(
                     f"({entry.vendored_at}); upstream {entry.url} is not reachable."
                 )
                 if frozen:
-                    raise NSXModuleError(msg)
+                    raise NSXIntegrityError(msg, module=name)
                 _log.warning("%s", msg)
             vendored_paths.add(vendored_dir)
             continue
@@ -214,7 +214,7 @@ def _sync_app_impl_unlocked(
                     "refresh the lock."
                 )
                 if frozen:
-                    raise NSXModuleError(msg)
+                    raise NSXIntegrityError(msg, module=name)
                 _log.warning("%s", msg)
             continue
 
@@ -283,7 +283,7 @@ def _sync_app_impl_unlocked(
                     "or revert the changes."
                 )
                 if frozen:
-                    raise NSXModuleError(msg)
+                    raise NSXIntegrityError(msg, module=name)
                 _log.warning("%s", msg)
             vendored_paths.add(vendored_dir)
             continue
@@ -295,9 +295,10 @@ def _sync_app_impl_unlocked(
             continue
 
         if frozen:
-            raise NSXModuleError(
+            raise NSXIntegrityError(
                 f"Module '{name}' on-disk content does not match nsx.lock "
-                f"({entry.vendored_at}). Refusing to modify under --frozen."
+                f"({entry.vendored_at}). Refusing to modify under --frozen.",
+                module=name,
             )
 
         if entry.kind == LockKind.PACKAGED:
