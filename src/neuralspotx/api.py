@@ -13,7 +13,15 @@ from ._errors import (
     NSXModuleError,
 )
 from .metadata import load_yaml, validate_nsx_module_metadata
-from .models import DiscoveryRecord, DoctorReport, ModuleChange, OutdatedReport, SearchResult
+from .models import (
+    CacheCleanResult,
+    CacheInfo,
+    DiscoveryRecord,
+    DoctorReport,
+    ModuleChange,
+    OutdatedReport,
+    SearchResult,
+)
 from .nsx_lock import NsxLock
 from .subprocess_utils import timeout_budget
 
@@ -853,3 +861,29 @@ def update_app(
             Path(request.app_dir).expanduser().resolve(),
             modules=request.modules,
         )
+
+
+def cache_info() -> CacheInfo:
+    """Return a snapshot of the NSX module artifact cache.
+
+    The result includes the cache root, an "is the cache disabled
+    via NSX_DISABLE_MODULE_CACHE" flag, and one
+    :class:`~neuralspotx.models.CacheEntry` per content-addressed
+    artifact directory. ``CacheInfo.total_size_bytes`` is computed
+    by walking each entry — best-effort, errors are silently ignored
+    per file. Performs no I/O on stdout.
+    """
+
+    return operations.cache_info_impl()
+
+
+def clean_cache(*, dry_run: bool = False) -> CacheCleanResult:
+    """Delete every entry in the NSX module artifact cache.
+
+    With ``dry_run=True`` no entries are removed; the returned
+    :class:`~neuralspotx.models.CacheCleanResult.removed_count`
+    reflects how many entries *would* be removed by an unconditional
+    invocation. Performs no I/O on stdout.
+    """
+
+    return operations.clean_cache_impl(dry_run=dry_run)

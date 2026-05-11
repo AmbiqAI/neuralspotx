@@ -22,6 +22,7 @@ Sub-module layout
                         ``clean_app_impl``.
 * ``_modules``        — ``add_module_impl``, ``remove_module_impl``,
                         ``update_modules_impl``, ``register_module_impl``.
+* ``_cache``          — ``cache_info_impl``, ``clean_cache_impl``.
 
 Tests that need to monkeypatch helpers imported by a specific sub-module
 should target that sub-module directly (e.g. ``operations._lock.resolve_ref``)
@@ -33,7 +34,16 @@ from __future__ import annotations
 
 # Sub-modules are intentionally exposed as attributes of the package so
 # tests can do ``monkeypatch.setattr(operations._lock, "resolve_ref", ...)``.
-from . import _app_lifecycle, _build, _common, _doctor, _lock, _modules, _sync  # noqa: F401
+from . import (  # noqa: F401
+    _app_lifecycle,
+    _build,
+    _cache,
+    _common,
+    _doctor,
+    _lock,
+    _modules,
+    _sync,
+)
 from ._app_lifecycle import create_app_impl, init_module_impl
 from ._build import (
     build_app_impl,
@@ -42,6 +52,7 @@ from ._build import (
     flash_app_impl,
     view_app_impl,
 )
+from ._cache import cache_info_impl, clean_cache_impl
 from ._common import OutdatedStatus, ProfileStatus, get_verbosity, set_verbosity, verbosity
 from ._doctor import doctor_impl
 from ._lock import lock_app_impl, outdated_app_impl
@@ -60,6 +71,9 @@ __all__ = [
     # App lifecycle
     "create_app_impl",
     "init_module_impl",
+    # Cache
+    "cache_info_impl",
+    "clean_cache_impl",
     # Build / configure / flash / view / clean
     "build_app_impl",
     "clean_app_impl",
