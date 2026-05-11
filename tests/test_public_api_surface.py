@@ -320,11 +320,14 @@ class TestCliApiParity:
     def test_cmd_module_add_routes_through_api(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        from neuralspotx.models import ModuleChange
+
         self._nsx_yml(tmp_path)
         calls: list[dict[str, object]] = []
 
-        def fake(app_dir: object, module: object, **kw: object) -> None:
+        def fake(app_dir: object, module: object, **kw: object) -> list[ModuleChange]:
             calls.append({"app_dir": app_dir, "module": module, **kw})
+            return [ModuleChange(name=str(module), before=None, after="main", action="added")]
 
         monkeypatch.setattr(cli.api, "add_module", fake)
         cli.cmd_module_add(
@@ -342,11 +345,14 @@ class TestCliApiParity:
     def test_cmd_module_remove_routes_through_api(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        from neuralspotx.models import ModuleChange
+
         self._nsx_yml(tmp_path)
         calls: list[dict[str, object]] = []
 
-        def fake(app_dir: object, module: object, **kw: object) -> None:
+        def fake(app_dir: object, module: object, **kw: object) -> list[ModuleChange]:
             calls.append({"app_dir": app_dir, "module": module, **kw})
+            return [ModuleChange(name=str(module), before="main", after=None, action="removed")]
 
         monkeypatch.setattr(cli.api, "remove_module", fake)
         cli.cmd_module_remove(
@@ -357,11 +363,22 @@ class TestCliApiParity:
     def test_cmd_module_update_routes_through_api(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        from neuralspotx.models import ModuleChange
+
         self._nsx_yml(tmp_path)
         calls: list[dict[str, object]] = []
 
-        def fake(app_dir: object, **kw: object) -> None:
+        def fake(app_dir: object, **kw: object) -> list[ModuleChange]:
             calls.append({"app_dir": app_dir, **kw})
+            return [
+                ModuleChange(
+                    name=str(kw.get("module") or "x"),
+                    before="a",
+                    after="b",
+                    action="updated",
+                    dry_run=True,
+                )
+            ]
 
         monkeypatch.setattr(cli.api, "update_modules", fake)
         cli.cmd_module_update(
@@ -373,11 +390,14 @@ class TestCliApiParity:
     def test_cmd_module_register_routes_through_api(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        from neuralspotx.models import ModuleChange
+
         self._nsx_yml(tmp_path)
         calls: list[dict[str, object]] = []
 
-        def fake(app_dir: object, module: object, **kw: object) -> None:
+        def fake(app_dir: object, module: object, **kw: object) -> ModuleChange:
             calls.append({"app_dir": app_dir, "module": module, **kw})
+            return ModuleChange(name=str(module), before=None, after="main", action="added")
 
         monkeypatch.setattr(cli.api, "register_module", fake)
         cli.cmd_module_register(
@@ -400,10 +420,18 @@ class TestCliApiParity:
     def test_cmd_module_init_routes_through_api(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        from neuralspotx.models import ModuleChange
+
         calls: list[dict[str, object]] = []
 
-        def fake(module_dir: object, **kw: object) -> None:
+        def fake(module_dir: object, **kw: object) -> ModuleChange:
             calls.append({"module_dir": module_dir, **kw})
+            return ModuleChange(
+                name=str(kw.get("module_name") or "new-mod"),
+                before=None,
+                after=str(kw.get("version") or "0.1.0"),
+                action="added",
+            )
 
         monkeypatch.setattr(cli.api, "init_module", fake)
         cli.cmd_module_init(

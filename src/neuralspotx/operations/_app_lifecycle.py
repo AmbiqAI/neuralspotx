@@ -15,6 +15,7 @@ from ..constants import (
     normalize_soc,
 )
 from ..metadata import load_yaml, validate_nsx_module_metadata
+from ..models import ModuleChange
 from ..module_registry import (
     _acquire_modules_for_app,
     _generate_nsx_config,
@@ -198,7 +199,7 @@ def init_module_impl(
     socs: list[str] | None = None,
     toolchains: list[str] | None = None,
     force: bool = False,
-) -> Path:
+) -> ModuleChange:
     """Create a standard custom-module skeleton."""
 
     module_name = (module_name or module_dir.name).strip()
@@ -256,13 +257,9 @@ def init_module_impl(
     metadata_path = module_dir / "nsx-module.yaml"
     validate_nsx_module_metadata(load_yaml(metadata_path), str(metadata_path))
 
-    print(f"Created module skeleton '{module_name}' at: {module_dir}")
-    print("Next steps:")
-    print("  1) Review nsx-module.yaml and fill in summary, capabilities, and compatibility")
-    print(f"  2) Run `nsx module validate {metadata_path}`")
-    print(
-        "  3) Register it into an app with `nsx module register "
-        f"{module_name} --metadata {metadata_path} --project {package_name} "
-        f"--project-local-path {module_dir} --app-dir <app-dir>`"
+    return ModuleChange(
+        name=module_name,
+        before=None,
+        after=version,
+        action="added",
     )
-    return module_dir

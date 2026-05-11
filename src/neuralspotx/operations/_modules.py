@@ -7,8 +7,8 @@ from pathlib import Path
 
 from .._errors import NSXConfigError, NSXModuleError, NSXResolutionError
 from ..constants import DEFAULT_TOOLCHAIN
-from ..metadata import validate_nsx_module_metadata
-from ..models import ModuleEntry, ProjectEntry
+from ..metadata import registry_entry_for_module, validate_nsx_module_metadata
+from ..models import ModuleChange, ModuleEntry, ProjectEntry
 from ..module_registry import (
     _acquire_modules_for_app,
     _load_module_metadata,
@@ -36,6 +36,20 @@ from ._common import _scaffold_vendored_module
 from ._lock import lock_app_impl
 
 
+def _safe_registry_revision(name: str, registry: dict) -> str | None:
+    """Best-effort registry revision lookup for ``ModuleChange`` records.
+
+    Returns ``None`` for modules absent from the registry (local,
+    vendored, app-only overrides) so callers don't have to guard each
+    call site.
+    """
+
+    try:
+        return registry_entry_for_module(registry, name).revision
+    except Exception:
+        return None
+
+
 def add_module_impl(
     app_dir: Path,
     module_name: str,
@@ -43,7 +57,7 @@ def add_module_impl(
     local: bool = False,
     vendored: bool = False,
     dry_run: bool = False,
-) -> list[str]:
+) -> list[ModuleChange]:
     """Enable a module for an app and clone/copy the resolved closure.
 
     Args:
@@ -66,12 +80,13 @@ def add_module_impl(
         existing = _module_names_from_nsx(nsx_cfg)
         if module_name in existing:
             raise NSXModuleError(f"Module '{module_name}' is already enabled in nsx.yml")
-        target_dir = app_dir / "modules" / module_name
         if dry_run:
-            print(f"[dry-run] would scaffold vendored module: {module_name}")
-            print(f"[dry-run]   directory: {target_dir.relative_to(app_dir)}/")
-            print(f"[dry-run]   nsx.yml:  - name: {module_name}\\n    source: {{ vendored: true }}")
-            return existing + [module_name]
+            return [
+                ModuleChange(
+                    name=module_name, before=None, after=None, action="added", dry_run=True
+                )
+            ]
+        target_dir = app_dir / "modules" / module_name
         target_dir.mkdir(parents=True, exist_ok=True)
         _scaffold_vendored_module(target_dir, module_name)
         modules_list = nsx_cfg.setdefault("modules", [])
@@ -82,10 +97,7 @@ def add_module_impl(
         # Refresh the lock so the new module's content_hash is recorded.
         if (app_dir / "nsx.lock").exists():
             lock_app_impl(app_dir)
-        print(f"Registered vendored module '{module_name}'")
-        print(f"  scaffolded: {target_dir.relative_to(app_dir)}/")
-        print(f"  next: edit {target_dir.relative_to(app_dir)}/CMakeLists.txt and run `nsx lock`")
-        return _module_names_from_nsx(nsx_cfg)
+        return [ModuleChange(name=module_name, before=None, after=None, action="added")]
 
     if local:
         # Local modules bypass registry resolution entirely.
@@ -93,16 +105,17 @@ def add_module_impl(
         if module_name in existing:
             raise NSXModuleError(f"Module '{module_name}' is already enabled in nsx.yml")
         if dry_run:
-            print(f"[dry-run] would add local module: {module_name}")
-            return existing + [module_name]
+            return [
+                ModuleChange(
+                    name=module_name, before=None, after=None, action="added", dry_run=True
+                )
+            ]
         modules_list = nsx_cfg.setdefault("modules", [])
         modules_list.append({"name": module_name, "local": True})
         _save_app_cfg(app_dir, nsx_cfg)
         _write_app_module_file(app_dir, nsx_cfg)
         _write_modules_gitignore(app_dir, nsx_cfg)
-        print(f"Registered local module '{module_name}'")
-        print("The module directory should be at: modules/" + module_name + "/")
-        return _module_names_from_nsx(nsx_cfg)
+        return [ModuleChange(name=module_name, before=None, after=None, action="added")]
 
     registry = _effective_registry(_load_registry(), nsx_cfg)
 
@@ -115,9 +128,19 @@ def add_module_impl(
         registry=registry,
         default_toolchain=DEFAULT_TOOLCHAIN,
     )
+    enabled_set = set(enabled)
+    added = [n for n in new_modules if n not in enabled_set]
     if dry_run:
-        print("[dry-run] modules to enable:", ", ".join(new_modules))
-        return new_modules
+        return [
+            ModuleChange(
+                name=name,
+                before=None,
+                after=_safe_registry_revision(name, registry),
+                action="added",
+                dry_run=True,
+            )
+            for name in added
+        ]
 
     local_names = _local_module_names(nsx_cfg)
     _update_nsx_cfg_modules(nsx_cfg, new_modules, registry)
@@ -126,9 +149,15 @@ def add_module_impl(
     _acquire_modules_for_app(app_dir, new_modules, registry, local_modules=local_names)
     _write_modules_gitignore(app_dir, nsx_cfg)
 
-    print(f"Enabled module '{module_name}'")
-    print("Resolved module set:", ", ".join(new_modules))
-    return new_modules
+    return [
+        ModuleChange(
+            name=name,
+            before=None,
+            after=_safe_registry_revision(name, registry),
+            action="added",
+        )
+        for name in added
+    ]
 
 
 def remove_module_impl(
@@ -136,7 +165,7 @@ def remove_module_impl(
     module_name: str,
     *,
     dry_run: bool = False,
-) -> tuple[list[str], list[str]]:
+) -> list[ModuleChange]:
     """Remove a module and any no-longer-needed dependents from an app."""
 
     nsx_cfg = _load_app_cfg(app_dir)
@@ -151,9 +180,11 @@ def remove_module_impl(
     # directory is left untouched since it is source-controlled.
     if module_name in local_names:
         if dry_run:
-            print(f"[dry-run] would remove local module: {module_name}")
-            remaining = [n for n in enabled if n != module_name]
-            return [module_name], remaining
+            return [
+                ModuleChange(
+                    name=module_name, before=None, after=None, action="removed", dry_run=True
+                )
+            ]
         nsx_cfg["modules"] = [
             m
             for m in nsx_cfg.get("modules", [])
@@ -162,10 +193,7 @@ def remove_module_impl(
         _save_app_cfg(app_dir, nsx_cfg)
         _write_app_module_file(app_dir, nsx_cfg)
         _write_modules_gitignore(app_dir, nsx_cfg)
-        remaining = _module_names_from_nsx(nsx_cfg)
-        print(f"Removed local module '{module_name}' from nsx.yml")
-        print("(Module directory was NOT deleted — remove it manually if desired.)")
-        return [module_name], remaining
+        return [ModuleChange(name=module_name, before=None, after=None, action="removed")]
 
     profile_name = nsx_cfg.get("profile")
     protected: set[str] = set()
@@ -214,22 +242,35 @@ def remove_module_impl(
         registry=registry,
         default_toolchain=DEFAULT_TOOLCHAIN,
     )
+    removed_sorted = sorted(remove_set)
     if dry_run:
-        print("[dry-run] modules to remove:", ", ".join(sorted(remove_set)))
-        print("[dry-run] remaining modules:", ", ".join(new_modules))
-        return sorted(remove_set), new_modules
+        return [
+            ModuleChange(
+                name=name,
+                before=_safe_registry_revision(name, registry),
+                after=None,
+                action="removed",
+                dry_run=True,
+            )
+            for name in removed_sorted
+        ]
 
     _update_nsx_cfg_modules(nsx_cfg, new_modules, registry)
     _save_app_cfg(app_dir, nsx_cfg)
     _write_app_module_file(app_dir, nsx_cfg)
     _write_modules_gitignore(app_dir, nsx_cfg)
-    for removed_name in sorted(remove_set):
+    for removed_name in removed_sorted:
         _remove_vendored_module_from_app(app_dir, removed_name, registry)
 
-    print(f"Removed module '{module_name}'")
-    print("Removed set:", ", ".join(sorted(remove_set)))
-    print("Remaining modules:", ", ".join(new_modules))
-    return sorted(remove_set), new_modules
+    return [
+        ModuleChange(
+            name=name,
+            before=_safe_registry_revision(name, registry),
+            after=None,
+            action="removed",
+        )
+        for name in removed_sorted
+    ]
 
 
 def update_modules_impl(
@@ -237,7 +278,7 @@ def update_modules_impl(
     *,
     module_name: str | None = None,
     dry_run: bool = False,
-) -> list[str]:
+) -> list[ModuleChange]:
     """Refresh enabled modules to the current registry revisions."""
 
     nsx_cfg = _load_app_cfg(app_dir)
@@ -257,6 +298,14 @@ def update_modules_impl(
     else:
         to_update = current - local_names
 
+    # Capture the recorded revision of each module before resolving the
+    # new closure so ``ModuleChange.before`` reflects the on-disk state.
+    before_revisions: dict[str, str | None] = {}
+    for entry in nsx_cfg.get("modules", []) or []:
+        if isinstance(entry, dict) and entry.get("name") in to_update:
+            rev = entry.get("revision")
+            before_revisions[entry["name"]] = rev if isinstance(rev, str) else None
+
     resolved_modules = _resolve_module_closure(
         current_modules,
         app_dir=app_dir,
@@ -265,9 +314,14 @@ def update_modules_impl(
         default_toolchain=DEFAULT_TOOLCHAIN,
     )
 
+    def _change(name: str, *, dry: bool) -> ModuleChange:
+        before = before_revisions.get(name)
+        after = _safe_registry_revision(name, registry)
+        action = "updated" if before != after else "noop"
+        return ModuleChange(name=name, before=before, after=after, action=action, dry_run=dry)
+
     if dry_run:
-        print("[dry-run] modules to refresh from registry:", ", ".join(sorted(to_update)))
-        return sorted(to_update)
+        return [_change(name, dry=True) for name in sorted(to_update)]
 
     _update_nsx_cfg_modules(nsx_cfg, resolved_modules, registry)
     _save_app_cfg(app_dir, nsx_cfg)
@@ -276,11 +330,7 @@ def update_modules_impl(
         if name in to_update:
             _update_module_clone(app_dir, name, registry)
 
-    if module_name:
-        print(f"Updated module '{module_name}' to lockfile revision")
-    else:
-        print("Updated all enabled modules to lockfile revisions")
-    return resolved_modules
+    return [_change(name, dry=False) for name in sorted(to_update)]
 
 
 def register_module_impl(
@@ -295,7 +345,7 @@ def register_module_impl(
     project_local_path: Path | None = None,
     override: bool = False,
     dry_run: bool = False,
-) -> Path:
+) -> ModuleChange:
     """Register an app-local module override and acquire it into the app."""
 
     nsx_cfg = _load_app_cfg(app_dir)
@@ -373,12 +423,15 @@ def register_module_impl(
         metadata=_metadata_storage_path(app_dir, metadata_path, project_entry),
     ).to_mapping()
 
+    after_revision = project_entry.revision or "main"
     if dry_run:
-        print("[dry-run] would register module:")
-        print(f"  module={module_name}")
-        print(f"  project={project_name}")
-        print(f"  metadata={modules[module_name]['metadata']}")
-        return metadata_path
+        return ModuleChange(
+            name=module_name,
+            before=None,
+            after=after_revision,
+            action="added",
+            dry_run=True,
+        )
 
     _save_app_cfg(app_dir, target_cfg)
     _write_app_module_file(app_dir, target_cfg)
@@ -386,7 +439,9 @@ def register_module_impl(
     _acquire_modules_for_app(app_dir, [module_name], effective)
     _write_modules_gitignore(app_dir, target_cfg)
 
-    print(f"Registered module '{module_name}' for app {app_dir.name}")
-    print(f"Project: {project_name}")
-    print(f"Metadata: {metadata_path}")
-    return metadata_path
+    return ModuleChange(
+        name=module_name,
+        before=None,
+        after=after_revision,
+        action="added",
+    )
