@@ -248,7 +248,7 @@ def create_app(
     soc: str | None = None,
     force: bool = False,
     no_bootstrap: bool = False,
-) -> None:
+) -> Path:
     """Create a new NSX app project.
 
     Args:
@@ -257,6 +257,10 @@ def create_app(
         soc: Optional SoC override.
         force: Allow writing into a non-empty app directory.
         no_bootstrap: Skip starter-module initialization.
+
+    Returns:
+        The resolved app-root :class:`pathlib.Path`. Suitable for
+        chaining into :func:`configure_app`, :func:`build_app`, etc.
     """
 
     request = (
@@ -270,7 +274,7 @@ def create_app(
             no_bootstrap=no_bootstrap,
         )
     )
-    operations.create_app_impl(
+    return operations.create_app_impl(
         Path(request.app_dir).expanduser().resolve(),
         board=request.board,
         soc=request.soc,

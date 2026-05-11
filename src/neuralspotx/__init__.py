@@ -1,4 +1,13 @@
-"""Canonical Python package for neuralspotx tooling."""
+"""Canonical Python package for neuralspotx tooling.
+
+The names exposed here form the **public Python API** of NSX. Anything
+importable from a private ``_<name>`` module is, by convention,
+internal and may change without notice.
+
+See ``docs/reference/public-api.md`` for the canonical list with
+stability tiers. ``tests/test_public_surface_doc.py`` keeps the doc
+and ``__all__`` from drifting.
+"""
 
 from ._errors import (
     NSXConfigError,
@@ -26,7 +35,9 @@ from .api import (
     ModuleUpdateRequest,
     add_module,
     build_app,
+    cache_info,
     clean_app,
+    clean_cache,
     configure_app,
     create_app,
     describe_module,
@@ -47,10 +58,28 @@ from .api import (
     validate_module_metadata,
     view_app,
 )
-from .models import DiscoveryRecord, SearchMatch, SearchResult
-from .nsx_lock import LockKind
+from .models import (
+    CacheCleanResult,
+    CacheEntry,
+    CacheInfo,
+    CommandCategory,
+    CommandHint,
+    CommandScope,
+    DiscoveryRecord,
+    DoctorCheck,
+    DoctorReport,
+    ModuleChange,
+    OutdatedModule,
+    OutdatedReport,
+    OutdatedSkip,
+    SearchMatch,
+    SearchResult,
+)
+from .nsx_lock import LockKind, NsxLock, ResolvedModule
+from .operations import OutdatedStatus, ProfileStatus
 
 __all__ = [
+    # Request dataclasses
     "AppActionRequest",
     "AppBuildRequest",
     "AppCleanRequest",
@@ -61,11 +90,33 @@ __all__ = [
     "AppSyncRequest",
     "AppUpdateRequest",
     "AppViewRequest",
-    "DiscoveryRecord",
     "ModuleChangeRequest",
     "ModuleInitRequest",
     "ModuleRegisterRequest",
     "ModuleUpdateRequest",
+    # Result / data models
+    "CacheCleanResult",
+    "CacheEntry",
+    "CacheInfo",
+    "CommandCategory",
+    "CommandHint",
+    "CommandScope",
+    "DiscoveryRecord",
+    "DoctorCheck",
+    "DoctorReport",
+    "ModuleChange",
+    "OutdatedModule",
+    "OutdatedReport",
+    "OutdatedSkip",
+    "SearchMatch",
+    "SearchResult",
+    # Lock model + enums
+    "LockKind",
+    "NsxLock",
+    "OutdatedStatus",
+    "ProfileStatus",
+    "ResolvedModule",
+    # Errors
     "NSXConfigError",
     "NSXError",
     "NSXLockError",
@@ -73,11 +124,12 @@ __all__ = [
     "NSXResolutionError",
     "NSXTimeoutError",
     "NSXToolchainError",
-    "SearchMatch",
-    "SearchResult",
+    # API callables
     "add_module",
     "build_app",
+    "cache_info",
     "clean_app",
+    "clean_cache",
     "configure_app",
     "create_app",
     "describe_module",
