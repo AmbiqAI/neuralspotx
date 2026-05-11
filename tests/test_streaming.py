@@ -50,3 +50,40 @@ def test_run_propagates_nonzero_exit_with_on_line() -> None:
             on_line=captured.append,
         )
     assert "hi" in captured
+
+
+def test_run_enforces_timeout_when_streaming_child_hangs_without_output() -> None:
+    """A child that never produces newlines must still hit the timeout."""
+    import subprocess
+
+    if sys.platform.startswith("win"):
+        pytest.skip("Windows pipe select() not supported by stdlib select.select")
+
+    captured: list[str] = []
+    with pytest.raises(subprocess.TimeoutExpired):
+        run(
+            [sys.executable, "-c", "import time; time.sleep(30)"],
+            timeout=0.5,
+            on_line=captured.append,
+        )
+
+
+def test_run_terminates_child_when_on_line_callback_raises() -> None:
+    """If on_line() raises, the subprocess tree must be torn down."""
+
+    class Boom(Exception):
+        pass
+
+    def callback(_line: str) -> None:
+        raise Boom
+
+    with pytest.raises(Boom):
+        run(
+            [
+                sys.executable,
+                "-c",
+                "import sys, time\nprint('first', flush=True)\ntime.sleep(30)",
+            ],
+            timeout=5.0,
+            on_line=callback,
+        )

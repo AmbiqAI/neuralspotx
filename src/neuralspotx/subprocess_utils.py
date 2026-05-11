@@ -20,10 +20,12 @@ import contextlib
 import contextvars
 import ctypes
 import os
+import select
 import shlex
 import signal
 import subprocess
 import sys
+import time
 from collections.abc import Callable, Iterator
 from pathlib import Path
 
@@ -315,11 +317,49 @@ def run(
     try:
         try:
             if on_line is not None and proc.stdout is not None:
-                for raw in proc.stdout:
+                # Stream lines through the callback while still enforcing
+                # the wall-clock timeout. We use ``select`` (POSIX) or a
+                # blocking readline with a deadline check (Windows) so a
+                # subprocess that stops producing newlines cannot escape
+                # the budget.
+                deadline = None if effective is None else time.monotonic() + effective
+                stream = proc.stdout
+                use_select = os.name != "nt"
+                while True:
+                    if deadline is not None:
+                        remaining = deadline - time.monotonic()
+                        if remaining <= 0:
+                            container.terminate(proc)
+                            raise subprocess.TimeoutExpired(cmd, effective)
+                    else:
+                        remaining = None
+                    if use_select:
+                        ready, _, _ = select.select(
+                            [stream],
+                            [],
+                            [],
+                            remaining if remaining is not None else None,
+                        )
+                        if not ready:
+                            # select timed out -> deadline reached
+                            container.terminate(proc)
+                            raise subprocess.TimeoutExpired(cmd, effective)
+                    raw = stream.readline()
+                    if not raw:
+                        break
                     text_line = raw.rstrip("\n")
-                    on_line(text_line)
+                    try:
+                        on_line(text_line)
+                    except BaseException:
+                        # Caller-supplied callback raised; tear down the
+                        # subprocess tree before propagating so we don't
+                        # leak processes (POSIX) or job-object handles
+                        # (Windows).
+                        container.terminate(proc)
+                        raise
                     sys.stdout.write(raw)
-                rc = proc.wait(timeout=effective)
+                wait_timeout = None if deadline is None else max(0.0, deadline - time.monotonic())
+                rc = proc.wait(timeout=wait_timeout)
             else:
                 rc = proc.wait(timeout=effective)
         except subprocess.TimeoutExpired:
