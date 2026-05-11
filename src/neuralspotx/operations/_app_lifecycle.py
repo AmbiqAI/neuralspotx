@@ -219,7 +219,7 @@ def init_module_impl(
 
     package_name = _module_package_name(module_name)
     module_target = _module_target_name(module_name)
-    summary_text = summary or f"TODO: describe what {module_name} provides."
+    summary_text = summary or f"{module_name} - add a one-line summary here"
     dependency_records = [
         {
             "name": dep,
