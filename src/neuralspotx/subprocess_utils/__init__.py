@@ -29,7 +29,7 @@ import time
 from collections.abc import Callable, Iterator
 from pathlib import Path
 
-from ._errors import NSXTimeoutError
+from .._errors import NSXTimeoutError
 
 # Verbosity for subprocess error formatting.  Stored in a ContextVar so
 # concurrent callers (threads, asyncio tasks, embedders) can scope their
@@ -532,7 +532,7 @@ def _validate_git_url(url: str) -> None:
     SSH).
     """
 
-    from ._errors import NSXGitError
+    from .._errors import NSXGitError
 
     if not isinstance(url, str) or not url:
         raise NSXGitError(f"git: refusing empty URL ({url!r})")
@@ -667,7 +667,7 @@ def git_clone_at_commit(url: str, dest: Path, commit: str) -> None:
     _validate_git_url(url)
     _robust_rmtree(dest)
     if dest.exists():
-        from ._errors import NSXResolutionError
+        from .._errors import NSXResolutionError
 
         raise NSXResolutionError(
             f"git_clone_at_commit: refusing to operate on non-empty path {dest}"
@@ -701,7 +701,7 @@ def git_clone_at_commit(url: str, dest: Path, commit: str) -> None:
         # unreachable from any ref tip. Fall back to a full clone.
         _robust_rmtree(dest)
         if dest.exists():
-            from ._errors import NSXResolutionError
+            from .._errors import NSXResolutionError
 
             raise NSXResolutionError(
                 f"git_clone_at_commit: failed to remove stale partial clone at {dest}"
@@ -737,7 +737,7 @@ def extract_view_command(build_dir: Path, target: str) -> list[str]:
 
     ninja_file = build_dir / "build.ninja"
     if not ninja_file.exists():
-        from ._errors import NSXConfigError
+        from .._errors import NSXConfigError
 
         raise NSXConfigError(f"Missing build.ninja in build directory: {build_dir}")
 
@@ -755,7 +755,7 @@ def extract_view_command(build_dir: Path, target: str) -> list[str]:
                 return shlex.split(command_text, posix=(os.name != "nt"))
         break
 
-    from ._errors import NSXConfigError
+    from .._errors import NSXConfigError
 
     raise NSXConfigError(
         f"Unable to resolve the SEGGER SWO viewer command for target '{target}' from {ninja_file}"

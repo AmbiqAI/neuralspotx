@@ -75,7 +75,11 @@ def test_uses_onexc_kwarg_on_py312_plus() -> None:
     src_root = Path(module_registry.__file__).resolve().parent
     sources = (src_root / "module_registry.py").read_text(encoding="utf-8")
     sources += (src_root / "module_cache.py").read_text(encoding="utf-8")
-    sources += (src_root / "subprocess_utils.py").read_text(encoding="utf-8")
+    # subprocess_utils is a package as of phase 6 — concatenate all
+    # submodule sources so the drift check still covers the rmtree
+    # call sites wherever they live.
+    for sub in sorted((src_root / "subprocess_utils").glob("*.py")):
+        sources += sub.read_text(encoding="utf-8")
 
     # Both branches of the version gate must be present in source.
     assert "onexc=_on_rm_error" in sources
