@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -12,6 +13,7 @@ from ._errors import (
     NSXError,
     NSXModuleError,
 )
+from ._io import Emitter, using_emitter
 from .metadata import load_yaml, validate_nsx_module_metadata
 from .models import (
     CacheCleanResult,
@@ -246,6 +248,7 @@ def create_app(
     soc: str | None = None,
     force: bool = False,
     no_bootstrap: bool = False,
+    emit: Emitter | None = None,
 ) -> Path:
     """Create a new NSX app project.
 
@@ -272,16 +275,17 @@ def create_app(
             no_bootstrap=no_bootstrap,
         )
     )
-    return operations.create_app_impl(
-        Path(request.app_dir).expanduser().resolve(),
-        board=request.board,
-        soc=request.soc,
-        force=request.force,
-        no_bootstrap=request.no_bootstrap,
-    )
+    with using_emitter(emit):
+        return operations.create_app_impl(
+            Path(request.app_dir).expanduser().resolve(),
+            board=request.board,
+            soc=request.soc,
+            force=request.force,
+            no_bootstrap=request.no_bootstrap,
+        )
 
 
-def doctor() -> DoctorReport:
+def doctor(*, emit: Emitter | None = None) -> DoctorReport:
     """Run the NSX environment diagnostics.
 
     Returns the structured :class:`DoctorReport`. Never raises on a
@@ -291,7 +295,8 @@ def doctor() -> DoctorReport:
     keeps its historic non-zero exit code.
     """
 
-    return operations.doctor_impl()
+    with using_emitter(emit):
+        return operations.doctor_impl()
 
 
 def configure_app(
@@ -301,6 +306,7 @@ def configure_app(
     build_dir: PathLike | None = None,
     toolchain: str | None = None,
     timeout_s: float | None = None,
+    emit: Emitter | None = None,
 ) -> None:
     """Configure an app build directory with CMake.
 
@@ -319,7 +325,7 @@ def configure_app(
             timeout_s=timeout_s,
         )
     )
-    with timeout_budget(request.timeout_s):
+    with using_emitter(emit), timeout_budget(request.timeout_s):
         operations.configure_app_impl(
             Path(request.app_dir).expanduser().resolve(),
             board=request.board,
@@ -337,6 +343,8 @@ def build_app(
     target: str | None = None,
     jobs: int = 8,
     timeout_s: float | None = None,
+    emit: Emitter | None = None,
+    on_line: Callable[[str], None] | None = None,
 ) -> None:
     """Build an NSX app.
 
@@ -358,7 +366,7 @@ def build_app(
             timeout_s=timeout_s,
         )
     )
-    with timeout_budget(request.timeout_s):
+    with using_emitter(emit), timeout_budget(request.timeout_s):
         operations.build_app_impl(
             Path(request.app_dir).expanduser().resolve(),
             board=request.board,
@@ -366,6 +374,7 @@ def build_app(
             toolchain=request.toolchain,
             target=request.target,
             jobs=request.jobs,
+            on_line=on_line,
         )
 
 
@@ -377,6 +386,8 @@ def flash_app(
     toolchain: str | None = None,
     jobs: int = 8,
     timeout_s: float | None = None,
+    emit: Emitter | None = None,
+    on_line: Callable[[str], None] | None = None,
 ) -> None:
     """Build and flash an NSX app.
 
@@ -397,13 +408,14 @@ def flash_app(
             timeout_s=timeout_s,
         )
     )
-    with timeout_budget(request.timeout_s):
+    with using_emitter(emit), timeout_budget(request.timeout_s):
         operations.flash_app_impl(
             Path(request.app_dir).expanduser().resolve(),
             board=request.board,
             build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
             toolchain=request.toolchain,
             jobs=request.jobs,
+            on_line=on_line,
         )
 
 
@@ -416,6 +428,7 @@ def view_app(
     reset_on_open: bool = True,
     reset_delay_ms: int = 400,
     timeout_s: float | None = None,
+    emit: Emitter | None = None,
 ) -> None:
     """Launch the SEGGER SWO viewer for an app."""
 
@@ -432,7 +445,7 @@ def view_app(
             timeout_s=timeout_s,
         )
     )
-    with timeout_budget(request.timeout_s):
+    with using_emitter(emit), timeout_budget(request.timeout_s):
         operations.view_app_impl(
             Path(request.app_dir).expanduser().resolve(),
             board=request.board,
@@ -451,6 +464,7 @@ def clean_app(
     toolchain: str | None = None,
     full: bool = False,
     timeout_s: float | None = None,
+    emit: Emitter | None = None,
 ) -> None:
     """Clean or fully remove an app build directory.
 
@@ -470,7 +484,7 @@ def clean_app(
             timeout_s=timeout_s,
         )
     )
-    with timeout_budget(request.timeout_s):
+    with using_emitter(emit), timeout_budget(request.timeout_s):
         operations.clean_app_impl(
             Path(request.app_dir).expanduser().resolve(),
             board=request.board,
@@ -748,6 +762,7 @@ def lock_app(
     quiet: bool = False,
     timeout_s: float | None = None,
     resolve_ttl_s: float | None = None,
+    emit: Emitter | None = None,
 ) -> NsxLock:
     """Resolve module constraints and write ``nsx.lock``.
 
@@ -776,7 +791,11 @@ def lock_app(
     # does not mutate process-global ``os.environ``).
     from . import _resolve_cache
 
-    with _resolve_cache.ttl_override(request.resolve_ttl_s), timeout_budget(request.timeout_s):
+    with (
+        using_emitter(emit),
+        _resolve_cache.ttl_override(request.resolve_ttl_s),
+        timeout_budget(request.timeout_s),
+    ):
         return operations.lock_app_impl(
             Path(request.app_dir).expanduser().resolve(),
             update=request.update,
@@ -792,6 +811,7 @@ def sync_app(
     frozen: bool = False,
     force: bool = False,
     timeout_s: float | None = None,
+    emit: Emitter | None = None,
 ) -> None:
     """Materialise ``modules/`` so it exactly matches ``nsx.lock``.
 
@@ -804,7 +824,7 @@ def sync_app(
         if isinstance(app_dir, AppSyncRequest)
         else AppSyncRequest(app_dir=app_dir, frozen=frozen, force=force, timeout_s=timeout_s)
     )
-    with timeout_budget(request.timeout_s):
+    with using_emitter(emit), timeout_budget(request.timeout_s):
         operations.sync_app_impl(
             Path(request.app_dir).expanduser().resolve(),
             frozen=request.frozen,
@@ -843,6 +863,7 @@ def update_app(
     *,
     modules: list[str] | None = None,
     timeout_s: float | None = None,
+    emit: Emitter | None = None,
 ) -> None:
     """Re-resolve module constraints to upstream tip and re-vendor.
 
@@ -856,7 +877,7 @@ def update_app(
         if isinstance(app_dir, AppUpdateRequest)
         else AppUpdateRequest(app_dir=app_dir, modules=modules, timeout_s=timeout_s)
     )
-    with timeout_budget(request.timeout_s):
+    with using_emitter(emit), timeout_budget(request.timeout_s):
         operations.update_app_impl(
             Path(request.app_dir).expanduser().resolve(),
             modules=request.modules,

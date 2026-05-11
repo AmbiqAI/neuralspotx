@@ -607,7 +607,7 @@ def test_build_app_uses_shared_impl_and_triggers_configure_when_needed(
         build.mkdir(parents=True, exist_ok=True)
         (build / "build.ninja").write_text("# fake\n", encoding="utf-8")
 
-    def fake_run(cmd: list[str], cwd: Path | None = None) -> None:
+    def fake_run(cmd: list[str], cwd: Path | None = None, *, on_line: object = None) -> None:
         del cwd
         build_calls.append(cmd)
 

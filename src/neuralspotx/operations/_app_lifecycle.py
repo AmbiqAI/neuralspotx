@@ -8,6 +8,7 @@ import shutil
 from pathlib import Path
 
 from .._errors import NSXConfigError, NSXModuleError
+from .._io import info, warn
 from ..constants import (
     DEFAULT_SOC_FOR_BOARD,
     DEFAULT_TOOLCHAIN,
@@ -145,12 +146,12 @@ def _create_app_body(
         _save_app_cfg(app_dir, nsx_cfg)
         _write_app_module_file(app_dir, nsx_cfg)
         _write_modules_gitignore(app_dir, nsx_cfg)
-        print(f"Created app '{app_name}' at: {app_dir}")
-        print("Starter modules were not bootstrapped (--no-bootstrap).")
-        print("Next steps:")
-        print(f"  1) cd {app_dir}")
-        print("  2) Run `nsx module list --app-dir .`")
-        print("  3) Add modules with `nsx module add <module> --app-dir .`")
+        info(f"Created app '{app_name}' at: {app_dir}")
+        info("Starter modules were not bootstrapped (--no-bootstrap).")
+        info("Next steps:")
+        info(f"  1) cd {app_dir}")
+        info("  2) Run `nsx module list --app-dir .`")
+        info("  3) Add modules with `nsx module add <module> --app-dir .`")
         return app_dir
 
     registry = _effective_registry(base_registry, nsx_cfg)
@@ -174,16 +175,16 @@ def _create_app_body(
     _acquire_modules_for_app(app_dir, starter_modules, registry)
     _write_modules_gitignore(app_dir, nsx_cfg)
     if nsx_cfg.get("profile_status") == ProfileStatus.SCAFFOLD:
-        print(
+        warn(
             f"NOTE: profile '{nsx_cfg.get('profile')}' is scaffold-only. "
             "Build bring-up may not be complete yet."
         )
 
-    print(f"Created app '{app_name}' at: {app_dir}")
-    print("Next steps:")
-    print(f"  1) cd {app_dir}")
-    print("  2) Run `nsx configure --app-dir .`")
-    print("  3) Run `nsx build --app-dir .`, `nsx flash --app-dir .`, or `nsx view --app-dir .`")
+    info(f"Created app '{app_name}' at: {app_dir}")
+    info("Next steps:")
+    info(f"  1) cd {app_dir}")
+    info("  2) Run `nsx configure --app-dir .`")
+    info("  3) Run `nsx build --app-dir .`, `nsx flash --app-dir .`, or `nsx view --app-dir .`")
     return app_dir
 
 

@@ -6,6 +6,8 @@ import shutil
 import sys
 from pathlib import Path
 
+from ._io import line
+
 
 def tool_path(name: str) -> str | None:
     """Resolve an executable path from PATH or the active Python scripts dir.
@@ -72,11 +74,11 @@ def doctor_check(
     """Print one diagnostic check result in a consistent format."""
 
     status = "OK" if ok else "FAIL"
-    print(f"[{status}] {label}")
+    line(f"[{status}] {label}")
     if detail:
-        print(f"  {detail}")
+        line(f"  {detail}")
     if hint and not ok:
-        print(f"  Hint: {hint}")
+        line(f"  Hint: {hint}")
     return ok
 
 

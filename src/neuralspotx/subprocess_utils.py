@@ -20,11 +20,13 @@ import contextlib
 import contextvars
 import ctypes
 import os
+import select
 import shlex
 import signal
 import subprocess
 import sys
-from collections.abc import Iterator
+import time
+from collections.abc import Callable, Iterator
 from pathlib import Path
 
 from ._errors import NSXTimeoutError
@@ -276,6 +278,7 @@ def run(
     cwd: Path | None = None,
     *,
     timeout: float | None = None,
+    on_line: Callable[[str], None] | None = None,
 ) -> None:
     """Run a subprocess, raising on failure or timeout.
 
@@ -284,18 +287,81 @@ def run(
     on the new session; Windows: ``TerminateJobObject`` on a
     ``KILL_ON_JOB_CLOSE`` job) and :class:`subprocess.TimeoutExpired`
     is re-raised.
+
+    When *on_line* is supplied, stdout and stderr are merged and the
+    callback is invoked once per output line (with the trailing newline
+    stripped) as the subprocess produces it. The lines are also
+    re-emitted on the parent's stdout so the user-visible output is
+    unchanged. When *on_line* is ``None`` the subprocess inherits the
+    parent's stdio directly (legacy behaviour).
     """
     effective = _effective_timeout(timeout)
-    proc = subprocess.Popen(
-        cmd,
-        cwd=str(cwd) if cwd else None,
-        start_new_session=(os.name != "nt"),
-    )
+    if on_line is not None:
+        proc = subprocess.Popen(
+            cmd,
+            cwd=str(cwd) if cwd else None,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            bufsize=1,
+            start_new_session=(os.name != "nt"),
+        )
+    else:
+        proc = subprocess.Popen(
+            cmd,
+            cwd=str(cwd) if cwd else None,
+            start_new_session=(os.name != "nt"),
+        )
     container = _ProcessContainer()
     container.attach(proc)
     try:
         try:
-            rc = proc.wait(timeout=effective)
+            if on_line is not None and proc.stdout is not None:
+                # Stream lines through the callback while still enforcing
+                # the wall-clock timeout. We use ``select`` (POSIX) or a
+                # blocking readline with a deadline check (Windows) so a
+                # subprocess that stops producing newlines cannot escape
+                # the budget.
+                deadline = None if effective is None else time.monotonic() + effective
+                stream = proc.stdout
+                use_select = os.name != "nt"
+                while True:
+                    if deadline is not None:
+                        remaining = deadline - time.monotonic()
+                        if remaining <= 0:
+                            container.terminate(proc)
+                            raise subprocess.TimeoutExpired(cmd, effective)
+                    else:
+                        remaining = None
+                    if use_select:
+                        ready, _, _ = select.select(
+                            [stream],
+                            [],
+                            [],
+                            remaining if remaining is not None else None,
+                        )
+                        if not ready:
+                            # select timed out -> deadline reached
+                            container.terminate(proc)
+                            raise subprocess.TimeoutExpired(cmd, effective)
+                    raw = stream.readline()
+                    if not raw:
+                        break
+                    text_line = raw.rstrip("\n")
+                    try:
+                        on_line(text_line)
+                    except BaseException:
+                        # Caller-supplied callback raised; tear down the
+                        # subprocess tree before propagating so we don't
+                        # leak processes (POSIX) or job-object handles
+                        # (Windows).
+                        container.terminate(proc)
+                        raise
+                    sys.stdout.write(raw)
+                wait_timeout = None if deadline is None else max(0.0, deadline - time.monotonic())
+                rc = proc.wait(timeout=wait_timeout)
+            else:
+                rc = proc.wait(timeout=effective)
         except subprocess.TimeoutExpired:
             container.terminate(proc)
             raise subprocess.TimeoutExpired(cmd, effective) from None

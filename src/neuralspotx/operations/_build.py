@@ -5,9 +5,11 @@ from __future__ import annotations
 import shutil
 import subprocess
 import time
+from collections.abc import Callable
 from pathlib import Path
 
 from .._errors import NSXError
+from .._io import info
 from ..project_config import _run_cmake_configure
 from ..subprocess_utils import (
     extract_view_command,
@@ -45,8 +47,8 @@ def configure_app_impl(
     )
     _ensure_app_modules(resolved_app_dir)
     _run_cmake_configure(resolved_app_dir, resolved_build_dir, resolved_board, toolchain=toolchain)
-    print(f"Configured app at: {resolved_app_dir}")
-    print(f"Build directory: {resolved_build_dir}")
+    info(f"Configured app at: {resolved_app_dir}")
+    info(f"Build directory: {resolved_build_dir}")
     return resolved_build_dir
 
 
@@ -58,6 +60,7 @@ def build_app_impl(
     toolchain: str | None = None,
     target: str | None = None,
     jobs: int = 8,
+    on_line: "Callable[[str], None] | None" = None,
 ) -> Path:
     """Build an app target and return the build directory."""
 
@@ -72,7 +75,10 @@ def build_app_impl(
             resolved_app_dir, resolved_build_dir, resolved_board, toolchain=toolchain
         )
     resolved_target = target or app_name
-    run(["cmake", "--build", str(resolved_build_dir), "--target", resolved_target, "-j", str(jobs)])
+    run(
+        ["cmake", "--build", str(resolved_build_dir), "--target", resolved_target, "-j", str(jobs)],
+        on_line=on_line,
+    )
     return resolved_build_dir
 
 
@@ -83,6 +89,7 @@ def flash_app_impl(
     build_dir: Path | None = None,
     toolchain: str | None = None,
     jobs: int = 8,
+    on_line: "Callable[[str], None] | None" = None,
 ) -> Path:
     """Flash an app using its generated CMake flash target."""
 
@@ -98,8 +105,8 @@ def flash_app_impl(
         )
     target = f"{app_name}_flash"
     cmd = ["cmake", "--build", str(resolved_build_dir), "--target", target, "-j", str(jobs)]
-    if _common.get_verbosity() > 0:
-        run(cmd)
+    if _common.get_verbosity() > 0 or on_line is not None:
+        run(cmd, on_line=on_line)
         return resolved_build_dir
     try:
         result = run_capture(cmd)
@@ -206,7 +213,7 @@ def clean_app_impl(
         return resolved_build_dir
     if full:
         shutil.rmtree(resolved_build_dir)
-        print(f"Removed build directory: {resolved_build_dir}")
+        info(f"Removed build directory: {resolved_build_dir}")
         return resolved_build_dir
     if not (resolved_build_dir / "build.ninja").exists():
         _run_cmake_configure(
