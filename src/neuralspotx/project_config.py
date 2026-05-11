@@ -432,7 +432,12 @@ def load_project_config(path: Path) -> NsxProject:
     project = NsxProject.from_yaml(path)
     _check_nsx_version_compatibility(project.raw, project.path)
     _normalize_module_source(project.raw)
-    return project
+    # ``_normalize_module_source`` mutates ``raw`` (specifically the
+    # ``module_registry`` block) in place, so the typed view computed
+    # by ``from_yaml`` is now stale w.r.t. ``raw``. Rebuild it from
+    # the normalized mapping to keep ``.modules`` / ``.module_registry``
+    # in sync with ``.raw``.
+    return NsxProject.from_mapping(project.raw, path=project.path)
 
 
 def _normalize_module_source(cfg: dict[str, Any]) -> None:

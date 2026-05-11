@@ -136,12 +136,20 @@ class AppModule:
     extra: dict[str, Any] | None = None
 
     @classmethod
-    def from_mapping(cls, index: int, data: dict[str, Any]) -> AppModule:
+    def from_mapping(
+        cls, index: int, data: dict[str, Any], *, origin: str = "nsx.yml"
+    ) -> AppModule:
         if not isinstance(data, dict):
-            raise NSXConfigError(f"nsx.yml: modules[{index}] must be a mapping")
+            raise NSXConfigError(
+                f"{origin}: modules[{index}] must be a mapping",
+                field=f"modules[{index}]",
+            )
         name = data.get("name")
         if not isinstance(name, str):
-            raise NSXConfigError(f"nsx.yml: modules[{index}].name must be a string")
+            raise NSXConfigError(
+                f"{origin}: modules[{index}].name must be a string",
+                field=f"modules[{index}].name",
+            )
         project = data.get("project")
         revision = data.get("revision")
         source_data = data.get("source")
@@ -309,61 +317,68 @@ _NSX_YML_KNOWN_TOP_LEVEL: tuple[str, ...] = (
 )
 
 
-def _require_mapping(value: Any, *, field: str, allow_none: bool = False) -> dict[str, Any]:
+def _require_mapping(
+    value: Any, *, field: str, allow_none: bool = False, origin: str = "nsx.yml"
+) -> dict[str, Any]:
     """Validate that *value* is a mapping; raise :class:`NSXConfigError`.
 
     When *allow_none* is True, ``None`` is accepted and an empty dict
     is returned. The *field* argument names the offending YAML key
-    path so the resulting error carries it on ``.field``.
+    path so the resulting error carries it on ``.field``. *origin*
+    prefixes the error message with the source location (defaults to
+    the literal ``"nsx.yml"`` for callers that have no real path).
     """
 
     if value is None and allow_none:
         return {}
     if not isinstance(value, dict):
         raise NSXConfigError(
-            f"nsx.yml: '{field}' must be a mapping, got {type(value).__name__}",
+            f"{origin}: '{field}' must be a mapping, got {type(value).__name__}",
             field=field,
         )
     return value
 
 
-def _require_str(value: Any, *, field: str, allow_empty: bool = False) -> str:
+def _require_str(
+    value: Any, *, field: str, allow_empty: bool = False, origin: str = "nsx.yml"
+) -> str:
     if not isinstance(value, str):
         raise NSXConfigError(
-            f"nsx.yml: '{field}' must be a string, got {type(value).__name__}",
+            f"{origin}: '{field}' must be a string, got {type(value).__name__}",
             field=field,
         )
     if not value and not allow_empty:
-        raise NSXConfigError(f"nsx.yml: '{field}' must be a non-empty string", field=field)
+        raise NSXConfigError(f"{origin}: '{field}' must be a non-empty string", field=field)
     return value
 
 
-def _validate_modules_list(modules_data: Any) -> tuple[AppModule, ...]:
+def _validate_modules_list(modules_data: Any, *, origin: str = "nsx.yml") -> tuple[AppModule, ...]:
     """Validate the top-level ``modules`` list and return typed entries.
 
     Each list element must be a mapping; the per-element validation is
-    delegated to :meth:`AppModule.from_mapping`, which already raises
-    a typed :class:`NSXConfigError`.  This helper additionally tags the
-    error with a ``field`` of the form ``modules[i]`` (or
-    ``modules[i].<key>`` for nested errors) so callers can pinpoint the
-    offending entry.
+    delegated to :meth:`AppModule.from_mapping`, which raises a typed
+    :class:`NSXConfigError` with ``.field`` already set to the
+    ``modules[i]`` / ``modules[i].<key>`` path.  Nested field paths are
+    preserved as-is; only top-level shape errors fall back to a bare
+    ``modules[i]`` field tag.
     """
 
     if modules_data is None:
         return ()
     if not isinstance(modules_data, list):
         raise NSXConfigError(
-            f"nsx.yml: 'modules' must be a list, got {type(modules_data).__name__}",
+            f"{origin}: 'modules' must be a list, got {type(modules_data).__name__}",
             field="modules",
         )
     out: list[AppModule] = []
     for idx, item in enumerate(modules_data):
         try:
-            out.append(AppModule.from_mapping(idx, item))
+            out.append(AppModule.from_mapping(idx, item, origin=origin))
         except NSXConfigError as exc:
-            # Re-raise with a field path. AppModule.from_mapping reports
-            # ``modules[idx].name``-style messages; surface the same as
-            # ``.field`` for structured callers.
+            # AppModule.from_mapping sets exc.field to the structured
+            # path (e.g. ``modules[0].name``). Preserve it verbatim so
+            # callers see the deepest offending key, not just the
+            # surrounding list entry.
             field_name = exc.field or f"modules[{idx}]"
             raise NSXConfigError(str(exc), field=field_name) from None
     return tuple(out)
@@ -433,11 +448,20 @@ class NsxProject:
 
     @classmethod
     def from_mapping(cls, data: dict[str, Any], *, path: Path | None = None) -> NsxProject:
-        """Validate a pre-parsed mapping and build a typed instance."""
+        """Validate a pre-parsed mapping and build a typed instance.
+
+        When *path* is supplied, error messages are prefixed with the
+        actual file path so callers using :func:`load_project_config`
+        on a non-default location see the offending file in the message
+        body (the ``.field`` attribute already carries the YAML key
+        path independently of *path*).
+        """
+
+        origin = str(path) if path is not None else "nsx.yml"
 
         if not isinstance(data, dict):
             raise NSXConfigError(
-                f"nsx.yml: expected a mapping at the root, got {type(data).__name__}"
+                f"{origin}: expected a mapping at the root, got {type(data).__name__}"
             )
 
         # schema_version: required at the top level, must equal the
@@ -446,56 +470,64 @@ class NsxProject:
         # silently default through.
         if "schema_version" not in data:
             raise NSXConfigError(
-                "nsx.yml: missing required 'schema_version' (this nsx supports v1)",
+                f"{origin}: missing required 'schema_version' (this nsx supports v1)",
                 field="schema_version",
             )
         sv_raw = data["schema_version"]
         if not isinstance(sv_raw, int) or isinstance(sv_raw, bool):
             raise NSXConfigError(
-                f"nsx.yml: 'schema_version' must be an integer, got {type(sv_raw).__name__}",
+                f"{origin}: 'schema_version' must be an integer, got {type(sv_raw).__name__}",
                 field="schema_version",
             )
         if sv_raw != 1:
             raise NSXConfigError(
-                f"nsx.yml: unsupported schema_version={sv_raw} (this nsx supports v1)",
+                f"{origin}: unsupported schema_version={sv_raw} (this nsx supports v1)",
                 field="schema_version",
             )
 
-        project = _require_mapping(data.get("project"), field="project", allow_none=False)
+        project = _require_mapping(
+            data.get("project"), field="project", allow_none=False, origin=origin
+        )
         # project.name must exist and be a non-empty string.
-        _require_str(project.get("name"), field="project.name")
+        _require_str(project.get("name"), field="project.name", origin=origin)
 
-        target = _require_mapping(data.get("target"), field="target", allow_none=True)
+        target = _require_mapping(
+            data.get("target"), field="target", allow_none=True, origin=origin
+        )
         if "board" in target:
-            _require_str(target["board"], field="target.board")
+            _require_str(target["board"], field="target.board", origin=origin)
 
         toolchain_value = data.get("toolchain")
         if toolchain_value is not None:
-            toolchain_value = _require_str(toolchain_value, field="toolchain")
+            toolchain_value = _require_str(toolchain_value, field="toolchain", origin=origin)
 
-        modules = _validate_modules_list(data.get("modules"))
+        modules = _validate_modules_list(data.get("modules"), origin=origin)
 
         registry_data = data.get("module_registry")
         if registry_data is not None and not isinstance(registry_data, dict):
             raise NSXConfigError(
-                f"nsx.yml: 'module_registry' must be a mapping, got {type(registry_data).__name__}",
+                f"{origin}: 'module_registry' must be a mapping, "
+                f"got {type(registry_data).__name__}",
                 field="module_registry",
             )
         module_registry = ModuleRegistryOverride.from_mapping(registry_data)
 
-        tooling = _require_mapping(data.get("tooling"), field="tooling", allow_none=True)
+        tooling = _require_mapping(
+            data.get("tooling"), field="tooling", allow_none=True, origin=origin
+        )
 
         profile_value = data.get("profile")
         if profile_value is not None and not isinstance(profile_value, str):
             raise NSXConfigError(
-                f"nsx.yml: 'profile' must be a string when set, got {type(profile_value).__name__}",
+                f"{origin}: 'profile' must be a string when set, "
+                f"got {type(profile_value).__name__}",
                 field="profile",
             )
 
         profile_status_value = data.get("profile_status")
         if profile_status_value is not None and not isinstance(profile_status_value, str):
             raise NSXConfigError(
-                f"nsx.yml: 'profile_status' must be a string when set, "
+                f"{origin}: 'profile_status' must be a string when set, "
                 f"got {type(profile_status_value).__name__}",
                 field="profile_status",
             )

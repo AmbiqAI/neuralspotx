@@ -197,7 +197,7 @@ _INVALID_SHAPES: list[tuple[str, dict[str, object] | object, str]] = [
             "target": {},
             "modules": [{"project": "p"}],
         },
-        "modules[0]",
+        "modules[0].name",
     ),
     (
         "module-registry-not-mapping",
