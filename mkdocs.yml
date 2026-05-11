@@ -121,6 +121,7 @@ nav:
       - view: reference/view.md
       - clean: reference/clean.md
       - module: reference/module.md
+      - Public Python API: reference/public-api.md
   - Architecture:
       - Overview: architecture/overview.md
       - App Generation Flow: architecture/app-generation-flow.md
