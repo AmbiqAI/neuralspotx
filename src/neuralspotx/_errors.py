@@ -47,7 +47,14 @@ class NSXResolutionError(NSXError):
 
 
 class NSXLockError(NSXError):
-    """Raised when the per-app advisory lock cannot be acquired."""
+    """Raised for failures in the per-app advisory-lock subsystem.
+
+    Covers both runtime acquisition failures (the platform lock
+    primitive errors out, the lock is held by another process in
+    non-blocking mode) and on-disk ``nsx.lock`` schema/format
+    incompatibilities surfaced by readers like ``sync`` and
+    ``outdated``.
+    """
 
 
 class NSXModuleError(NSXError):

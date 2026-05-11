@@ -1,5 +1,39 @@
 # Changelog
 
+## Unreleased
+
+### ⚠ BREAKING CHANGES — pre-1.0 compat surface removed
+
+These removals close out [#63](https://github.com/AmbiqAI/neuralspotx/issues/63)
+in preparation for v1.0. Anything documented as "kept for backwards
+compatibility" or "legacy wrapper" pre-0.6 is gone.
+
+* **nsx_lock:** removed `LegacyLockError`. `read_lock()` now raises the
+  standard `NSXLockError` on schema mismatch and no longer accepts
+  `allow_legacy=`. `NSXLockError`'s docstring is broadened to cover
+  both advisory-lock acquisition failures and on-disk lock-file
+  schema/format incompatibilities (which is what callers were
+  already catching in practice).
+* **file_lock:** removed the `NSX_LOCK_FAIL_OPEN=1` escape hatch.
+  `app_lock()` is unconditionally fail-closed when the platform lock
+  primitive errors. `AppLockBusyError` and `AppLockUnavailableError`
+  now subclass `NSXLockError` so they participate in the standard
+  `NSXError` classification path in `cli.main` instead of falling
+  through as unclassified `RuntimeError`s. Removed the unused
+  `_warn_once` / `_warned` helpers.
+* **api:** removed the `as_json` field from `AppOutdatedRequest` and
+  the `as_json=` parameter from `outdated_app()`. Callers that need
+  machine-readable output should use `OutdatedReport.to_dict()`.
+* **subprocess_utils:** removed the `_terminate_tree(proc)` wrapper.
+  Internal call sites already use `_ProcessContainer` directly.
+
+### Documentation
+
+* Restructured the neuralSPOT→NSX coverage tables in
+  `docs/contributing/module-coverage.md` under a new
+  "Historical mapping (neuralSPOT → nsx)" section so their
+  retrospective intent is unambiguous.
+
 ## [0.5.1](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.5.0...neuralspotx-v0.5.1) (2026-05-08)
 
 

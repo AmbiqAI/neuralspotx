@@ -9,7 +9,7 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from . import api, nsx_lock, operations
+from . import api, operations
 from ._errors import NSXConfigError, NSXError, NSXModuleError, NSXToolchainError
 from ._logging import configure_logging
 from .metadata import SUPPORTED_MODULE_TYPES, load_yaml, validate_nsx_module_metadata
@@ -1368,9 +1368,6 @@ def main(argv: list[str] | None = None) -> int:
         if args.verbose > 0:
             raise
         sys.stderr.write(f"error: {format_subprocess_error(exc, context='Command')}\n")
-        return 1
-    except nsx_lock.LegacyLockError as exc:
-        sys.stderr.write(f"error: {exc}\n")
         return 1
     except NSXError as exc:
         # Typed library errors: print message (if any) and exit non-zero.

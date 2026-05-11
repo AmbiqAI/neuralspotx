@@ -9,9 +9,8 @@ refactors can't silently regress them:
    the existing local-entry preservation) under remove/update rewrites.
 3. The ``api.lock_app`` per-call resolve TTL override does not mutate
    ``os.environ`` and is concurrency-safe (uses ``ContextVar``).
-4. ``app_lock`` is fail-closed by default when the lock primitive
-   raises an unexpected error and only fails open when
-   ``NSX_LOCK_FAIL_OPEN=1`` is set.
+4. ``app_lock`` is fail-closed when the lock primitive raises an
+   unexpected error.
 5. ``doctor`` reports the J-Link runtime as failing — not OK — when
    the probe exits non-zero without a recognised hint pattern.
 """
@@ -177,8 +176,6 @@ class TestAppLockFailClosed:
     def test_unexpected_lock_failure_raises(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        monkeypatch.delenv("NSX_LOCK_FAIL_OPEN", raising=False)
-
         def boom(_fd: int, *, blocking: bool) -> None:
             raise RuntimeError("simulated primitive failure")
 
@@ -186,27 +183,6 @@ class TestAppLockFailClosed:
         with pytest.raises(file_lock.AppLockUnavailableError, match="simulated"):
             with file_lock.app_lock(tmp_path):
                 pass
-
-    def test_fail_open_env_opt_out_proceeds(
-        self,
-        tmp_path: Path,
-        monkeypatch: pytest.MonkeyPatch,
-        capsys: pytest.CaptureFixture[str],
-    ) -> None:
-        monkeypatch.setenv("NSX_LOCK_FAIL_OPEN", "1")
-
-        def boom(_fd: int, *, blocking: bool) -> None:
-            raise RuntimeError("simulated primitive failure")
-
-        monkeypatch.setattr(file_lock, "_platform_lock", boom)
-        # Reset warn-once memo so we can observe the warning each test run.
-        file_lock._warned.clear()
-        ran = False
-        with file_lock.app_lock(tmp_path):
-            ran = True
-        assert ran
-        captured = capsys.readouterr()
-        assert "file lock unavailable" in captured.err
 
 
 # ---------------------------------------------------------------------------

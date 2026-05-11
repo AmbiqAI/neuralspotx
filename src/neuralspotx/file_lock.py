@@ -12,9 +12,7 @@ Semantics
   participate (e.g. a developer manually editing files) is unaffected.
 * Fail-closed: if the platform-specific lock primitive raises an
   unexpected error, NSX raises :class:`AppLockUnavailableError`
-  rather than silently proceeding without synchronisation. Set
-  ``NSX_LOCK_FAIL_OPEN=1`` to opt back into the legacy fail-open
-  behaviour on platforms where the primitive is genuinely missing.
+  rather than silently proceeding without synchronisation.
 * Per-app: callers pass the app directory. The lockfile lives at
   ``<app_dir>/.nsx.sync.lock`` (matched in the example app
   ``.gitignore``). The file is created on demand and left in place
@@ -27,9 +25,10 @@ import contextlib
 import contextvars
 import os
 import sys
-import threading
 from collections.abc import Iterator
 from pathlib import Path
+
+from ._errors import NSXLockError
 
 LOCK_FILENAME = ".nsx.sync.lock"
 
@@ -82,20 +81,14 @@ def app_lock(app_dir: Path, *, blocking: bool = True) -> Iterator[None]:
         except AppLockBusyError:
             raise
         except Exception as exc:  # noqa: BLE001 — primitive failure
-            # Fail-closed by default: the call paths that take this lock
+            # Fail-closed: the call paths that take this lock
             # (``lock`` / ``sync`` / ``update``) are exactly the ones
             # where racing writers can corrupt ``nsx.lock`` and
             # ``modules/``. Surface a typed error so callers must
-            # consciously opt out.
-            if os.environ.get("NSX_LOCK_FAIL_OPEN") in ("1", "true", "TRUE", "yes"):
-                _warn_once(
-                    f"file lock unavailable ({exc}); proceeding without it (NSX_LOCK_FAIL_OPEN=1).",
-                )
-            else:
-                raise AppLockUnavailableError(
-                    f"file lock primitive unavailable for {path}: {exc}. "
-                    "Set NSX_LOCK_FAIL_OPEN=1 to bypass on legacy platforms."
-                ) from exc
+            # consciously opt out by not taking the lock.
+            raise AppLockUnavailableError(
+                f"file lock primitive unavailable for {path}: {exc}."
+            ) from exc
         token = _held_paths.set(held | {key})
         try:
             yield
@@ -123,12 +116,18 @@ _held_paths: contextvars.ContextVar[frozenset[str]] = contextvars.ContextVar(
 )
 
 
-class AppLockBusyError(RuntimeError):
+class AppLockBusyError(NSXLockError):
     """Raised by :func:`app_lock` in non-blocking mode when busy."""
 
 
-class AppLockUnavailableError(RuntimeError):
-    """Raised when the lock primitive is unavailable and fail-open is off."""
+class AppLockUnavailableError(NSXLockError):
+    """Raised when the lock primitive is unavailable.
+
+    Subclasses :class:`NSXLockError` so the standard CLI / API error
+    classification (``cli.main``'s ``NSXError`` handler) routes it the
+    same way as other lock-subsystem failures rather than as an
+    unclassified ``RuntimeError``.
+    """
 
 
 @contextlib.contextmanager
@@ -141,9 +140,7 @@ def file_mutex(path: Path) -> Iterator[None]:
 
     * Always blocking and always per-call (no reentrancy bookkeeping).
     * Always fail-closed: if the lock primitive raises, that error
-      propagates. ``NSX_LOCK_FAIL_OPEN`` does not apply here because
-      the call sites are tight critical sections, not user-facing
-      flows we want to keep alive on broken platforms.
+      propagates.
     * The caller chooses the lockfile path explicitly. Typically a
       ``<artifact>.lock`` sidecar next to the file being mutated.
 
@@ -174,18 +171,6 @@ def file_mutex(path: Path) -> Iterator[None]:
 # ---------------------------------------------------------------------------
 
 
-_warned: set[str] = set()
-_warned_lock = threading.Lock()
-
-
-def _warn_once(msg: str) -> None:
-    with _warned_lock:
-        if msg in _warned:
-            return
-        _warned.add(msg)
-    print(f"warning: {msg}", file=sys.stderr)
-
-
 if sys.platform == "win32":  # pragma: no cover — exercised on Windows CI
     import msvcrt
 
@@ -206,6 +191,7 @@ if sys.platform == "win32":  # pragma: no cover — exercised on Windows CI
             msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
         except OSError:
             pass
+
 else:
     import fcntl
 

@@ -161,14 +161,12 @@ class AppOutdatedRequest:
 
     Attributes:
         app_dir: App directory containing ``nsx.lock``.
-        as_json: Emit a machine-readable JSON report instead of a table.
         timeout_s: Per-subprocess wall-clock budget (seconds). Applied
             to each ``git ls-remote`` invoked while comparing locked
             commits to upstream tips. ``None`` disables the timeout.
     """
 
     app_dir: PathLike
-    as_json: bool = False
     timeout_s: float | None = None
 
 
@@ -817,16 +815,14 @@ def sync_app(
 def outdated_app(
     app_dir: PathLike | AppOutdatedRequest,
     *,
-    as_json: bool = False,
     timeout_s: float | None = None,
 ) -> OutdatedReport:
     """Report git modules whose locked commit lags the upstream constraint.
 
     Returns an :class:`OutdatedReport` describing every git-hosted
     module inspected (``checked``) and any that could not be resolved
-    (``skipped``). The ``as_json`` parameter is accepted for backwards
-    compatibility but no longer affects the return value — callers that
-    need machine-readable output should use ``report.to_dict()``.
+    (``skipped``). Callers that need machine-readable output should
+    use ``report.to_dict()``.
     *timeout_s* applies per ``git ls-remote`` subprocess invoked while
     comparing locked commits to upstream tips.
     """
@@ -834,7 +830,7 @@ def outdated_app(
     request = (
         app_dir
         if isinstance(app_dir, AppOutdatedRequest)
-        else AppOutdatedRequest(app_dir=app_dir, as_json=as_json, timeout_s=timeout_s)
+        else AppOutdatedRequest(app_dir=app_dir, timeout_s=timeout_s)
     )
     with timeout_budget(request.timeout_s):
         return operations.outdated_app_impl(
