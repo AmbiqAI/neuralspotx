@@ -17,12 +17,19 @@ def _rmtree(path: Path) -> None:
     """
 
     def _on_rm_error(_func, _path, _exc_info):  # noqa: ANN001
+        # Clear the write bit and retry the original failing op, which
+        # may be ``os.unlink`` (file) or ``os.rmdir`` (directory) so
+        # rmtree can finish in both cases. On Python 3.12+ rmtree may
+        # call fd-based syscalls (e.g. ``os.open(path, flags)``) that
+        # require multiple positional args; in that case ``_func(_path)``
+        # raises TypeError, which we swallow — the next rmtree pass
+        # retries the parent.
         try:
             os.chmod(_path, stat.S_IWRITE)
         except OSError:
             pass
         try:
-            os.unlink(_path)
+            _func(_path)
         except (OSError, TypeError):
             pass
 

@@ -40,6 +40,7 @@ from ._git import (
     git_clone_at_commit,
     git_current_sha,
     git_fetch,
+    git_ls_remote,
 )
 from ._runner import (
     _ProcessContainer,
@@ -100,6 +101,7 @@ __all__ = [
     "git_clone_at_commit",
     "git_current_sha",
     "git_fetch",
+    "git_ls_remote",
     "jlink_failure_hint",
     "print_captured_output",
     "run",

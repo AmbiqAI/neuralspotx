@@ -17,6 +17,7 @@ from neuralspotx.subprocess_utils import (
     _validate_git_url,
     git_clone,
     git_clone_at_commit,
+    git_ls_remote,
 )
 
 
@@ -135,3 +136,51 @@ class TestRefusesUnsafeUrls:
     def test_git_clone_refuses_ext_url(self, tmp_path: Path) -> None:
         with pytest.raises(NSXGitError):
             git_clone("ext::sh -c id", tmp_path / "x")
+
+
+class TestGitLsRemote:
+    """``git_ls_remote`` is the hardened wrapper used by lock resolution."""
+
+    def test_uses_allow_list(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        invocations: list[list[str]] = []
+
+        class _FakeResult:
+            stdout = ""
+
+        def fake_run_capture(cmd, *args, **kwargs):  # type: ignore[no-untyped-def]
+            invocations.append(list(cmd))
+            return _FakeResult()
+
+        monkeypatch.setattr(subprocess_utils, "run_capture", fake_run_capture)
+
+        git_ls_remote("https://example.com/foo.git", "main", "main^{}")
+
+        assert invocations and invocations[0][0] == "git"
+        for flag in GIT_PROTOCOL_ALLOWLIST_FLAGS:
+            assert flag in invocations[0]
+        # Must include "ls-remote" subcommand and the URL.
+        assert "ls-remote" in invocations[0]
+        assert "https://example.com/foo.git" in invocations[0]
+
+    @pytest.mark.parametrize(
+        "url",
+        [
+            "ext::sh -c id",
+            "file:///tmp/evil",
+            "file::/tmp/evil",
+            "ftp://example.com/foo.git",
+        ],
+    )
+    def test_refuses_disallowed_url(self, url: str) -> None:
+        with pytest.raises(NSXGitError):
+            git_ls_remote(url, "main")
+
+    def test_resolve_ref_uses_hardened_ls_remote(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        """``nsx_lock.resolve_ref`` must refuse disallowed transports."""
+        from neuralspotx.nsx_lock._resolution import ResolutionError, resolve_ref
+
+        with pytest.raises(ResolutionError) as exc_info:
+            resolve_ref("ext::sh -c id", "main", bypass_cache=True)
+        assert isinstance(exc_info.value.__cause__, NSXGitError)
