@@ -107,7 +107,7 @@ def _effective_timeout(explicit: float | None) -> float | None:
 #
 # Windows has no such inheritance.  ``proc.kill()`` only terminates the
 # direct child, so a hung ``cmake`` would leave ``ninja`` and the compiler
-# running in the background — the legacy neuralSPOT "ghost ninja" class.
+# running in the background — the "ghost ninja" problem.
 #
 # The Win32 fix is a Job Object with ``JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE``:
 # any process assigned to the job (and every descendant it spawns) is
@@ -139,7 +139,7 @@ class _ProcessContainer:
         except OSError:
             # Best-effort: if Job Object creation/assignment fails (rare —
             # nested jobs on pre-Win8, restricted desktops), fall back to
-            # the legacy ``proc.kill()`` path.  We must NOT raise here or
+            # the ``proc.kill()`` path.  We must NOT raise here or
             # we would mask the user's command.
             self._close_handle()
 
@@ -269,18 +269,6 @@ else:
 
     def _close_handle(handle: int) -> None:  # pragma: no cover
         raise OSError("Job Objects are Windows-only")
-
-
-def _terminate_tree(proc: subprocess.Popen) -> None:  # type: ignore[type-arg]
-    """Backwards-compatible wrapper around :class:`_ProcessContainer`.
-
-    Kept so external callers (and the test suite) that imported
-    ``_terminate_tree`` directly keep working.  New code paths inside
-    :func:`run` / :func:`run_capture` use a :class:`_ProcessContainer`
-    so they can also reap Windows grandchildren.
-    """
-    container = _ProcessContainer()
-    container.terminate(proc)
 
 
 def run(

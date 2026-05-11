@@ -1,9 +1,9 @@
 """Shared NSX workflow operations for CLI and programmatic use.
 
-This package decomposes the legacy ``operations.py`` module into
-focused sub-modules. The public API is re-exported here so existing
-callers (``api``, ``cli``, tests) can continue to reference
-``neuralspotx.operations.<name>`` unchanged.
+The package implements every ``*_impl`` workhorse behind ``nsx.api``
+and ``nsx`` (the CLI) in focused sub-modules. The public surface is
+re-exported here so existing callers (``api``, ``cli``, tests) can
+reference ``neuralspotx.operations.<name>`` unchanged.
 
 Sub-module layout
 -----------------

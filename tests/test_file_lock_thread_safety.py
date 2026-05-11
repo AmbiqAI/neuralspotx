@@ -84,30 +84,3 @@ def test_app_lock_is_still_reentrant_within_a_thread(tmp_path: Path) -> None:
         # Nested call in same thread/context must be a no-op, not deadlock.
         with file_lock.app_lock(app):
             pass
-
-
-def test_warn_once_is_thread_safe(monkeypatch, capsys) -> None:
-    """``_warn_once`` must emit each unique message exactly once even
-    when many threads race on it concurrently."""
-    file_lock._warned.clear()
-
-    msg = "race-condition-test-message"
-    n_threads = 32
-    barrier = threading.Barrier(n_threads)
-
-    def worker() -> None:
-        barrier.wait()
-        file_lock._warn_once(msg)
-
-    threads = [threading.Thread(target=worker) for _ in range(n_threads)]
-    for t in threads:
-        t.start()
-    for t in threads:
-        t.join(timeout=5)
-
-    captured = capsys.readouterr()
-    occurrences = captured.err.count(msg)
-    assert occurrences == 1, (
-        f"_warn_once printed message {occurrences} times under contention; expected exactly 1."
-    )
-    file_lock._warned.clear()

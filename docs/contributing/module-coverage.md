@@ -6,14 +6,14 @@ For the higher-level migration plan and module matrix, see
 This page tracks how the major internal `neuralSPOT` module areas map into the
 current NSX module set.
 
-The goal is not to preserve every legacy package name. The goal is to make sure
+The goal is not to preserve every neuralSPOT package name. The goal is to make sure
 the important internal capabilities have a clear home in NSX.
 
 ## Covered Baseline Areas
 
 These major internal areas already have clear NSX coverage.
 
-| Legacy area | Current NSX coverage | Notes |
+| neuralSPOT area | Current NSX coverage | Notes |
 | --- | --- | --- |
 | `ns-core` | `nsx-core` | Core runtime init and common bring-up surface are migrated. |
 | `ns-harness` | `nsx-harness` | Print, debug-log bridge, and micro-profiler support are present. |
@@ -33,21 +33,21 @@ These major internal areas already have clear NSX coverage.
 
 ## Partially Covered Areas
 
-These areas have some coverage, but the full legacy feature surface is not yet
+These areas have some coverage, but the full neuralSPOT feature surface is not yet
 represented as first-class NSX modules.
 
-| Legacy area | Current state | Notes |
+| neuralSPOT area | Current state | Notes |
 | --- | --- | --- |
 | `ns-peripherals` extended features | partial | PSRAM, NVM, and some SoC-specific peripheral pieces still need tighter normalization. |
 | migrated bus modules | partial | The wrappers are present, but deeper API cleanup and hardware-assumption trimming are still future work. |
 | profiling helpers spread across `ns-utils` and `ns-harness` | partial | Generic perf and PMU helpers now have dedicated modules; legacy TFLM-oriented profiling glue remains in `nsx-harness`. |
 | print and low-power print behavior | partial | Basic print paths exist; deeper legacy power-aware print behavior is not fully split out yet. |
 
-## Major Legacy Areas Still Missing
+## Major neuralSPOT Areas Still Missing
 
 These remain valid migration targets if they still matter for NSX.
 
-| Legacy area | Likely NSX direction |
+| neuralSPOT area | Likely NSX direction |
 | --- | --- |
 | `ns-ble` | optional connectivity module |
 | `ns-camera` | optional camera/sensor module |

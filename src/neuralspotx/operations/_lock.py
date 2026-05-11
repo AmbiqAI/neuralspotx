@@ -8,6 +8,7 @@ from pathlib import Path
 from .._errors import (
     NSXConfigError,
     NSXError,
+    NSXLockError,
     NSXModuleError,
     NSXResolutionError,
 )
@@ -558,7 +559,14 @@ def _lock_app_impl_unlocked(
     check: bool = False,
     quiet: bool = False,
 ) -> NsxLock:
-    previous = read_lock(app_dir, allow_legacy=True)
+    try:
+        previous = read_lock(app_dir)
+    except NSXLockError as exc:
+        # Older on-disk schema — log and regenerate from scratch.
+        from .._logging import get_logger
+
+        get_logger(__name__).warning("%s (regenerating)", exc)
+        previous = None
     on_disk_lock = previous  # capture before update-mutation
 
     if update:

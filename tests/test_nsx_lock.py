@@ -14,7 +14,8 @@ import pytest
 import yaml
 
 from neuralspotx import NSXError, operations
-from neuralspotx.nsx_lock import LegacyLockError, ResolutionError, read_lock
+from neuralspotx._errors import NSXLockError
+from neuralspotx.nsx_lock import ResolutionError, read_lock
 from neuralspotx.operations import (
     add_module_impl,
     lock_app_impl,
@@ -493,7 +494,7 @@ class TestGitKind:
         (app / "nsx.lock").write_text(yaml.safe_dump(legacy), encoding="utf-8")
 
         # Strict reads still raise so callers like sync/outdated fail loudly.
-        with pytest.raises(LegacyLockError):
+        with pytest.raises(NSXLockError):
             read_lock(app)
 
         # `nsx lock` rewrites in place under the current schema.
