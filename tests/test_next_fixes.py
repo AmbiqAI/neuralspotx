@@ -156,10 +156,12 @@ class TestMetadataCacheScope:
         def fake_validate(_data: dict[str, Any], _path: str) -> None:
             return None
 
-        monkeypatch.setattr(module_registry, "registry_entry_for_module", fake_entry_for)
-        monkeypatch.setattr(module_registry, "_module_metadata_path", fake_path)
-        monkeypatch.setattr(module_registry, "_read_yaml", fake_read)
-        monkeypatch.setattr(module_registry, "validate_nsx_module_metadata", fake_validate)
+        monkeypatch.setattr(module_registry._metadata, "registry_entry_for_module", fake_entry_for)
+        monkeypatch.setattr(module_registry._metadata, "_module_metadata_path", fake_path)
+        monkeypatch.setattr(module_registry._metadata, "_read_yaml", fake_read)
+        monkeypatch.setattr(
+            module_registry._metadata, "validate_nsx_module_metadata", fake_validate
+        )
         return calls
 
     def test_repeated_loads_inside_scope_hit_cache_once(

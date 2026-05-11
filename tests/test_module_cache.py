@@ -288,7 +288,7 @@ class TestVendorGitIntegration:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         clone, state = _fake_clone({"file.txt": "v1"})
-        monkeypatch.setattr(module_registry, "git_clone_at_commit", clone)
+        monkeypatch.setattr(module_registry._vendoring, "git_clone_at_commit", clone)
 
         app_dir = cache_dir / "app1"
         app_dir.mkdir()
@@ -322,7 +322,7 @@ class TestVendorGitIntegration:
         module_cache.populate(digest, src)
 
         clone, state = _fake_clone({"file.txt": "should-not-appear"})
-        monkeypatch.setattr(module_registry, "git_clone_at_commit", clone)
+        monkeypatch.setattr(module_registry._vendoring, "git_clone_at_commit", clone)
 
         app_dir = cache_dir / "app2"
         app_dir.mkdir()
@@ -340,7 +340,7 @@ class TestVendorGitIntegration:
         monkeypatch: pytest.MonkeyPatch,
     ) -> None:
         clone, state = _fake_clone({"file.txt": "v1"})
-        monkeypatch.setattr(module_registry, "git_clone_at_commit", clone)
+        monkeypatch.setattr(module_registry._vendoring, "git_clone_at_commit", clone)
 
         app_dir = cache_dir / "app3"
         app_dir.mkdir()
@@ -364,7 +364,7 @@ class TestVendorGitIntegration:
 
         monkeypatch.setenv("NSX_DISABLE_MODULE_CACHE", "1")
         clone, state = _fake_clone({"file.txt": "fresh"})
-        monkeypatch.setattr(module_registry, "git_clone_at_commit", clone)
+        monkeypatch.setattr(module_registry._vendoring, "git_clone_at_commit", clone)
 
         app_dir = cache_dir / "app4"
         app_dir.mkdir()
