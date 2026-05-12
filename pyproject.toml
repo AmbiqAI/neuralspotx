@@ -3,6 +3,23 @@ name = "neuralspotx"
 version = "0.5.1"
 description = "Python tooling and app bootstrap for neuralspotx"
 requires-python = ">=3.10"
+license = {text = "BSD-3-Clause"}
+readme = "README.md"
+authors = [
+    {name = "Ambiq", email = "support@ambiq.com"},
+]
+keywords = ["embedded", "firmware", "ambiq", "neuralspot", "build-system"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Software Development :: Build Tools",
+    "Topic :: Software Development :: Embedded Systems",
+    "Typing :: Typed",
+]
 dependencies = [
     "Jinja2>=3.1",
     "PyYAML>=6.0",
@@ -10,6 +27,12 @@ dependencies = [
 
 [project.scripts]
 nsx = "neuralspotx.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/AmbiqAI/neuralspotx"
+Repository = "https://github.com/AmbiqAI/neuralspotx"
+Issues = "https://github.com/AmbiqAI/neuralspotx/issues"
+Changelog = "https://github.com/AmbiqAI/neuralspotx/blob/main/CHANGELOG.md"
 
 [dependency-groups]
 docs = [
@@ -46,7 +69,7 @@ where = ["src"]
 include = ["neuralspotx", "neuralspotx.*"]
 
 [tool.setuptools.package-data]
-neuralspotx = ["templates/external_app/**/*", "cmake/**/*", "boards/**/*"]
+neuralspotx = ["py.typed", "templates/external_app/**/*", "cmake/**/*", "boards/**/*"]
 "neuralspotx.data" = ["*.yaml"]
 
 [tool.pytest.ini_options]

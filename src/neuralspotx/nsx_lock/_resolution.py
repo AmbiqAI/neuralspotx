@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import subprocess
 
-from .._errors import NSXGitError
+from .._errors import NSXGitError, NSXResolutionError
 from ..subprocess_utils import git_ls_remote
 
 
@@ -107,8 +107,13 @@ def _resolve_ref(url: str, ref: str) -> tuple[str, str | None]:
     raise ResolutionError(f"Unable to resolve revision '{ref}' on {url}")
 
 
-class ResolutionError(RuntimeError):
-    """Raised when a git remote cannot be resolved during ``nsx lock``."""
+class ResolutionError(NSXResolutionError):
+    """Raised when a git remote cannot be resolved during ``nsx lock``.
+
+    Subclasses :class:`~neuralspotx._errors.NSXResolutionError` so
+    ``except NSXError`` handlers catch resolution failures without
+    requiring a separate clause.
+    """
 
 
 def _looks_like_full_sha(s: str) -> bool:
