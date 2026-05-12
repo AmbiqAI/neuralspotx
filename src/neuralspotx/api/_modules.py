@@ -233,9 +233,15 @@ def list_modules(
     *,
     app_dir: PathLike | None = None,
     registry_only: bool = False,
-    include_metadata: bool = True,
+    include_metadata: bool = False,
 ) -> list[DiscoveryRecord]:
-    """List available modules from the effective registry context."""
+    """List available modules from the effective registry context.
+
+    By default returns lightweight records without parsing each module's
+    ``nsx-module.yaml`` (cheap directory listing). Pass
+    ``include_metadata=True`` for the full record set used by
+    ``nsx module list --json`` / ``nsx module describe``.
+    """
 
     return module_discovery.list_modules(
         app_dir=Path(app_dir).expanduser().resolve() if app_dir is not None else None,

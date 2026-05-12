@@ -304,15 +304,24 @@ class TestCliApiParity:
     def test_cmd_update_routes_through_api(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
+        from neuralspotx.models import OutdatedReport
+
         self._nsx_yml(tmp_path)
         calls: list[dict[str, object]] = []
 
         def fake(app_dir: object, **kw: object) -> None:
             calls.append({"app_dir": app_dir, **kw})
 
+        # G5: cmd_update peeks via api.outdated_app for the diff/confirm gate;
+        # mock it so this parity test stays focused on the update plumbing.
+        monkeypatch.setattr(
+            cli.api, "outdated_app", lambda app_dir, **kw: OutdatedReport(checked=())
+        )
         monkeypatch.setattr(cli.api, "update_app", fake)
         cli.cmd_update(
-            cli.argparse.Namespace(app_dir=str(tmp_path), modules=["nsx-core"], timeout=None)
+            cli.argparse.Namespace(
+                app_dir=str(tmp_path), modules=["nsx-core"], timeout=None, yes=False
+            )
         )
         assert len(calls) == 1
         assert calls[0]["modules"] == ["nsx-core"]

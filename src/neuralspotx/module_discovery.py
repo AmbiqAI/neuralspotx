@@ -268,12 +268,17 @@ def list_modules(
     *,
     app_dir: Path | None = None,
     registry_only: bool = False,
-    include_metadata: bool = True,
+    include_metadata: bool = False,
 ) -> list[DiscoveryRecord]:
     """Return the module catalog as a list of discovery records.
 
     When *registry_only* is ``True``, the packaged registry is used
     regardless of *app_dir*.
+
+    *include_metadata* defaults to ``False`` so the lightweight directory
+    scan is the default; pass ``True`` to load each module's parsed
+    ``nsx-module.yaml`` (used by ``nsx module list --json`` /
+    ``nsx module describe``).
     """
 
     effective_app = None if registry_only else app_dir

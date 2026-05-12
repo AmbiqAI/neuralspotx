@@ -18,6 +18,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -53,6 +54,19 @@ _COMMAND_GRAPH_HINTS["new"] = CommandHint(
     _S.APP,
     ("nsx configure", "nsx module list", "nsx module add"),
     alias_for="nsx create-app",
+)
+# G2: top-level aliases for the most common module operations.
+_COMMAND_GRAPH_HINTS["add"] = CommandHint(
+    _C.MODULES,
+    _S.APP,
+    ("nsx configure", "nsx build", "nsx flash"),
+    alias_for="nsx module add",
+)
+_COMMAND_GRAPH_HINTS["list-modules"] = CommandHint(
+    _C.MODULES,
+    _S.APP,
+    ("nsx module describe <module>", "nsx module add <module>"),
+    alias_for="nsx module list",
 )
 _register_group_hint(
     "module",
@@ -118,7 +132,12 @@ def cmd_doctor(args: argparse.Namespace) -> None:
         return
     report = api.doctor()
     if not report.ok:
+        # G4: surface a recovery hint before the typed error so the user
+        # has a single concrete next command to run.
+        print("Next: install or fix the failing tool above, then re-run `nsx doctor`.")
         raise NSXToolchainError("One or more required tools are missing or misconfigured.")
+    # G4: success-path next-step suggestion.
+    print("Next: nsx create-app my_app")
 
 
 @command_hint(
@@ -228,10 +247,48 @@ def cmd_outdated(args: argparse.Namespace) -> None:
         raise NSXError(1)
 
 
+_UPDATE_CONFIRM_THRESHOLD = 3
+
+
+def _confirm_update_changes(report: OutdatedReport, *, assume_yes: bool) -> None:
+    """G5 confirmation gate for ``nsx update``.
+
+    Prints a one-line diff summary of what will move and, when at least
+    ``_UPDATE_CONFIRM_THRESHOLD`` modules are outdated, requires either
+    ``--yes`` or an interactive ``y`` reply on stdin. Raises
+    :class:`NSXError` when the user declines or when the gate is hit
+    non-interactively without ``--yes``.
+    """
+
+    outdated = report.outdated
+    if not outdated:
+        return
+
+    summary = ", ".join(f"{m.name} ({m.locked[:10]}->{m.upstream[:10]})" for m in outdated)
+    print(f"{len(outdated)} module(s) will move: {summary}")
+
+    if assume_yes or len(outdated) < _UPDATE_CONFIRM_THRESHOLD:
+        return
+
+    if not sys.stdin.isatty():
+        raise NSXError(
+            f"`nsx update` will move {len(outdated)} modules; pass --yes to confirm "
+            "non-interactively."
+        )
+
+    reply = input(f"Proceed updating {len(outdated)} modules? [y/N] ").strip().lower()
+    if reply not in ("y", "yes"):
+        raise NSXError("Aborted by user.")
+
+
 @command_hint("update", _C.MODULES, _S.APP, "nsx configure", "nsx build", "nsx flash")
 def cmd_update(args: argparse.Namespace) -> None:
+    app_dir = resolve_app_dir(args.app_dir)
+    # G5: peek upstream so we can show a one-line diff and gate large updates.
+    report: OutdatedReport = api.outdated_app(app_dir, timeout_s=getattr(args, "timeout", None))
+    _confirm_update_changes(report, assume_yes=bool(getattr(args, "yes", False)))
     api.update_app(
-        resolve_app_dir(args.app_dir),
+        app_dir,
         modules=list(args.modules) if args.modules else None,
         timeout_s=getattr(args, "timeout", None),
     )
@@ -252,9 +309,96 @@ def cmd_sbom(args: argparse.Namespace) -> None:
         print(document)
 
 
+# G1: tier the top-level command list into logical groups so `nsx --help`
+# guides new users from quickstart -> module management -> maintenance.
+# Aliases (G2) are listed under their semantic group with the canonical
+# command they forward to.
+_HELP_GROUPS: tuple[tuple[str, tuple[tuple[str, str], ...]], ...] = (
+    (
+        "Quickstart",
+        (
+            ("create-app", "Create a new standalone NSX app project"),
+            ("new", "Alias for create-app"),
+            ("doctor", "Check the local NSX toolchain environment"),
+            ("configure", "Configure a generated NSX app with CMake"),
+            ("build", "Build a generated NSX app"),
+            ("flash", "Build and flash a generated NSX app"),
+            ("view", "Open the SEGGER SWO viewer for a generated NSX app"),
+        ),
+    ),
+    (
+        "Modules",
+        (
+            ("add", "Alias for `module add`"),
+            ("list-modules", "Alias for `module list`"),
+            ("module", "Manage app-local NSX modules (list / describe / search / ...)"),
+            ("lock", "Resolve modules in nsx.yml to commits and write nsx.lock"),
+            ("sync", "Make modules/ exactly match nsx.lock"),
+            ("outdated", "Show git modules whose locked commit lags upstream"),
+            ("update", "Re-resolve constraints to upstream tip and sync modules"),
+        ),
+    ),
+    (
+        "Maintenance",
+        (
+            ("clean", "Clean a generated NSX app build directory"),
+            ("cache", "Inspect or clean the on-disk module artifact cache"),
+        ),
+    ),
+    (
+        "Introspection",
+        (
+            ("commands", "Show the NSX command graph for users and agents"),
+            ("sbom", "Generate a Software Bill of Materials from nsx.lock"),
+        ),
+    ),
+)
+
+
+def _format_help_groups() -> str:
+    lines: list[str] = ["commands (run `nsx <command> --help` for details):", ""]
+    for title, entries in _HELP_GROUPS:
+        lines.append(f"  {title}:")
+        width = max(len(name) for name, _ in entries)
+        for name, summary in entries:
+            lines.append(f"    {name.ljust(width)}  {summary}")
+        lines.append("")
+    return "\n".join(lines).rstrip() + "\n"
+
+
+_TUTORIAL = (
+    "NSX is a bare-metal app builder for Ambiq SoCs. Get started:\n"
+    "  1) nsx doctor                # check your toolchain environment\n"
+    "  2) nsx create-app my_app     # scaffold a new app\n"
+    "  3) cd my_app && nsx build    # build it\n"
+    "Run `nsx --help` for the full command list.\n"
+)
+
+
+def _maybe_print_tutorial(argv: list[str] | None) -> bool:
+    """G3: when invoked bare with no project context, show a 5-line tutorial.
+
+    Returns ``True`` when the tutorial was printed and the caller should
+    short-circuit (no parser dispatch).
+    """
+
+    effective = argv if argv is not None else sys.argv[1:]
+    if effective:
+        return False
+    if (Path.cwd() / "nsx.yml").exists():
+        return False
+    config_root = os.environ.get("XDG_CONFIG_HOME") or str(Path.home() / ".config")
+    if (Path(config_root) / "nsx").exists():
+        return False
+    print(_TUTORIAL, end="")
+    return True
+
+
 def _build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
-        description="NSX helper for creating and building bare-metal Ambiq apps"
+        description="NSX helper for creating and building bare-metal Ambiq apps",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog=_format_help_groups(),
     )
     parser.add_argument(
         "-v",
@@ -499,6 +643,14 @@ def _build_parser() -> argparse.ArgumentParser:
         action="append",
         default=[],
         help="Only update the named module (may be repeated)",
+    )
+    p_update.add_argument(
+        "--yes",
+        action="store_true",
+        help=(
+            "Confirm large updates non-interactively. Required when "
+            f"{_UPDATE_CONFIRM_THRESHOLD}+ modules will move and stdin is not a tty."
+        ),
     )
     _add_timeout(p_update)
     p_update.set_defaults(func=cmd_update)
@@ -789,10 +941,63 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p_sbom.set_defaults(func=cmd_sbom)
 
+    # G2: top-level aliases for the most common module operations. They
+    # share defaults with the corresponding `module` subcommand so the
+    # behaviour is identical end-to-end.
+    p_add_alias = sub.add_parser(
+        "add",
+        help="Alias for `nsx module add`",
+        description="Enable a module for an app and vendor its resolved dependency closure.",
+    )
+    p_add_alias.add_argument("module", help="Module name to enable")
+    p_add_alias.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
+    p_add_alias.add_argument(
+        "--local",
+        action="store_true",
+        help="Mark the module as local (mirrored from external path; ignored by git)",
+    )
+    p_add_alias.add_argument(
+        "--vendored",
+        action="store_true",
+        help=(
+            "Scaffold a vendored module under modules/<name>/ "
+            "(committed in this app's git; never touched by `nsx sync`)"
+        ),
+    )
+    p_add_alias.add_argument("--dry-run", action="store_true", help="Show changes without writing")
+    p_add_alias.set_defaults(func=cmd_module_add)
+
+    p_list_alias = sub.add_parser(
+        "list-modules",
+        help="Alias for `nsx module list`",
+        description=(
+            "List modules from the packaged registry, or from the effective registry "
+            "for an app and mark enabled ones."
+        ),
+    )
+    p_list_alias.add_argument(
+        "--app-dir",
+        default=None,
+        help="App directory containing nsx.yml; required unless --registry-only is used",
+    )
+    p_list_alias.add_argument(
+        "--registry-only",
+        action="store_true",
+        help="List all modules in the packaged registry without app-specific overrides",
+    )
+    p_list_alias.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit machine-readable JSON instead of a table",
+    )
+    p_list_alias.set_defaults(func=cmd_module_list)
+
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
+    if _maybe_print_tutorial(argv):
+        return 0
     parser = _build_parser()
     args = parser.parse_args(argv)
     configure_logging(args.verbose, quiet=args.quiet)
