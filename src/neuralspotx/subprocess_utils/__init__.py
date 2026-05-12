@@ -29,6 +29,7 @@ from __future__ import annotations
 
 import os
 import shlex
+import subprocess
 from pathlib import Path
 
 from ._git import (
@@ -62,8 +63,32 @@ from ._verbosity import (
 
 
 def extract_view_command(build_dir: Path, target: str) -> list[str]:
-    """Extract the SWO viewer command for a Ninja target from ``build.ninja``."""
+    """Extract the SWO viewer command for a Ninja target.
 
+    First tries ``ninja -t commands``; falls back to parsing ``build.ninja``
+    directly when ninja is unavailable or the query fails.
+    """
+
+    ninja_target = f"CMakeFiles/{target}"
+
+    # --- fast path: ask ninja directly ---
+    try:
+        result = subprocess.run(
+            ["ninja", "-t", "commands", ninja_target],
+            capture_output=True,
+            text=True,
+            cwd=build_dir,
+            timeout=10,
+        )
+        if result.returncode == 0 and result.stdout.strip():
+            command_text = result.stdout.strip().splitlines()[-1]
+            if " && " in command_text:
+                _, command_text = command_text.split(" && ", 1)
+            return shlex.split(command_text, posix=(os.name != "nt"))
+    except (FileNotFoundError, subprocess.TimeoutExpired, OSError):
+        pass
+
+    # --- fallback: parse build.ninja ---
     ninja_file = build_dir / "build.ninja"
     if not ninja_file.exists():
         from .._errors import NSXConfigError

@@ -5,6 +5,8 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import sys
+from pathlib import Path
 
 from .._io import line
 from ..models import DoctorCheck, DoctorReport
@@ -47,6 +49,18 @@ class _Reporter:
     def note(self, line_text: str) -> None:
         line(line_text)
         self.notes.append(line_text.strip())
+
+
+def _find_in_dir(directory: Path, name: str) -> str | None:
+    """Look for *name* in *directory*, trying ``.exe`` on Windows."""
+    candidate = directory / name
+    if candidate.is_file():
+        return str(candidate)
+    if sys.platform.startswith("win"):
+        exe = directory / f"{name}.exe"
+        if exe.is_file():
+            return str(exe)
+    return None
 
 
 def doctor_impl() -> DoctorReport:
@@ -118,22 +132,10 @@ def doctor_impl() -> DoctorReport:
     # ATFE_ROOT env var points to the install dir; tools are NOT on PATH.
     atfe_root = os.environ.get("ATFE_ROOT", "")
     if atfe_root:
-        atfe_bin = os.path.join(atfe_root, "bin")
-        atfe_clang = (
-            os.path.join(atfe_bin, "clang")
-            if os.path.isfile(os.path.join(atfe_bin, "clang"))
-            else None
-        )
-        atfe_objcopy = (
-            os.path.join(atfe_bin, "llvm-objcopy")
-            if os.path.isfile(os.path.join(atfe_bin, "llvm-objcopy"))
-            else None
-        )
-        atfe_newlib_cfg = (
-            os.path.join(atfe_bin, "newlib.cfg")
-            if os.path.isfile(os.path.join(atfe_bin, "newlib.cfg"))
-            else None
-        )
+        atfe_bin = Path(atfe_root) / "bin"
+        atfe_clang = _find_in_dir(atfe_bin, "clang")
+        atfe_objcopy = _find_in_dir(atfe_bin, "llvm-objcopy")
+        atfe_newlib_cfg = _find_in_dir(atfe_bin, "newlib.cfg")
         r.check(
             "ATfE clang",
             atfe_clang is not None,

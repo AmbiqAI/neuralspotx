@@ -12,7 +12,9 @@ These tests pin the contract that:
 from __future__ import annotations
 
 import os
+import subprocess
 from pathlib import Path
+from unittest.mock import patch
 
 import pytest
 
@@ -323,3 +325,85 @@ class TestDualCatchability:
             project_config._require_app_config(tmp_path)
         with pytest.raises(NSXError):
             project_config._require_app_config(tmp_path)
+
+
+# ---------------------------------------------------------------------------
+# B5: _find_in_dir — pathlib + Windows .exe awareness
+# ---------------------------------------------------------------------------
+
+
+class TestFindInDir:
+    """B5: Verify _find_in_dir locates files and tries .exe on Windows."""
+
+    def test_finds_existing_file(self, tmp_path):
+        from neuralspotx.operations._doctor import _find_in_dir
+
+        (tmp_path / "clang").write_text("", encoding="utf-8")
+        assert _find_in_dir(tmp_path, "clang") == str(tmp_path / "clang")
+
+    def test_returns_none_for_missing(self, tmp_path):
+        from neuralspotx.operations._doctor import _find_in_dir
+
+        assert _find_in_dir(tmp_path, "no-such-tool") is None
+
+    @patch("neuralspotx.operations._doctor.sys")
+    def test_tries_exe_suffix_on_windows(self, mock_sys, tmp_path):
+        from neuralspotx.operations._doctor import _find_in_dir
+
+        mock_sys.platform = "win32"
+        # Only the .exe variant exists.
+        (tmp_path / "clang.exe").write_text("", encoding="utf-8")
+        assert _find_in_dir(tmp_path, "clang") == str(tmp_path / "clang.exe")
+
+    @patch("neuralspotx.operations._doctor.sys")
+    def test_prefers_bare_name_over_exe_on_windows(self, mock_sys, tmp_path):
+        from neuralspotx.operations._doctor import _find_in_dir
+
+        mock_sys.platform = "win32"
+        (tmp_path / "clang").write_text("", encoding="utf-8")
+        (tmp_path / "clang.exe").write_text("", encoding="utf-8")
+        # Bare name is tried first and returned.
+        assert _find_in_dir(tmp_path, "clang") == str(tmp_path / "clang")
+
+
+# ---------------------------------------------------------------------------
+# B6: extract_view_command — ninja subprocess fallback
+# ---------------------------------------------------------------------------
+
+
+class TestExtractViewCommandNinjaSubprocess:
+    """B6: ninja -t commands fast-path and graceful fallback."""
+
+    def test_uses_ninja_subprocess_when_available(self, tmp_path):
+        """When ninja -t commands succeeds, the file is not parsed."""
+        target = "app_view"
+        ninja_output = "cd /build && /usr/bin/viewer --port 0\n"
+
+        completed = subprocess.CompletedProcess(args=[], returncode=0, stdout=ninja_output)
+        with patch("neuralspotx.subprocess_utils.subprocess.run", return_value=completed):
+            result = extract_view_command(tmp_path, target)
+        assert result == ["/usr/bin/viewer", "--port", "0"]
+
+    def test_falls_back_to_file_when_ninja_fails(self, tmp_path):
+        """When ninja is absent, the build.ninja file is parsed normally."""
+        target = "app_view"
+        ninja = _NO_CD_PREFIX.format(target=target, cmd="/usr/bin/viewer --flag")
+        (tmp_path / "build.ninja").write_text(ninja, encoding="utf-8")
+
+        with patch(
+            "neuralspotx.subprocess_utils.subprocess.run",
+            side_effect=FileNotFoundError("ninja not found"),
+        ):
+            result = extract_view_command(tmp_path, target)
+        assert result == ["/usr/bin/viewer", "--flag"]
+
+    def test_falls_back_when_ninja_returns_error(self, tmp_path):
+        """Non-zero exit from ninja triggers file-parsing fallback."""
+        target = "app_view"
+        ninja = _NO_CD_PREFIX.format(target=target, cmd="/usr/bin/viewer")
+        (tmp_path / "build.ninja").write_text(ninja, encoding="utf-8")
+
+        completed = subprocess.CompletedProcess(args=[], returncode=1, stdout="", stderr="error")
+        with patch("neuralspotx.subprocess_utils.subprocess.run", return_value=completed):
+            result = extract_view_command(tmp_path, target)
+        assert result == ["/usr/bin/viewer"]

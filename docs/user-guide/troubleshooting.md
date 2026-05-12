@@ -48,3 +48,41 @@ Regenerate or inspect:
 
 If those are inconsistent, re-run module update or regenerate the app from a
 clean directory.
+
+## Windows: paths too long (`MAX_PATH` exceeded)
+
+Windows limits paths to 260 characters by default. Deep module trees under
+`_nsx/` can exceed this limit, causing cryptic build or lock failures.
+
+**Fix (per-machine, one-time):**
+
+1. Open **Registry Editor** (`regedit`).
+2. Navigate to `HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\FileSystem`.
+3. Set `LongPathsEnabled` (DWORD) to `1`.
+4. Reboot.
+
+Alternatively, from an elevated PowerShell:
+
+```powershell
+New-ItemProperty -Path "HKLM:\SYSTEM\CurrentControlSet\Control\FileSystem" `
+    -Name "LongPathsEnabled" -Value 1 -PropertyType DWORD -Force
+```
+
+Git also needs long-path support:
+
+```bash
+git config --global core.longpaths true
+```
+
+## Non-UTF-8 locale issues
+
+On Linux systems with `LC_ALL=C` or other ASCII-only locales, Python may
+refuse to decode module metadata files that contain non-ASCII characters.
+
+**Fix:** Set a UTF-8 locale before running `nsx`:
+
+```bash
+export LC_ALL=C.UTF-8
+```
+
+Or set `PYTHONUTF8=1` to force Python's UTF-8 mode regardless of locale.
