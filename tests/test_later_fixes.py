@@ -1,4 +1,4 @@
-"""Tests for the 'Later' tier of REVIEW.md remediations.
+"""Tests for the round-1 'Later' tier remediations.
 
 Covers:
 
