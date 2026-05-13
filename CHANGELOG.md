@@ -1,6 +1,40 @@
 # Changelog
 
-## Unreleased
+## [0.6.0](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.5.1...neuralspotx-v0.6.0) (2026-05-12)
+
+This is the v1-readiness release. All seven phases of the architectural
+review are complete: the public API surface is frozen, on-disk formats
+are versioned, the CLI has structured output, supply-chain hardening is
+in place, large modules are decomposed, and UX/cross-platform/quality
+polish has landed.
+
+### Features — CLI UX polish (G1–G5, D1) ([#68](https://github.com/AmbiqAI/neuralspotx/issues/68))
+
+* **Tiered `nsx --help`** groups commands into Quickstart, Modules,
+  Maintenance, and Introspection sections.
+* **Top-level aliases:** `nsx add` → `nsx module add`,
+  `nsx list-modules` → `nsx module list`.
+* **Bare `nsx`** now prints help instead of a traceback.
+* **`nsx commands`** lists every subcommand with scope/category metadata.
+* **`--app-dir` auto-discovery** extended to all `nsx module` subcommands.
+* **`nsx module init --summary`** default placeholder no longer starts with `TODO:`.
+
+### Features — cross-platform robustness (B5/B6/B8) ([#68](https://github.com/AmbiqAI/neuralspotx/issues/68))
+
+* **`surrogateescape` encoding** on all subprocess pipes so non-UTF-8
+  compiler output never crashes NSX.
+* **Windows `rmtree`** retry-after-`chmod` now calls the original
+  failing function instead of unconditional `os.unlink`.
+* **`pathlib.PurePosixPath`** used for all generated CMake / Makefile
+  paths so forward slashes are emitted on every OS.
+
+### Features — Hypothesis property-based tests (H2) ([#68](https://github.com/AmbiqAI/neuralspotx/issues/68))
+
+* 11 new Hypothesis property tests covering `NsxProject` round-trip,
+  `Event` construction, SBOM generation, `NsxLock` I/O, emitter
+  `ContextVar` isolation, module-change records, outdated report,
+  doctor report, cache schema migration, `DoctorCheck` ordering, and
+  `CommandDescriptor` round-trip.
 
 ### Features — supply-chain hardening & SBOM ([#66](https://github.com/AmbiqAI/neuralspotx/issues/66))
 
@@ -96,6 +130,71 @@ post-v1.0 changes never silently break user data.
 * **New typed exception:** `NSXCacheError` (subclass of `NSXError`)
   exported from `neuralspotx`. `NSXConfigError` gained an optional
   `.field` attribute carrying the offending YAML key path.
+
+### Features — API freeze ([#61](https://github.com/AmbiqAI/neuralspotx/issues/61))
+
+The public Python surface is locked before v1. All typed results are
+re-exported from `neuralspotx` so embedders no longer need to import
+private modules.
+
+* **Public re-exports:** `NsxLock`, `ResolvedModule`, `LockKind`,
+  `OutdatedStatus`, `ProfileStatus`, `CommandCategory`, `CommandScope`,
+  `DoctorReport`, `DoctorCheck`, `OutdatedReport`, `ModuleChange`,
+  `CacheInfo`.
+* **`create_app` returns `Path`** to the created directory.
+* **`py.typed` marker** added for PEP 561 typed-package compliance.
+
+### Refactoring — file decomposition ([#67](https://github.com/AmbiqAI/neuralspotx/issues/67))
+
+Five oversize modules split into packages with backwards-compatible
+re-exports:
+
+* `cli.py` → `cli/` package (parsers, per-command modules, render helpers).
+* `models.py` → `models/` package.
+* `nsx_lock.py` → `nsx_lock/` package (resolution, hashing, I/O).
+* `subprocess_utils.py` → `subprocess_utils/` package (git, process management).
+* `api.py` → `api/` package; `module_registry.py` → `module_registry/` package.
+
+### Refactoring — pre-phase architectural cleanup
+
+Landed between 0.5.1 and Phase 1 as part of the REVIEW/REVIEW2
+backlog:
+
+* **Typed errors:** `NSXError` hierarchy replaces `SystemExit` raises
+  throughout; `ResolutionError` added for lock resolution failures.
+* **Structured logging:** `-v`/`-vv`/`-q` verbosity flags via `ContextVar`.
+* **Typed domain objects:** `DoctorReport`, `OutdatedReport`,
+  `ModuleChange`, `CacheInfo`, `NsxLock`, `CommandDescriptor`.
+* **API completeness:** all CLI module commands routed through `api.*`.
+* **Windows process-tree reaping** via `KILL_ON_JOB_CLOSE` Job Object.
+* **`.gitattributes`** + non-UTF-8 CI lane + `ruff PLW1514` enforcement.
+* **Board/SoC normalization** made case-insensitive at input boundaries.
+* **`cmake-vendor-diff` CI job** detects drift between vendored and
+  generated cmake/nsx files.
+
+### Bug Fixes
+
+* **Security:** `git ls-remote` in `nsx_lock/_resolution.py` now
+  validates URLs and applies the protocol allow-list
+  ([#75](https://github.com/AmbiqAI/neuralspotx/issues/75),
+  [#79](https://github.com/AmbiqAI/neuralspotx/pull/79)).
+* **Windows `rmtree`:** `_on_rm_error` retries the original failing
+  function instead of unconditional `os.unlink`
+  ([#76](https://github.com/AmbiqAI/neuralspotx/issues/76),
+  [#79](https://github.com/AmbiqAI/neuralspotx/pull/79)).
+* **`nsx module init` placeholder:** default summary changed from
+  `"TODO: describe what …"` to a neutral placeholder
+  ([#77](https://github.com/AmbiqAI/neuralspotx/issues/77),
+  [#80](https://github.com/AmbiqAI/neuralspotx/pull/80)).
+* **`py.typed` + pyproject metadata:** added PEP 561 marker and filled
+  in missing classifier/URL fields
+  ([#81](https://github.com/AmbiqAI/neuralspotx/pull/81)).
+* Excluded auto-generated `modules.cmake` from `nsx-tooling` content
+  hash ([#36](https://github.com/AmbiqAI/neuralspotx/pull/36)).
+* `file_lock` reentrancy and warn-once made thread-safe
+  ([#33](https://github.com/AmbiqAI/neuralspotx/pull/33)).
+* `shutil.rmtree(onexc=)` used on Python 3.12+
+  ([#32](https://github.com/AmbiqAI/neuralspotx/pull/32)).
 
 ### ⚠ BREAKING CHANGES — pre-1.0 compat surface removed
 
