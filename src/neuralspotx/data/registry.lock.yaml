@@ -24,7 +24,7 @@ projects:
   nsx-ambiqsuite-r5:
     name: nsx-ambiqsuite-r5
     url: https://github.com/AmbiqAI/nsx-ambiqsuite-r5.git
-    revision: v0.2.0
+    revision: v0.2.1
     path: modules/nsx-ambiqsuite-r5
   nsx-ambiq-hal-r3:
     name: nsx-ambiq-hal-r3

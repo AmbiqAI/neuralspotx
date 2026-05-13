@@ -1,0 +1,38 @@
+schema_version: 1
+
+module:
+  name: nsx-board-apollo510dl-evb
+  type: board
+  version: "0.1.0"
+
+support:
+  ambiqsuite: true
+  zephyr: false
+
+build:
+  cmake:
+    package: nsx_board_apollo510dL_evb
+    targets:
+      - nsx::board_apollo510dL_evb
+
+depends:
+  required:
+    - nsx-ambiq-hal-r5
+    - nsx-ambiq-bsp-r5
+    - nsx-soc-hal
+    - nsx-cmsis-startup
+    - nsx-ambiqsuite-r5
+  optional: []
+
+constraints:
+  required_sdk_provider: nsx-ambiqsuite-r5
+
+compatibility:
+  boards:
+    - apollo510dL_evb
+  socs:
+    - apollo510L
+  toolchains:
+    - arm-none-eabi-gcc
+    - armclang
+    - atfe
