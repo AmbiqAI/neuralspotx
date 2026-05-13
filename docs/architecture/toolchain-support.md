@@ -2,11 +2,16 @@
 
 NSX supports three toolchains for building firmware:
 
-| Toolchain | Compiler | Linker | Binary Tool | Key |
-|-----------|----------|--------|-------------|-----|
-| **GCC** (default) | `arm-none-eabi-gcc` | `arm-none-eabi-ld` | `objcopy` / `size` | `arm-none-eabi-gcc` or `gcc` |
-| **Arm Compiler 6** | `armclang` | `armlink` | `fromelf` | `armclang` |
-| **ATfE** (LLVM Embedded) | `clang` | `ld.lld` | `llvm-objcopy` / `llvm-size` | `atfe` |
+| Toolchain | Compiler | Linker | Binary Tool | Key | Status |
+|-----------|----------|--------|-------------|-----|--------|
+| **GCC** (default) | `arm-none-eabi-gcc` | `arm-none-eabi-ld` | `objcopy` / `size` | `arm-none-eabi-gcc` or `gcc` | Stable |
+| **Arm Compiler 6** | `armclang` | `armlink` | `fromelf` | `armclang` | Stable |
+| **ATfE** (LLVM Embedded) | `clang` | `ld.lld` | `llvm-objcopy` / `llvm-size` | `atfe` | **Experimental** |
+
+!!! warning "ATfE is experimental"
+    ATfE (Arm Toolchain for Embedded) builds and runs correctly on Apollo5
+    targets, but has not been validated as extensively as GCC or armclang.
+    Use it for evaluation; production deployments should use GCC or armclang.
 
 **ATfE** is the [Arm Toolchain for Embedded](https://github.com/arm/arm-toolchain)
 — Arm's LLVM-based bare-metal toolchain (clang + lld + compiler-rt + picolibc
@@ -95,6 +100,7 @@ used by the startup. These live under `nsx-core/src/<soc>/gcc/` and
 | Optimization | `-O3 -ffast-math` | `-Ofast` | `-O3 -ffast-math` |
 | Sections | `-ffunction-sections -fdata-sections` | same | same |
 | Short enums | default | `-fshort-enums` (matches SDK libs) | `-fshort-enums` |
+| Short wchar | *(no — 32-bit, matches `.a`)* | `-fshort-wchar` (16-bit, matches `.lib`) | *(no — 32-bit, matches `.a`)* |
 | GC unused | `-Wl,--gc-sections` | `--remove` | `-Wl,--gc-sections` |
 | Entry point | `-Wl,--entry,Reset_Handler` | `--entry=Reset_Handler` | `-Wl,--entry,Reset_Handler` |
 | Linker script | `-T<path>.ld` | `--scatter=<path>.sct` | `-T<path>.ld` |
@@ -154,10 +160,10 @@ NSX_PACKED_END
 
 ## SoC / Board Coverage
 
-Both **armclang** and **ATfE** are validated on Apollo510 (Cortex-M55) and
-declared supported by the Apollo5a/Apollo5b/Apollo510L/Apollo510B and Apollo330mP
-EVBs (their `nsx-module.yaml` files list `armclang` and `atfe` under
-`compatibility.toolchains`).
+**armclang** is validated on Apollo510 (Cortex-M55) and declared supported by
+the Apollo5a/Apollo5b/Apollo510L/Apollo510B and Apollo330mP EVBs.
+**ATfE** builds correctly on the same targets but is considered **experimental**
+(limited on-device validation).
 
 Apollo3/Apollo3p/Apollo4* boards currently declare only `arm-none-eabi-gcc`:
 
@@ -172,14 +178,35 @@ Apollo3/Apollo3p/Apollo4* boards currently declare only `arm-none-eabi-gcc`:
 
 ## Notes
 
-- Pre-built SDK libraries (`libam_hal.a`, `libam_bsp.a`) are GCC-compiled but
-  are ABI-compatible with both armclang and ATfE. The alternate Keil `*.lib`
-  archives are **not** compatible — they carry `Tag_ABI_HardFP_use = 1` which
-  clashes with armclang's default output attributes (L6242E). NSX therefore
-  always links the `.a` variants regardless of toolchain.
+### Pre-built Library Selection
+
+AmbiqSuite ships two sets of pre-built HAL/BSP libraries per SoC:
+
+| Format | Compiler | `wchar_t` ABI | Used by |
+|--------|----------|---------------|----------|
+| `.a` (ELF archive) | GCC | 32-bit (`Tag_ABI_PCS_wchar_t=4`) | GCC, ATfE |
+| `.lib` (ARM archive) | Keil/armclang | 16-bit (`Tag_ABI_PCS_wchar_t=2`) | armclang |
+
+The `nsx-ambiq-hal-*` and `nsx-ambiq-bsp-*` modules select the correct format
+automatically based on `NSX_TOOLCHAIN_FAMILY`.
+
+### `-fshort-wchar` (armclang only)
+
+The armclang `.lib` prebuilts are compiled with `-fshort-wchar` (16-bit
+`wchar_t`), matching Ambiq's Keil project settings. NSX passes `-fshort-wchar`
+to application code **only** when building with armclang, so the ABI matches.
+GCC and ATfE link against the `.a` archives (32-bit `wchar_t`) and do **not**
+use `-fshort-wchar`.
+
+!!! note
+    Ambiq's upstream GCC Makefile also omits `-fshort-wchar`, so this per-
+    toolchain split is consistent with the vendor's own build configuration.
+
+### Other ABI Flags
+
 - `nsx_toolchain_flags.cmake` passes `-fshort-enums` when building with
-  armclang or ATfE to match the enum ABI used by the prebuilt `.a` libraries.
+  armclang or ATfE to match the enum ABI used by the prebuilt libraries.
 - ATfE uses its bundled `picolibc` configured with a newlib-compatibility
-  overlay (via `-specs=newlib.cfg` from the toolchain directory), which is why
+  overlay (via `--config=newlib.cfg` from the toolchain directory), which is why
   `NSX_HAS_NEWLIB` is true and the same `_write_r` / `_read_r` retarget wraps
   used by GCC apply unchanged.

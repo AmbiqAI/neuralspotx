@@ -353,7 +353,7 @@ def _default_build_dir(app_dir: Path, board: str) -> Path:
 def _run_cmake_configure(
     app_dir: Path, build_dir: Path, board: str, toolchain: str | None = None
 ) -> None:
-    from .constants import DEFAULT_TOOLCHAIN, SUPPORTED_TOOLCHAINS
+    from .constants import DEFAULT_TOOLCHAIN, EXPERIMENTAL_TOOLCHAINS, SUPPORTED_TOOLCHAINS
 
     # Resolve toolchain: explicit arg > nsx.yml > default
     tc = toolchain
@@ -368,6 +368,13 @@ def _run_cmake_configure(
     if tc_file is None:
         supported = ", ".join(sorted(SUPPORTED_TOOLCHAINS.keys()))
         raise NSXToolchainError(f"Unknown toolchain '{tc}'. Supported: {supported}")
+
+    if tc in EXPERIMENTAL_TOOLCHAINS:
+        import logging
+
+        logging.getLogger(__name__).warning(
+            "Toolchain '%s' is experimental and not fully validated for production use.", tc
+        )
 
     toolchain_file = app_dir / "cmake" / "nsx" / "toolchains" / tc_file
     run([

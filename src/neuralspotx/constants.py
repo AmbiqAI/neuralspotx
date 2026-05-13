@@ -127,6 +127,9 @@ SUPPORTED_TOOLCHAINS = {
     "atfe": "atfe.cmake",
 }
 
+# Toolchains that are functional but not yet fully validated for production use.
+EXPERIMENTAL_TOOLCHAINS = {"atfe"}
+
 # The project name used to identify modules that ship packaged with neuralspotx
 # (boards, cmake helpers) vs external git-hosted modules.
 PACKAGED_PROJECT_NAME = "neuralspotx"
