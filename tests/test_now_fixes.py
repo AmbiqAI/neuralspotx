@@ -1,4 +1,4 @@
-"""Regression tests for the "Now" remediation items in REVIEW.md.
+"""Regression tests for the round-1 "Now" remediation items.
 
 These tests pin behaviour for fixes shipped together so future
 refactors can't silently regress them:

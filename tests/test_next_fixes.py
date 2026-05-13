@@ -1,4 +1,4 @@
-"""Regression tests for the "Next" remediation items in REVIEW.md.
+"""Regression tests for the round-1 "Next" remediation items.
 
 Covers:
 1. Cache concurrency hardening for the resolve-ref cache and the
