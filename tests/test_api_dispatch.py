@@ -110,6 +110,8 @@ def test_configure_view_and_clean_dispatch(tmp_path: Path, monkeypatch: pytest.M
         build_dir: Path | None = None,
         toolchain: str | None = None,
         full: bool = False,
+        reset: bool = False,
+        force: bool = False,
     ) -> None:
         clean_calls.append((app_dir, board, build_dir, toolchain, full))
 

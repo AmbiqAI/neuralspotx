@@ -18,6 +18,28 @@ nsx flash --app-dir .
 nsx view --app-dir .          # opens SWO viewer, prints CoreMark score
 ```
 
+## Cleaning Up
+
+Nothing under `build/`, `build_*/`, `modules/`, or `.nsx.sync.lock` is
+source-controlled — it is all re-created by `nsx configure`/`nsx build`.
+
+```bash
+nsx clean --app-dir .                 # ninja clean inside the active build dir
+nsx clean --app-dir . --full          # delete the active build directory
+nsx clean --app-dir . --full \
+    --toolchain armclang              # target a specific toolchain variant
+
+# Full reset before `git pull` (wipes every build*/ dir, the synced
+# modules/ tree, and .nsx.sync.lock):
+nsx clean --app-dir . --reset
+
+# Add --force to discard locally-edited files under modules/.
+nsx clean --app-dir . --reset --force
+```
+
+After a `--reset`, the next `nsx configure --app-dir .` re-syncs
+modules from `nsx.lock` and reconfigures the build from scratch.
+
 ## Build Options
 
 Pass CMake options via `-D` flags during `nsx configure`:
