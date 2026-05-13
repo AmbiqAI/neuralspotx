@@ -1,5 +1,47 @@
 # Changelog
 
+## [0.5.2](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.5.1...neuralspotx-v0.5.2) (2026-05-13)
+
+
+### Features
+
+* **A8:** expose cache info / clean cache on api ([#60](https://github.com/AmbiqAI/neuralspotx/issues/60)) ([24ab906](https://github.com/AmbiqAI/neuralspotx/commit/24ab906f168cf7b5c7de975e514cc6f45b011456))
+* **cli:** UX polish G1-G5, D1 ([#68](https://github.com/AmbiqAI/neuralspotx/issues/68)) ([#82](https://github.com/AmbiqAI/neuralspotx/issues/82)) ([88cd82a](https://github.com/AmbiqAI/neuralspotx/commit/88cd82a630fbf59a79e733ab8422e98ff8f0ca85))
+* cross-platform robustness (B5/B6/B8) ([#83](https://github.com/AmbiqAI/neuralspotx/issues/83)) ([6cca235](https://github.com/AmbiqAI/neuralspotx/commit/6cca23532806c372e5c4b0793106c5988cf005ca))
+* **J1:** structured logging with -v/-vv/-q verbosity flags ([#49](https://github.com/AmbiqAI/neuralspotx/issues/49)) ([d6f7d7a](https://github.com/AmbiqAI/neuralspotx/commit/d6f7d7a23675913b25ee9d14744bdef3e0df25a3))
+* **phase1:** v0.9 API freeze — expose public types, document surface, create_app returns Path ([#62](https://github.com/AmbiqAI/neuralspotx/issues/62)) ([bbeba28](https://github.com/AmbiqAI/neuralspotx/commit/bbeba283286206f3bbdc0a84a143dbb2db0d398e))
+* **phase3:** typed nsx.yml + cache schema_version ([#70](https://github.com/AmbiqAI/neuralspotx/issues/70)) ([08c2f5c](https://github.com/AmbiqAI/neuralspotx/commit/08c2f5c2b4399fa0d637e63004dd1d4341be4f46))
+* structured event emitter + --json (Phase 4, [#65](https://github.com/AmbiqAI/neuralspotx/issues/65)) ([#71](https://github.com/AmbiqAI/neuralspotx/issues/71)) ([eb2b80e](https://github.com/AmbiqAI/neuralspotx/commit/eb2b80e310b1905271c8fb3673ddd3297bec19ed))
+* supply-chain hardening + SBOM (Phase 5, [#66](https://github.com/AmbiqAI/neuralspotx/issues/66)) ([#72](https://github.com/AmbiqAI/neuralspotx/issues/72)) ([4a9d0ee](https://github.com/AmbiqAI/neuralspotx/commit/4a9d0eeb53325c9ca66221ce1113d8e40aee5cb0))
+
+
+### Bug Fixes
+
+* **B1:** reap Windows process trees via Job Object (KILL_ON_JOB_CLOSE) ([#51](https://github.com/AmbiqAI/neuralspotx/issues/51)) ([39ed437](https://github.com/AmbiqAI/neuralspotx/commit/39ed4371328cfabbca935fa2d6b127f2006d8354))
+* **file_lock:** make reentrancy and warn-once thread-safe (M3) ([#33](https://github.com/AmbiqAI/neuralspotx/issues/33)) ([a0af5a8](https://github.com/AmbiqAI/neuralspotx/commit/a0af5a8c44ad3947b259d5cdb231433d512dad0f))
+* **lock:** exclude auto-generated modules.cmake from nsx-tooling content hash ([#36](https://github.com/AmbiqAI/neuralspotx/issues/36)) ([229ea21](https://github.com/AmbiqAI/neuralspotx/commit/229ea21f336e87e742962ef25017000c6de23483))
+* **nsx:** case-insensitive board/soc normalization at input boundaries ([#30](https://github.com/AmbiqAI/neuralspotx/issues/30)) ([98d4b6f](https://github.com/AmbiqAI/neuralspotx/commit/98d4b6fa5c4015ef5ddaa7293da5907896fa0af9))
+* **nsx:** use shutil.rmtree(onexc=) on Python 3.12+ ([#32](https://github.com/AmbiqAI/neuralspotx/issues/32)) ([91dce2c](https://github.com/AmbiqAI/neuralspotx/commit/91dce2c34aa8aca387c48719af92723ea6f99211))
+* **security,windows:** harden git ls-remote and _rmtree on-error retry ([#79](https://github.com/AmbiqAI/neuralspotx/issues/79)) ([326aaee](https://github.com/AmbiqAI/neuralspotx/commit/326aaee4138aab91fbcb1f485ab4f0e54e538a75))
+* **ux:** drop 'TODO:' default summary in nsx module init skeleton ([#80](https://github.com/AmbiqAI/neuralspotx/issues/80)) ([676971a](https://github.com/AmbiqAI/neuralspotx/commit/676971a556afd578bcea68e23131780bffae11a2))
+* V1 readiness polish — ResolutionError hierarchy, py.typed, pyproject metadata ([#81](https://github.com/AmbiqAI/neuralspotx/issues/81)) ([3325e6e](https://github.com/AmbiqAI/neuralspotx/commit/3325e6e1b5b35d9ffe4c3f50f0324abd01dc5d0b))
+
+
+### Documentation
+
+* add operations decomposition plan ([2496da0](https://github.com/AmbiqAI/neuralspotx/commit/2496da0c32e7582bc5de59496a76d51693346586))
+* add REVIEW2.md round-2 architectural backlog ([39e9c8e](https://github.com/AmbiqAI/neuralspotx/commit/39e9c8e7574a0b35800f15731e10f210addb1563))
+* **C1:** mark cache RMW locking complete (already implemented via file_mutex) ([#55](https://github.com/AmbiqAI/neuralspotx/issues/55)) ([b57b521](https://github.com/AmbiqAI/neuralspotx/commit/b57b521314fbad67b692a37b82ecaab1c31e107a))
+* mark R13 done in REVIEW.md (PR [#39](https://github.com/AmbiqAI/neuralspotx/issues/39)) ([7b0d924](https://github.com/AmbiqAI/neuralspotx/commit/7b0d9242c7f466e6daecd148283cfeea48079146))
+* mark R14 done in REVIEW.md (PR [#38](https://github.com/AmbiqAI/neuralspotx/issues/38)) ([3aa38af](https://github.com/AmbiqAI/neuralspotx/commit/3aa38afe1a3075ae3ffaffd90428a58ecc3f1036))
+* mark R15 done in REVIEW.md (PR [#40](https://github.com/AmbiqAI/neuralspotx/issues/40)) ([227382f](https://github.com/AmbiqAI/neuralspotx/commit/227382fb25c42c9f0b14bd27530cd598c0c131f9))
+* mark R16 done in REVIEW.md (PR [#41](https://github.com/AmbiqAI/neuralspotx/issues/41)) ([29b3d75](https://github.com/AmbiqAI/neuralspotx/commit/29b3d75f9409836234998a62d123424b88389a79))
+* mark R18 done in REVIEW.md (PR [#42](https://github.com/AmbiqAI/neuralspotx/issues/42)) ([7616673](https://github.com/AmbiqAI/neuralspotx/commit/7616673de5ecf3746c2140d6448aa8d927ae9d7c))
+* mark R19 done in REVIEW.md (PR [#43](https://github.com/AmbiqAI/neuralspotx/issues/43)) ([6e4cec8](https://github.com/AmbiqAI/neuralspotx/commit/6e4cec8a9559775e70916b1e0f44e9cbcca8680e))
+* mark R20 done in REVIEW.md (PR [#44](https://github.com/AmbiqAI/neuralspotx/issues/44)) ([c6f5e1c](https://github.com/AmbiqAI/neuralspotx/commit/c6f5e1ca5e5cf8ec76a3a0bf8161a0faa8a8296b))
+* mark R21-R24 done in REVIEW.md (PR [#45](https://github.com/AmbiqAI/neuralspotx/issues/45)) ([4f2a7e2](https://github.com/AmbiqAI/neuralspotx/commit/4f2a7e285b4151f0ed92eaf3f8f49cbda24a6753))
+* rewrite REVIEW.md roadmap as sequential checklist (R1–R24) ([8b3eb58](https://github.com/AmbiqAI/neuralspotx/commit/8b3eb58fdb939b7e1d2695d7747459dda3b479e4))
+
 ## [0.6.0](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.5.1...neuralspotx-v0.6.0) (2026-05-12)
 
 This is the v1-readiness release. All seven phases of the architectural
