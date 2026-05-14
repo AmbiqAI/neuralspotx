@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.1](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.6.0...neuralspotx-v0.6.1) (2026-05-14)
+
+
+### Features
+
+* add -fshort-wchar for armclang and select .lib prebuilt format ([c7a13b8](https://github.com/AmbiqAI/neuralspotx/commit/c7a13b88f75e2edfb959023b55bd07d372f48495))
+* ATfE toolchain docs, apollo510dL_evb board, ambiqsuite-r5 v0.2.1, and `nsx clean --reset` ([#89](https://github.com/AmbiqAI/neuralspotx/issues/89)) ([d23fe2e](https://github.com/AmbiqAI/neuralspotx/commit/d23fe2ea2b65db75f453e659dce9b20e18aa997b))
+
 ## [0.6.0](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.5.1...neuralspotx-v0.6.0) (2026-05-12)
 
 This is the v1-readiness release. All seven phases of the architectural
