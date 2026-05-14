@@ -10,6 +10,7 @@ permissions:
   contents: write
   pull-requests: write
   issues: write
+  actions: write  # needed to dispatch CI on the release-please PR branch
 
 jobs:
   release-please:
@@ -17,7 +18,25 @@ jobs:
 
     steps:
       - name: Run Release Please
+        id: release
         uses: googleapis/release-please-action@v4
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+
+      # PRs opened by GITHUB_TOKEN do not trigger other workflows
+      # (GitHub's recursion guard), so the required `lint-and-test`
+      # status on the release PR would otherwise never report. The
+      # `workflow_dispatch` event is explicitly exempted from that
+      # guard, so we dispatch CI on the release-please branch here.
+      # The CI run's check runs attach to the PR's head SHA and
+      # satisfy branch protection.
+      - name: Dispatch CI on the release-please PR branch
+        if: ${{ steps.release.outputs.pr }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_JSON: ${{ steps.release.outputs.pr }}
+        run: |
+          branch=$(printf '%s' "$PR_JSON" | jq -r '.headBranchName')
+          echo "Dispatching CI on branch: $branch"
+          gh workflow run ci.yml --ref "$branch" --repo "$GITHUB_REPOSITORY"
