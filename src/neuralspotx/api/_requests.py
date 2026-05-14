@@ -89,6 +89,8 @@ class AppCleanRequest(AppActionRequest):
     """Request parameters for cleaning an app build."""
 
     full: bool = False
+    reset: bool = False
+    force: bool = False
 
 
 @dataclass(slots=True)

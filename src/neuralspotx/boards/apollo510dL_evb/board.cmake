@@ -1,42 +1,41 @@
-set(NSX_SOC_FAMILY "apollo510b")
+set(NSX_SOC_FAMILY "apollo510L")
 set(NSX_CPU "cortex-m55")
 set(NSX_FLOAT_ABI "hard")
 set(NSX_ABI_FLAGS "thumbv8.1m-fpv5-hard")
 
 if(NOT NSX_SDK_PROVIDER STREQUAL "ambiqsuite-r5")
     message(FATAL_ERROR
-        "apollo510b_evb requires NSX_SDK_PROVIDER=ambiqsuite-r5, got '${NSX_SDK_PROVIDER}'."
+        "apollo510dL_evb requires NSX_SDK_PROVIDER=ambiqsuite-r5, got '${NSX_SDK_PROVIDER}'."
     )
 endif()
 
-set(NSX_AMBIQ_BOARD_NAME "apollo510b_evb")
-set(NSX_AMBIQ_PART_NAME "apollo510")
-set(NSX_AMBIQ_BSP_LIB_SUBDIR "apollo510b_evb")
+set(NSX_AMBIQ_BOARD_NAME "apollo510dL_evb")
+set(NSX_AMBIQ_PART_NAME "apollo510L")
 set(NSX_AMBIQ_BSP_DIR "${NSX_AMBIQSUITE_ROOT}/boards/${NSX_AMBIQ_BOARD_NAME}/bsp")
-set(NSX_AMBIQ_MCU_DIR "${NSX_AMBIQSUITE_ROOT}/mcu/apollo510")
+set(NSX_AMBIQ_MCU_DIR "${NSX_AMBIQSUITE_ROOT}/mcu/${NSX_AMBIQ_PART_NAME}")
 set(NSX_AMBIQ_HAL_DIR "${NSX_AMBIQ_MCU_DIR}/hal")
 set(NSX_AMBIQ_HAL_MCU_DIR "${NSX_AMBIQ_HAL_DIR}/mcu")
 
 include("${NSX_CMAKE_DIR}/nsx_toolchain_flags.cmake")
 
 if(NSX_TOOLCHAIN_FAMILY STREQUAL "armclang")
-    set(NSX_STARTUP_SOURCE "${NSX_ROOT}/modules/nsx-core/src/apollo510/armclang/startup_keil6.c")
-    set(NSX_SYSTEM_SOURCE "${NSX_AMBIQSUITE_ROOT}/src/apollo510/system_apollo510.c")
-    set(NSX_LINKER_SCRIPT "${NSX_ROOT}/modules/nsx-core/src/apollo510b/armclang/linker_script_sbl.sct")
+    set(NSX_STARTUP_SOURCE "${NSX_ROOT}/modules/nsx-core/src/apollo510L/armclang/startup_keil6.c")
+    set(NSX_SYSTEM_SOURCE "${NSX_AMBIQSUITE_ROOT}/src/apollo510L/system_apollo510L.c")
+    set(NSX_LINKER_SCRIPT "${NSX_ROOT}/modules/nsx-core/src/apollo510L/armclang/linker_script_sbl.sct")
 else()
-    set(NSX_STARTUP_SOURCE "${NSX_ROOT}/modules/nsx-core/src/apollo510/gcc/startup_gcc.c")
-    set(NSX_SYSTEM_SOURCE "${NSX_AMBIQSUITE_ROOT}/src/apollo510/system_apollo510.c")
-    set(NSX_LINKER_SCRIPT "${NSX_ROOT}/modules/nsx-core/src/apollo510b/gcc/linker_script_sbl.ld")
+    set(NSX_STARTUP_SOURCE "${NSX_ROOT}/modules/nsx-core/src/apollo510L/gcc/startup_gcc.c")
+    set(NSX_SYSTEM_SOURCE "${NSX_AMBIQSUITE_ROOT}/src/apollo510L/system_apollo510L.c")
+    set(NSX_LINKER_SCRIPT "${NSX_ROOT}/modules/nsx-core/src/apollo510L/gcc/linker_script_sbl.ld")
 endif()
 
-include("${NSX_CMAKE_DIR}/segger/socs/apollo5.cmake")
+include("${NSX_CMAKE_DIR}/segger/socs/apollo330.cmake")
 
-set(NSX_BOARD_TARGET nsx_board_apollo510b_evb)
-set(NSX_BOARD_FLAGS_TARGET nsx_board_apollo510b_evb_flags)
-set(NSX_SOC_TARGET_EXPORT_NAME "soc_hal_apollo510b")
-set(NSX_STARTUP_TARGET_EXPORT_NAME "startup_apollo510b")
-set(NSX_BOARD_TARGET_EXPORT_NAME "board_apollo510b_evb")
-set(NSX_BOARD_FLAGS_TARGET_EXPORT_NAME "board_flags_apollo510b_evb")
+set(NSX_BOARD_TARGET nsx_board_apollo510dL_evb)
+set(NSX_BOARD_FLAGS_TARGET nsx_board_apollo510dL_evb_flags)
+set(NSX_SOC_TARGET_EXPORT_NAME "soc_hal_apollo510L")
+set(NSX_STARTUP_TARGET_EXPORT_NAME "startup_apollo510L")
+set(NSX_BOARD_TARGET_EXPORT_NAME "board_apollo510dL_evb")
+set(NSX_BOARD_FLAGS_TARGET_EXPORT_NAME "board_flags_apollo510dL_evb")
 
 nsx_assert_file_exists("${NSX_LINKER_SCRIPT}")
 nsx_assert_file_exists("${NSX_STARTUP_SOURCE}")
@@ -48,16 +47,14 @@ set_target_properties(${NSX_BOARD_TARGET} PROPERTIES EXPORT_NAME ${NSX_BOARD_TAR
 set_target_properties(${NSX_BOARD_FLAGS_TARGET} PROPERTIES EXPORT_NAME ${NSX_BOARD_FLAGS_TARGET_EXPORT_NAME})
 
 add_library(nsx::board ALIAS ${NSX_BOARD_TARGET})
-add_library(nsx::board_apollo510b_evb ALIAS ${NSX_BOARD_TARGET})
+add_library(nsx::board_apollo510dL_evb ALIAS ${NSX_BOARD_TARGET})
 add_library(nsx::board_flags ALIAS ${NSX_BOARD_FLAGS_TARGET})
 
 target_compile_definitions(${NSX_BOARD_FLAGS_TARGET} INTERFACE
     NEURALSPOT
-    apollo510b_evb
-    PART_apollo510b
-    AM_PART_APOLLO5B
-    AM_PART_APOLLO510
-    AM_PART_APOLLO510B
+    apollo510dL_evb
+    PART_apollo510L
+    AM_PART_APOLLO510L
     ARMCM55
     AM_PACKAGE_BGA
     __FPU_PRESENT

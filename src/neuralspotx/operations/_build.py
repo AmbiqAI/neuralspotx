@@ -201,8 +201,24 @@ def clean_app_impl(
     build_dir: Path | None = None,
     toolchain: str | None = None,
     full: bool = False,
+    reset: bool = False,
+    force: bool = False,
 ) -> Path:
-    """Clean or fully remove an app build directory."""
+    """Clean or fully remove an app build directory.
+
+    With *reset*, also remove the synced ``modules/`` tree and the
+    ``.nsx.sync.lock`` file inside *app_dir*, restoring the app to a
+    pristine "freshly cloned" state. *board*, *build_dir*, and
+    *toolchain* are ignored in reset mode; every ``build/`` and
+    ``build_*/`` directory directly under *app_dir* is removed.
+
+    Reset refuses to proceed if it would discard local edits under
+    ``modules/`` (any tracked file with mtime newer than
+    ``.nsx.sync.lock``). Pass *force* to override.
+    """
+
+    if reset:
+        return _reset_app(app_dir, force=force)
 
     resolved_app_dir, _, resolved_board, resolved_build_dir = _resolve_build_context(
         app_dir,
@@ -221,3 +237,64 @@ def clean_app_impl(
         )
     run(["cmake", "--build", str(resolved_build_dir), "--target", "clean"])
     return resolved_build_dir
+
+
+def _reset_app(app_dir: Path, *, force: bool) -> Path:
+    """Wipe build dirs + modules/ + .nsx.sync.lock under *app_dir*."""
+
+    resolved_app_dir = app_dir.expanduser().resolve()
+    if not (resolved_app_dir / "nsx.yml").exists():
+        raise NSXError(
+            f"--reset requires an app directory containing nsx.yml; "
+            f"none found at {resolved_app_dir}"
+        )
+
+    modules_dir = resolved_app_dir / "modules"
+    sync_lock = resolved_app_dir / ".nsx.sync.lock"
+
+    if not force and modules_dir.is_dir():
+        dirty = _find_locally_modified_modules(modules_dir, sync_lock)
+        if dirty:
+            preview = "\n  ".join(str(p.relative_to(resolved_app_dir)) for p in dirty[:5])
+            more = "" if len(dirty) <= 5 else f"\n  ... and {len(dirty) - 5} more"
+            raise NSXError(
+                f"Refusing to reset: modules/ contains files modified after the "
+                f"last `nsx sync` (these edits would be lost):\n  {preview}{more}\n"
+                f"Re-run with --force to discard them."
+            )
+
+    build_dirs = sorted(
+        p
+        for p in resolved_app_dir.iterdir()
+        if p.is_dir() and (p.name == "build" or p.name.startswith("build_"))
+    )
+    for path in build_dirs:
+        shutil.rmtree(path)
+        info(f"Removed build directory: {path}")
+
+    if modules_dir.is_dir():
+        shutil.rmtree(modules_dir)
+        info(f"Removed modules directory: {modules_dir}")
+    if sync_lock.exists():
+        sync_lock.unlink()
+        info(f"Removed sync lock: {sync_lock}")
+
+    return resolved_app_dir
+
+
+def _find_locally_modified_modules(modules_dir: Path, sync_lock: Path) -> list[Path]:
+    """Return files under *modules_dir* whose mtime is newer than *sync_lock*.
+
+    Heuristic for "user has hand-edited a synced module since `nsx sync`".
+    If *sync_lock* is missing, treat every regular file as suspect so the
+    user gets prompted before we wipe a tree we did not place.
+    """
+
+    threshold = sync_lock.stat().st_mtime if sync_lock.exists() else None
+    suspects: list[Path] = []
+    for path in modules_dir.rglob("*"):
+        if not path.is_file() or path.is_symlink():
+            continue
+        if threshold is None or path.stat().st_mtime > threshold + 1.0:
+            suspects.append(path)
+    return suspects

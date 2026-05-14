@@ -243,6 +243,8 @@ def clean_app(
     build_dir: PathLike | None = None,
     toolchain: str | None = None,
     full: bool = False,
+    reset: bool = False,
+    force: bool = False,
     timeout_s: float | None = None,
     emit: Emitter | None = None,
 ) -> None:
@@ -261,6 +263,8 @@ def clean_app(
             build_dir=build_dir,
             toolchain=toolchain,
             full=full,
+            reset=reset,
+            force=force,
             timeout_s=timeout_s,
         )
     )
@@ -271,4 +275,6 @@ def clean_app(
             build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
             toolchain=request.toolchain,
             full=request.full,
+            reset=request.reset,
+            force=request.force,
         )
