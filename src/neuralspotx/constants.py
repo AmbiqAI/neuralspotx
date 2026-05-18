@@ -19,6 +19,7 @@ DEFAULT_SOC_FOR_BOARD = {
     "apollo510_evb": "apollo510",
     "apollo510b_evb": "apollo510b",
     "apollo330mP_evb": "apollo330P",
+    "atomiq110_fpga_turbo": "atomiq110",
 }
 
 # Canonical (case-correct) board identifiers.  Most are already lowercase, but
@@ -89,6 +90,7 @@ BOARD_SDK_PROVIDER: dict[str, str] = {
     "apollo510_evb": "ambiqsuite-r5",
     "apollo510b_evb": "ambiqsuite-r5",
     "apollo330mP_evb": "ambiqsuite-r5",
+    "atomiq110_fpga_turbo": "ambiqsuite-r6",
 }
 
 
@@ -98,6 +100,7 @@ class SDKProvider(str, enum.Enum):
     R3 = "ambiqsuite-r3"
     R4 = "ambiqsuite-r4"
     R5 = "ambiqsuite-r5"
+    R6 = "ambiqsuite-r6"
 
     def __str__(self) -> str:  # pragma: no cover — trivial
         return self.value

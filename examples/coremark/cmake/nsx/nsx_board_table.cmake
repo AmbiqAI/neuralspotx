@@ -3,7 +3,7 @@
 #
 # Defines: nsx_lookup_sdk_provider(board_name out_var)
 #   Sets <out_var> in the parent scope to the canonical SDK
-#   provider name (ambiqsuite-r3|ambiqsuite-r4|ambiqsuite-r5)
+#   provider name (ambiqsuite-r3|ambiqsuite-r4|ambiqsuite-r5|ambiqsuite-r6)
 #   for the given board, or to the empty string if unknown.
 #   Board matching is case-insensitive.
 
@@ -37,6 +37,8 @@ function(nsx_lookup_sdk_provider board_name out_var)
         set(${out_var} "ambiqsuite-r5" PARENT_SCOPE)
     elseif(_board_lc STREQUAL "apollo330mp_evb")
         set(${out_var} "ambiqsuite-r5" PARENT_SCOPE)
+    elseif(_board_lc STREQUAL "atomiq110_fpga_turbo")
+        set(${out_var} "ambiqsuite-r6" PARENT_SCOPE)
     else()
         set(${out_var} "" PARENT_SCOPE)
     endif()
