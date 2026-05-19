@@ -6,8 +6,8 @@ import os
 import shutil
 import subprocess
 import sys
-from pathlib import Path
 import tempfile
+from pathlib import Path
 
 from .._io import line
 from ..models import DoctorCheck, DoctorReport
@@ -179,7 +179,7 @@ def doctor_impl() -> DoctorReport:
     )
 
     if jlink_ok:
-        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".jlink") as f:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".jlink", encoding="utf-8") as f:
             f.write("q")
             cmd_file_path = f.name
         try:
