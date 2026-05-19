@@ -7,6 +7,7 @@ import shutil
 import subprocess
 import sys
 from pathlib import Path
+import tempfile
 
 from .._io import line
 from ..models import DoctorCheck, DoctorReport
@@ -178,9 +179,12 @@ def doctor_impl() -> DoctorReport:
     )
 
     if jlink_ok:
+        with tempfile.NamedTemporaryFile(mode="w", delete=False, suffix=".jlink") as f:
+            f.write("q")
+            cmd_file_path = f.name
         try:
             probe = subprocess.run(
-                [jlink_path, "-CommandFile", "-", "-NoGui", "1"],
+                [jlink_path, "-CommandFile", cmd_file_path, "-NoGui", "1"],
                 check=True,
                 text=True,
                 capture_output=True,
@@ -238,5 +242,8 @@ def doctor_impl() -> DoctorReport:
                 detail="JLinkExe timed out (>10s).",
                 hint="JLinkExe may be hanging. Run it directly to diagnose.",
             )
+        finally:
+            if os.path.exists(cmd_file_path):
+                os.remove(cmd_file_path)
 
     return DoctorReport(checks=tuple(r.checks), notes=tuple(r.notes))
