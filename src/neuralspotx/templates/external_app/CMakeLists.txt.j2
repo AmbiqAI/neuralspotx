@@ -14,9 +14,6 @@ nsx_bootstrap_app(
     MODULES ${NSX_APP_MODULES}
 )
 
-find_package(nsx_soc_{{ soc }} REQUIRED CONFIG)
-find_package(nsx_board_{{ board }} REQUIRED CONFIG)
-
 add_executable({{ app_name }}
     src/main.c
 )
