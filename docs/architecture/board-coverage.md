@@ -18,24 +18,18 @@ The tooling package currently includes built-in board definitions for:
 - `apollo5b_evb`
 - `apollo510_evb`
 - `apollo510b_evb`
+- `apollo510dL_evb`
 - `apollo330mP_evb`
 
 These boards are supported by the generated-app flow and have been validated at
 least through `nsx create-app`, `nsx configure`, and `nsx build`.
 
-## Currently Unavailable Target
-
-- `apollo510L_eb`
-
-`apollo510L_eb` remains unavailable because the current SDK history does not yet
-provide a clean BSP and library bundle for the board.
-
 ## Implementation Notes
 
 - Apollo3-class boards resolve through `nsx-ambiqsuite-r3`
 - Apollo4 Lite and Apollo4 Plus boards resolve through `nsx-ambiqsuite-r4`
-- Apollo5B, Apollo510, Apollo510B, and Apollo330P-class boards resolve through
-  `nsx-ambiqsuite-r5`
+- Apollo510, Apollo510B, Apollo510L, Apollo330P, and legacy Apollo5B-class
+  boards resolve through `nsx-ambiqsuite-r5`
 - board definitions are built into the tooling repo and vendored into generated
   apps
 - modules are resolved from the packaged registry, cloned from their upstream

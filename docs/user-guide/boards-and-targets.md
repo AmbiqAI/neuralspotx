@@ -34,6 +34,7 @@ This keeps:
 - `apollo5b_evb`
 - `apollo510_evb`
 - `apollo510b_evb`
+- `apollo510dL_evb`
 - `apollo330mP_evb`
 
 ## How Target Selection Works
