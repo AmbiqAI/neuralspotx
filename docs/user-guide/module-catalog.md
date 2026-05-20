@@ -56,13 +56,13 @@ the page size selector as needed.
 | `nsx-cmsis-startup` | :material-chip: Platform | CMSIS startup integration — vector tables, startup code, early boot wiring. | All |
 | `nsx-ambiqsuite-r3` | :material-package-variant: SDK | AmbiqSuite r3 SDK provider for Apollo3 / Apollo3P targets. | Apollo3, 3P |
 | `nsx-ambiqsuite-r4` | :material-package-variant: SDK | AmbiqSuite r4 SDK provider for Apollo4L / Apollo4P targets. | Apollo4L, 4P |
-| `nsx-ambiqsuite-r5` | :material-package-variant: SDK | AmbiqSuite r5 SDK provider for Apollo5 / Apollo510 / Apollo330P targets. | Apollo5B, 510, 510B, 330P |
+| `nsx-ambiqsuite-r5` | :material-package-variant: SDK | AmbiqSuite r5 SDK provider for Apollo510 / Apollo510L / Apollo330P targets. | 510, 510B, 510L, 330P |
 | `nsx-ambiq-hal-r3` | :material-package-variant: SDK | Curated HAL wrapper surface for AmbiqSuite r3 targets. | Apollo3, 3P |
 | `nsx-ambiq-hal-r4` | :material-package-variant: SDK | Curated HAL wrapper surface for AmbiqSuite r4 targets. | Apollo4L, 4P |
-| `nsx-ambiq-hal-r5` | :material-package-variant: SDK | Curated HAL wrapper surface for AmbiqSuite r5 targets. | Apollo5B, 510, 510B, 330P |
+| `nsx-ambiq-hal-r5` | :material-package-variant: SDK | Curated HAL wrapper surface for AmbiqSuite r5 targets. | 510, 510B, 510L, 330P |
 | `nsx-ambiq-bsp-r3` | :material-package-variant: SDK | Curated BSP wrapper for board-support on AmbiqSuite r3 targets. | Apollo3, 3P |
 | `nsx-ambiq-bsp-r4` | :material-package-variant: SDK | Curated BSP wrapper for board-support on AmbiqSuite r4 targets. | Apollo4L, 4P |
-| `nsx-ambiq-bsp-r5` | :material-package-variant: SDK | Curated BSP wrapper for board-support on AmbiqSuite r5 targets. | Apollo5B, 510, 510B, 330P |
+| `nsx-ambiq-bsp-r5` | :material-package-variant: SDK | Curated BSP wrapper for board-support on AmbiqSuite r5 targets. | 510, 510B, 510L, 330P |
 | `nsx-peripherals` | :material-expansion-card: Peripheral | Common peripheral-access helpers for board devices and attached hardware. | All |
 | `nsx-power` | :material-expansion-card: Peripheral | Power-management helpers — sleep policy, shutdown control, low-power workflows. | All |
 | `nsx-uart` | :material-expansion-card: Peripheral | UART wrapper for serial communication, console I/O, and host-device links. | All |
@@ -120,6 +120,7 @@ This table has its own search and pagination controls.
 | `nsx-board-apollo4p-blue-kxr-evb` | Apollo4P |
 | `nsx-board-apollo510-evb` | Apollo510 |
 | `nsx-board-apollo510b-evb` | Apollo510B |
+| `nsx-board-apollo510dl-evb` | Apollo510L |
 | `nsx-board-apollo5b-evb` | Apollo5B |
 
 Board modules are first-class because they are packaged and registry-backed,

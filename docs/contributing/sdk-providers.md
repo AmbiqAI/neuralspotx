@@ -12,7 +12,7 @@ Current families:
 
 - `nsx-ambiqsuite-r3`: `main`, `r3.1.1`
 - `nsx-ambiqsuite-r4`: `main`, `r4.4.1`, `r4.5.0`
-- `nsx-ambiqsuite-r5`: `main`, `r5.1`, `r5.2`, `r5.2-alpha`, `r5.3`
+- `nsx-ambiqsuite-r5`: `main`, `r5.2`, `r5.2.0`
 
 ## Contributor Expectations
 

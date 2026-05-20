@@ -24,7 +24,7 @@ projects:
   nsx-ambiqsuite-r5:
     name: nsx-ambiqsuite-r5
     url: https://github.com/AmbiqAI/nsx-ambiqsuite-r5.git
-    revision: v0.2.1
+    revision: r5.2.0
     path: modules/nsx-ambiqsuite-r5
   nsx-ambiq-hal-r3:
     name: nsx-ambiq-hal-r3
@@ -153,7 +153,7 @@ modules:
     metadata: modules/nsx-ambiqsuite-r4/nsx-module.yaml
   nsx-ambiqsuite-r5:
     project: nsx-ambiqsuite-r5
-    revision: v0.1.0
+    revision: r5.2.0
     metadata: modules/nsx-ambiqsuite-r5/nsx-module.yaml
   nsx-ambiq-hal-r3:
     project: nsx-ambiq-hal-r3
@@ -219,6 +219,10 @@ modules:
     project: neuralspotx
     revision: main
     metadata: src/neuralspotx/boards/apollo510b_evb/nsx-module.yaml
+  nsx-board-apollo510dl-evb:
+    project: neuralspotx
+    revision: main
+    metadata: src/neuralspotx/boards/apollo510dL_evb/nsx-module.yaml
   nsx-board-apollo330mp-evb:
     project: neuralspotx
     revision: main
@@ -416,11 +420,11 @@ starter_profiles:
     channel: stable
     project_overrides:
       nsx-ambiqsuite-r5:
-        revision: r5.3
+        revision: r5.2.0
     module_overrides:
       nsx-ambiqsuite-r5:
         project: nsx-ambiqsuite-r5
-        revision: r5.3
+        revision: r5.2.0
         metadata: modules/nsx-ambiqsuite-r5/nsx-module.yaml
     modules:
       - nsx-ambiqsuite-r5
@@ -441,11 +445,11 @@ starter_profiles:
     channel: preview
     project_overrides:
       nsx-ambiqsuite-r5:
-        revision: r5.2
+        revision: r5.2.0
     module_overrides:
       nsx-ambiqsuite-r5:
         project: nsx-ambiqsuite-r5
-        revision: r5.2
+        revision: r5.2.0
         metadata: modules/nsx-ambiqsuite-r5/nsx-module.yaml
     modules:
       - nsx-ambiqsuite-r5
@@ -466,11 +470,11 @@ starter_profiles:
     channel: preview
     project_overrides:
       nsx-ambiqsuite-r5:
-        revision: r5.1
+        revision: r5.2.0
     module_overrides:
       nsx-ambiqsuite-r5:
         project: nsx-ambiqsuite-r5
-        revision: r5.1
+        revision: r5.2.0
         metadata: modules/nsx-ambiqsuite-r5/nsx-module.yaml
     modules:
       - nsx-ambiqsuite-r5
@@ -484,6 +488,31 @@ starter_profiles:
       - nsx-utils
       - nsx-tooling
     features: {}
+  apollo510dL_evb_minimal:
+    board: apollo510dL_evb
+    soc: apollo510L
+    toolchain: arm-none-eabi-gcc
+    channel: preview
+    project_overrides:
+      nsx-ambiqsuite-r5:
+        revision: r5.2.0
+    module_overrides:
+      nsx-ambiqsuite-r5:
+        project: nsx-ambiqsuite-r5
+        revision: r5.2.0
+        metadata: modules/nsx-ambiqsuite-r5/nsx-module.yaml
+    modules:
+      - nsx-ambiqsuite-r5
+      - nsx-ambiq-hal-r5
+      - nsx-ambiq-bsp-r5
+      - nsx-soc-hal
+      - nsx-cmsis-startup
+      - nsx-board-apollo510dl-evb
+      - nsx-core
+      - nsx-harness
+      - nsx-utils
+      - nsx-tooling
+    features: {}
   apollo330mP_evb_minimal:
     board: apollo330mP_evb
     soc: apollo330P
@@ -491,11 +520,11 @@ starter_profiles:
     channel: preview
     project_overrides:
       nsx-ambiqsuite-r5:
-        revision: r5.2-alpha
+        revision: r5.2.0
     module_overrides:
       nsx-ambiqsuite-r5:
         project: nsx-ambiqsuite-r5
-        revision: r5.2-alpha
+        revision: r5.2.0
         metadata: modules/nsx-ambiqsuite-r5/nsx-module.yaml
     modules:
       - nsx-ambiqsuite-r5
@@ -782,6 +811,25 @@ compat_matrix:
         - nsx-soc-hal
         - nsx-cmsis-startup
         - nsx-board-apollo510b-evb
+        - nsx-core
+        - nsx-harness
+        - nsx-utils
+        - nsx-tooling
+  apollo510dL_evb:
+    socs:
+      - apollo510L
+    toolchains:
+      - arm-none-eabi-gcc
+      - armclang
+      - atfe
+    modules:
+      required:
+        - nsx-ambiqsuite-r5
+        - nsx-ambiq-hal-r5
+        - nsx-ambiq-bsp-r5
+        - nsx-soc-hal
+        - nsx-cmsis-startup
+        - nsx-board-apollo510dl-evb
         - nsx-core
         - nsx-harness
         - nsx-utils
