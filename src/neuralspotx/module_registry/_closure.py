@@ -10,6 +10,7 @@ from ..metadata import is_compatible
 from ._metadata import _load_module_metadata, metadata_cache_scope
 from ._nsx_cfg import _local_module_names, _vendored_module_names
 from ._policy import _validate_board_module_dep_policy, _validate_sdk_provider_policy
+from ._vendoring import _acquire_modules_for_app
 
 
 def _resolve_module_closure(
@@ -19,6 +20,7 @@ def _resolve_module_closure(
     nsx_cfg: dict[str, Any],
     registry: dict[str, Any],
     default_toolchain: str,
+    acquire_missing: bool = False,
 ) -> list[str]:
     with metadata_cache_scope():
         return _resolve_module_closure_inner(
@@ -27,6 +29,7 @@ def _resolve_module_closure(
             nsx_cfg=nsx_cfg,
             registry=registry,
             default_toolchain=default_toolchain,
+            acquire_missing=acquire_missing,
         )
 
 
@@ -37,6 +40,7 @@ def _resolve_module_closure_inner(
     nsx_cfg: dict[str, Any],
     registry: dict[str, Any],
     default_toolchain: str,
+    acquire_missing: bool = False,
 ) -> list[str]:
     target = nsx_cfg.get("target", {})
     board = target.get("board")
@@ -67,6 +71,15 @@ def _resolve_module_closure_inner(
         if module_name in visiting:
             raise NSXModuleError(f"Dependency cycle detected at module '{module_name}'")
         visiting.add(module_name)
+
+        if acquire_missing and app_dir is not None:
+            _acquire_modules_for_app(
+                app_dir,
+                [module_name],
+                registry,
+                local_modules=local_names,
+                vendored_modules=vendored_names,
+            )
 
         module_meta = _load_module_metadata(module_name, registry, app_dir=app_dir)
         metadata_cache[module_name] = module_meta

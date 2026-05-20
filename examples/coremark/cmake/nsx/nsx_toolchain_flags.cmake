@@ -40,6 +40,9 @@ function(nsx_apply_toolchain_flags flags_target)
         target_compile_options(${flags_target} INTERFACE
             ${_arch_flags}
             -fshort-enums
+            # -fshort-wchar: AmbiqSuite .lib prebuilts use 16-bit wchar_t
+            # (Tag_ABI_PCS_wchar_t=2). Must match to avoid L6242E link errors.
+            # GCC/ATfE link against .a archives (32-bit wchar) and omit this flag.
             -fshort-wchar
             -ffunction-sections
             -fdata-sections

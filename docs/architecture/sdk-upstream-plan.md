@@ -68,35 +68,23 @@ Local inventory:
 3. `R5.2.alpha.1.1`
 4. `R5.3.0`
 
-Current board support maps most cleanly to these revisions:
+Current board support maps to the unified AmbiqSuite 5.2.0 RC4 provider tag:
 
-1. `apollo510_evb` -> `r5.3`
-2. `apollo5b_evb` -> `r5.2`
-3. `apollo510b_evb` -> `r5.1`
-4. `apollo330mP_evb` -> `r5.2-alpha`
+1. `apollo510_evb` -> `r5.2.0`
+2. `apollo510b_evb` -> `r5.2.0`
+3. `apollo510dL_evb` -> `r5.2.0`
+4. `apollo330mP_evb` -> `r5.2.0`
 
 Recommendation:
 
 1. upstream `nsx-ambiqsuite-r5` as one repo
-2. create real branches:
-   - `r5.1`
-   - `r5.2`
-   - `r5.2-alpha`
-   - `r5.3`
-3. stop treating the current locally normalized tree as the long-term upstream
-   default
-4. keep NSX board profiles responsible for selecting the correct branch
+2. pin NSX board profiles to SDK-aligned release tags such as `r5.2.0`
+3. keep branch names only as maintainer conveniences, not public starter-profile
+   constraints
 
 ## Apollo510L
 
-`apollo510L_eb` should remain blocked for now.
-
-Local history currently provides:
-
-1. headers
-2. MCU directory
-3. system source
-
-But it does not yet provide a clean board/BSP/lib bundle in the current SDK
-history. Until that exists as a coherent upstream branchable payload, NSX
-should not expose `apollo510L_eb` as a built-in board.
+Apollo510L is exposed through the AmbiqSuite RC4 board name
+`apollo510dL_evb`. The latest R5 provider includes the CMSIS device files,
+system source, board headers, and prebuilt HAL/BSP libraries required by that
+board.

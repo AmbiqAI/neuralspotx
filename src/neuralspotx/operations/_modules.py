@@ -127,6 +127,7 @@ def add_module_impl(
         nsx_cfg=nsx_cfg,
         registry=registry,
         default_toolchain=DEFAULT_TOOLCHAIN,
+        acquire_missing=not dry_run,
     )
     enabled_set = set(enabled)
     added = [n for n in new_modules if n not in enabled_set]

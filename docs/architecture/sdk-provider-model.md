@@ -27,7 +27,7 @@ Examples:
 
 1. `nsx-ambiqsuite-r3` uses `r3.1.1`
 2. `nsx-ambiqsuite-r4` defaults to `r4.5.0`
-3. `nsx-ambiqsuite-r5` may use `r5.1`, `r5.2`, `r5.2-alpha`, or `r5.3`
+3. `nsx-ambiqsuite-r5` uses SDK-aligned release tags such as `r5.2.0`
 
 The selected revision is persisted in generated app metadata.
 

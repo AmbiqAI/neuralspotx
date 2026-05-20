@@ -26,6 +26,7 @@ from neuralspotx import (
     remove_module,
     update_modules,
 )
+from neuralspotx.module_registry import _resolve_module_closure
 from neuralspotx.project_config import (
     _load_app_cfg,
     _vendored_metadata_relpath,
@@ -181,6 +182,141 @@ def test_app_major_version_mismatch_requires_bypass(
     monkeypatch.setenv("NSX_ALLOW_VERSION_MISMATCH", "1")
     loaded = _load_app_cfg(app_dir)
     assert loaded["project"]["name"] == "hello_version"
+
+
+def test_created_app_cmake_uses_bootstrapped_module_targets(tmp_path: Path) -> None:
+    create_app(
+        AppCreateRequest(app_dir=tmp_path / "hello_cmake", board="apollo510_evb", no_bootstrap=True)
+    )
+
+    cmake_text = (tmp_path / "hello_cmake" / "CMakeLists.txt").read_text(encoding="utf-8")
+
+    assert "nsx_bootstrap_app(" in cmake_text
+    assert "find_package(nsx_soc_apollo510" not in cmake_text
+    assert "find_package(nsx_board_apollo510_evb" not in cmake_text
+
+
+def test_dependency_closure_acquires_cmsis_core_for_startup(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app_dir = tmp_path / "app"
+    core_metadata = app_dir / "modules" / "nsx-cmsis-core" / "nsx-module.yaml"
+    startup_metadata = app_dir / "modules" / "nsx-cmsis-startup" / "nsx-module.yaml"
+    startup_metadata.parent.mkdir(parents=True)
+    core_metadata_text = (
+        "\n".join([
+            "schema_version: 1",
+            "module:",
+            "  name: nsx-cmsis-core",
+            "  type: runtime",
+            '  version: "0.1.0"',
+            "support:",
+            "  ambiqsuite: true",
+            "  zephyr: false",
+            "build:",
+            "  cmake:",
+            "    package: nsx_cmsis_core",
+            "    targets: [nsx::cmsis_core]",
+            "depends:",
+            "  required: []",
+            "  optional: []",
+            "compatibility:",
+            '  boards: ["*"]',
+            '  socs: ["*"]',
+            '  toolchains: ["arm-none-eabi-gcc"]',
+        ])
+        + "\n"
+    )
+    startup_metadata.write_text(
+        "\n".join([
+            "schema_version: 1",
+            "module:",
+            "  name: nsx-cmsis-startup",
+            "  type: backend_specific",
+            '  version: "0.1.0"',
+            "support:",
+            "  ambiqsuite: true",
+            "  zephyr: false",
+            "build:",
+            "  cmake:",
+            "    package: nsx_cmsis_startup",
+            "    targets: [nsx::startup]",
+            "depends:",
+            "  required:",
+            "    - nsx-cmsis-core",
+            "  optional: []",
+            "compatibility:",
+            '  boards: ["*"]',
+            '  socs: ["*"]',
+            '  toolchains: ["arm-none-eabi-gcc"]',
+        ])
+        + "\n",
+        encoding="utf-8",
+    )
+
+    acquired: list[str] = []
+
+    def fake_acquire(
+        acquire_app_dir: Path,
+        module_names: list[str],
+        _registry: dict,
+        *,
+        local_modules: set[str] | None = None,
+        vendored_modules: set[str] | None = None,
+    ) -> None:
+        assert acquire_app_dir == app_dir
+        for module_name in module_names:
+            acquired.append(module_name)
+            if module_name == "nsx-cmsis-core":
+                core_metadata.parent.mkdir(parents=True, exist_ok=True)
+                core_metadata.write_text(core_metadata_text, encoding="utf-8")
+
+    monkeypatch.setattr(
+        "neuralspotx.module_registry._closure._acquire_modules_for_app", fake_acquire
+    )
+
+    registry = {
+        "schema_version": 1,
+        "channels": {"stable": {"default": True}},
+        "projects": {
+            "nsx-cmsis-core": {"name": "nsx-cmsis-core", "path": "modules/nsx-cmsis-core"},
+            "nsx-cmsis-startup": {
+                "name": "nsx-cmsis-startup",
+                "path": "modules/nsx-cmsis-startup",
+            },
+        },
+        "modules": {
+            "nsx-cmsis-core": {
+                "project": "nsx-cmsis-core",
+                "revision": "v0.1.0",
+                "metadata": "modules/nsx-cmsis-core/nsx-module.yaml",
+            },
+            "nsx-cmsis-startup": {
+                "project": "nsx-cmsis-startup",
+                "revision": "v0.1.0",
+                "metadata": "modules/nsx-cmsis-startup/nsx-module.yaml",
+            },
+        },
+        "starter_profiles": {},
+        "compat_matrix": {},
+    }
+    nsx_cfg = {
+        "target": {"board": "apollo510_evb", "soc": "apollo510"},
+        "toolchain": "arm-none-eabi-gcc",
+        "modules": [{"name": "nsx-cmsis-startup"}],
+    }
+
+    resolved = _resolve_module_closure(
+        ["nsx-cmsis-startup"],
+        app_dir=app_dir,
+        nsx_cfg=nsx_cfg,
+        registry=registry,
+        default_toolchain="arm-none-eabi-gcc",
+        acquire_missing=True,
+    )
+
+    assert resolved == ["nsx-cmsis-core", "nsx-cmsis-startup"]
+    assert "nsx-cmsis-core" in acquired
 
 
 def test_vendored_module_metadata_path_stays_under_single_modules_root(tmp_path: Path) -> None:

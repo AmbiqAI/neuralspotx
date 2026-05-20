@@ -167,6 +167,7 @@ def _create_app_body(
         nsx_cfg=nsx_cfg,
         registry=registry,
         default_toolchain=DEFAULT_TOOLCHAIN,
+        acquire_missing=True,
     )
     _update_nsx_cfg_modules(nsx_cfg, starter_modules, registry)
     _save_app_cfg(app_dir, nsx_cfg)
