@@ -13,10 +13,7 @@
 #define NSX_PMU_PROFILER_H
 
 #include "tensorflow/lite/micro/micro_profiler_interface.h"
-
-extern "C" {
 #include "ns_pmu_utils.h"
-}
 
 class NsxPmuProfiler : public tflite::MicroProfilerInterface {
  public:
