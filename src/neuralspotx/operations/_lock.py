@@ -73,6 +73,7 @@ def _build_lock_for_app(
     *,
     previous: NsxLock | None = None,
     write_side_effects: bool = True,
+    use_locked_closure_on_metadata_error: bool = False,
 ) -> NsxLock:
     """Resolve every module in nsx.yml to a commit + content hash.
 
@@ -104,6 +105,12 @@ def _build_lock_for_app(
     (``cmake/nsx/`` copy, ``modules.cmake``, ``modules/.gitignore``)
     are skipped. ``nsx lock --check`` uses this so a read-only check
     truly does not modify the on-disk app.
+
+    When ``use_locked_closure_on_metadata_error`` is True, a read-only
+    check may use the existing ``nsx.lock`` module order if dependency
+    metadata is not materialized locally. This keeps ``nsx lock --check``
+    useful on clean checkouts while preserving the package-manager rule
+    that writable lock refreshes must resolve the real dependency graph.
     """
 
     from ..metadata import registry_entry_for_module
@@ -126,13 +133,22 @@ def _build_lock_for_app(
             default_toolchain=DEFAULT_TOOLCHAIN,
             acquire_missing=write_side_effects,
         )
-    except (OSError, subprocess.SubprocessError, NSXConfigError, NSXResolutionError) as exc:
-        _log.warning(
-            "could not resolve dependency metadata for all modules (%s); "
-            "locking explicit nsx.yml modules only.",
-            exc,
-        )
-        module_names = seed_module_names
+    except (OSError, subprocess.SubprocessError, NSXResolutionError) as exc:
+        if use_locked_closure_on_metadata_error and previous is not None:
+            _log.warning(
+                "could not resolve dependency metadata for all modules (%s); "
+                "using the module closure recorded in nsx.lock for read-only check.",
+                exc,
+            )
+            module_names = list(previous.modules)
+        else:
+            seed_summary = ", ".join(seed_module_names) or "<none>"
+            raise NSXResolutionError(
+                "Unable to resolve dependency metadata for nsx.yml modules "
+                f"[{seed_summary}]: {exc}. Run `nsx lock` with the required "
+                "module sources available so nsx.lock can record the full "
+                "dependency closure."
+            ) from exc
 
     if write_side_effects:
         # Regenerate the deterministic side-effects that ``nsx sync`` produces
@@ -615,7 +631,12 @@ def _lock_app_impl_unlocked(
         elif previous and not modules:
             previous = None  # full refresh
 
-    lock = _build_lock_for_app(app_dir, previous=previous, write_side_effects=not check)
+    lock = _build_lock_for_app(
+        app_dir,
+        previous=previous,
+        write_side_effects=not check,
+        use_locked_closure_on_metadata_error=bool(check and not update and on_disk_lock),
+    )
     lock_file = lock_path(app_dir)
 
     if check:

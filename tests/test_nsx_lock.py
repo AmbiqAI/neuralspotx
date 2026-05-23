@@ -13,8 +13,17 @@ from typing import Any
 import pytest
 import yaml
 
-from neuralspotx import NSXError, NSXLockError, operations
-from neuralspotx.nsx_lock import ResolutionError, read_lock
+from neuralspotx import NSXError, NSXLockError, NSXResolutionError, operations
+from neuralspotx.nsx_lock import (
+    LockKind,
+    NsxLock,
+    ResolutionError,
+    ResolvedModule,
+    hash_manifest,
+    read_lock,
+    utcnow_iso,
+    write_lock,
+)
 from neuralspotx.operations import (
     add_module_impl,
     lock_app_impl,
@@ -110,6 +119,36 @@ def _write_local_project_with_nested_nsx(
         encoding="utf-8",
     )
     (root / "README.md").write_text(f"{module_name}\n", encoding="utf-8")
+
+
+def _write_fake_git_metadata(app_dir: Path) -> None:
+    mod_dir = app_dir / "modules" / "fake-proj"
+    mod_dir.mkdir(parents=True, exist_ok=True)
+    (mod_dir / "nsx-module.yaml").write_text(
+        "\n".join([
+            "schema_version: 1",
+            "module:",
+            "  name: fake-mod",
+            "  type: runtime",
+            '  version: "0.1.0"',
+            "support:",
+            "  ambiqsuite: true",
+            "  zephyr: false",
+            "build:",
+            "  cmake:",
+            "    package: fake_mod",
+            "    targets: [nsx::fake_mod]",
+            "depends:",
+            "  required: []",
+            "  optional: []",
+            "compatibility:",
+            '  boards: ["*"]',
+            '  socs: ["*"]',
+            '  toolchains: ["arm-none-eabi-gcc"]',
+        ])
+        + "\n",
+        encoding="utf-8",
+    )
 
 
 @pytest.fixture
@@ -524,6 +563,92 @@ class TestLocalKind:
         assert "app-proj/" in gitignore
         assert "nsx-dep/" not in gitignore
 
+    def test_check_uses_locked_closure_when_metadata_not_materialized(self, app: Path) -> None:
+        registry_overrides = {
+            "projects": {
+                "dep-proj": {
+                    "url": "https://example.com/dep.git",
+                    "revision": "main",
+                    "path": "modules/dep-proj",
+                },
+                "app-proj": {
+                    "url": "https://example.com/app.git",
+                    "revision": "main",
+                    "path": "modules/app-proj",
+                },
+            },
+            "modules": {
+                "nsx-dep": {
+                    "project": "dep-proj",
+                    "revision": "main",
+                    "metadata": "modules/dep-proj/nsx-module.yaml",
+                },
+                "nsx-app": {
+                    "project": "app-proj",
+                    "revision": "main",
+                    "metadata": "modules/app-proj/nsx-module.yaml",
+                },
+            },
+        }
+        _write_nsx_yml(
+            app,
+            [{"name": "nsx-app", "project": "app-proj", "revision": "main"}],
+            registry_overrides=registry_overrides,
+        )
+        now = utcnow_iso()
+        write_lock(
+            app,
+            NsxLock(
+                generated_at=now,
+                nsx_tool_version="test",
+                manifest_hash=hash_manifest(app / "nsx.yml"),
+                target={
+                    "board": "apollo510_evb",
+                    "soc": "apollo510",
+                    "toolchain": "arm-none-eabi-gcc",
+                },
+                modules={
+                    "nsx-dep": ResolvedModule(
+                        project="dep-proj",
+                        kind=LockKind.GIT,
+                        constraint="main",
+                        vendored_at="modules/dep-proj",
+                        content_hash="sha256:" + "d" * 64,
+                        acquired_at=now,
+                        url="https://example.com/dep.git",
+                        commit="d" * 40,
+                    ),
+                    "nsx-app": ResolvedModule(
+                        project="app-proj",
+                        kind=LockKind.GIT,
+                        constraint="main",
+                        vendored_at="modules/app-proj",
+                        content_hash="sha256:" + "a" * 64,
+                        acquired_at=now,
+                        url="https://example.com/app.git",
+                        commit="a" * 40,
+                    ),
+                },
+            ),
+        )
+
+        lock_app_impl(app, check=True)
+
+        assert not (app / "modules" / "dep-proj").exists()
+        assert not (app / "modules" / "app-proj").exists()
+
+    def test_lock_fails_when_dependency_metadata_unavailable(self, app: Path) -> None:
+        _write_nsx_yml(
+            app,
+            [{"name": "fake-mod", "project": "fake-proj", "revision": "main"}],
+            registry_overrides=_GIT_PROJECT_OVERRIDES,
+        )
+
+        with pytest.raises(NSXResolutionError, match="Unable to resolve dependency metadata"):
+            lock_app_impl(app)
+
+        assert not (app / "nsx.lock").exists()
+
 
 # ---------------------------------------------------------------------------
 # Git + Unresolved kinds (monkeypatched resolver)
@@ -545,6 +670,7 @@ class TestGitKind:
             [{"name": "fake-mod", "project": "fake-proj", "revision": "main"}],
             registry_overrides=_GIT_PROJECT_OVERRIDES,
         )
+        _write_fake_git_metadata(app)
 
         lock_app_impl(app)
 
@@ -571,6 +697,7 @@ class TestGitKind:
             [{"name": "fake-mod", "project": "fake-proj", "revision": "main"}],
             registry_overrides=_GIT_PROJECT_OVERRIDES,
         )
+        _write_fake_git_metadata(app)
 
         lock_app_impl(app)
 
@@ -598,6 +725,7 @@ class TestGitKind:
             [{"name": "fake-mod", "project": "fake-proj", "revision": "main"}],
             registry_overrides=_GIT_PROJECT_OVERRIDES,
         )
+        _write_fake_git_metadata(app)
 
         # Drop a synthetic v1 lock with a legacy `ref` field.
         legacy = {
@@ -664,6 +792,7 @@ class TestOutdatedJson:
             [{"name": "fake-mod", "project": "fake-proj", "revision": "main"}],
             registry_overrides=_GIT_PROJECT_OVERRIDES,
         )
+        _write_fake_git_metadata(app)
         lock_app_impl(app)
         capsys.readouterr()  # drain lock's stdout
 
@@ -813,10 +942,22 @@ class TestPackagedDriftRegression:
         packaged-module hash.
         """
 
-        def lock_one(modules: list[str]) -> str:
+        def lock_one(extra_vendored_modules: list[str]) -> str:
+            modules = ["nsx-tooling", *extra_vendored_modules]
             d = tmp_path / f"app_{len(modules)}_{abs(hash(tuple(modules))) % 10000}"
             d.mkdir()
-            _write_nsx_yml(d, [{"name": m} for m in modules])
+            for name in extra_vendored_modules:
+                _make_vendored(d, name, content=name)
+            _write_nsx_yml(
+                d,
+                [
+                    {"name": "nsx-tooling"},
+                    *[
+                        {"name": name, "source": {"vendored": True}}
+                        for name in extra_vendored_modules
+                    ],
+                ],
+            )
             lock_app_impl(d)
             sync_app_impl(d)
             # `lock --check` must succeed (no drift).
@@ -825,9 +966,9 @@ class TestPackagedDriftRegression:
             assert lk is not None
             return lk.modules["nsx-tooling"].content_hash
 
-        h_a = lock_one(["nsx-tooling"])
-        h_b = lock_one(["nsx-tooling", "nsx-utils"])
-        h_c = lock_one(["nsx-tooling", "nsx-core", "nsx-harness"])
+        h_a = lock_one([])
+        h_b = lock_one(["app-extra-one"])
+        h_c = lock_one(["app-extra-one", "app-extra-two"])
         assert h_a == h_b == h_c, (
             "nsx-tooling content_hash drifts with app's module list "
             f"(got {h_a!r}, {h_b!r}, {h_c!r})"
