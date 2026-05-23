@@ -21,6 +21,10 @@ from ._metadata import packaged_module_source_dir
 from ._rmtree import _rmtree
 
 
+def _is_full_commit_sha(revision: str) -> bool:
+    return len(revision) == 40 and all(ch in "0123456789abcdefABCDEF" for ch in revision)
+
+
 def _ensure_module_cloned(
     app_dir: Path,
     module_name: str,
@@ -56,7 +60,10 @@ def _ensure_module_cloned(
         )
 
     _require_tool("git")
-    git_clone(url, clone_dir, revision=entry.revision)
+    if _is_full_commit_sha(entry.revision):
+        git_clone_at_commit(url, clone_dir, entry.revision)
+    else:
+        git_clone(url, clone_dir, revision=entry.revision)
 
     # Remove .git so the module is a plain copy, not a nested repo.
     git_dir = clone_dir / ".git"

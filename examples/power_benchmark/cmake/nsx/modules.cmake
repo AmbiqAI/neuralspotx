@@ -12,3 +12,13 @@ set(NSX_APP_MODULES
     nsx-utils
     nsx-power
 )
+set(NSX_APP_MODULE_DIR_nsx_cmsis_core "modules/nsx-cmsis-core")
+set(NSX_APP_MODULE_DIR_nsx_ambiqsuite_r5 "modules/nsx-ambiqsuite-r5")
+set(NSX_APP_MODULE_DIR_nsx_ambiq_hal_r5 "modules/nsx-ambiq-hal-r5")
+set(NSX_APP_MODULE_DIR_nsx_ambiq_bsp_r5 "modules/nsx-ambiq-bsp-r5")
+set(NSX_APP_MODULE_DIR_nsx_soc_hal "modules/nsx-soc-hal")
+set(NSX_APP_MODULE_DIR_nsx_cmsis_startup "modules/nsx-cmsis-startup")
+set(NSX_APP_MODULE_DIR_nsx_core "modules/nsx-core")
+set(NSX_APP_MODULE_DIR_nsx_harness "modules/nsx-harness")
+set(NSX_APP_MODULE_DIR_nsx_utils "modules/nsx-utils")
+set(NSX_APP_MODULE_DIR_nsx_power "modules/nsx-power")

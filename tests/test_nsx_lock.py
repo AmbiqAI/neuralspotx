@@ -649,6 +649,60 @@ class TestLocalKind:
 
         assert not (app / "nsx.lock").exists()
 
+    def test_lock_accepts_legacy_registry_metadata_for_dependency_resolution(
+        self, app: Path, tmp_path: Path
+    ) -> None:
+        source = tmp_path / "legacy-source"
+        source.mkdir()
+        (source / "nsx-module.yaml").write_text(
+            "\n".join([
+                "schema_version: 1",
+                "module:",
+                "  name: legacy-mod",
+                "  type: runtime",
+                '  version: "0.1.0"',
+                "support:",
+                "  ambiqsuite: true",
+                "  zephyr: false",
+                "build:",
+                "  cmake:",
+                "    targets: [nsx::legacy]",
+                "depends:",
+                "  required: []",
+                "  optional: []",
+                'socs: ["*"]',
+            ])
+            + "\n",
+            encoding="utf-8",
+        )
+
+        _write_nsx_yml(
+            app,
+            [{"name": "legacy-mod", "project": "legacy-proj", "revision": "main"}],
+            registry_overrides={
+                "projects": {
+                    "legacy-proj": {
+                        "local_path": str(source),
+                        "revision": "main",
+                        "path": "modules/legacy-proj",
+                    }
+                },
+                "modules": {
+                    "legacy-mod": {
+                        "project": "legacy-proj",
+                        "revision": "main",
+                        "metadata": "modules/legacy-proj/nsx-module.yaml",
+                    }
+                },
+            },
+        )
+
+        lock_app_impl(app)
+
+        lock = read_lock(app)
+        assert lock is not None
+        assert list(lock.modules) == ["legacy-mod"]
+
 
 # ---------------------------------------------------------------------------
 # Git + Unresolved kinds (monkeypatched resolver)

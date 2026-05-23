@@ -125,6 +125,40 @@ def _module_metadata_path(
     )
 
 
+def _normalize_legacy_registry_metadata(data: dict[str, Any], module_name: str) -> dict[str, Any]:
+    """Return a current-schema view for older registry module metadata.
+
+    Some public modules were published before ``build.cmake.package`` and
+    ``compatibility`` became required authoring fields. The resolver only needs
+    a dependency/compatibility view of metadata, so registry-loaded modules get
+    this narrow compatibility shim. Explicit validation commands still call
+    ``validate_nsx_module_metadata`` directly and keep enforcing the current
+    authoring schema.
+    """
+
+    build = data.get("build")
+    if isinstance(build, dict):
+        cmake = build.get("cmake")
+        if isinstance(cmake, dict) and "package" not in cmake:
+            targets = cmake.get("targets")
+            if isinstance(targets, list) and targets and isinstance(targets[0], str):
+                first_target = targets[0].split("::")[-1]
+                cmake["package"] = (
+                    first_target if first_target.startswith("nsx_") else f"nsx_{first_target}"
+                )
+            else:
+                cmake["package"] = module_name.replace("-", "_")
+
+    if "compatibility" not in data:
+        data["compatibility"] = {
+            "boards": data.get("boards", ["*"]),
+            "socs": data.get("socs", ["*"]),
+            "toolchains": data.get("toolchains", ["*"]),
+        }
+
+    return data
+
+
 def _load_module_metadata(
     module_name: str,
     registry: dict[str, Any],
@@ -141,6 +175,7 @@ def _load_module_metadata(
     entry = registry_entry_for_module(registry, module_name)
     metadata_path = _module_metadata_path(module_name, entry, registry, app_dir=app_dir)
     data = _read_yaml(metadata_path)
+    data = _normalize_legacy_registry_metadata(data, module_name)
     validate_nsx_module_metadata(data, str(metadata_path))
 
     if cache is not None and cache_key is not None:
