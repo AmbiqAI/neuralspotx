@@ -69,6 +69,49 @@ def _make_vendored(app_dir: Path, name: str, content: str = "hi") -> None:
     (mod / "hello.txt").write_text(content, encoding="utf-8")
 
 
+def _write_local_project_with_nested_nsx(
+    root: Path,
+    *,
+    module_name: str,
+    required: list[str] | None = None,
+) -> None:
+    required = required or []
+    nsx_dir = root / "nsx"
+    nsx_dir.mkdir(parents=True, exist_ok=True)
+    required_lines = [f"    - {name}" for name in required] or ["    []"]
+    (nsx_dir / "nsx-module.yaml").write_text(
+        "\n".join([
+            "schema_version: 1",
+            "module:",
+            f"  name: {module_name}",
+            "  type: runtime",
+            '  version: "0.1.0"',
+            "support:",
+            "  ambiqsuite: true",
+            "  zephyr: false",
+            "build:",
+            "  cmake:",
+            f"    package: {module_name.replace('-', '_')}",
+            f"    targets: [nsx::{module_name.removeprefix('nsx-').replace('-', '_')} ]",
+            "depends:",
+            "  required:",
+            *required_lines,
+            "  optional: []",
+            "compatibility:",
+            '  boards: ["*"]',
+            '  socs: ["*"]',
+            '  toolchains: ["arm-none-eabi-gcc"]',
+        ])
+        + "\n",
+        encoding="utf-8",
+    )
+    (nsx_dir / "CMakeLists.txt").write_text(
+        f"add_library({module_name.replace('-', '_')} INTERFACE)\n",
+        encoding="utf-8",
+    )
+    (root / "README.md").write_text(f"{module_name}\n", encoding="utf-8")
+
+
 @pytest.fixture
 def app(tmp_path: Path) -> Path:
     """Empty app dir; tests fill in `nsx.yml` + `modules/` as needed."""
@@ -350,7 +393,31 @@ class TestLocalKind:
         ext = tmp_path / "ext-proj"
         ext.mkdir()
         (ext / "src.c").write_text("// from local project", encoding="utf-8")
-        (ext / "nsx-module.yaml").write_text("schema_version: 1\n", encoding="utf-8")
+        (ext / "nsx-module.yaml").write_text(
+            "\n".join([
+                "schema_version: 1",
+                "module:",
+                "  name: local-mod",
+                "  type: runtime",
+                '  version: "0.1.0"',
+                "support:",
+                "  ambiqsuite: true",
+                "  zephyr: false",
+                "build:",
+                "  cmake:",
+                "    package: local_mod",
+                "    targets: [local_mod]",
+                "depends:",
+                "  required: []",
+                "  optional: []",
+                "compatibility:",
+                '  boards: ["*"]',
+                '  socs: ["*"]',
+                '  toolchains: ["arm-none-eabi-gcc"]',
+            ])
+            + "\n",
+            encoding="utf-8",
+        )
 
         # Keep a vendored module dir matching the project's configured
         # ``path`` (modules/local-proj/) so sync-style code paths can
@@ -393,6 +460,69 @@ class TestLocalKind:
         # Normalize separators: Windows produces backslashes here.
         assert Path(m.vendored_at).as_posix() == "modules/local-proj"
         assert m.content_hash.startswith("sha256:")
+
+    def test_lock_resolves_transitive_closure_for_nested_module_roots(
+        self, app: Path, tmp_path: Path
+    ) -> None:
+        dep_source = tmp_path / "dep-source"
+        app_source = tmp_path / "app-source"
+        _write_local_project_with_nested_nsx(dep_source, module_name="nsx-dep")
+        _write_local_project_with_nested_nsx(
+            app_source,
+            module_name="nsx-app",
+            required=["nsx-dep"],
+        )
+
+        _write_nsx_yml(
+            app,
+            [{"name": "nsx-app", "project": "app-proj", "revision": "main"}],
+            registry_overrides={
+                "projects": {
+                    "dep-proj": {
+                        "local_path": str(dep_source),
+                        "revision": "main",
+                        "path": "modules/dep-proj",
+                    },
+                    "app-proj": {
+                        "local_path": str(app_source),
+                        "revision": "main",
+                        "path": "modules/app-proj",
+                    },
+                },
+                "modules": {
+                    "nsx-dep": {
+                        "project": "dep-proj",
+                        "revision": "main",
+                        "metadata": "modules/dep-proj/nsx/nsx-module.yaml",
+                    },
+                    "nsx-app": {
+                        "project": "app-proj",
+                        "revision": "main",
+                        "metadata": "modules/app-proj/nsx/nsx-module.yaml",
+                    },
+                },
+            },
+        )
+
+        lock_app_impl(app)
+
+        lock = read_lock(app)
+        assert lock is not None
+        assert list(lock.modules) == ["nsx-dep", "nsx-app"]
+        nsx_cfg = yaml.safe_load((app / "nsx.yml").read_text(encoding="utf-8"))
+        assert [item["name"] for item in nsx_cfg["modules"]] == ["nsx-app"]
+
+        modules_cmake = (app / "cmake" / "nsx" / "modules.cmake").read_text(
+            encoding="utf-8"
+        )
+        assert modules_cmake.index("    nsx-dep") < modules_cmake.index("    nsx-app")
+        assert 'set(NSX_APP_MODULE_DIR_nsx_dep "modules/dep-proj/nsx")' in modules_cmake
+        assert 'set(NSX_APP_MODULE_DIR_nsx_app "modules/app-proj/nsx")' in modules_cmake
+
+        gitignore = (app / "modules" / ".gitignore").read_text(encoding="utf-8")
+        assert "dep-proj/" in gitignore
+        assert "app-proj/" in gitignore
+        assert "nsx-dep/" not in gitignore
 
 
 # ---------------------------------------------------------------------------
@@ -610,6 +740,8 @@ class TestPackagedDriftRegression:
         from neuralspotx.project_config import _load_registry
 
         reg = _load_registry()
+        if "nsx-board-apollo510-evb" in reg.get("modules", {}):
+            return "nsx-board-apollo510-evb"
         for name, entry in reg.get("modules", {}).items():
             if isinstance(entry, dict) and entry.get("project") == "neuralspotx":
                 return name

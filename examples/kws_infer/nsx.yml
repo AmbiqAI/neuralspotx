@@ -35,6 +35,8 @@ modules:
   project: nsx-perf
 - name: nsx-pmu-armv8m
   project: nsx-pmu-armv8m
+- name: nsx-helia-rt
+  project: helia-rt
 - name: nsx-tooling
   project: neuralspotx
 features: {}

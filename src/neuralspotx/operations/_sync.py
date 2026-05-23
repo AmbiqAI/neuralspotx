@@ -23,7 +23,7 @@ from ..project_config import (
     _load_registry,
     _registry_project_entry,
     _write_app_module_file,
-    _write_modules_gitignore,
+    _write_modules_gitignore_for_module_names,
 )
 from ._lock import _resolved_module_path, lock_app_impl
 
@@ -344,8 +344,9 @@ def _sync_app_impl_unlocked(
     # modules.cmake + modules/.gitignore — these are cheap and keep
     # the build inputs aligned.
     _copy_packaged_tree("neuralspotx", "cmake", app_dir / "cmake" / "nsx")
-    _write_app_module_file(app_dir, nsx_cfg)
-    _write_modules_gitignore(app_dir, nsx_cfg)
+    ordered_modules = list(lock.modules)
+    _write_app_module_file(app_dir, nsx_cfg, module_names=ordered_modules)
+    _write_modules_gitignore_for_module_names(app_dir, nsx_cfg, ordered_modules)
 
     # Now that ``cmake/nsx`` has been replaced by _copy_packaged_tree,
     # verify any packaged lock entry mapped to that path against its

@@ -19,6 +19,7 @@ from ..models import OutdatedModule, OutdatedReport, OutdatedSkip
 from ..module_registry import (
     _local_module_names,
     _module_names_from_nsx,
+    _resolve_module_closure,
     _vendored_module_names,
 )
 from ..nsx_lock import (
@@ -45,7 +46,7 @@ from ..project_config import (
     _nsx_tool_version,
     _registry_project_entry,
     _write_app_module_file,
-    _write_modules_gitignore,
+    _write_modules_gitignore_for_module_names,
 )
 from ._common import OutdatedStatus, _log
 
@@ -111,10 +112,27 @@ def _build_lock_for_app(
     nsx_cfg = _load_app_cfg(app_dir)
     base_registry = _load_registry()
     registry = _effective_registry(base_registry, nsx_cfg)
-    module_names = _module_names_from_nsx(nsx_cfg)
+    seed_module_names = _module_names_from_nsx(nsx_cfg)
     local_names = _local_module_names(nsx_cfg)
     vendored_names = _vendored_module_names(nsx_cfg)
     tool_version = _nsx_tool_version()
+
+    try:
+        module_names = _resolve_module_closure(
+            seed_module_names,
+            app_dir=app_dir,
+            nsx_cfg=nsx_cfg,
+            registry=registry,
+            default_toolchain=DEFAULT_TOOLCHAIN,
+            acquire_missing=write_side_effects,
+        )
+    except (OSError, subprocess.SubprocessError, NSXConfigError, NSXResolutionError) as exc:
+        _log.warning(
+            "could not resolve dependency metadata for all modules (%s); "
+            "locking explicit nsx.yml modules only.",
+            exc,
+        )
+        module_names = seed_module_names
 
     if write_side_effects:
         # Regenerate the deterministic side-effects that ``nsx sync`` produces
@@ -123,8 +141,8 @@ def _build_lock_for_app(
         # lives outside ``modules/<name>/`` and is therefore not covered by
         # any module's ``content_hash``.
         _copy_packaged_tree("neuralspotx", "cmake", app_dir / "cmake" / "nsx")
-        _write_app_module_file(app_dir, nsx_cfg)
-        _write_modules_gitignore(app_dir, nsx_cfg)
+        _write_app_module_file(app_dir, nsx_cfg, module_names=module_names)
+        _write_modules_gitignore_for_module_names(app_dir, nsx_cfg, module_names)
 
     lock = NsxLock(
         generated_at=utcnow_iso(),
@@ -618,6 +636,10 @@ def _lock_app_impl_unlocked(
         raise NSXError(1)
 
     path = write_lock(app_dir, lock)
+    nsx_cfg = _load_app_cfg(app_dir)
+    ordered_modules = list(lock.modules)
+    _write_app_module_file(app_dir, nsx_cfg, module_names=ordered_modules)
+    _write_modules_gitignore_for_module_names(app_dir, nsx_cfg, ordered_modules)
     # ``write_lock`` already stamps ``lock.path`` for us.
     if quiet:
         return lock

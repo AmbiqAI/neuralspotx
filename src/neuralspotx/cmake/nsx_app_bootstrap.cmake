@@ -4,6 +4,12 @@ set(NSX_APP_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}")
 get_filename_component(NSX_APP_ROOT "${NSX_APP_CMAKE_DIR}/../.." ABSOLUTE)
 
 function(nsx_module_dir_for_name out_var module_name)
+    string(REPLACE "-" "_" module_var "${module_name}")
+    set(module_dir_var "NSX_APP_MODULE_DIR_${module_var}")
+    if(DEFINED ${module_dir_var})
+        set(${out_var} "${${module_dir_var}}" PARENT_SCOPE)
+        return()
+    endif()
     set(${out_var} "modules/${module_name}" PARENT_SCOPE)
 endfunction()
 
