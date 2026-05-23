@@ -74,17 +74,17 @@ projects:
   nsx-core:
     name: nsx-core
     url: https://github.com/AmbiqAI/nsx-core.git
-    revision: nsx-core-v0.2.0
+    revision: fac6a0149246c3794e3b61f4e87c7fbfadfa66ba
     path: modules/nsx-core
   nsx-harness:
     name: nsx-harness
     url: https://github.com/AmbiqAI/nsx-harness.git
-    revision: v0.1.0
+    revision: 0a705f60536455f076b637ce6b20b97664d47fa0
     path: modules/nsx-harness
   nsx-utils:
     name: nsx-utils
     url: https://github.com/AmbiqAI/nsx-utils.git
-    revision: v0.1.0
+    revision: f2f906926127205326c99a4e837a562d95f11950
     path: modules/nsx-utils
   nsx-perf:
     name: nsx-perf
@@ -94,7 +94,7 @@ projects:
   nsx-pmu-armv8m:
     name: nsx-pmu-armv8m
     url: https://github.com/AmbiqAI/nsx-pmu-armv8m.git
-    revision: v0.1.0
+    revision: ff9af0f097fefcb4f7f93c41e036c48a3f8654e0
     path: modules/nsx-pmu-armv8m
   nsx-peripherals:
     name: nsx-peripherals
@@ -104,7 +104,7 @@ projects:
   nsx-power:
     name: nsx-power
     url: https://github.com/AmbiqAI/nsx-power.git
-    revision: v0.1.0
+    revision: 1ebe9d7ffeb149d375970e80df533f3a6f0e4d2d
     path: modules/nsx-power
   nsx-portable-api:
     name: nsx-portable-api
@@ -253,15 +253,15 @@ modules:
     metadata: src/neuralspotx/boards/apollo4p_blue_kxr_evb/nsx-module.yaml
   nsx-core:
     project: nsx-core
-    revision: nsx-core-v0.2.0
+    revision: fac6a0149246c3794e3b61f4e87c7fbfadfa66ba
     metadata: modules/nsx-core/nsx-module.yaml
   nsx-harness:
     project: nsx-harness
-    revision: v0.1.0
+    revision: 0a705f60536455f076b637ce6b20b97664d47fa0
     metadata: modules/nsx-harness/nsx-module.yaml
   nsx-utils:
     project: nsx-utils
-    revision: v0.1.0
+    revision: f2f906926127205326c99a4e837a562d95f11950
     metadata: modules/nsx-utils/nsx-module.yaml
   nsx-perf:
     project: nsx-perf
@@ -269,7 +269,7 @@ modules:
     metadata: modules/nsx-perf/nsx-module.yaml
   nsx-pmu-armv8m:
     project: nsx-pmu-armv8m
-    revision: v0.1.0
+    revision: ff9af0f097fefcb4f7f93c41e036c48a3f8654e0
     metadata: modules/nsx-pmu-armv8m/nsx-module.yaml
   nsx-peripherals:
     project: nsx-peripherals
@@ -277,7 +277,7 @@ modules:
     metadata: modules/nsx-peripherals/nsx-module.yaml
   nsx-power:
     project: nsx-power
-    revision: v0.1.0
+    revision: 1ebe9d7ffeb149d375970e80df533f3a6f0e4d2d
     metadata: modules/nsx-power/nsx-module.yaml
   nsx-portable-api:
     project: nsx-portable-api
