@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import importlib.resources as resources
 import os
+import re
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as package_version
 from pathlib import Path
@@ -38,7 +39,39 @@ def _registry_project_entry(registry: dict[str, Any], project_name: str) -> Proj
     return ProjectEntry.from_mapping(project_name, projects.get(project_name))
 
 
+def _source_checkout_version() -> str | None:
+    """Return the version declared in a nearby source checkout, if present."""
+
+    for parent in Path(__file__).resolve().parents:
+        pyproject = parent / "pyproject.toml"
+        if not pyproject.is_file():
+            continue
+        try:
+            text = pyproject.read_text(encoding="utf-8")
+        except OSError:
+            return None
+
+        in_project = False
+        for raw_line in text.splitlines():
+            line = raw_line.strip()
+            if not line or line.startswith("#"):
+                continue
+            if line.startswith("[") and line.endswith("]"):
+                in_project = line == "[project]"
+                continue
+            if not in_project:
+                continue
+            match = re.match(r'version\s*=\s*["\']([^"\']+)["\']\s*$', line)
+            if match:
+                return match.group(1)
+        return None
+    return None
+
+
 def _nsx_tool_version() -> str | None:
+    source_version = _source_checkout_version()
+    if source_version:
+        return source_version
     try:
         return package_version("neuralspotx")
     except PackageNotFoundError:

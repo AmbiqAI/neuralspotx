@@ -22,12 +22,10 @@
 #include "nsx_pmu_profiler.h"
 
 // NSX runtime
-extern "C" {
 #include "ns_core.h"
 #include "ns_ambiqsuite_harness.h"
 #include "nsx_mem.h"
 #include "nsx_system.h"
-}
 
 // DWT cycle counter helpers (Cortex-M55)
 static inline void dwt_init(void) {

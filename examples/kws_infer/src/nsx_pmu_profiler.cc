@@ -5,10 +5,8 @@
 
 #include "nsx_pmu_profiler.h"
 
-extern "C" {
 #include "ns_ambiqsuite_harness.h"
 #include "ns_pmu_map.h"
-}
 
 void NsxPmuProfiler::Init(ns_pmu_preset_e preset) {
     ns_pmu_reset_config(&pmu_cfg_);
