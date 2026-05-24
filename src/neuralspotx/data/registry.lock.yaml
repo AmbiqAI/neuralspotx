@@ -141,6 +141,16 @@ projects:
     url: https://github.com/AmbiqAI/nsx-nanopb.git
     revision: v0.1.0
     path: modules/nsx-nanopb
+  ns-cmsis-nn:
+    name: ns-cmsis-nn
+    url: https://github.com/AmbiqAI/ns-cmsis-nn.git
+    revision: v7.26.0
+    path: modules/ns-cmsis-nn
+  helia-rt:
+    name: helia-rt
+    url: https://github.com/AmbiqAI/helia-rt.git
+    revision: helia-rt-v1.16.0
+    path: modules/helia-rt
 
 modules:
   nsx-ambiqsuite-r3:
@@ -307,6 +317,14 @@ modules:
     project: nsx-nanopb
     revision: v0.1.0
     metadata: modules/nsx-nanopb/nsx-module.yaml
+  nsx-cmsis-nn:
+    project: ns-cmsis-nn
+    revision: v7.26.0
+    metadata: modules/ns-cmsis-nn/nsx/nsx-module.yaml
+  nsx-helia-rt:
+    project: helia-rt
+    revision: helia-rt-v1.16.0
+    metadata: modules/helia-rt/nsx/nsx-module.yaml
   nsx-tooling:
     project: neuralspotx
     revision: main

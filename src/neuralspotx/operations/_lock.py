@@ -19,6 +19,7 @@ from ..models import OutdatedModule, OutdatedReport, OutdatedSkip
 from ..module_registry import (
     _local_module_names,
     _module_names_from_nsx,
+    _resolve_module_closure,
     _vendored_module_names,
 )
 from ..nsx_lock import (
@@ -45,7 +46,7 @@ from ..project_config import (
     _nsx_tool_version,
     _registry_project_entry,
     _write_app_module_file,
-    _write_modules_gitignore,
+    _write_modules_gitignore_for_module_names,
 )
 from ._common import OutdatedStatus, _log
 
@@ -72,6 +73,7 @@ def _build_lock_for_app(
     *,
     previous: NsxLock | None = None,
     write_side_effects: bool = True,
+    use_locked_closure_on_metadata_error: bool = False,
 ) -> NsxLock:
     """Resolve every module in nsx.yml to a commit + content hash.
 
@@ -103,6 +105,12 @@ def _build_lock_for_app(
     (``cmake/nsx/`` copy, ``modules.cmake``, ``modules/.gitignore``)
     are skipped. ``nsx lock --check`` uses this so a read-only check
     truly does not modify the on-disk app.
+
+    When ``use_locked_closure_on_metadata_error`` is True, a read-only
+    check may use the existing ``nsx.lock`` module order if dependency
+    metadata is not materialized locally. This keeps ``nsx lock --check``
+    useful on clean checkouts while preserving the package-manager rule
+    that writable lock refreshes must resolve the real dependency graph.
     """
 
     from ..metadata import registry_entry_for_module
@@ -111,10 +119,36 @@ def _build_lock_for_app(
     nsx_cfg = _load_app_cfg(app_dir)
     base_registry = _load_registry()
     registry = _effective_registry(base_registry, nsx_cfg)
-    module_names = _module_names_from_nsx(nsx_cfg)
+    seed_module_names = _module_names_from_nsx(nsx_cfg)
     local_names = _local_module_names(nsx_cfg)
     vendored_names = _vendored_module_names(nsx_cfg)
     tool_version = _nsx_tool_version()
+
+    try:
+        module_names = _resolve_module_closure(
+            seed_module_names,
+            app_dir=app_dir,
+            nsx_cfg=nsx_cfg,
+            registry=registry,
+            default_toolchain=DEFAULT_TOOLCHAIN,
+            acquire_missing=write_side_effects,
+        )
+    except (OSError, subprocess.SubprocessError, NSXResolutionError) as exc:
+        if use_locked_closure_on_metadata_error and previous is not None:
+            _log.warning(
+                "could not resolve dependency metadata for all modules (%s); "
+                "using the module closure recorded in nsx.lock for read-only check.",
+                exc,
+            )
+            module_names = list(previous.modules)
+        else:
+            seed_summary = ", ".join(seed_module_names) or "<none>"
+            raise NSXResolutionError(
+                "Unable to resolve dependency metadata for nsx.yml modules "
+                f"[{seed_summary}]: {exc}. Run `nsx lock` with the required "
+                "module sources available so nsx.lock can record the full "
+                "dependency closure."
+            ) from exc
 
     if write_side_effects:
         # Regenerate the deterministic side-effects that ``nsx sync`` produces
@@ -123,8 +157,8 @@ def _build_lock_for_app(
         # lives outside ``modules/<name>/`` and is therefore not covered by
         # any module's ``content_hash``.
         _copy_packaged_tree("neuralspotx", "cmake", app_dir / "cmake" / "nsx")
-        _write_app_module_file(app_dir, nsx_cfg)
-        _write_modules_gitignore(app_dir, nsx_cfg)
+        _write_app_module_file(app_dir, nsx_cfg, module_names=module_names)
+        _write_modules_gitignore_for_module_names(app_dir, nsx_cfg, module_names)
 
     lock = NsxLock(
         generated_at=utcnow_iso(),
@@ -597,7 +631,12 @@ def _lock_app_impl_unlocked(
         elif previous and not modules:
             previous = None  # full refresh
 
-    lock = _build_lock_for_app(app_dir, previous=previous, write_side_effects=not check)
+    lock = _build_lock_for_app(
+        app_dir,
+        previous=previous,
+        write_side_effects=not check,
+        use_locked_closure_on_metadata_error=bool(check and not update and on_disk_lock),
+    )
     lock_file = lock_path(app_dir)
 
     if check:
@@ -618,6 +657,10 @@ def _lock_app_impl_unlocked(
         raise NSXError(1)
 
     path = write_lock(app_dir, lock)
+    nsx_cfg = _load_app_cfg(app_dir)
+    ordered_modules = list(lock.modules)
+    _write_app_module_file(app_dir, nsx_cfg, module_names=ordered_modules)
+    _write_modules_gitignore_for_module_names(app_dir, nsx_cfg, ordered_modules)
     # ``write_lock`` already stamps ``lock.path`` for us.
     if quiet:
         return lock

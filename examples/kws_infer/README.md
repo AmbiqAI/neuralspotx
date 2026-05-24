@@ -22,20 +22,16 @@ left, right, on, off, stop, go.
 
 ```bash
 cd neuralspotx/examples/kws_infer
-cmake -S . -B build/apollo510_evb -G Ninja \
-  -DCMAKE_TOOLCHAIN_FILE=cmake/nsx/toolchains/arm-none-eabi-gcc.cmake \
-  -DCMAKE_BUILD_TYPE=Release \
-  -DNSX_BOARD=apollo510_evb
-cmake --build build/apollo510_evb
+nsx lock      --app-dir .
+nsx configure --app-dir .
+nsx build     --app-dir .
 ```
 
 ## Flash & View Output
 
 ```bash
-JFlashLiteExe -device AP510NFA-CBR -if SWD -speed 4000 \
-  build/apollo510_evb/kws_infer.bin -addr 0x00410000
-
-JLinkSWOViewerCLExe -device AP510NFA-CBR -itmport 0 -swofreq 1000000
+nsx flash     --app-dir .
+nsx view      --app-dir .
 ```
 
 ## System Init
@@ -58,10 +54,11 @@ This replaces ~60 lines of manual DCU/TPIU/ITM/cache/SpotManager init.
 | `src/kws_model_data.h` | Model weights as C array (in TCM via default .data) |
 | `src/nsx_pmu_profiler.h` | Per-layer PMU profiler (TFLM MicroProfilerInterface) |
 | `src/nsx_pmu_profiler.cc` | PMU profiler implementation — cycles, dcache misses, icache misses |
-| `CMakeLists.txt` | Build config — links HeliaRT v1.7.0 prebuilt + NSX modules |
+| `CMakeLists.txt` | Build config — links `nsx::helia_rt` source module + NSX modules |
 
 ## Dependencies
 
 - ARM GCC 14.3 (`arm-none-eabi-gcc`)
-- HeliaRT v1.7.0 (`release-with-logs` variant, for profiler hooks)
+- helia-rt `helia-rt-v1.16.0` via NSX source module (`release-with-logs` variant by default)
+- ns-cmsis-nn `v7.26.0` via helia-rt's NSX dependency metadata
 - NSX modules: `nsx-core`, `nsx-power`, `nsx-pmu-armv8m`, `nsx-harness`

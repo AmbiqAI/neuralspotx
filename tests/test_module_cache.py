@@ -282,6 +282,52 @@ def _fake_clone(payload: dict[str, str]):
 
 
 class TestVendorGitIntegration:
+    def test_registry_commit_revision_uses_detached_checkout(
+        self,
+        cache_dir: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        commit = "a" * 40
+        registry = {
+            "projects": {
+                "demo-proj": {
+                    "url": "https://example.com/demo.git",
+                    "revision": commit,
+                    "path": "modules/demo-proj",
+                }
+            },
+            "modules": {
+                "demo-mod": {
+                    "project": "demo-proj",
+                    "revision": commit,
+                    "metadata": "modules/demo-proj/nsx-module.yaml",
+                }
+            },
+        }
+        calls: list[tuple[str, Path, str]] = []
+
+        def fake_clone_at_commit(url: str, dest: Path, rev: str) -> None:
+            calls.append((url, dest, rev))
+            dest.mkdir(parents=True)
+            (dest / "file.txt").write_text("ok", encoding="utf-8")
+            (dest / ".git").mkdir()
+
+        def fail_branch_clone(*_args: object, **_kwargs: object) -> None:
+            raise AssertionError("raw commit revision must not use git clone --branch")
+
+        monkeypatch.setattr(module_registry._vendoring, "git_clone", fail_branch_clone)
+        monkeypatch.setattr(module_registry._vendoring, "git_clone_at_commit", fake_clone_at_commit)
+
+        app_dir = cache_dir / "app0"
+        app_dir.mkdir()
+        module_registry._ensure_module_cloned(app_dir, "demo-mod", registry)
+
+        assert calls == [
+            ("https://example.com/demo.git", app_dir / "modules" / "demo-proj", commit)
+        ]
+        assert (app_dir / "modules" / "demo-proj" / "file.txt").exists()
+        assert not (app_dir / "modules" / "demo-proj" / ".git").exists()
+
     def test_cache_miss_clones_and_populates(
         self,
         cache_dir: Path,

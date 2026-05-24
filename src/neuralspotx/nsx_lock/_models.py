@@ -95,7 +95,7 @@ class NsxLock:
             "nsx_tool": {"version": self.nsx_tool_version},
             "manifest": {"path": self.manifest_path, "hash": self.manifest_hash},
             "target": self.target,
-            "modules": {name: entry.to_yaml_dict() for name, entry in sorted(self.modules.items())},
+            "modules": {name: entry.to_yaml_dict() for name, entry in self.modules.items()},
         }
 
     @classmethod
