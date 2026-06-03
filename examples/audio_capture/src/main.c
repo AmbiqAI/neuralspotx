@@ -1,6 +1,5 @@
 #include <string.h>
 #include "ns_core.h"
-#include "ns_ambiqsuite_harness.h"
 #include "nsx_mem.h"
 #include "nsx_audio.h"
 
@@ -33,12 +32,11 @@ int main(void)
     };
     (void)ns_core_init(&core_cfg);
 
-    ns_itm_printf_enable();
+    nsx_itm_printf_enable();
     nsx_cache_enable();
 
     nsx_audio_config_t audio = {
         .source       = NSX_AUDIO_SOURCE_PDM,
-        .sample_rate  = SAMPLE_RATE,
         .num_channels = NUM_CHANNELS,
         .num_samples  = NUM_SAMPLES,
         .pdm          = nsx_audio_pdm_default,
@@ -51,12 +49,12 @@ int main(void)
     };
 
     if (nsx_audio_init(&audio) != 0) {
-        ns_printf("Audio init failed\r\n");
+        nsx_printf("Audio init failed\r\n");
         while (1) {}
     }
     nsx_audio_start(&audio);
 
-    ns_printf("Audio capture started: %u Hz, %u ch, %u samples/frame\r\n",
+    nsx_printf("Audio capture started: %u Hz, %u ch, %u samples/frame\r\n",
               SAMPLE_RATE, NUM_CHANNELS, NUM_SAMPLES);
 
     while (1) {
@@ -72,7 +70,7 @@ int main(void)
             }
 
             if ((g_frame_count % 100) == 0) {
-                ns_printf("Frame %lu  peak=%d\r\n",
+                nsx_printf("Frame %lu  peak=%d\r\n",
                           (unsigned long)g_frame_count, (int)peak);
             }
         }

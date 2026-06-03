@@ -13,8 +13,10 @@
 #include "core_portme.h"
 
 #include "nsx_system.h"
-#include "ns_timer.h"
-#include "ns_ambiqsuite_harness.h"
+#include "nsx_timer.h"
+#include "nsx_core.h"
+#include "am_mcu_apollo.h"
+#include "am_util.h"
 
 #include <stdarg.h>
 #include <stddef.h>
@@ -40,9 +42,9 @@ volatile ee_s32 seed5_volatile = 0;
 
 /* ── Timer (microsecond) ───────────────────────────────────── */
 
-static ns_timer_config_t s_timer_cfg = {
-    .api = &ns_timer_V1_0_0,
-    .timer = NS_TIMER_COUNTER,
+static nsx_timer_config_t s_timer_cfg = {
+    .api = &nsx_timer_V1_0_0,
+    .timer = NSX_TIMER_COUNTER,
     .enableInterrupt = false,
 };
 
@@ -51,14 +53,14 @@ static CORETIMETYPE start_time_val, stop_time_val;
 void
 start_time(void)
 {
-    ns_timer_clear(&s_timer_cfg);
-    start_time_val = ns_us_ticker_read(&s_timer_cfg);
+    nsx_timer_clear(&s_timer_cfg);
+    start_time_val = nsx_timer_us_read(&s_timer_cfg);
 }
 
 void
 stop_time(void)
 {
-    stop_time_val = ns_us_ticker_read(&s_timer_cfg);
+    stop_time_val = nsx_timer_us_read(&s_timer_cfg);
 }
 
 CORE_TICKS
@@ -87,7 +89,7 @@ portable_init(core_portable *p, int *argc, char *argv[])
     (void)argv;
 
     /* Timer is our only platform dependency */
-    ns_timer_init(&s_timer_cfg);
+    nsx_timer_init(&s_timer_cfg);
 
     if (sizeof(ee_ptr_int) != sizeof(ee_u8 *)) {
         ee_printf("ERROR! ee_ptr_int does not hold a pointer!\n");
@@ -123,6 +125,6 @@ ee_printf(const char *fmt, ...)
     int n = am_util_stdio_vsprintf(buf, fmt, args);
     va_end(args);
 
-    ns_printf("%s", buf);
+    nsx_printf("%s", buf);
     return n;
 }

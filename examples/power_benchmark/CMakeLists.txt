@@ -120,6 +120,8 @@ endif()
 target_link_libraries(power_benchmark PRIVATE
     nsx::board
     nsx::runtime_core
+    nsx::gpio
+    nsx::timer
     nsx::power
 )
 

@@ -20,14 +20,45 @@
 
 #include "nsx_system.h"
 #include "nsx_power.h"
-#include "ns_timer.h"
-#include "ns_ambiqsuite_harness.h"
-#include "ns_energy_monitor.h"
+#include "nsx_core.h"
+#include "nsx_timer.h"
+#include "nsx_gpio.h"
+#include "ns_core.h"
+#include "am_mcu_apollo.h"
+#include "am_bsp.h"
+#include "am_util.h"
 
 #ifdef BENCHMARK_COREMARK
 #include "coremark.h"
 #include <stddef.h>
 #endif
+
+/* ── Power-monitor GPIO signalling (Joulescope phase markers) ──
+ * Inlined here: the modern NSX stack dropped the ns_energy_monitor
+ * helper. Apollo5B EVB uses GPIO 29/36. */
+#define NS_POWER_MONITOR_GPIO_0 29
+#define NS_POWER_MONITOR_GPIO_1 36
+
+static const nsx_gpio_config_t s_power_monitor_gpio_0 = {
+    .api = &nsx_gpio_V0_0_1,
+    .pin = NS_POWER_MONITOR_GPIO_0,
+    .mode = NSX_GPIO_MODE_OUTPUT,
+    .initial_level = NSX_GPIO_LEVEL_LOW,
+};
+
+static const nsx_gpio_config_t s_power_monitor_gpio_1 = {
+    .api = &nsx_gpio_V0_0_1,
+    .pin = NS_POWER_MONITOR_GPIO_1,
+    .mode = NSX_GPIO_MODE_OUTPUT,
+    .initial_level = NSX_GPIO_LEVEL_LOW,
+};
+
+static void
+ns_init_power_monitor_state(void)
+{
+    nsx_gpio_init(&s_power_monitor_gpio_0);
+    nsx_gpio_init(&s_power_monitor_gpio_1);
+}
 
 /* ===================================================================
  * ITCM-resident measurement trampoline
@@ -46,7 +77,7 @@ static void
 itcm_measurement_loop(void *arg)
 {
     /* --- Step 6: Power off NVM --- */
-    ns_power_disable_nvm();
+    nsx_power_disable_nvm();
 
 #ifndef BENCHMARK_COREMARK
     /* --- Step 7: Disable caches (while1 only) ---
@@ -55,18 +86,18 @@ itcm_measurement_loop(void *arg)
      * NVM is off, those calls are served entirely from I-cache.
      * The while(1) NOP loop never touches MRAM, so it is safe to
      * disable everything for the lowest baseline current. */
-    ns_power_disable_caches();
+    nsx_power_disable_caches();
 #endif
 
     /* Signal ACTIVE phase to Joulescope */
     am_hal_gpio_output_set(NS_POWER_MONITOR_GPIO_0);
     am_hal_gpio_output_clear(NS_POWER_MONITOR_GPIO_1);
 
-    /* Drain the NVM read pipeline.  After ns_power_disable_nvm(),
+    /* Drain the NVM read pipeline.  After nsx_power_disable_nvm(),
      * the controller waits for an MRAM bus transaction to finalize.
      * Without this, compilers that inline all library calls (armclang
      * -Ofast) never touch MRAM and NVM stays powered (~1.4 mA extra). */
-    NS_POWER_DRAIN_NVM();
+    NSX_POWER_DRAIN_NVM();
 
 #ifdef BENCHMARK_COREMARK
     /* CoreMark iterate() — calls core_bench_list + crcu16, all in ITCM */
@@ -93,25 +124,25 @@ itcm_measurement_loop(void *arg)
 static void
 enter_power_measurement(void *benchmark_arg)
 {
-    ns_printf("Entering power measurement...\n");
-    ns_delay_us(200000); /* let SWO flush */
+    nsx_printf("Entering power measurement...\n");
+    nsx_delay_us(200000); /* let SWO flush */
 
     /* Step 1: Disable SWO/ITM — no more prints after this */
-    ns_itm_printf_disable();
-    ns_power_disable_debug();
+    nsx_itm_printf_disable();
+    nsx_power_disable_debug();
 
     /* Step 2: Shut down all non-core peripherals + timers */
-    ns_power_shutdown_peripherals();
+    nsx_power_shutdown_peripherals();
 
     /* Step 3: Minimize memory — 32K ITCM + 128K DTCM, no SSRAM */
-    ns_power_minimize_memory();
+    nsx_power_minimize_memory();
 
     /* Step 4: Tristate all GPIOs except power-monitor pins */
     const uint32_t keep[] = {
         NS_POWER_MONITOR_GPIO_0,
         NS_POWER_MONITOR_GPIO_1,
     };
-    ns_power_tristate_gpios(keep, 2);
+    nsx_power_tristate_gpios(keep, 2);
 
     /* Step 5: Select target clock mode LAST (after peripherals are off) */
 #ifdef BENCHMARK_HP_MODE
@@ -138,15 +169,15 @@ enter_power_measurement(void *benchmark_arg)
 static void __attribute__((noreturn))
 enter_nvm_power_measurement(void *benchmark_arg)
 {
-    ns_printf("Entering NVM all-memory-on power measurement...\n");
-    ns_delay_us(200000); /* let SWO flush */
+    nsx_printf("Entering NVM all-memory-on power measurement...\n");
+    nsx_delay_us(200000); /* let SWO flush */
 
     /* Step 1: Disable SWO/ITM */
-    ns_itm_printf_disable();
-    ns_power_disable_debug();
+    nsx_itm_printf_disable();
+    nsx_power_disable_debug();
 
     /* Step 2: Shut down all non-core peripherals + timers */
-    ns_power_shutdown_peripherals();
+    nsx_power_shutdown_peripherals();
 
     /* Step 3: Do NOT minimize memory — keep all NVM + SSRAM powered.
      * MRAM low-power read mode is fine; just don't shrink TCM or
@@ -157,7 +188,7 @@ enter_nvm_power_measurement(void *benchmark_arg)
         NS_POWER_MONITOR_GPIO_0,
         NS_POWER_MONITOR_GPIO_1,
     };
-    ns_power_tristate_gpios(keep, 2);
+    nsx_power_tristate_gpios(keep, 2);
 
     /* Step 5: Select target clock mode */
 #ifdef BENCHMARK_HP_MODE
@@ -193,26 +224,26 @@ enter_nvm_power_measurement(void *benchmark_arg)
 static void __attribute__((noreturn))
 enter_minmem_power_measurement(void *benchmark_arg)
 {
-    ns_printf("Entering NVM min-memory power measurement...\n");
+    nsx_printf("Entering NVM min-memory power measurement...\n");
 
     /* I-cache warm-up */
     for (int i = 0; i < 3; i++) {
         iterate(benchmark_arg);
     }
 
-    ns_delay_us(200000); /* let SWO flush */
+    nsx_delay_us(200000); /* let SWO flush */
 
     /* Step 1: Disable SWO/ITM */
-    ns_itm_printf_disable();
-    ns_power_disable_debug();
+    nsx_itm_printf_disable();
+    nsx_power_disable_debug();
 
     /* Step 2: Shut down all non-core peripherals + timers */
-    ns_power_shutdown_peripherals();
+    nsx_power_shutdown_peripherals();
 
     /* Step 3: Minimize memory — matches SDK5 apollo5_cache_memory_config()
      * with ALL_RETAIN=0: ITCM32K+DTCM128K, NVM0_ONLY, SRAM_NONE,
      * MRAM LP read mode, crypto clock gate. */
-    ns_power_minimize_memory();
+    nsx_power_minimize_memory();
 
     /* Step 4: ELP retention (SDK5 uses ELP_RET for COREMARK_DEFAULT) */
     am_hal_pwrctrl_pwrmodctl_cpdlp_t cpdlp = {
@@ -230,7 +261,7 @@ enter_minmem_power_measurement(void *benchmark_arg)
     CLKGEN->CLKCTRL = 0x0;
 
     /* Step 7: Tristate ALL GPIOs */
-    ns_power_tristate_gpios(NULL, 0);
+    nsx_power_tristate_gpios(NULL, 0);
 
     /* Step 8: Select LP mode */
     am_hal_pwrctrl_mcu_mode_select(AM_HAL_PWRCTRL_MCU_MODE_LOW_POWER);
@@ -446,22 +477,22 @@ enter_sdk5_power_measurement(void *benchmark_arg)
 static void __attribute__((noreturn))
 enter_deepsleep_measurement(void)
 {
-    ns_printf("Entering deep sleep measurement...\n");
-    ns_delay_us(200000);
+    nsx_printf("Entering deep sleep measurement...\n");
+    nsx_delay_us(200000);
 
-    ns_itm_printf_disable();
-    ns_power_disable_debug();
-    ns_power_shutdown_peripherals();
+    nsx_itm_printf_disable();
+    nsx_power_disable_debug();
+    nsx_power_shutdown_peripherals();
 
     /* For deep sleep we keep NVM on (MCU needs it for wakeup path)
      * but still minimize everything else. */
-    ns_power_minimize_memory();
+    nsx_power_minimize_memory();
 
     const uint32_t keep[] = {
         NS_POWER_MONITOR_GPIO_0,
         NS_POWER_MONITOR_GPIO_1,
     };
-    ns_power_tristate_gpios(keep, 2);
+    nsx_power_tristate_gpios(keep, 2);
 
     am_hal_pwrctrl_mcu_mode_select(AM_HAL_PWRCTRL_MCU_MODE_LOW_POWER);
 
@@ -554,23 +585,23 @@ main(void)
     ns_init_power_monitor_state();
 
 #ifdef BENCHMARK_HP_MODE
-    ns_printf("\n=== Power Benchmark: HP 250 MHz ===\n");
+    nsx_printf("\n=== Power Benchmark: HP 250 MHz ===\n");
 #else
-    ns_printf("\n=== Power Benchmark: LP 96 MHz ===\n");
+    nsx_printf("\n=== Power Benchmark: LP 96 MHz ===\n");
 #endif
 
 #ifdef BENCHMARK_DEEPSLEEP
-    ns_printf("Mode: Deep Sleep\n");
+    nsx_printf("Mode: Deep Sleep\n");
     enter_deepsleep_measurement();
 
 #elif defined(BENCHMARK_COREMARK)
 
 #ifdef BENCHMARK_NVM_ALL_ON
-    ns_printf("Mode: CoreMark (NVM execution, all memory on)\n");
+    nsx_printf("Mode: CoreMark (NVM execution, all memory on)\n");
 #elif defined(BENCHMARK_NVM_MINMEM)
-    ns_printf("Mode: CoreMark (NVM execution, minimal memory — SDK5 match)\n");
+    nsx_printf("Mode: CoreMark (NVM execution, minimal memory — SDK5 match)\n");
 #else
-    ns_printf("Mode: CoreMark (ITCM execution, NVM off)\n");
+    nsx_printf("Mode: CoreMark (ITCM execution, NVM off)\n");
 #endif
 
     /* Switch to target clock BEFORE CoreMark timing so the score
@@ -592,7 +623,7 @@ main(void)
 #endif
 
 #else /* BENCHMARK_WHILE1 (default) */
-    ns_printf("Mode: While(1)\n");
+    nsx_printf("Mode: While(1)\n");
     enter_power_measurement(NULL);
 #endif
 #endif /* BENCHMARK_SDK5_MIMIC */

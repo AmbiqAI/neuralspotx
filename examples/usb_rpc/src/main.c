@@ -1,7 +1,6 @@
 #include <string.h>
 
 #include "ns_core.h"
-#include "ns_ambiqsuite_harness.h"
 #include "nsx_mem.h"
 #include "nsx_usb.h"
 #include "nsx_rpc_dispatch.h"
@@ -65,7 +64,7 @@ static bool rx_feed(nsx_usb_config_t *usb, uint32_t *frame_len) {
             /* Decode length. */
             uint32_t len = nsx_rpc_read_hdr(g_hdr_buf);
             if (len == 0 || len > NSX_RPC_MAX_MSG_BYTES) {
-                ns_printf("RPC framing: bad length %u — resync\r\n", (unsigned)len);
+                nsx_printf("RPC framing: bad length %u — resync\r\n", (unsigned)len);
                 g_rx_state = RX_WAIT_HDR;
                 g_rx_got   = 0;
                 continue;
@@ -94,7 +93,7 @@ int main(void) {
         .api = &ns_core_V1_0_0,
     };
     (void)ns_core_init(&core_cfg);
-    ns_itm_printf_enable();
+    nsx_itm_printf_enable();
     nsx_cache_enable();
 
     nsx_usb_config_t usb = {
@@ -111,12 +110,12 @@ int main(void) {
     };
 
     if (nsx_usb_init(&usb) != 0) {
-        ns_printf("USB init failed\r\n");
+        nsx_printf("USB init failed\r\n");
         while (1) {}
     }
 
-    ns_printf("NSX USB RPC ready\r\n");
-    ns_printf("Protocol: 4-byte LE length prefix + nanopb NsxRpcMessage\r\n");
+    nsx_printf("NSX USB RPC ready\r\n");
+    nsx_printf("Protocol: 4-byte LE length prefix + nanopb NsxRpcMessage\r\n");
 
     while (1) {
         if (!nsx_usb_connected(&usb)) {
@@ -124,14 +123,14 @@ int main(void) {
             g_rx_state    = RX_WAIT_HDR;
             g_rx_got      = 0;
             g_rx_body_len = 0;
-            ns_delay_us(100000);
+            nsx_delay_us(100000);
             continue;
         }
 
         uint32_t frame_len = 0;
         if (!rx_feed(&usb, &frame_len)) {
             /* No complete frame yet — yield. */
-            ns_delay_us(100);
+            nsx_delay_us(100);
             continue;
         }
 

@@ -1,5 +1,4 @@
 #include "ns_core.h"
-#include "ns_ambiqsuite_harness.h"
 
 int main(void)
 {
@@ -8,10 +7,10 @@ int main(void)
     };
     (void)ns_core_init(&cfg);
 
-    ns_itm_printf_enable();
+    nsx_itm_printf_enable();
 
     while (1) {
-        ns_printf("Hello from nsx!\r\n");
-        ns_delay_us(1000000);
+        nsx_printf("Hello from nsx!\r\n");
+        nsx_delay_us(1000000);
     }
 }

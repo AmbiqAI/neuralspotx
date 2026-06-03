@@ -1,6 +1,5 @@
 #include <string.h>
 #include "ns_core.h"
-#include "ns_ambiqsuite_harness.h"
 #include "nsx_mem.h"
 #include "nsx_usb.h"
 
@@ -20,7 +19,7 @@ int main(void)
     };
     (void)ns_core_init(&core_cfg);
 
-    ns_itm_printf_enable();
+    nsx_itm_printf_enable();
     nsx_cache_enable();
 
     nsx_usb_config_t usb = {
@@ -37,15 +36,15 @@ int main(void)
     };
 
     if (nsx_usb_init(&usb) != 0) {
-        ns_printf("USB init failed\r\n");
+        nsx_printf("USB init failed\r\n");
         while (1) {}
     }
 
-    ns_printf("USB CDC echo ready — connect a serial terminal\r\n");
+    nsx_printf("USB CDC echo ready — connect a serial terminal\r\n");
 
     while (1) {
         if (!nsx_usb_connected(&usb)) {
-            ns_delay_us(100000);
+            nsx_delay_us(100000);
             continue;
         }
 

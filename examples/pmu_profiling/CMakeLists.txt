@@ -19,7 +19,6 @@ add_executable(pmu_profiling
 target_link_libraries(pmu_profiling PRIVATE
     nsx::board
     nsx::runtime_core
-    nsx::pmu_armv8m
 )
 
 nsx_finalize_app(pmu_profiling)

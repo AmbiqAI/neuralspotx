@@ -17,7 +17,7 @@
 #include "pb_encode.h"
 
 #include "am_mcu_apollo.h"  /* am_hal_timer_count64 for uptime */
-#include "ns_core.h"        /* ns_printf */
+#include "ns_core.h"        /* nsx_printf */
 
 /* Shorthand aliases for nanopb-generated enum values. */
 #define NSX_MSG_PING_REQ     NsxRpcMsgType_NSX_MSG_PING_REQ
@@ -119,7 +119,7 @@ bool nsx_rpc_dispatch(const uint8_t *rx_buf, uint32_t rx_len,
     NsxRpcMessage req = NsxRpcMessage_init_default;
     pb_istream_t  in  = pb_istream_from_buffer(rx_buf, rx_len);
     if (!pb_decode(&in, NsxRpcMessage_fields, &req)) {
-        ns_printf("RPC: decode error: %s\r\n", PB_GET_ERROR(&in));
+        nsx_printf("RPC: decode error: %s\r\n", PB_GET_ERROR(&in));
         return false;
     }
 
@@ -137,14 +137,14 @@ bool nsx_rpc_dispatch(const uint8_t *rx_buf, uint32_t rx_len,
             handle_status(&resp);
             break;
         default:
-            ns_printf("RPC: unknown msg type %d\r\n", (int)req.type);
+            nsx_printf("RPC: unknown msg type %d\r\n", (int)req.type);
             return false;
     }
 
     /* Encode response. */
     pb_ostream_t out = pb_ostream_from_buffer(tx_buf, NSX_RPC_MAX_MSG_BYTES);
     if (!pb_encode(&out, NsxRpcMessage_fields, &resp)) {
-        ns_printf("RPC: encode error: %s\r\n", PB_GET_ERROR(&out));
+        nsx_printf("RPC: encode error: %s\r\n", PB_GET_ERROR(&out));
         return false;
     }
 
