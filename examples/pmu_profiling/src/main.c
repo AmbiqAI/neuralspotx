@@ -1,13 +1,12 @@
 #include <stdint.h>
 #include "ns_core.h"
-#include "ns_ambiqsuite_harness.h"
-#include "ns_pmu_utils.h"
+#include "am_mcu_apollo.h"
+#include "am_util_pmu.h"
 
 #define VECTOR_LEN  256
 #define OUTER_LOOPS 100
 
 static volatile int32_t g_sink;
-static ns_pmu_config_t g_pmu;
 
 static void workload(void)
 {
@@ -25,23 +24,31 @@ int main(void)
     };
     (void)ns_core_init(&core_cfg);
 
-    ns_itm_printf_enable();
+    nsx_itm_printf_enable();
 
-    /* Configure the PMU with the basic CPU preset (cycles, instructions, etc). */
-    g_pmu.api = &ns_pmu_V1_0_0;
-    ns_pmu_apply_preset(&g_pmu, NS_PMU_PRESET_BASIC_CPU);
-    ns_pmu_init(&g_pmu);
+    am_util_pmu_config_t pmu_cfg = {0};
+    am_util_pmu_profiling_t profiling = {0};
+
+    pmu_cfg.ui32Counters = PMU_CNTENSET_CNT0_ENABLE_Msk |
+                           PMU_CNTENSET_CCNTR_ENABLE_Msk;
+    pmu_cfg.ui32EventType[0] = ARM_PMU_INST_RETIRED;
+
+    am_util_pmu_enable();
+    am_util_pmu_init(&pmu_cfg);
 
     while (1) {
-        ns_pmu_reset_counters();
+        ARM_PMU_CYCCNT_Reset();
+        ARM_PMU_EVCNTR_ALL_Reset();
 
         for (uint32_t n = 0; n < OUTER_LOOPS; ++n) {
             workload();
         }
 
-        ns_pmu_get_counters(&g_pmu);
-        ns_printf("--- PMU after %u iterations ---\r\n", (unsigned)OUTER_LOOPS);
-        ns_pmu_print_counters(&g_pmu);
-        ns_delay_us(2000000);
+        nsx_printf("--- PMU after %u iterations ---\r\n", (unsigned)OUTER_LOOPS);
+        am_util_pmu_get_profiling(&pmu_cfg, &profiling);
+        nsx_printf("cycles=%lu instructions=%lu\r\n",
+                   (unsigned long)profiling.cycleProfiling.ui32CountValue,
+                   (unsigned long)profiling.eventProfiling[0].ui32CountValue);
+        nsx_delay_us(2000000);
     }
 }

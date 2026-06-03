@@ -6,20 +6,27 @@ set(NSX_APP_MODULES
     nsx-ambiq-bsp-r5
     nsx-soc-hal
     nsx-cmsis-startup
-    nsx-board-apollo510-evb
     nsx-core
-    nsx-harness
-    nsx-utils
+    nsx-interrupt
+    nsx-gpio
+    nsx-timer
     nsx-power
-    nsx-tooling
 )
-set(NSX_APP_MODULE_DIR_nsx_cmsis_core "modules/nsx-cmsis-core")
-set(NSX_APP_MODULE_DIR_nsx_ambiqsuite_r5 "modules/nsx-ambiqsuite-r5")
-set(NSX_APP_MODULE_DIR_nsx_ambiq_hal_r5 "modules/nsx-ambiq-hal-r5")
-set(NSX_APP_MODULE_DIR_nsx_ambiq_bsp_r5 "modules/nsx-ambiq-bsp-r5")
-set(NSX_APP_MODULE_DIR_nsx_soc_hal "modules/nsx-soc-hal")
-set(NSX_APP_MODULE_DIR_nsx_cmsis_startup "modules/nsx-cmsis-startup")
-set(NSX_APP_MODULE_DIR_nsx_core "modules/nsx-core")
-set(NSX_APP_MODULE_DIR_nsx_harness "modules/nsx-harness")
-set(NSX_APP_MODULE_DIR_nsx_utils "modules/nsx-utils")
-set(NSX_APP_MODULE_DIR_nsx_power "modules/nsx-power")
+
+set(NSX_MODULE_DIR_nsx_cmsis_core "modules/nsx-ambiq-sdk-r5/modules/nsx-cmsis-core")
+set(NSX_MODULE_DIR_nsx_ambiqsuite_r5 "modules/nsx-ambiq-sdk-r5/modules/nsx-ambiqsuite-r5")
+set(NSX_MODULE_DIR_nsx_ambiq_hal_r5 "modules/nsx-ambiq-sdk-r5/modules/nsx-ambiq-hal-r5")
+set(NSX_MODULE_DIR_nsx_ambiq_bsp_r5 "modules/nsx-ambiq-sdk-r5/modules/nsx-ambiq-bsp-r5")
+set(NSX_MODULE_DIR_nsx_soc_hal "modules/nsx-ambiq-sdk-r5/modules/nsx-soc-hal")
+set(NSX_MODULE_DIR_nsx_cmsis_startup "modules/nsx-ambiq-sdk-r5/modules/nsx-cmsis-startup")
+set(NSX_MODULE_DIR_nsx_board_apollo510_evb "boards/apollo510_evb")
+set(NSX_MODULE_DIR_nsx_core "modules/nsx-ambiq-sdk-r5/modules/nsx-core")
+set(NSX_MODULE_DIR_nsx_interrupt "modules/nsx-ambiq-sdk-r5/modules/nsx-interrupt")
+set(NSX_MODULE_DIR_nsx_gpio "modules/nsx-ambiq-sdk-r5/modules/nsx-gpio")
+set(NSX_MODULE_DIR_nsx_timer "modules/nsx-ambiq-sdk-r5/modules/nsx-timer")
+set(NSX_MODULE_DIR_nsx_power "modules/nsx-ambiq-sdk-r5/modules/nsx-power")
+set(NSX_MODULE_DIR_nsx_tooling "cmake/nsx")
+
+set(NSX_APP_PROJECT_DIRS
+    modules/nsx-ambiq-sdk-r5
+)

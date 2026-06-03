@@ -9,28 +9,54 @@ channel: stable
 profile: apollo510_evb_minimal
 profile_status: active
 modules:
-- name: nsx-cmsis-core
-  project: nsx-cmsis-core
-- name: nsx-ambiqsuite-r5
-  project: nsx-ambiqsuite-r5
-- name: nsx-ambiq-hal-r5
-  project: nsx-ambiq-hal-r5
-- name: nsx-ambiq-bsp-r5
-  project: nsx-ambiq-bsp-r5
-- name: nsx-soc-hal
-  project: nsx-soc-hal
-- name: nsx-cmsis-startup
-  project: nsx-cmsis-startup
-- name: nsx-board-apollo510-evb
-  project: neuralspotx
-- name: nsx-core
-  project: nsx-core
-- name: nsx-harness
-  project: nsx-harness
-- name: nsx-utils
-  project: nsx-utils
-- name: nsx-pmu-armv8m
-  project: nsx-pmu-armv8m
-- name: nsx-tooling
-  project: neuralspotx
+  - name: nsx-cmsis-core
+    project: nsx-ambiq-sdk-r5
+    revision: main
+  - name: nsx-ambiqsuite-r5
+    project: nsx-ambiq-sdk-r5
+    revision: main
+  - name: nsx-ambiq-hal-r5
+    project: nsx-ambiq-sdk-r5
+    revision: main
+  - name: nsx-ambiq-bsp-r5
+    project: nsx-ambiq-sdk-r5
+    revision: main
+  - name: nsx-soc-hal
+    project: nsx-ambiq-sdk-r5
+    revision: main
+  - name: nsx-cmsis-startup
+    project: nsx-ambiq-sdk-r5
+    revision: main
+  - name: nsx-board-apollo510-evb
+    project: neuralspotx
+  - name: nsx-core
+    project: nsx-ambiq-sdk-r5
+    revision: main
+  - name: nsx-tooling
+    project: neuralspotx
 features: {}
+module_registry:
+  projects:
+    nsx-ambiq-sdk-r5:
+      revision: main
+  modules:
+    nsx-ambiqsuite-r5:
+      project: nsx-ambiq-sdk-r5
+      revision: main
+      metadata: modules/nsx-ambiqsuite-r5/nsx-module.yaml
+    nsx-cmsis-core:
+      project: nsx-ambiq-sdk-r5
+      revision: main
+      metadata: modules/nsx-cmsis-core/nsx-module.yaml
+    nsx-cmsis-startup:
+      project: nsx-ambiq-sdk-r5
+      revision: main
+      metadata: modules/nsx-cmsis-startup/nsx-module.yaml
+    nsx-soc-hal:
+      project: nsx-ambiq-sdk-r5
+      revision: main
+      metadata: modules/nsx-soc-hal/nsx-module.yaml
+    nsx-core:
+      project: nsx-ambiq-sdk-r5
+      revision: main
+      metadata: modules/nsx-core/nsx-module.yaml

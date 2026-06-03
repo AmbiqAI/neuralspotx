@@ -101,6 +101,8 @@ target_compile_definitions(coremark PRIVATE
 target_link_libraries(coremark PRIVATE
     nsx::board
     nsx::runtime_core
+    nsx::gpio
+    nsx::timer
     nsx::power
 )
 

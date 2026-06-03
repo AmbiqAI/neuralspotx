@@ -17,13 +17,59 @@
 
 #include "nsx_system.h"
 #include "nsx_power.h"
-#include "ns_timer.h"
-#include "ns_ambiqsuite_harness.h"
-#include "ns_energy_monitor.h"
+#include "nsx_core.h"
+#include "nsx_timer.h"
+#include "nsx_gpio.h"
+#include "am_bsp.h"
+#include "am_mcu_apollo.h"
+#include "am_util.h"
 
 #include "SEGGER_RTT.h"
 
 #include <stdarg.h>
+
+/* ── Power-monitor GPIO signalling (Joulescope phase markers) ──
+ * Inlined here: the modern NSX stack dropped the ns_energy_monitor
+ * helper. Apollo5B EVB uses GPIO 29/36. */
+#define NS_POWER_MONITOR_GPIO_0 29
+#define NS_POWER_MONITOR_GPIO_1 36
+#define NS_IDLE 0
+#define NS_DATA_COLLECTION 1
+
+static const nsx_gpio_config_t s_power_monitor_gpio_0 = {
+    .api = &nsx_gpio_V0_0_1,
+    .pin = NS_POWER_MONITOR_GPIO_0,
+    .mode = NSX_GPIO_MODE_OUTPUT,
+    .initial_level = NSX_GPIO_LEVEL_LOW,
+};
+
+static const nsx_gpio_config_t s_power_monitor_gpio_1 = {
+    .api = &nsx_gpio_V0_0_1,
+    .pin = NS_POWER_MONITOR_GPIO_1,
+    .mode = NSX_GPIO_MODE_OUTPUT,
+    .initial_level = NSX_GPIO_LEVEL_LOW,
+};
+
+static bool g_power_monitor_enabled = false;
+
+static void
+ns_init_power_monitor_state(void)
+{
+    nsx_gpio_init(&s_power_monitor_gpio_0);
+    nsx_gpio_init(&s_power_monitor_gpio_1);
+    g_power_monitor_enabled = true;
+}
+
+static void
+ns_set_power_monitor_state(uint8_t state)
+{
+    if (g_power_monitor_enabled) {
+        nsx_gpio_write(NS_POWER_MONITOR_GPIO_0,
+                       (state & 0x01) ? NSX_GPIO_LEVEL_HIGH : NSX_GPIO_LEVEL_LOW);
+        nsx_gpio_write(NS_POWER_MONITOR_GPIO_1,
+                       ((state >> 1) & 0x01) ? NSX_GPIO_LEVEL_HIGH : NSX_GPIO_LEVEL_LOW);
+    }
+}
 
 /*
  * ITCM-resident trampoline: shuts off NVM (MRAM) and caches, then
@@ -75,10 +121,9 @@ itcm_power_loop(void *results)
      * Joulescope phase marker is well clear of the NVM-off transient.
      * Time-based rather than a magic-number busy-wait so the duration
      * is reproducible across toolchains and optimisation levels. */
-    ns_delay_us(1000);
+    nsx_delay_us(1000);
     am_hal_gpio_output_set(NS_POWER_MONITOR_GPIO_0);
     am_hal_gpio_output_clear(NS_POWER_MONITOR_GPIO_1);
-
     while (1) {
         iterate(results);
     }
@@ -105,9 +150,9 @@ volatile ee_s32 seed5_volatile = 0;
 
 /* ── Timer (microsecond) ───────────────────────────────────── */
 
-static ns_timer_config_t s_timer_cfg = {
-    .api = &ns_timer_V1_0_0,
-    .timer = NS_TIMER_COUNTER,
+static nsx_timer_config_t s_timer_cfg = {
+    .api = &nsx_timer_V1_0_0,
+    .timer = NSX_TIMER_COUNTER,
     .enableInterrupt = false,
 };
 
@@ -116,14 +161,14 @@ static CORETIMETYPE start_time_val, stop_time_val;
 void
 start_time(void)
 {
-    ns_timer_clear(&s_timer_cfg);
-    start_time_val = ns_us_ticker_read(&s_timer_cfg);
+    nsx_timer_clear(&s_timer_cfg);
+    start_time_val = nsx_timer_us_read(&s_timer_cfg);
 }
 
 void
 stop_time(void)
 {
-    stop_time_val = ns_us_ticker_read(&s_timer_cfg);
+    stop_time_val = nsx_timer_us_read(&s_timer_cfg);
 }
 
 CORE_TICKS
@@ -183,7 +228,7 @@ portable_init(core_portable *p, int *argc, char *argv[])
     ns_set_power_monitor_state(NS_DATA_COLLECTION);
 
     /* Start the microsecond timer */
-    ns_timer_init(&s_timer_cfg);
+    nsx_timer_init(&s_timer_cfg);
 
     if (sizeof(ee_ptr_int) != sizeof(ee_u8 *)) {
         ee_printf("ERROR! ee_ptr_int does not hold a pointer!\n");
@@ -216,15 +261,15 @@ portable_fini(core_portable *p)
 #endif
 
     /* Brief delay to let SWO flush */
-    ns_delay_us(200000);
+    nsx_delay_us(200000);
 
     /* Disable ITM/SWO — no more prints after this */
-    ns_itm_printf_disable();
+    nsx_itm_printf_disable();
 
     /* Aggressive power-down: everything off, LP mode, NO SpotManager */
-    static const ns_power_config_t coremark_power = {
-        .api               = &ns_power_V1_0_0,
-        .perf_mode         = NS_PERF_LOW,
+    static const nsx_power_config_t coremark_power = {
+        .api               = &nsx_power_V1_0_0,
+        .perf_mode         = NSX_POWER_PERF_LOW,
         .need_audadc       = false,
         .need_ssram        = false,
         .need_crypto       = false,
@@ -238,10 +283,10 @@ portable_fini(core_portable *p)
         .need_xtal         = false,
         .spotmgr_collapse  = false,
     };
-    ns_power_config(&coremark_power);
+    nsx_power_configure(&coremark_power);
 
     /* Override CPDLP to ELP retention (SDK5-equivalent).
-     * ns_power_config() sets ELP_ON; retention saves ~100 µW. */
+     * nsx_power_configure() sets ELP_ON; retention saves ~100 µW. */
     am_hal_pwrctrl_pwrmodctl_cpdlp_t cpdlp = {
         .eRlpConfig = AM_HAL_PWRCTRL_RLP_ON,
         .eElpConfig = AM_HAL_PWRCTRL_ELP_RET,

@@ -1,96 +1,136 @@
-function(_nsx_pick_first_existing out_var)
-    foreach(candidate IN LISTS ARGN)
-        if(EXISTS "${candidate}")
-            set(${out_var} "${candidate}" PARENT_SCOPE)
-            return()
-        endif()
-    endforeach()
-    set(${out_var} "" PARENT_SCOPE)
+# SDK provider selection — a dumb consumer of facts resolved by Python.
+#
+# Python (neuralspotx.project_config) resolves every SDK-provider fact and
+# emits them into the generated cmake/nsx/nsx_build_facts.cmake, included by
+# nsx_app_bootstrap.cmake before nsx_select_sdk_provider() runs:
+#
+#   * NSX_BOARD_SDK_PROVIDER_<board_ident>      board id    -> provider id
+#   * NSX_SDK_PROVIDER_VERSION_<provider_ident> provider id -> sdk release
+#
+# Module directories come from the generated modules.cmake
+# (NSX_MODULE_DIR_<module_ident>). This file therefore parses no YAML and
+# guesses no paths — it only derives per-tier identifier strings and reads the
+# facts above.
+
+# Derive the provider module root ("<module>/sdk") from the module dir variable
+# emitted by modules.cmake. No filesystem path guessing.
+function(_nsx_sdk_module_root out_var module_name)
+    string(MAKE_C_IDENTIFIER "${module_name}" module_ident)
+    set(module_dir_var "NSX_MODULE_DIR_${module_ident}")
+    if(DEFINED ${module_dir_var})
+        set(${out_var} "${NSX_ROOT}/${${module_dir_var}}/sdk" PARENT_SCOPE)
+    else()
+        set(${out_var} "" PARENT_SCOPE)
+    endif()
 endfunction()
 
-# Board → SDK provider mapping is generated from
-# src/neuralspotx/constants.py (BOARD_SDK_PROVIDER) by
-# scripts/gen_board_table.py. Keep this include relative to this file.
-include("${CMAKE_CURRENT_LIST_DIR}/nsx_board_table.cmake")
+# Single source of truth for the AmbiqSuite SDK provider tiers nsx knows how to
+# bootstrap. To support a new release, add its provider id (ambiqsuite-r<N>)
+# here — every per-tier identifier (module name, root cache variable, CMake
+# target) is derived from the id, and the human-readable SDK release string is
+# resolved by Python into nsx_build_facts.cmake. Nothing else in this file is
+# release-specific.
+set(NSX_SUPPORTED_SDK_PROVIDERS
+    ambiqsuite-r3
+    ambiqsuite-r4
+    ambiqsuite-r5
+    ambiqsuite-r6
+)
+
+# Derive the per-tier identifiers for an ``ambiqsuite-r<N>`` provider id.
+function(_nsx_provider_identifiers provider out_module out_root_var out_target)
+    if(NOT provider MATCHES "^ambiqsuite-r[0-9]+$")
+        message(FATAL_ERROR
+            "Unsupported SDK provider id '${provider}'. "
+            "Expected one of: ${NSX_SUPPORTED_SDK_PROVIDERS}."
+        )
+    endif()
+    set(${out_module} "nsx-${provider}" PARENT_SCOPE)
+    string(REGEX REPLACE "^ambiqsuite-" "" tier "${provider}")
+    string(TOUPPER "${tier}" tier_upper)
+    set(${out_root_var} "NSX_AMBIQSUITE_${tier_upper}_ROOT" PARENT_SCOPE)
+    string(REPLACE "-" "_" target_suffix "${provider}")
+    set(${out_target} "nsx_sdk_${target_suffix}" PARENT_SCOPE)
+endfunction()
+
+# Board → SDK provider id is resolved by Python into the generated build facts
+# (NSX_BOARD_SDK_PROVIDER_<board_ident>). nsx no longer scrapes the board
+# manifest at configure time.
+function(nsx_lookup_sdk_provider board_name out_var)
+    string(MAKE_C_IDENTIFIER "${board_name}" board_ident)
+    set(fact_var "NSX_BOARD_SDK_PROVIDER_${board_ident}")
+    if(DEFINED ${fact_var})
+        set(${out_var} "${${fact_var}}" PARENT_SCOPE)
+    else()
+        set(${out_var} "" PARENT_SCOPE)
+    endif()
+endfunction()
 
 function(nsx_select_sdk_provider board_name)
-    set(NSX_SDK_PROVIDER "" CACHE STRING "SDK provider module (ambiqsuite-r3|ambiqsuite-r4|ambiqsuite-r5)")
-    set_property(CACHE NSX_SDK_PROVIDER PROPERTY STRINGS ambiqsuite-r3 ambiqsuite-r4 ambiqsuite-r5)
+    set(NSX_SDK_PROVIDER "" CACHE STRING "SDK provider module (${NSX_SUPPORTED_SDK_PROVIDERS})")
+    set_property(CACHE NSX_SDK_PROVIDER PROPERTY STRINGS ${NSX_SUPPORTED_SDK_PROVIDERS})
 
-    set(NSX_AMBIQSUITE_R3_ROOT "" CACHE PATH "Path to AmbiqSuite R3 root")
-    set(NSX_AMBIQSUITE_R4_ROOT "" CACHE PATH "Path to AmbiqSuite R4 root")
-    set(NSX_AMBIQSUITE_R5_ROOT "" CACHE PATH "Path to AmbiqSuite R5 root")
+    # Declare the per-tier root override cache variables up front.
+    foreach(provider IN LISTS NSX_SUPPORTED_SDK_PROVIDERS)
+        _nsx_provider_identifiers("${provider}" _unused_module tier_root_var _unused_target)
+        set("${tier_root_var}" "" CACHE PATH "Path to AmbiqSuite ${provider} root")
+    endforeach()
 
     if(NSX_SDK_PROVIDER STREQUAL "")
         nsx_lookup_sdk_provider("${board_name}" NSX_SDK_PROVIDER)
         if(NSX_SDK_PROVIDER STREQUAL "")
             message(FATAL_ERROR
                 "Unable to infer SDK provider for board '${board_name}'. "
-                "Set -DNSX_SDK_PROVIDER=ambiqsuite-r3|ambiqsuite-r4|ambiqsuite-r5."
+                "Regenerate build glue with `nsx sync`, or set "
+                "-DNSX_SDK_PROVIDER to one of: ${NSX_SUPPORTED_SDK_PROVIDERS}."
             )
         endif()
     endif()
 
-    if(NSX_SDK_PROVIDER STREQUAL "ambiqsuite-r3")
-        set(version "R3.1.1")
-        set(module_default_root "${NSX_ROOT}/modules/nsx-ambiqsuite-r3/sdk")
-        if(NSX_AMBIQSUITE_R3_ROOT STREQUAL "")
-            _nsx_pick_first_existing(
-                NSX_AMBIQSUITE_R3_ROOT_CANDIDATE
-                "${module_default_root}"
-            )
-            if(NOT NSX_AMBIQSUITE_R3_ROOT_CANDIDATE STREQUAL "")
-                set(NSX_AMBIQSUITE_R3_ROOT "${NSX_AMBIQSUITE_R3_ROOT_CANDIDATE}" CACHE PATH "Path to AmbiqSuite R3 root" FORCE)
-            endif()
+    list(FIND NSX_SUPPORTED_SDK_PROVIDERS "${NSX_SDK_PROVIDER}" provider_index)
+    if(provider_index EQUAL -1)
+        message(FATAL_ERROR
+            "Unsupported NSX_SDK_PROVIDER='${NSX_SDK_PROVIDER}'. "
+            "Supported providers: ${NSX_SUPPORTED_SDK_PROVIDERS}."
+        )
+    endif()
+
+    _nsx_provider_identifiers("${NSX_SDK_PROVIDER}" provider_module root_var selected_target)
+
+    # An explicit -D<root_var>=... wins; otherwise derive the root from the
+    # vendored provider module so the path comes from the resolved module dir,
+    # not a hardcoded guess.
+    set(root "${${root_var}}")
+    if(root STREQUAL "")
+        _nsx_sdk_module_root(module_default_root "${provider_module}")
+        if(NOT module_default_root STREQUAL "" AND EXISTS "${module_default_root}")
+            set("${root_var}" "${module_default_root}" CACHE PATH "Path to AmbiqSuite ${NSX_SDK_PROVIDER} root" FORCE)
+            set(root "${module_default_root}")
         endif()
-        set(root "${NSX_AMBIQSUITE_R3_ROOT}")
-        set(selected_target "nsx_sdk_ambiqsuite_r3")
-    elseif(NSX_SDK_PROVIDER STREQUAL "ambiqsuite-r4")
-        set(version "R4.5.0")
-        set(module_default_root "${NSX_ROOT}/modules/nsx-ambiqsuite-r4/sdk")
-        if(NSX_AMBIQSUITE_R4_ROOT STREQUAL "")
-            _nsx_pick_first_existing(
-                NSX_AMBIQSUITE_R4_ROOT_CANDIDATE
-                "${module_default_root}"
-            )
-            if(NOT NSX_AMBIQSUITE_R4_ROOT_CANDIDATE STREQUAL "")
-                set(NSX_AMBIQSUITE_R4_ROOT "${NSX_AMBIQSUITE_R4_ROOT_CANDIDATE}" CACHE PATH "Path to AmbiqSuite R4 root" FORCE)
-            endif()
-        endif()
-        set(root "${NSX_AMBIQSUITE_R4_ROOT}")
-        set(selected_target "nsx_sdk_ambiqsuite_r4")
-    elseif(NSX_SDK_PROVIDER STREQUAL "ambiqsuite-r5")
-        set(version "R5.3.0")
-        set(module_default_root "${NSX_ROOT}/modules/nsx-ambiqsuite-r5/sdk")
-        if(NSX_AMBIQSUITE_R5_ROOT STREQUAL "")
-            _nsx_pick_first_existing(
-                NSX_AMBIQSUITE_R5_ROOT_CANDIDATE
-                "${module_default_root}"
-            )
-            if(NOT NSX_AMBIQSUITE_R5_ROOT_CANDIDATE STREQUAL "")
-                set(NSX_AMBIQSUITE_R5_ROOT "${NSX_AMBIQSUITE_R5_ROOT_CANDIDATE}" CACHE PATH "Path to AmbiqSuite R5 root" FORCE)
-            endif()
-        endif()
-        set(root "${NSX_AMBIQSUITE_R5_ROOT}")
-        set(selected_target "nsx_sdk_ambiqsuite_r5")
-    else()
-        message(FATAL_ERROR "Unsupported NSX_SDK_PROVIDER='${NSX_SDK_PROVIDER}'")
     endif()
 
     if(root STREQUAL "")
         message(FATAL_ERROR
             "SDK provider '${NSX_SDK_PROVIDER}' selected for board '${board_name}', "
             "but AmbiqSuite root is not configured.\n"
-            "Set one of:\n"
-            "  -DNSX_AMBIQSUITE_R3_ROOT=...\n"
-            "  -DNSX_AMBIQSUITE_R4_ROOT=...\n"
-            "  -DNSX_AMBIQSUITE_R5_ROOT=...\n"
-            "Default module-local roots are used for R3/R4/R5 if vendored payload is present."
+            "Set -D${root_var}=...\n"
+            "Or ensure modules.cmake defines NSX_MODULE_DIR for the provider module '${provider_module}'."
         )
     endif()
 
     if(NOT EXISTS "${root}")
         message(FATAL_ERROR "Configured SDK root does not exist: ${root}")
+    endif()
+
+    # SDK release string is resolved by Python into the generated build facts
+    # (NSX_SDK_PROVIDER_VERSION_<provider_ident>). nsx no longer scrapes the
+    # provider module manifest at configure time.
+    string(MAKE_C_IDENTIFIER "${NSX_SDK_PROVIDER}" provider_ident)
+    set(version_var "NSX_SDK_PROVIDER_VERSION_${provider_ident}")
+    if(DEFINED ${version_var})
+        set(version "${${version_var}}")
+    else()
+        set(version "")
     endif()
 
     set(NSX_AMBIQSUITE_ROOT "${root}" PARENT_SCOPE)
