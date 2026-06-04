@@ -47,6 +47,11 @@ function(nsx_add_segger_targets app_target)
     set(jlink_dir "${CMAKE_CURRENT_BINARY_DIR}/jlink/${app_target}")
     file(MAKE_DIRECTORY "${jlink_dir}")
 
+    set(NSX_JLINK_USB_ARGS "")
+    if(DEFINED NSX_JLINK_SERIAL AND NOT NSX_JLINK_SERIAL STREQUAL "")
+        set(NSX_JLINK_USB_ARGS -USB ${NSX_JLINK_SERIAL})
+    endif()
+
     set(NSX_JLINK_BIN_FILE "${CMAKE_CURRENT_BINARY_DIR}/${app_target}.bin")
     if(NSX_SEGGER_CONFIG_OK)
         configure_file(
@@ -63,12 +68,12 @@ function(nsx_add_segger_targets app_target)
 
     if(NSX_SEGGER_CONFIG_OK AND NSX_JLINK_EXE)
         add_custom_target(${app_target}_flash
-            COMMAND ${NSX_JLINK_EXE} -nogui 1 -device ${NSX_SEGGER_DEVICE} -if SWD -speed ${NSX_SEGGER_IF_SPEED} -commandfile "${jlink_dir}/flash_cmds.jlink"
+            COMMAND ${NSX_JLINK_EXE} ${NSX_JLINK_USB_ARGS} -nogui 1 -device ${NSX_SEGGER_DEVICE} -if SWD -speed ${NSX_SEGGER_IF_SPEED} -commandfile "${jlink_dir}/flash_cmds.jlink"
             DEPENDS ${app_target}
             COMMENT "Flashing ${app_target} with SEGGER J-Link")
 
         add_custom_target(${app_target}_reset
-            COMMAND ${NSX_JLINK_EXE} -nogui 1 -device ${NSX_SEGGER_DEVICE} -if SWD -speed ${NSX_SEGGER_IF_SPEED} -commandfile "${jlink_dir}/reset_cmds.jlink"
+            COMMAND ${NSX_JLINK_EXE} ${NSX_JLINK_USB_ARGS} -nogui 1 -device ${NSX_SEGGER_DEVICE} -if SWD -speed ${NSX_SEGGER_IF_SPEED} -commandfile "${jlink_dir}/reset_cmds.jlink"
             COMMENT "Resetting target with SEGGER J-Link")
     else()
         add_custom_target(${app_target}_flash
@@ -82,7 +87,7 @@ function(nsx_add_segger_targets app_target)
 
     if(NSX_SEGGER_CONFIG_OK AND NSX_JLINK_SWO_EXE)
         add_custom_target(${app_target}_view
-            COMMAND ${NSX_JLINK_SWO_EXE} -device ${NSX_SEGGER_DEVICE} -cpufreq ${NSX_SEGGER_CPUFREQ} -swofreq ${NSX_SEGGER_SWOFREQ} -itmport 0
+            COMMAND ${NSX_JLINK_SWO_EXE} ${NSX_JLINK_USB_ARGS} -device ${NSX_SEGGER_DEVICE} -cpufreq ${NSX_SEGGER_CPUFREQ} -swofreq ${NSX_SEGGER_SWOFREQ} -itmport 0
             COMMENT "Opening SEGGER SWO viewer for ${app_target}")
     else()
         add_custom_target(${app_target}_view

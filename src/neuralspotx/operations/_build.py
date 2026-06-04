@@ -29,6 +29,7 @@ def configure_app_impl(
     board: str | None = None,
     build_dir: Path | None = None,
     toolchain: str | None = None,
+    probe_serial: str | None = None,
 ) -> Path:
     """Configure an app with CMake.
 
@@ -46,7 +47,13 @@ def configure_app_impl(
         build_dir=build_dir,
     )
     _ensure_app_modules(resolved_app_dir)
-    _run_cmake_configure(resolved_app_dir, resolved_build_dir, resolved_board, toolchain=toolchain)
+    _run_cmake_configure(
+        resolved_app_dir,
+        resolved_build_dir,
+        resolved_board,
+        toolchain=toolchain,
+        probe_serial=probe_serial,
+    )
     info(f"Configured app at: {resolved_app_dir}")
     info(f"Build directory: {resolved_build_dir}")
     return resolved_build_dir
@@ -88,6 +95,7 @@ def flash_app_impl(
     board: str | None = None,
     build_dir: Path | None = None,
     toolchain: str | None = None,
+    probe_serial: str | None = None,
     jobs: int = 8,
     on_line: "Callable[[str], None] | None" = None,
 ) -> Path:
@@ -98,10 +106,14 @@ def flash_app_impl(
         board=board,
         build_dir=build_dir,
     )
-    if not (resolved_build_dir / "build.ninja").exists():
+    if probe_serial is not None or not (resolved_build_dir / "build.ninja").exists():
         _ensure_app_modules(resolved_app_dir)
         _run_cmake_configure(
-            resolved_app_dir, resolved_build_dir, resolved_board, toolchain=toolchain
+            resolved_app_dir,
+            resolved_build_dir,
+            resolved_board,
+            toolchain=toolchain,
+            probe_serial=probe_serial,
         )
     target = f"{app_name}_flash"
     cmd = ["cmake", "--build", str(resolved_build_dir), "--target", target, "-j", str(jobs)]
@@ -122,6 +134,7 @@ def view_app_impl(
     board: str | None = None,
     build_dir: Path | None = None,
     toolchain: str | None = None,
+    probe_serial: str | None = None,
     reset_on_open: bool = True,
     reset_delay_ms: int = 400,
 ) -> Path:
@@ -136,10 +149,14 @@ def view_app_impl(
         board=board,
         build_dir=build_dir,
     )
-    if not (resolved_build_dir / "build.ninja").exists():
+    if probe_serial is not None or not (resolved_build_dir / "build.ninja").exists():
         _ensure_app_modules(resolved_app_dir)
         _run_cmake_configure(
-            resolved_app_dir, resolved_build_dir, resolved_board, toolchain=toolchain
+            resolved_app_dir,
+            resolved_build_dir,
+            resolved_board,
+            toolchain=toolchain,
+            probe_serial=probe_serial,
         )
     target = f"{app_name}_view"
     view_cmd = extract_view_command(resolved_build_dir, target)

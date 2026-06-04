@@ -201,6 +201,20 @@ class TestExtractViewCommandResilience:
         assert "-device" in result
         assert "AMA4B2KK" in result
 
+    def test_extracts_usb_serial_flag(self, tmp_path):
+        target = "myapp_view"
+        cmd = "/opt/segger/JLinkSWOViewerCLExe -USB 1160002204 -device AP510NFA-CBR -itmport 0"
+        ninja = _NO_CD_PREFIX.format(target=target, cmd=cmd)
+        (tmp_path / "build.ninja").write_text(ninja, encoding="utf-8")
+
+        result = extract_view_command(tmp_path, target)
+        assert result[:4] == [
+            "/opt/segger/JLinkSWOViewerCLExe",
+            "-USB",
+            "1160002204",
+            "-device",
+        ]
+
     def test_command_without_cd_chain(self, tmp_path):
         """COMMAND without && prefix returns the full command."""
         target = "app_view"

@@ -85,6 +85,7 @@ def configure_app(
     board: str | None = None,
     build_dir: PathLike | None = None,
     toolchain: str | None = None,
+    probe_serial: str | None = None,
     timeout_s: float | None = None,
     emit: Emitter | None = None,
 ) -> None:
@@ -102,6 +103,7 @@ def configure_app(
             board=board,
             build_dir=build_dir,
             toolchain=toolchain,
+            probe_serial=probe_serial,
             timeout_s=timeout_s,
         )
     )
@@ -111,6 +113,7 @@ def configure_app(
             board=request.board,
             build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
             toolchain=request.toolchain,
+            probe_serial=request.probe_serial,
         )
 
 
@@ -164,6 +167,7 @@ def flash_app(
     board: str | None = None,
     build_dir: PathLike | None = None,
     toolchain: str | None = None,
+    probe_serial: str | None = None,
     jobs: int = 8,
     timeout_s: float | None = None,
     emit: Emitter | None = None,
@@ -184,6 +188,7 @@ def flash_app(
             board=board,
             build_dir=build_dir,
             toolchain=toolchain,
+            probe_serial=probe_serial,
             jobs=jobs,
             timeout_s=timeout_s,
         )
@@ -194,6 +199,7 @@ def flash_app(
             board=request.board,
             build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
             toolchain=request.toolchain,
+            probe_serial=request.probe_serial,
             jobs=request.jobs,
             on_line=on_line,
         )
@@ -205,6 +211,7 @@ def view_app(
     board: str | None = None,
     build_dir: PathLike | None = None,
     toolchain: str | None = None,
+    probe_serial: str | None = None,
     reset_on_open: bool = True,
     reset_delay_ms: int = 400,
     timeout_s: float | None = None,
@@ -220,6 +227,7 @@ def view_app(
             board=board,
             build_dir=build_dir,
             toolchain=toolchain,
+            probe_serial=probe_serial,
             reset_on_open=reset_on_open,
             reset_delay_ms=reset_delay_ms,
             timeout_s=timeout_s,
@@ -231,6 +239,7 @@ def view_app(
             board=request.board,
             build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
             toolchain=request.toolchain,
+            probe_serial=request.probe_serial,
             reset_on_open=request.reset_on_open,
             reset_delay_ms=request.reset_delay_ms,
         )

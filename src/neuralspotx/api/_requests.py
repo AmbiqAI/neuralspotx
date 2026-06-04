@@ -50,6 +50,7 @@ class AppActionRequest:
     board: str | None = None
     build_dir: PathLike | None = None
     toolchain: str | None = None
+    probe_serial: str | None = None
     timeout_s: float | None = field(default=None, kw_only=True)
 
 
