@@ -4,23 +4,6 @@ function(nsx_assert_file_exists path)
     endif()
 endfunction()
 
-# Resolve the on-disk directory of a vendored module from the generated
-# modules.cmake (NSX_MODULE_DIR_<ident>). Fails loudly instead of guessing a
-# legacy layout so a stale or missing registry entry surfaces immediately.
-function(nsx_require_module_dir out_var module_name)
-    string(MAKE_C_IDENTIFIER "${module_name}" module_ident)
-    set(module_dir_var "NSX_MODULE_DIR_${module_ident}")
-    if(NOT DEFINED ${module_dir_var})
-        message(FATAL_ERROR
-            "${module_dir_var} is not defined for module '${module_name}'.\n"
-            "The generated cmake/nsx/modules.cmake must define it. Regenerate "
-            "build glue with `nsx sync` (or `nsx create-app`) so module paths "
-            "are taken from the registry instead of an assumed on-disk layout."
-        )
-    endif()
-    set(${out_var} "${NSX_ROOT}/${${module_dir_var}}" PARENT_SCOPE)
-endfunction()
-
 function(nsx_validate_prebuilt_abi)
     if(DEFINED NSX_PREBUILT_SOC_FAMILY AND NOT NSX_PREBUILT_SOC_FAMILY STREQUAL NSX_SOC_FAMILY)
         message(FATAL_ERROR "Prebuilt SOC mismatch. prebuilt=${NSX_PREBUILT_SOC_FAMILY}, board=${NSX_SOC_FAMILY}")

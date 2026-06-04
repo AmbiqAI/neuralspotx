@@ -26,9 +26,108 @@ def _load_registry() -> dict[str, Any]:
         return load_registry_lock(registry_path)
 
 
-def _effective_registry(base_registry: dict[str, Any], nsx_cfg: dict[str, Any]) -> dict[str, Any]:
+def _load_workspace_overlay(path: Path) -> dict[str, Any]:
+    """Load a workspace registry overlay file (projects/modules mapping)."""
+
+    if not path.is_file():
+        raise NSXConfigError(
+            f"registry workspace overlay not found: {path} "
+            "(check the 'registry.layers' workspace path in nsx.yml)",
+            field="registry.layers",
+        )
+    try:
+        data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    except yaml.YAMLError as exc:  # pragma: no cover - defensive
+        raise NSXConfigError(f"failed to parse registry overlay {path}: {exc}") from exc
+    if not isinstance(data, dict):
+        raise NSXConfigError(f"registry overlay {path} must be a mapping")
+    return data
+
+
+def _iter_registry_layers(
+    nsx_cfg: dict[str, Any], app_dir: Path | None
+) -> list[ModuleRegistryOverride]:
+    """Resolve the ordered ``registry.layers`` block into overrides.
+
+    Each layer is one of:
+
+    * ``packaged`` — the shipped base registry (a no-op marker; the base
+      registry is always the starting point).
+    * ``{workspace: <path>}`` — a YAML overlay file with ``projects`` /
+      ``modules`` mappings, resolved relative to the app directory (or the
+      current working directory when no app context is available).
+    * ``{inline: {projects: ..., modules: ...}}`` — an inline override,
+      identical in shape to the legacy ``module_registry`` block.
+
+    Layers apply in declared order (last wins). The legacy top-level
+    ``module_registry`` block, if present, is applied *after* all layers by
+    the caller, preserving its historical highest precedence.
+    """
+
+    registry_cfg = nsx_cfg.get("registry")
+    if not isinstance(registry_cfg, dict):
+        return []
+    layers = registry_cfg.get("layers")
+    if layers is None:
+        return []
+    if not isinstance(layers, list):
+        raise NSXConfigError("nsx.yml: 'registry.layers' must be a list")
+
+    base_dir = app_dir if app_dir is not None else Path.cwd()
+    resolved: list[ModuleRegistryOverride] = []
+    for index, layer in enumerate(layers):
+        if isinstance(layer, str):
+            if layer == "packaged":
+                continue
+            raise NSXConfigError(
+                f"nsx.yml: unknown registry layer '{layer}' at index {index} "
+                "(expected 'packaged' or a {workspace: ...} / {inline: ...} mapping)",
+                field=f"registry.layers[{index}]",
+            )
+        if not isinstance(layer, dict) or len(layer) != 1:
+            raise NSXConfigError(
+                f"nsx.yml: 'registry.layers[{index}]' must be 'packaged' or a "
+                "single-key mapping ({workspace: ...} or {inline: ...}).",
+                field=f"registry.layers[{index}]",
+            )
+        (kind, value), = layer.items()
+        if kind == "packaged":
+            continue
+        if kind == "workspace":
+            overlay_path = (base_dir / str(value)).resolve()
+            resolved.append(
+                ModuleRegistryOverride.from_mapping(_load_workspace_overlay(overlay_path))
+            )
+        elif kind == "inline":
+            resolved.append(ModuleRegistryOverride.from_mapping(value))
+        else:
+            raise NSXConfigError(
+                f"nsx.yml: unknown registry layer kind '{kind}' at index {index} "
+                "(expected 'packaged', 'workspace', or 'inline')",
+                field=f"registry.layers[{index}]",
+            )
+    return resolved
+
+
+def _effective_registry(
+    base_registry: dict[str, Any],
+    nsx_cfg: dict[str, Any],
+    *,
+    app_dir: Path | None = None,
+) -> dict[str, Any]:
+    """Fold the registry layer stack onto *base_registry*.
+
+    Precedence (lowest to highest): packaged base registry, each
+    ``registry.layers`` entry in order, then the legacy ``module_registry``
+    block. This keeps existing apps (no ``registry:`` block) byte-for-byte
+    identical to the prior single-override behavior.
+    """
+
+    merged = base_registry
+    for layer in _iter_registry_layers(nsx_cfg, app_dir):
+        merged = layer.merge_into(merged)
     return ModuleRegistryOverride.from_mapping(nsx_cfg.get("module_registry")).merge_into(
-        base_registry
+        merged
     )
 
 
@@ -159,16 +258,50 @@ def _copy_packaged_tree(package: str, relative_path: str, destination: Path) -> 
         )
 
 
+def _write_cmake_nsx_gitignore(app_dir: Path) -> None:
+    """Gitignore the regenerated ``cmake/nsx/`` build-glue tree.
+
+    The entire ``cmake/nsx/`` directory is reproduced from the pinned
+    ``neuralspotx`` package on every ``nsx lock`` / ``nsx sync`` (see
+    ``_copy_packaged_tree`` plus the ``modules.cmake`` overlay), so it is
+    machine-generated and should not be committed. The ignore rule is
+    written to the app-owned ``cmake/.gitignore`` (the parent directory)
+    rather than inside ``cmake/nsx/`` so it never perturbs the content
+    hash of the regenerated tooling tree.
+    """
+
+    cmake_dir = app_dir / "cmake"
+    cmake_dir.mkdir(parents=True, exist_ok=True)
+    marker = "# Auto-generated by neuralspotx — do not edit."
+    rule = "/nsx/"
+    gitignore = cmake_dir / ".gitignore"
+    if gitignore.exists():
+        existing = gitignore.read_text(encoding="utf-8").splitlines()
+        if rule in existing:
+            return
+        lines = existing
+        if marker not in existing:
+            lines = [marker, *lines]
+        lines.append(rule)
+        gitignore.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        return
+    content = (
+        f"{marker}\n"
+        "# cmake/nsx/ is build glue reproduced from the pinned neuralspotx\n"
+        "# package on every `nsx lock` / `nsx sync`; do not commit it.\n"
+        f"{rule}\n"
+    )
+    gitignore.write_text(content, encoding="utf-8")
+
+
 def _write_app_module_file(
     app_dir: Path,
     nsx_cfg: dict[str, Any],
     *,
     module_names: list[str] | None = None,
 ) -> None:
-    from .metadata import registry_entry_for_module
-
     ordered_module_names = module_names or AppConfig.from_mapping(nsx_cfg).module_names()
-    registry = _effective_registry(_load_registry(), nsx_cfg)
+    registry = _effective_registry(_load_registry(), nsx_cfg, app_dir=app_dir)
     lines = [
         "# Auto-generated by neuralspotx. Included by app CMakeLists.",
         "set(NSX_APP_MODULES",
@@ -179,13 +312,27 @@ def _write_app_module_file(
 
     for name in ordered_module_names:
         try:
-            entry = registry_entry_for_module(registry, name)
+            source_dir = _module_source_dir_relative_to_app(name, registry, nsx_cfg)
         except (KeyError, ValueError, TypeError):
             continue
-        rel = _vendored_metadata_relpath(entry.metadata)
-        if rel.parts[:1] != ("modules",):
+        if source_dir.parts[:1] != ("modules",):
             continue
-        lines.append(f'set(NSX_APP_MODULE_DIR_{name.replace("-", "_")} "{rel.parent.as_posix()}")')
+        lines.append(
+            f'set(NSX_APP_MODULE_DIR_{name.replace("-", "_")} "{source_dir.as_posix()}")'
+        )
+
+    project_dirs = sorted({
+        project_dir.as_posix()
+        for name in ordered_module_names
+        if (project_dir := _module_project_dir_relative_to_app(name, registry, nsx_cfg))
+        is not None
+    })
+    if project_dirs:
+        lines.append("")
+        lines.append("set(NSX_APP_PROJECT_DIRS")
+        for project_dir in project_dirs:
+            lines.append(f"    {project_dir}")
+        lines.append(")")
 
     content = "\n".join(lines) + "\n"
     (app_dir / "cmake" / "nsx").mkdir(parents=True, exist_ok=True)
@@ -220,7 +367,7 @@ def _module_gitignore_entries(
 ) -> list[str]:
     from .metadata import registry_entry_for_module
 
-    registry = _effective_registry(_load_registry(), nsx_cfg)
+    registry = _effective_registry(_load_registry(), nsx_cfg, app_dir=app_dir)
     modules_root = app_dir / "modules"
     entries: list[str] = []
     for name in module_names:
@@ -356,6 +503,53 @@ def _module_clone_dir(app_dir: Path, project_name: str, registry: dict | None = 
             return app_dir / project_path
 
     return app_dir / "modules" / project_name
+
+
+def _module_source_dir_relative_to_app(
+    module_name: str,
+    registry: dict[str, Any],
+    nsx_cfg: dict[str, Any],
+) -> Path:
+    """Resolve a module's on-disk directory relative to the app root.
+
+    Git modules are vendored under their *project* clone directory (a whole
+    monorepo may host many modules), so the module dir is the project clone
+    dir joined with the module's metadata path taken relative to the project
+    root. Packaged modules keep their vendored target layout; opaque modules
+    live at ``modules/<name>``.
+    """
+
+    from .metadata import registry_entry_for_module
+
+    if module_name in AppConfig.from_mapping(nsx_cfg).opaque_modules():
+        return Path("modules") / module_name
+
+    entry = registry_entry_for_module(registry, module_name)
+
+    if _is_packaged_module(registry, module_name):
+        return _vendored_target_dir(Path("."), module_name, entry.metadata)
+
+    project_entry = _registry_project_entry(registry, entry.project)
+    metadata_rel = _metadata_path_relative_to_project(Path(entry.metadata), project_entry.path)
+    return _module_clone_dir(Path("."), entry.project, registry) / metadata_rel.parent
+
+
+def _module_project_dir_relative_to_app(
+    module_name: str,
+    registry: dict[str, Any],
+    nsx_cfg: dict[str, Any],
+) -> Path | None:
+    """Resolve a git module's project clone dir (where its bundle-level
+    ``cmake/`` helpers live), or ``None`` for opaque/packaged modules."""
+
+    from .metadata import registry_entry_for_module
+
+    if module_name in AppConfig.from_mapping(nsx_cfg).opaque_modules():
+        return None
+    entry = registry_entry_for_module(registry, module_name)
+    if _is_packaged_module(registry, module_name):
+        return None
+    return _module_clone_dir(Path("."), entry.project, registry)
 
 
 def find_app_root(start: Path | None = None) -> Path | None:

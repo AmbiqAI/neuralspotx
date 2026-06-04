@@ -70,7 +70,7 @@ def resolve_module_context(
         return base_registry, set(), None, Scope.PACKAGED
 
     nsx_cfg = _load_app_cfg(app_dir)
-    registry = _effective_registry(base_registry, nsx_cfg)
+    registry = _effective_registry(base_registry, nsx_cfg, app_dir=app_dir)
     enabled = set(_module_names_from_nsx(nsx_cfg))
     return registry, enabled, app_dir, Scope.APP_EFFECTIVE
 

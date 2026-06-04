@@ -117,7 +117,7 @@ def add_module_impl(
         _write_modules_gitignore(app_dir, nsx_cfg)
         return [ModuleChange(name=module_name, before=None, after=None, action="added")]
 
-    registry = _effective_registry(_load_registry(), nsx_cfg)
+    registry = _effective_registry(_load_registry(), nsx_cfg, app_dir=app_dir)
 
     enabled = _module_names_from_nsx(nsx_cfg)
     desired_modules = _unique_preserving_order(enabled + [module_name])
@@ -170,7 +170,7 @@ def remove_module_impl(
     """Remove a module and any no-longer-needed dependents from an app."""
 
     nsx_cfg = _load_app_cfg(app_dir)
-    registry = _effective_registry(_load_registry(), nsx_cfg)
+    registry = _effective_registry(_load_registry(), nsx_cfg, app_dir=app_dir)
     enabled = _module_names_from_nsx(nsx_cfg)
     if module_name not in enabled:
         raise NSXModuleError(f"Module '{module_name}' is not enabled in nsx.yml")
@@ -283,7 +283,7 @@ def update_modules_impl(
     """Refresh enabled modules to the current registry revisions."""
 
     nsx_cfg = _load_app_cfg(app_dir)
-    registry = _effective_registry(_load_registry(), nsx_cfg)
+    registry = _effective_registry(_load_registry(), nsx_cfg, app_dir=app_dir)
 
     local_names = _local_module_names(nsx_cfg)
     current_modules = _module_names_from_nsx(nsx_cfg)
@@ -351,7 +351,7 @@ def register_module_impl(
 
     nsx_cfg = _load_app_cfg(app_dir)
     base_registry = _load_registry()
-    registry = _effective_registry(base_registry, nsx_cfg)
+    registry = _effective_registry(base_registry, nsx_cfg, app_dir=app_dir)
 
     metadata_path = metadata
     if not metadata_path.is_absolute():
@@ -436,7 +436,7 @@ def register_module_impl(
 
     _save_app_cfg(app_dir, target_cfg)
     _write_app_module_file(app_dir, target_cfg)
-    effective = _effective_registry(base_registry, target_cfg)
+    effective = _effective_registry(base_registry, target_cfg, app_dir=app_dir)
     _acquire_modules_for_app(app_dir, [module_name], effective)
     _write_modules_gitignore(app_dir, target_cfg)
 

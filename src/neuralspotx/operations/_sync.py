@@ -23,6 +23,7 @@ from ..project_config import (
     _load_registry,
     _registry_project_entry,
     _write_app_module_file,
+    _write_cmake_nsx_gitignore,
     _write_modules_gitignore_for_module_names,
 )
 from ._lock import _resolved_module_path, lock_app_impl
@@ -110,7 +111,7 @@ def _sync_app_impl_unlocked(
 
     nsx_cfg = _load_app_cfg(app_dir)
     base_registry = _load_registry()
-    registry = _effective_registry(base_registry, nsx_cfg)
+    registry = _effective_registry(base_registry, nsx_cfg, app_dir=app_dir)
 
     # Detect manifest drift — the user edited nsx.yml since the lock was written.
     current_manifest_hash = hash_manifest(app_dir / "nsx.yml")
@@ -344,6 +345,7 @@ def _sync_app_impl_unlocked(
     # modules.cmake + modules/.gitignore — these are cheap and keep
     # the build inputs aligned.
     _copy_packaged_tree("neuralspotx", "cmake", app_dir / "cmake" / "nsx")
+    _write_cmake_nsx_gitignore(app_dir)
     ordered_modules = list(lock.modules)
     _write_app_module_file(app_dir, nsx_cfg, module_names=ordered_modules)
     _write_modules_gitignore_for_module_names(app_dir, nsx_cfg, ordered_modules)

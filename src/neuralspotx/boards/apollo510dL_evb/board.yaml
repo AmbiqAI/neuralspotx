@@ -1,0 +1,25 @@
+# NSX board descriptor (schema_version 1).
+#
+# Source of truth for board -> SoC / SDK-provider derivation consumed by
+# neuralspotx.constants via neuralspotx/board_descriptors.py. Keep in sync
+# with board.cmake (NSX_SOC_FAMILY / NSX_CPU / NSX_ABI_FLAGS).
+#
+# registered: false -- this variant ships a board package but is intentionally
+# absent from the legacy constants.DEFAULT_SOC_FOR_BOARD / BOARD_SDK_PROVIDER
+# tables (matching pre-descriptor behavior). Flip to true to register it.
+schema_version: 1
+board:
+  name: apollo510dL_evb
+  tier: evb
+  soc: apollo510L
+  registered: false
+soc_family: apollo510L
+sdk_provider: ambiqsuite-r5
+cpu:
+  core: cortex-m55
+  float_abi: hard
+  abi: thumbv8.1m-fpv5-hard
+toolchains:
+  - arm-none-eabi-gcc
+  - armclang
+  - atfe

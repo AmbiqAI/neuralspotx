@@ -41,12 +41,21 @@ features: {}
 module_registry:
   projects:
     nsx-ambiq-sdk-r5:
+      url: https://github.com/AmbiqAI/nsx-ambiq-sdk-r5.git
       revision: main
   modules:
     nsx-ambiqsuite-r5:
       project: nsx-ambiq-sdk-r5
       revision: main
       metadata: modules/nsx-ambiqsuite-r5/nsx-module.yaml
+    nsx-ambiq-hal-r5:
+      project: nsx-ambiq-sdk-r5
+      revision: main
+      metadata: modules/nsx-ambiq-hal-r5/nsx-module.yaml
+    nsx-ambiq-bsp-r5:
+      project: nsx-ambiq-sdk-r5
+      revision: main
+      metadata: modules/nsx-ambiq-bsp-r5/nsx-module.yaml
     nsx-cmsis-core:
       project: nsx-ambiq-sdk-r5
       revision: main

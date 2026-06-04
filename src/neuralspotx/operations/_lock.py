@@ -46,6 +46,7 @@ from ..project_config import (
     _nsx_tool_version,
     _registry_project_entry,
     _write_app_module_file,
+    _write_cmake_nsx_gitignore,
     _write_modules_gitignore_for_module_names,
 )
 from ._common import OutdatedStatus, _log
@@ -118,7 +119,7 @@ def _build_lock_for_app(
 
     nsx_cfg = _load_app_cfg(app_dir)
     base_registry = _load_registry()
-    registry = _effective_registry(base_registry, nsx_cfg)
+    registry = _effective_registry(base_registry, nsx_cfg, app_dir=app_dir)
     seed_module_names = _module_names_from_nsx(nsx_cfg)
     local_names = _local_module_names(nsx_cfg)
     vendored_names = _vendored_module_names(nsx_cfg)
@@ -157,6 +158,7 @@ def _build_lock_for_app(
         # lives outside ``modules/<name>/`` and is therefore not covered by
         # any module's ``content_hash``.
         _copy_packaged_tree("neuralspotx", "cmake", app_dir / "cmake" / "nsx")
+        _write_cmake_nsx_gitignore(app_dir)
         _write_app_module_file(app_dir, nsx_cfg, module_names=module_names)
         _write_modules_gitignore_for_module_names(app_dir, nsx_cfg, module_names)
 

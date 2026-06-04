@@ -30,6 +30,7 @@ from ..metadata import SUPPORTED_MODULE_TYPES
 from ..models import CommandCategory, CommandHint, CommandScope, OutdatedReport
 from ..project_config import resolve_app_dir
 from ..subprocess_utils import format_subprocess_error
+from ._cmd_board import cmd_board_create, cmd_board_list, cmd_board_show
 from ._cmd_cache import cmd_cache_clean, cmd_cache_info
 from ._cmd_module import (
     cmd_module_add,
@@ -77,8 +78,15 @@ _register_group_hint(
     "nsx module init <module-dir>",
     "nsx module add",
 )
+_register_group_hint(
+    "board",
+    _C.DISCOVERY,
+    _S.GLOBAL,
+    "nsx board list",
+    "nsx board show <board>",
+    "nsx board create <name> --from <evb>",
+)
 _register_group_hint("cache", _C.MAINTENANCE, _S.GLOBAL, "nsx cache info", "nsx cache clean")
-
 
 @command_hint(
     "commands",
@@ -892,6 +900,85 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Emit machine-readable JSON instead of human-readable text",
     )
     p_mod_validate.set_defaults(func=cmd_module_validate)
+
+    p_board = sub.add_parser(
+        "board",
+        help="Inspect packaged boards and scaffold custom boards",
+        description=(
+            "List and describe packaged board descriptors, or scaffold a "
+            "custom board that inherits an EVB baseline."
+        ),
+    )
+    board_sub = p_board.add_subparsers(dest="board_command", required=True)
+
+    p_board_list = board_sub.add_parser(
+        "list",
+        help="List available boards",
+        description="List packaged board descriptors and their derived SoC/provider facts.",
+    )
+    p_board_list.add_argument(
+        "--tier",
+        default=None,
+        help="Filter by board tier (e.g. 'evb', 'custom')",
+    )
+    p_board_list.add_argument(
+        "--registered-only",
+        action="store_true",
+        help="Only show boards registered in the packaged build table",
+    )
+    p_board_list.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit machine-readable JSON instead of human-readable text",
+    )
+    p_board_list.set_defaults(func=cmd_board_list)
+
+    p_board_show = board_sub.add_parser(
+        "show",
+        help="Show details for a single board",
+        description="Print the derived facts for one board descriptor.",
+    )
+    p_board_show.add_argument("board", help="Board name (e.g. apollo510_evb)")
+    p_board_show.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit machine-readable JSON instead of human-readable text",
+    )
+    p_board_show.set_defaults(func=cmd_board_show)
+
+    p_board_create = board_sub.add_parser(
+        "create",
+        help="Scaffold a custom board that inherits an EVB",
+        description=(
+            "Create a custom board under <app>/boards/<name>/ that inherits an "
+            "existing EVB descriptor. Generates board.yaml and a thin board.cmake."
+        ),
+    )
+    p_board_create.add_argument("name", help="Name for the new custom board")
+    p_board_create.add_argument(
+        "--from",
+        dest="from_board",
+        required=True,
+        metavar="BOARD",
+        help="Parent EVB to inherit from (e.g. apollo510_evb)",
+    )
+    p_board_create.add_argument(
+        "--app-dir",
+        dest="app_dir",
+        default=None,
+        help="Application directory (defaults to the nearest app root)",
+    )
+    p_board_create.add_argument(
+        "--force",
+        action="store_true",
+        help="Overwrite an existing board directory",
+    )
+    p_board_create.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit machine-readable JSON instead of human-readable text",
+    )
+    p_board_create.set_defaults(func=cmd_board_create)
 
     p_cache = sub.add_parser(
         "cache",

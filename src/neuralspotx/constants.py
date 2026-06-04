@@ -4,22 +4,56 @@ from __future__ import annotations
 
 import enum
 
-DEFAULT_SOC_FOR_BOARD = {
-    "apollo3_evb": "apollo3",
-    "apollo3_evb_cygnus": "apollo3",
-    "apollo3p_evb": "apollo3p",
-    "apollo3p_evb_cygnus": "apollo3p",
-    "apollo4l_evb": "apollo4l",
-    "apollo4l_blue_evb": "apollo4l",
-    "apollo4b_blue_evb": "apollo4p",
-    "apollo4p_evb": "apollo4p",
-    "apollo4p_blue_kbr_evb": "apollo4p",
-    "apollo4p_blue_kxr_evb": "apollo4p",
-    "apollo5b_evb": "apollo5b",
-    "apollo510_evb": "apollo510",
-    "apollo510b_evb": "apollo510b",
-    "apollo330mP_evb": "apollo330P",
-}
+from .board_descriptors import load_board_descriptors
+
+# Canonical ordering of *registered* boards. This is the single place that
+# governs which boards appear in the legacy ``DEFAULT_SOC_FOR_BOARD`` /
+# ``BOARD_SDK_PROVIDER`` tables and in what order (the order is load-bearing
+# for the generated ``nsx_board_table.cmake``). The per-board *values* are
+# derived from the ``board.yaml`` descriptors — see
+# :mod:`neuralspotx.board_descriptors`. A board ships a descriptor with
+# ``registered: false`` to remain out of these tables.
+_BOARD_ORDER: tuple[str, ...] = (
+    "apollo3_evb",
+    "apollo3_evb_cygnus",
+    "apollo3p_evb",
+    "apollo3p_evb_cygnus",
+    "apollo4l_evb",
+    "apollo4l_blue_evb",
+    "apollo4b_blue_evb",
+    "apollo4p_evb",
+    "apollo4p_blue_kbr_evb",
+    "apollo4p_blue_kxr_evb",
+    "apollo5b_evb",
+    "apollo510_evb",
+    "apollo510b_evb",
+    "apollo330mP_evb",
+)
+
+_DESCRIPTORS = load_board_descriptors()
+
+# Guard: every name in the canonical order must ship a registered descriptor,
+# and every registered descriptor must be listed in the canonical order.
+_missing_descriptor = [b for b in _BOARD_ORDER if b not in _DESCRIPTORS]
+if _missing_descriptor:
+    raise RuntimeError(
+        f"_BOARD_ORDER references boards without a board.yaml descriptor: "
+        f"{_missing_descriptor}"
+    )
+_unordered_registered = sorted(
+    name
+    for name, desc in _DESCRIPTORS.items()
+    if desc.registered and name not in _BOARD_ORDER
+)
+if _unordered_registered:
+    raise RuntimeError(
+        f"registered board descriptors missing from _BOARD_ORDER: "
+        f"{_unordered_registered}"
+    )
+
+# Authoritative mapping from canonical board name to default SoC, derived
+# from the board descriptors in the canonical order above.
+DEFAULT_SOC_FOR_BOARD = {b: _DESCRIPTORS[b].soc for b in _BOARD_ORDER}
 
 # Canonical (case-correct) board identifiers.  Most are already lowercase, but
 # ``apollo330mP_evb`` carries a load-bearing capital ``P`` (filesystem dir,
@@ -65,7 +99,9 @@ def normalize_soc(value: str | None) -> str | None:
 # ---------------------------------------------------------------------------
 #
 # This dict is the authoritative mapping from canonical board name to the
-# AmbiqSuite SDK provider module that supplies its low-level SDK payload.
+# AmbiqSuite SDK provider name that supplies its low-level SDK payload. Its
+# values are derived from the per-board ``board.yaml`` descriptors (the
+# ``sdk_provider`` field), in the canonical board order.
 #
 # The CMake helper ``nsx_select_sdk_provider`` (in
 # ``src/neuralspotx/cmake/nsx_sdk_providers.cmake``) consumes the
@@ -75,20 +111,7 @@ def normalize_soc(value: str | None) -> str | None:
 # ``tests/test_board_table_drift.py``.
 
 BOARD_SDK_PROVIDER: dict[str, str] = {
-    "apollo3_evb": "ambiqsuite-r3",
-    "apollo3_evb_cygnus": "ambiqsuite-r3",
-    "apollo3p_evb": "ambiqsuite-r3",
-    "apollo3p_evb_cygnus": "ambiqsuite-r3",
-    "apollo4l_evb": "ambiqsuite-r4",
-    "apollo4l_blue_evb": "ambiqsuite-r4",
-    "apollo4b_blue_evb": "ambiqsuite-r4",
-    "apollo4p_evb": "ambiqsuite-r4",
-    "apollo4p_blue_kbr_evb": "ambiqsuite-r4",
-    "apollo4p_blue_kxr_evb": "ambiqsuite-r4",
-    "apollo5b_evb": "ambiqsuite-r5",
-    "apollo510_evb": "ambiqsuite-r5",
-    "apollo510b_evb": "ambiqsuite-r5",
-    "apollo330mP_evb": "ambiqsuite-r5",
+    b: _DESCRIPTORS[b].sdk_provider for b in _BOARD_ORDER
 }
 
 

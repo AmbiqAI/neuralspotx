@@ -19,7 +19,8 @@ set(NSX_AMBIQ_HAL_MCU_DIR "${NSX_AMBIQ_HAL_DIR}/mcu")
 
 include("${NSX_CMAKE_DIR}/nsx_toolchain_flags.cmake")
 
-nsx_require_module_dir(NSX_CORE_DIR "nsx-core")
+nsx_module_dir_for_name(_nsx_core_module_dir "nsx-core")
+set(NSX_CORE_DIR "${NSX_ROOT}/${_nsx_core_module_dir}")
 
 if(NSX_TOOLCHAIN_FAMILY STREQUAL "armclang")
     set(NSX_STARTUP_SOURCE "${NSX_CORE_DIR}/src/apollo510/armclang/startup_keil6.c")

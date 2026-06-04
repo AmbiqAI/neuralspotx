@@ -33,6 +33,7 @@ from ..project_config import (
     _save_app_cfg,
     _unique_preserving_order,
     _write_app_module_file,
+    _write_cmake_nsx_gitignore,
     _write_modules_gitignore,
 )
 from ..templating import render_template_tree
@@ -128,6 +129,7 @@ def _create_app_body(
     """Inner body of create_app_impl, separated for rollback wrapping."""
 
     _copy_packaged_tree("neuralspotx", "cmake", app_dir / "cmake" / "nsx")
+    _write_cmake_nsx_gitignore(app_dir)
 
     current_nsx_version = _nsx_tool_version()
     current_nsx_major = _nsx_tool_major(current_nsx_version)
@@ -154,7 +156,7 @@ def _create_app_body(
         info("  3) Add modules with `nsx module add <module> --app-dir .`")
         return app_dir
 
-    registry = _effective_registry(base_registry, nsx_cfg)
+    registry = _effective_registry(base_registry, nsx_cfg, app_dir=app_dir)
 
     # Pre-acquire seed modules so their nsx-module.yaml metadata is
     # available for dependency resolution below.

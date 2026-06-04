@@ -4,42 +4,26 @@ set(NSX_APP_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}")
 get_filename_component(NSX_APP_ROOT "${NSX_APP_CMAKE_DIR}/../.." ABSOLUTE)
 
 function(nsx_module_dir_for_name out_var module_name)
-    string(MAKE_C_IDENTIFIER "${module_name}" module_ident)
-    set(module_dir_var "NSX_MODULE_DIR_${module_ident}")
+    string(REPLACE "-" "_" module_var "${module_name}")
+    set(module_dir_var "NSX_APP_MODULE_DIR_${module_var}")
     if(DEFINED ${module_dir_var})
         set(${out_var} "${${module_dir_var}}" PARENT_SCOPE)
-    else()
-        set(${out_var} "modules/${module_name}" PARENT_SCOPE)
+        return()
     endif()
-endfunction()
-
-
-function(nsx_resolve_module_source_dir out_var nsx_app_root module_name)
-    nsx_module_dir_for_name(module_dir "${module_name}")
-    set(${out_var} "${nsx_app_root}/${module_dir}" PARENT_SCOPE)
+    set(${out_var} "modules/${module_name}" PARENT_SCOPE)
 endfunction()
 
 
 function(nsx_add_module_subdirectory nsx_app_root module_name)
-    nsx_resolve_module_source_dir(module_source_dir "${nsx_app_root}" "${module_name}")
+    nsx_module_dir_for_name(module_dir "${module_name}")
 
-    if(NOT EXISTS "${module_source_dir}")
-        message(FATAL_ERROR
-            "Resolved module '${module_name}' directory does not exist: ${module_source_dir}\n"
-            "Regenerate build glue with `nsx sync` or `nsx create-app`, or fix the module registry entry so NSX_MODULE_DIR_${module_name} resolves correctly."
-        )
-    endif()
-
-    if(NOT EXISTS "${module_source_dir}/CMakeLists.txt")
-        message(FATAL_ERROR
-            "Resolved module '${module_name}' has no CMakeLists.txt: ${module_source_dir}/CMakeLists.txt\n"
-            "Only CMake-participating modules belong in NSX_APP_MODULES."
-        )
+    if(NOT EXISTS "${nsx_app_root}/${module_dir}")
+        return()
     endif()
 
     string(REPLACE "-" "_" module_build_dir "${module_name}")
     add_subdirectory(
-        "${module_source_dir}"
+        "${nsx_app_root}/${module_dir}"
         "${CMAKE_CURRENT_BINARY_DIR}/_nsx/${module_build_dir}"
     )
 endfunction()
@@ -68,23 +52,18 @@ function(nsx_bootstrap_app)
     set(NSX_CMAKE_DIR "${NSX_CMAKE_DIR}" PARENT_SCOPE)
 
     include("${NSX_CMAKE_DIR}/nsx_helpers.cmake")
+    # Bring each vendored project's own CMake helpers into scope. A
+    # consolidated SDK bundle (e.g. nsx-ambiq-sdk-r5) ships its assert/
+    # select/toolchain helpers under <project>/cmake/*.cmake; the vendored
+    # module CMakeLists call them, so they must be included before any
+    # module add_subdirectory(). NSX_APP_PROJECT_DIRS is emitted by Python
+    # into modules.cmake (one entry per distinct vendored project root).
     foreach(project_dir IN LISTS NSX_APP_PROJECT_DIRS)
         file(GLOB nsx_project_helpers CONFIGURE_DEPENDS "${NSX_ROOT}/${project_dir}/cmake/*.cmake")
         foreach(nsx_project_helper IN LISTS nsx_project_helpers)
             include("${nsx_project_helper}")
         endforeach()
     endforeach()
-    # Resolved build facts (board → provider, provider → version) are emitted
-    # by Python alongside modules.cmake. nsx_sdk_providers.cmake consumes them
-    # instead of scraping YAML manifests at configure time.
-    set(NSX_BUILD_FACTS "${NSX_CMAKE_DIR}/nsx_build_facts.cmake")
-    if(NOT EXISTS "${NSX_BUILD_FACTS}")
-        message(FATAL_ERROR
-            "Generated build facts missing: ${NSX_BUILD_FACTS}\n"
-            "Regenerate build glue with `nsx sync` or `nsx create-app`."
-        )
-    endif()
-    include("${NSX_BUILD_FACTS}")
     include("${NSX_CMAKE_DIR}/nsx_sdk_providers.cmake")
 
     nsx_select_sdk_provider("${NSX_BOARD}")

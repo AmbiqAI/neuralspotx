@@ -81,6 +81,65 @@ def load_yaml(path: Path) -> dict[str, Any]:
     return data
 
 
+def _derive_starter_profiles(data: dict[str, Any]) -> dict[str, Any]:
+    """Expand ``soc_families`` + ``board_profiles`` into full starter profiles.
+
+    Each profile's SoC and SDK-provider family come from the first-class
+    board descriptor, so the per-board module list is assembled from the
+    family baseline plus the board's own ``nsx-board-<board>`` module and
+    the shared ``core_modules`` — no per-board duplication in the lock.
+    """
+
+    from .board_descriptors import load_board
+
+    defaults = _expect_type(data, "profile_defaults", dict, "registry.lock")
+    default_toolchain = defaults.get("toolchain", "arm-none-eabi-gcc")
+    default_channel = defaults.get("channel", "stable")
+    core_modules = list(defaults.get("core_modules", []))
+
+    families = _expect_type(data, "soc_families", dict, "registry.lock")
+    board_profiles = _expect_type(data, "board_profiles", dict, "registry.lock")
+
+    profiles: dict[str, Any] = {}
+    for board, raw in board_profiles.items():
+        entry = raw or {}
+        if not isinstance(entry, dict):
+            raise ValueError(f"registry.lock: board_profiles['{board}'] must be a mapping")
+        descriptor = load_board(board)
+        if descriptor is None:
+            raise ValueError(
+                f"registry.lock: board_profiles['{board}'] has no board descriptor "
+                f"(expected src/neuralspotx/boards/{board}/board.yaml)"
+            )
+        family_key = descriptor.sdk_provider.rsplit("-", 1)[-1]
+        family = families.get(family_key)
+        if family is None:
+            raise ValueError(
+                f"registry.lock: board '{board}' references unknown soc family "
+                f"'{family_key}' (known: {sorted(families)})"
+            )
+        provider = family["provider"]
+        revision = family["revision"]
+        board_module = "nsx-board-" + board.replace("_", "-").lower()
+        profiles[f"{board}_minimal"] = {
+            "board": board,
+            "soc": descriptor.soc,
+            "toolchain": entry.get("toolchain", default_toolchain),
+            "channel": entry.get("channel", default_channel),
+            "project_overrides": {provider: {"revision": revision}},
+            "module_overrides": {
+                provider: {
+                    "project": provider,
+                    "revision": revision,
+                    "metadata": f"modules/{provider}/nsx-module.yaml",
+                }
+            },
+            "modules": [*family["modules"], board_module, *core_modules],
+            "features": {},
+        }
+    return profiles
+
+
 def load_registry_lock(path: Path) -> dict[str, Any]:
     data = load_yaml(path)
     schema_version = _expect_type(data, "schema_version", int, "registry.lock")
@@ -89,8 +148,12 @@ def load_registry_lock(path: Path) -> dict[str, Any]:
     _expect_type(data, "channels", dict, "registry.lock")
     _expect_type(data, "projects", dict, "registry.lock")
     _expect_type(data, "modules", dict, "registry.lock")
+    # ``starter_profiles`` is derived from the family baselines + per-board
+    # channel when those sections are present; otherwise it must be supplied
+    # literally (used by tests that build minimal registries).
+    if "soc_families" in data or "board_profiles" in data:
+        data["starter_profiles"] = _derive_starter_profiles(data)
     _expect_type(data, "starter_profiles", dict, "registry.lock")
-    _expect_type(data, "compat_matrix", dict, "registry.lock")
     return data
 
 
