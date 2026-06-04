@@ -300,8 +300,6 @@ def _write_app_module_file(
     *,
     module_names: list[str] | None = None,
 ) -> None:
-    from .metadata import registry_entry_for_module
-
     ordered_module_names = module_names or AppConfig.from_mapping(nsx_cfg).module_names()
     registry = _effective_registry(_load_registry(), nsx_cfg, app_dir=app_dir)
     lines = [
@@ -314,13 +312,27 @@ def _write_app_module_file(
 
     for name in ordered_module_names:
         try:
-            entry = registry_entry_for_module(registry, name)
+            source_dir = _module_source_dir_relative_to_app(name, registry, nsx_cfg)
         except (KeyError, ValueError, TypeError):
             continue
-        rel = _vendored_metadata_relpath(entry.metadata)
-        if rel.parts[:1] != ("modules",):
+        if source_dir.parts[:1] != ("modules",):
             continue
-        lines.append(f'set(NSX_APP_MODULE_DIR_{name.replace("-", "_")} "{rel.parent.as_posix()}")')
+        lines.append(
+            f'set(NSX_APP_MODULE_DIR_{name.replace("-", "_")} "{source_dir.as_posix()}")'
+        )
+
+    project_dirs = sorted({
+        project_dir.as_posix()
+        for name in ordered_module_names
+        if (project_dir := _module_project_dir_relative_to_app(name, registry, nsx_cfg))
+        is not None
+    })
+    if project_dirs:
+        lines.append("")
+        lines.append("set(NSX_APP_PROJECT_DIRS")
+        for project_dir in project_dirs:
+            lines.append(f"    {project_dir}")
+        lines.append(")")
 
     content = "\n".join(lines) + "\n"
     (app_dir / "cmake" / "nsx").mkdir(parents=True, exist_ok=True)
@@ -491,6 +503,53 @@ def _module_clone_dir(app_dir: Path, project_name: str, registry: dict | None = 
             return app_dir / project_path
 
     return app_dir / "modules" / project_name
+
+
+def _module_source_dir_relative_to_app(
+    module_name: str,
+    registry: dict[str, Any],
+    nsx_cfg: dict[str, Any],
+) -> Path:
+    """Resolve a module's on-disk directory relative to the app root.
+
+    Git modules are vendored under their *project* clone directory (a whole
+    monorepo may host many modules), so the module dir is the project clone
+    dir joined with the module's metadata path taken relative to the project
+    root. Packaged modules keep their vendored target layout; opaque modules
+    live at ``modules/<name>``.
+    """
+
+    from .metadata import registry_entry_for_module
+
+    if module_name in AppConfig.from_mapping(nsx_cfg).opaque_modules():
+        return Path("modules") / module_name
+
+    entry = registry_entry_for_module(registry, module_name)
+
+    if _is_packaged_module(registry, module_name):
+        return _vendored_target_dir(Path("."), module_name, entry.metadata)
+
+    project_entry = _registry_project_entry(registry, entry.project)
+    metadata_rel = _metadata_path_relative_to_project(Path(entry.metadata), project_entry.path)
+    return _module_clone_dir(Path("."), entry.project, registry) / metadata_rel.parent
+
+
+def _module_project_dir_relative_to_app(
+    module_name: str,
+    registry: dict[str, Any],
+    nsx_cfg: dict[str, Any],
+) -> Path | None:
+    """Resolve a git module's project clone dir (where its bundle-level
+    ``cmake/`` helpers live), or ``None`` for opaque/packaged modules."""
+
+    from .metadata import registry_entry_for_module
+
+    if module_name in AppConfig.from_mapping(nsx_cfg).opaque_modules():
+        return None
+    entry = registry_entry_for_module(registry, module_name)
+    if _is_packaged_module(registry, module_name):
+        return None
+    return _module_clone_dir(Path("."), entry.project, registry)
 
 
 def find_app_root(start: Path | None = None) -> Path | None:

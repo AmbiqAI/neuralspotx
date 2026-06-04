@@ -8,6 +8,20 @@ function(_nsx_pick_first_existing out_var)
     set(${out_var} "" PARENT_SCOPE)
 endfunction()
 
+# Resolve a module's vendored dir (relative to NSX_ROOT). The app bootstrap
+# defines ``nsx_module_dir_for_name`` (which reads the generated
+# ``NSX_APP_MODULE_DIR_<id>`` overlay so a consolidated SDK bundle nests
+# modules under its project dir). When this file is included in isolation
+# (e.g. provider unit tests), fall back to the flat ``modules/<name>`` layout.
+function(_nsx_module_relpath_or_default out_var module_name)
+    if(COMMAND nsx_module_dir_for_name)
+        nsx_module_dir_for_name(_rel "${module_name}")
+        set(${out_var} "${_rel}" PARENT_SCOPE)
+    else()
+        set(${out_var} "modules/${module_name}" PARENT_SCOPE)
+    endif()
+endfunction()
+
 # Board → SDK provider mapping is generated from
 # src/neuralspotx/constants.py (BOARD_SDK_PROVIDER) by
 # scripts/gen_board_table.py. Keep this include relative to this file.
@@ -70,11 +84,13 @@ function(nsx_select_sdk_provider board_name)
 
     if(NSX_SDK_PROVIDER STREQUAL "ambiqsuite-r3")
         set(version "R3.1.1")
-        set(module_default_root "${NSX_ROOT}/modules/nsx-ambiqsuite-r3/sdk")
+        _nsx_module_relpath_or_default(_ambiqsuite_module_dir "nsx-ambiqsuite-r3")
+        set(module_default_root "${NSX_ROOT}/${_ambiqsuite_module_dir}/sdk")
         if(NSX_AMBIQSUITE_R3_ROOT STREQUAL "")
             _nsx_pick_first_existing(
                 NSX_AMBIQSUITE_R3_ROOT_CANDIDATE
                 "${module_default_root}"
+                "${NSX_ROOT}/modules/nsx-ambiqsuite-r3/sdk"
             )
             if(NOT NSX_AMBIQSUITE_R3_ROOT_CANDIDATE STREQUAL "")
                 set(NSX_AMBIQSUITE_R3_ROOT "${NSX_AMBIQSUITE_R3_ROOT_CANDIDATE}" CACHE PATH "Path to AmbiqSuite R3 root" FORCE)
@@ -84,11 +100,13 @@ function(nsx_select_sdk_provider board_name)
         set(selected_target "nsx_sdk_ambiqsuite_r3")
     elseif(NSX_SDK_PROVIDER STREQUAL "ambiqsuite-r4")
         set(version "R4.5.0")
-        set(module_default_root "${NSX_ROOT}/modules/nsx-ambiqsuite-r4/sdk")
+        _nsx_module_relpath_or_default(_ambiqsuite_module_dir "nsx-ambiqsuite-r4")
+        set(module_default_root "${NSX_ROOT}/${_ambiqsuite_module_dir}/sdk")
         if(NSX_AMBIQSUITE_R4_ROOT STREQUAL "")
             _nsx_pick_first_existing(
                 NSX_AMBIQSUITE_R4_ROOT_CANDIDATE
                 "${module_default_root}"
+                "${NSX_ROOT}/modules/nsx-ambiqsuite-r4/sdk"
             )
             if(NOT NSX_AMBIQSUITE_R4_ROOT_CANDIDATE STREQUAL "")
                 set(NSX_AMBIQSUITE_R4_ROOT "${NSX_AMBIQSUITE_R4_ROOT_CANDIDATE}" CACHE PATH "Path to AmbiqSuite R4 root" FORCE)
@@ -98,11 +116,13 @@ function(nsx_select_sdk_provider board_name)
         set(selected_target "nsx_sdk_ambiqsuite_r4")
     elseif(NSX_SDK_PROVIDER STREQUAL "ambiqsuite-r5")
         set(version "R5.3.0")
-        set(module_default_root "${NSX_ROOT}/modules/nsx-ambiqsuite-r5/sdk")
+        _nsx_module_relpath_or_default(_ambiqsuite_module_dir "nsx-ambiqsuite-r5")
+        set(module_default_root "${NSX_ROOT}/${_ambiqsuite_module_dir}/sdk")
         if(NSX_AMBIQSUITE_R5_ROOT STREQUAL "")
             _nsx_pick_first_existing(
                 NSX_AMBIQSUITE_R5_ROOT_CANDIDATE
                 "${module_default_root}"
+                "${NSX_ROOT}/modules/nsx-ambiqsuite-r5/sdk"
             )
             if(NOT NSX_AMBIQSUITE_R5_ROOT_CANDIDATE STREQUAL "")
                 set(NSX_AMBIQSUITE_R5_ROOT "${NSX_AMBIQSUITE_R5_ROOT_CANDIDATE}" CACHE PATH "Path to AmbiqSuite R5 root" FORCE)

@@ -26,6 +26,16 @@ projects:
     url: https://github.com/AmbiqAI/nsx-ambiqsuite-r5.git
     revision: r5.2.0
     path: modules/nsx-ambiqsuite-r5
+  nsx-ambiq-sdk-r5:
+    name: nsx-ambiq-sdk-r5
+    url: https://github.com/AmbiqAI/nsx-ambiq-sdk-r5.git
+    revision: main
+    path: modules/nsx-ambiq-sdk-r5
+  nsx-ambiq-sdk-r6:
+    name: nsx-ambiq-sdk-r6
+    url: https://github.com/AmbiqAI/nsx-ambiq-sdk-r6.git
+    revision: main
+    path: modules/nsx-ambiq-sdk-r6
   nsx-ambiq-hal-r3:
     name: nsx-ambiq-hal-r3
     url: https://github.com/AmbiqAI/nsx-ambiq-hal-r3.git

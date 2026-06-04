@@ -558,6 +558,15 @@ class TestLocalKind:
         assert 'set(NSX_APP_MODULE_DIR_nsx_dep "modules/dep-proj/nsx")' in modules_cmake
         assert 'set(NSX_APP_MODULE_DIR_nsx_app "modules/app-proj/nsx")' in modules_cmake
 
+        # Each distinct git-hosted project root is emitted into
+        # NSX_APP_PROJECT_DIRS so the app bootstrap can include the
+        # project's own cmake/*.cmake helpers (needed for consolidated
+        # SDK bundles that vendor many modules under one project dir).
+        assert "set(NSX_APP_PROJECT_DIRS" in modules_cmake
+        project_dirs_block = modules_cmake.split("set(NSX_APP_PROJECT_DIRS", 1)[1]
+        assert "    modules/app-proj" in project_dirs_block
+        assert "    modules/dep-proj" in project_dirs_block
+
         gitignore = (app / "modules" / ".gitignore").read_text(encoding="utf-8")
         assert "dep-proj/" in gitignore
         assert "app-proj/" in gitignore
