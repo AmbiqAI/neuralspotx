@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 from pathlib import Path
 
 import pytest
@@ -13,6 +14,8 @@ from neuralspotx import (
     AppBuildRequest,
     AppCleanRequest,
     AppCreateRequest,
+    AppFlashRequest,
+    AppViewRequest,
     ModuleInitRequest,
     ModuleRegisterRequest,
     NSXError,
@@ -21,10 +24,12 @@ from neuralspotx import (
     clean_app,
     cli,
     create_app,
+    flash_app,
     init_module,
     register_module,
     remove_module,
     update_modules,
+    view_app,
 )
 from neuralspotx.module_registry import _resolve_module_closure
 from neuralspotx.project_config import (
@@ -772,4 +777,55 @@ def test_build_app_uses_shared_impl_and_triggers_configure_when_needed(
     assert configure_calls == [(app_dir, build_dir, "apollo510_evb", None)]
     assert build_calls == [
         ["cmake", "--build", str(build_dir), "--target", "hello_build", "-j", "3"]
+    ]
+
+
+def test_flash_and_view_reconfigure_when_probe_serial_is_supplied(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    create_app(
+        AppCreateRequest(app_dir=tmp_path / "hello_probe", board="apollo510_evb", no_bootstrap=True)
+    )
+
+    app_dir = tmp_path / "hello_probe"
+    build_dir = app_dir / "build" / "apollo510_evb"
+    build_dir.mkdir(parents=True, exist_ok=True)
+    (build_dir / "build.ninja").write_text("# fake\n", encoding="utf-8")
+
+    configure_calls: list[tuple[Path, Path, str, str | None, str | None]] = []
+    run_calls: list[list[str]] = []
+
+    def fake_configure(
+        app: Path,
+        build: Path,
+        board: str,
+        toolchain: str | None = None,
+        probe_serial: str | None = None,
+    ) -> None:
+        configure_calls.append((app, build, board, toolchain, probe_serial))
+
+    def fake_run_capture(cmd: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+        del cwd
+        run_calls.append(cmd)
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(operations._build, "_run_cmake_configure", fake_configure)
+    monkeypatch.setattr(operations._build, "run_capture", fake_run_capture)
+    monkeypatch.setattr(operations._build, "extract_view_command", lambda *_args, **_kw: ["viewer"])
+
+    class _DoneProc:
+        def wait(self) -> int:
+            return 0
+
+    monkeypatch.setattr(operations._build.subprocess, "Popen", lambda *args, **kwargs: _DoneProc())
+
+    flash_app(AppFlashRequest(app_dir=app_dir, probe_serial="1160002204"))
+    view_app(AppViewRequest(app_dir=app_dir, probe_serial="1160002204", reset_on_open=False))
+
+    assert configure_calls == [
+        (app_dir, build_dir, "apollo510_evb", None, "1160002204"),
+        (app_dir, build_dir, "apollo510_evb", None, "1160002204"),
+    ]
+    assert run_calls == [
+        ["cmake", "--build", str(build_dir), "--target", "hello_probe_flash", "-j", "8"],
     ]

@@ -163,6 +163,7 @@ def cmd_configure(args: argparse.Namespace) -> None:
         board=args.board,
         build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
         toolchain=args.toolchain,
+        probe_serial=getattr(args, "probe_serial", None),
         timeout_s=getattr(args, "timeout", None),
     )
 
@@ -187,6 +188,7 @@ def cmd_flash(args: argparse.Namespace) -> None:
         board=args.board,
         build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
         toolchain=args.toolchain,
+        probe_serial=getattr(args, "probe_serial", None),
         jobs=args.jobs,
         timeout_s=getattr(args, "timeout", None),
     )
@@ -199,6 +201,7 @@ def cmd_view(args: argparse.Namespace) -> None:
         board=args.board,
         build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
         toolchain=args.toolchain,
+        probe_serial=getattr(args, "probe_serial", None),
         reset_on_open=not args.no_reset_on_open,
         reset_delay_ms=args.reset_delay_ms,
         timeout_s=getattr(args, "timeout", None),
@@ -500,6 +503,11 @@ def _build_parser() -> argparse.ArgumentParser:
     p_configure.add_argument(
         "--toolchain", default=None, help="Toolchain override (gcc, armclang, atfe)"
     )
+    p_configure.add_argument(
+        "--probe-serial",
+        default=None,
+        help="Optional SEGGER J-Link USB serial number to use for generated flash/view targets",
+    )
     _add_timeout(p_configure)
     p_configure.set_defaults(func=cmd_configure)
 
@@ -522,6 +530,11 @@ def _build_parser() -> argparse.ArgumentParser:
     p_flash.add_argument(
         "--toolchain", default=None, help="Toolchain override (gcc, armclang, atfe)"
     )
+    p_flash.add_argument(
+        "--probe-serial",
+        default=None,
+        help="Optional SEGGER J-Link USB serial number to use",
+    )
     p_flash.add_argument("--jobs", type=int, default=8, help="Parallel build jobs")
     _add_timeout(p_flash)
     p_flash.set_defaults(func=cmd_flash)
@@ -532,6 +545,11 @@ def _build_parser() -> argparse.ArgumentParser:
     p_view.add_argument("--build-dir", default=None, help="Build directory override")
     p_view.add_argument(
         "--toolchain", default=None, help="Toolchain override (gcc, armclang, atfe)"
+    )
+    p_view.add_argument(
+        "--probe-serial",
+        default=None,
+        help="Optional SEGGER J-Link USB serial number to use",
     )
     p_view.add_argument(
         "--no-reset-on-open",

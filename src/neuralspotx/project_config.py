@@ -706,7 +706,11 @@ def _default_build_dir(app_dir: Path, board: str) -> Path:
 
 
 def _run_cmake_configure(
-    app_dir: Path, build_dir: Path, board: str, toolchain: str | None = None
+    app_dir: Path,
+    build_dir: Path,
+    board: str,
+    toolchain: str | None = None,
+    probe_serial: str | None = None,
 ) -> None:
     from .constants import DEFAULT_TOOLCHAIN, EXPERIMENTAL_TOOLCHAINS, SUPPORTED_TOOLCHAINS
 
@@ -732,7 +736,7 @@ def _run_cmake_configure(
         )
 
     toolchain_file = app_dir / "cmake" / "nsx" / "toolchains" / tc_file
-    run([
+    cmd = [
         "cmake",
         "-S",
         str(app_dir),
@@ -743,7 +747,10 @@ def _run_cmake_configure(
         f"-DCMAKE_TOOLCHAIN_FILE={toolchain_file}",
         "-DCMAKE_BUILD_TYPE=Release",
         f"-DNSX_BOARD={board}",
-    ])
+    ]
+    if probe_serial is not None:
+        cmd.append(f"-DNSX_JLINK_SERIAL={probe_serial}")
+    run(cmd)
 
 
 def _resolve_app_context(args: argparse.Namespace) -> tuple[Path, dict[str, Any], str, str]:
