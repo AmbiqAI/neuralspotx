@@ -13,5 +13,15 @@
 # Local benchmark capture artifacts (Joulescope, UART logs, etc.)
 examples/**/results/
 
+# Vendored board source descriptor — regenerated into each example by
+# `nsx sync` (the committed artifact is boards/<board>/board.cmake, so the
+# redundant board.yaml copy is intentionally not tracked in examples).
+examples/*/boards/*/board.yaml
+
+# Auto-generated per-app cmake/.gitignore (it ignores the regenerated
+# cmake/nsx/ build glue). The file itself is produced by `nsx sync`/`lock`,
+# so it is not tracked either; hand-written cmake/presets/ stays tracked.
+examples/*/cmake/.gitignore
+
 # NSX per-app advisory lock (created by nsx sync/lock/update)
 **/.nsx.sync.lock

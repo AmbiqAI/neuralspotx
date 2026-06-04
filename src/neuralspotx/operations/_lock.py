@@ -48,6 +48,7 @@ from ..project_config import (
     _write_app_module_file,
     _write_cmake_nsx_gitignore,
     _write_modules_gitignore_for_module_names,
+    validate_app_module_alignment,
 )
 from ._common import OutdatedStatus, _log
 
@@ -120,6 +121,7 @@ def _build_lock_for_app(
     nsx_cfg = _load_app_cfg(app_dir)
     base_registry = _load_registry()
     registry = _effective_registry(base_registry, nsx_cfg, app_dir=app_dir)
+    validate_app_module_alignment(nsx_cfg, registry)
     seed_module_names = _module_names_from_nsx(nsx_cfg)
     local_names = _local_module_names(nsx_cfg)
     vendored_names = _vendored_module_names(nsx_cfg)

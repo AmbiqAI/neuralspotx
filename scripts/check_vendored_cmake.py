@@ -1,11 +1,18 @@
 #!/usr/bin/env python3
-"""Verify that every example's vendored ``cmake/nsx/`` matches the canonical copy.
+"""Verify that every example's vendored build glue matches the canonical copy.
 
 REVIEW2 item F4: each example carries its own ``cmake/nsx/`` tree (vendored
 on purpose so users can build any example without first installing nsx).
 This script byte-compares every file under ``src/neuralspotx/cmake/`` to
 its counterpart in each ``examples/*/cmake/nsx/`` and exits non-zero on
 the first mismatch.
+
+It also byte-compares each example's vendored ``boards/<board>/`` tree
+against the canonical ``src/neuralspotx/boards/<board>/``. ``board.cmake``
+is the committed build artifact and is re-vendored on every ``nsx sync``;
+without this guard a board.cmake edit in ``src`` that was never propagated
+to the examples would pass CI silently (only ``cmake/nsx/`` was covered
+before).
 
 The per-app ``modules.cmake`` file is **expected** to differ (each
 example declares its own module set), so it is excluded from the diff.
@@ -26,6 +33,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CANONICAL = REPO_ROOT / "src" / "neuralspotx" / "cmake"
+BOARDS_CANONICAL = REPO_ROOT / "src" / "neuralspotx" / "boards"
 EXAMPLES = REPO_ROOT / "examples"
 
 # Files under examples/<app>/cmake/nsx that are intentionally per-app and
@@ -73,6 +81,50 @@ def _check_example(example_dir: Path, canonical_files: list[Path]) -> list[str]:
     return errors
 
 
+def _check_example_boards(example_dir: Path) -> list[str]:
+    """Byte-compare an example's vendored ``boards/<board>/`` against src.
+
+    Examples only vendor the board(s) they build, so this does not require
+    every canonical board to be present — it only verifies that whatever a
+    given example DID vendor still matches ``src/neuralspotx/boards/``. Only
+    files actually present in the vendored board dir are compared, so the
+    intentionally git-ignored ``board.yaml`` (regenerated on sync) does not
+    have to exist on a clean checkout.
+    """
+
+    boards_root = example_dir / "boards"
+    if not boards_root.is_dir():
+        return []
+
+    errors: list[str] = []
+    for board_dir in sorted(p for p in boards_root.iterdir() if p.is_dir()):
+        canonical_board = BOARDS_CANONICAL / board_dir.name
+        if not canonical_board.is_dir():
+            errors.append(
+                f"{example_dir.name}: vendored board '{board_dir.name}' has no "
+                f"canonical src/neuralspotx/boards/{board_dir.name}/"
+            )
+            continue
+        for vendored in sorted(board_dir.rglob("*")):
+            if not vendored.is_file():
+                continue
+            rel = vendored.relative_to(board_dir)
+            canonical = canonical_board / rel
+            if not canonical.exists():
+                errors.append(
+                    f"{example_dir.name}: orphan board file "
+                    f"boards/{board_dir.name}/{rel} (not in "
+                    f"canonical src/neuralspotx/boards/{board_dir.name}/)"
+                )
+                continue
+            if not filecmp.cmp(canonical, vendored, shallow=False):
+                errors.append(
+                    f"{example_dir.name}: drift in boards/{board_dir.name}/{rel} "
+                    f"(differs from src/neuralspotx/boards/{board_dir.name}/{rel})"
+                )
+    return errors
+
+
 def main() -> int:
     if not CANONICAL.is_dir():
         print(f"error: canonical cmake tree missing: {CANONICAL}", file=sys.stderr)
@@ -95,21 +147,24 @@ def main() -> int:
             # tooling-only directories). Skip silently.
             continue
         all_errors.extend(_check_example(example, canonical_files))
+        all_errors.extend(_check_example_boards(example))
 
     if all_errors:
-        print("Vendored cmake/nsx/ trees have drifted from src/neuralspotx/cmake/:")
+        print("Vendored build glue has drifted from src/neuralspotx/:")
         for err in all_errors:
             print(f"  - {err}")
         print()
         print(
             "Refresh the affected example(s) by re-running the configure step "
-            "or by copying src/neuralspotx/cmake/* into the example's cmake/nsx/."
+            "or by copying src/neuralspotx/cmake/* and src/neuralspotx/boards/* "
+            "into the example's cmake/nsx/ and boards/ trees."
         )
         return 1
 
     print(
         f"OK: {len(examples)} example(s) match canonical "
-        f"src/neuralspotx/cmake/ ({len(canonical_files)} file(s))."
+        f"src/neuralspotx/cmake/ ({len(canonical_files)} file(s)) and "
+        f"src/neuralspotx/boards/."
     )
     return 0
 
