@@ -1,0 +1,19 @@
+# NSX board descriptor (schema_version 1).
+#
+# Source of truth for board -> SoC / SDK-provider derivation consumed by
+# neuralspotx.constants via neuralspotx/board_descriptors.py. Keep in sync
+# with board.cmake (NSX_SOC_FAMILY / NSX_CPU / NSX_ABI_FLAGS).
+schema_version: 1
+board:
+  name: apollo3p_evb_cygnus
+  tier: evb
+  soc: apollo3p
+  registered: true
+soc_family: apollo3p
+sdk_provider: ambiqsuite-r3
+cpu:
+  core: cortex-m4
+  float_abi: hard
+  abi: thumbv7em-fpv4sp-hard
+toolchains:
+  - arm-none-eabi-gcc
