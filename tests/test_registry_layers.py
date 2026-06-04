@@ -8,7 +8,10 @@ from pathlib import Path
 import pytest
 
 from neuralspotx._errors import NSXConfigError
-from neuralspotx.project_config import _effective_registry
+from neuralspotx.project_config import (
+    _effective_registry,
+    validate_app_module_alignment,
+)
 
 
 def _base_registry() -> dict:
@@ -147,3 +150,95 @@ def test_multi_key_layer_mapping_raises() -> None:
     nsx_cfg = {"registry": {"layers": [{"inline": {}, "workspace": "x"}]}}
     with pytest.raises(NSXConfigError):
         _effective_registry(base, nsx_cfg)
+
+
+# --- module/project alignment guard (partial-migration detection) ---------
+
+
+def _bundle_base_registry() -> dict:
+    """Base registry where the SDK module still points at its old split repo."""
+
+    return {
+        "projects": {
+            "nsx-ambiq-bsp-r5": {"name": "nsx-ambiq-bsp-r5", "revision": "v0.1.0"},
+            "nsx-ambiq-sdk-r5": {"name": "nsx-ambiq-sdk-r5", "revision": "main"},
+        },
+        "modules": {
+            "nsx-ambiq-bsp-r5": {
+                "project": "nsx-ambiq-bsp-r5",
+                "revision": "v0.1.0",
+                "metadata": "nsx-module.yaml",
+            },
+        },
+    }
+
+
+def test_alignment_passes_when_module_override_present() -> None:
+    """A module whose override moves it onto the bundle project aligns."""
+
+    base = _bundle_base_registry()
+    nsx_cfg = {
+        "modules": [
+            {"name": "nsx-ambiq-bsp-r5", "project": "nsx-ambiq-sdk-r5"},
+        ],
+        "module_registry": {
+            "projects": {"nsx-ambiq-sdk-r5": {"revision": "main"}},
+            "modules": {
+                "nsx-ambiq-bsp-r5": {
+                    "project": "nsx-ambiq-sdk-r5",
+                    "revision": "main",
+                    "metadata": "modules/nsx-ambiq-bsp-r5/nsx-module.yaml",
+                },
+            },
+        },
+    }
+    registry = _effective_registry(base, nsx_cfg)
+    # Should not raise.
+    validate_app_module_alignment(nsx_cfg, registry)
+
+
+def test_alignment_detects_partial_migration() -> None:
+    """A module pinned to the bundle but missing its override is rejected."""
+
+    base = _bundle_base_registry()
+    nsx_cfg = {
+        "modules": [
+            {"name": "nsx-ambiq-bsp-r5", "project": "nsx-ambiq-sdk-r5"},
+        ],
+        "module_registry": {
+            "projects": {"nsx-ambiq-sdk-r5": {"revision": "main"}},
+            # NOTE: no modules override for nsx-ambiq-bsp-r5 — the partial
+            # migration that broke the examples.
+        },
+    }
+    registry = _effective_registry(base, nsx_cfg)
+    with pytest.raises(NSXConfigError) as exc:
+        validate_app_module_alignment(nsx_cfg, registry)
+    msg = str(exc.value)
+    assert "nsx-ambiq-bsp-r5" in msg
+    assert "nsx-ambiq-sdk-r5" in msg
+    assert "nsx-ambiq-bsp-r5" in msg  # the stale resolved project name
+
+
+def test_alignment_ignores_modules_without_declared_project() -> None:
+    base = _bundle_base_registry()
+    nsx_cfg = {"modules": [{"name": "nsx-ambiq-bsp-r5"}]}
+    registry = _effective_registry(base, nsx_cfg)
+    validate_app_module_alignment(nsx_cfg, registry)
+
+
+def test_alignment_ignores_local_and_vendored_modules() -> None:
+    base = _bundle_base_registry()
+    nsx_cfg = {
+        "modules": [
+            {"name": "my-local", "project": "nsx-ambiq-sdk-r5", "local": True},
+            {
+                "name": "my-vendored",
+                "project": "nsx-ambiq-sdk-r5",
+                "source": {"vendored": True},
+            },
+        ]
+    }
+    registry = _effective_registry(base, nsx_cfg)
+    validate_app_module_alignment(nsx_cfg, registry)
+

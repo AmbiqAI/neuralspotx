@@ -131,6 +131,53 @@ def _effective_registry(
     )
 
 
+def validate_app_module_alignment(
+    nsx_cfg: dict[str, Any],
+    registry: dict[str, Any],
+) -> None:
+    """Guard against partial project migrations in an app manifest.
+
+    When an app's ``modules:`` list pins a module to a ``project:`` (e.g.
+    after migrating onto a consolidated SDK bundle), the *effective*
+    registry must resolve that module to the **same** project. A mismatch
+    means the module-level override under ``module_registry.modules`` was
+    forgotten, so resolution silently falls back to the base registry's
+    (often stale) project — the exact failure mode that breaks
+    ``nsx sync``/build long after the manifest was edited.
+
+    Raised early (at lock/sync time) with a precise, per-module message so
+    the partial migration is caught at author time rather than as an opaque
+    "Unable to locate nsx-module.yaml" failure deep in resolution.
+    """
+
+    from .metadata import registry_entry_for_module
+
+    app = AppConfig.from_mapping(nsx_cfg)
+    mismatches: list[str] = []
+    for module in app.modules:
+        if module.project is None or module.is_opaque:
+            continue
+        try:
+            entry = registry_entry_for_module(registry, module.name)
+        except (KeyError, ValueError):
+            # A genuinely missing registry entry is diagnosed by the
+            # resolver itself; this guard only covers misalignment.
+            continue
+        if entry.project != module.project:
+            mismatches.append(
+                f"  - {module.name}: manifest pins project '{module.project}' but the "
+                f"registry resolves it to '{entry.project}'"
+            )
+    if mismatches:
+        raise NSXConfigError(
+            "nsx.yml: module/project misalignment (partial project migration?).\n"
+            + "\n".join(mismatches)
+            + "\nAdd a matching 'module_registry.modules.<name>' override (with a "
+            "'metadata:' path) for each listed module so it resolves into the "
+            "intended project."
+        )
+
+
 def _registry_project_entry(registry: dict[str, Any], project_name: str) -> ProjectEntry:
     projects = registry.get("projects", {})
     if not isinstance(projects, dict):
