@@ -110,7 +110,7 @@ def _sync_app_impl_unlocked(
 
     nsx_cfg = _load_app_cfg(app_dir)
     base_registry = _load_registry()
-    registry = _effective_registry(base_registry, nsx_cfg)
+    registry = _effective_registry(base_registry, nsx_cfg, app_dir=app_dir)
 
     # Detect manifest drift — the user edited nsx.yml since the lock was written.
     current_manifest_hash = hash_manifest(app_dir / "nsx.yml")

@@ -118,7 +118,7 @@ def _build_lock_for_app(
 
     nsx_cfg = _load_app_cfg(app_dir)
     base_registry = _load_registry()
-    registry = _effective_registry(base_registry, nsx_cfg)
+    registry = _effective_registry(base_registry, nsx_cfg, app_dir=app_dir)
     seed_module_names = _module_names_from_nsx(nsx_cfg)
     local_names = _local_module_names(nsx_cfg)
     vendored_names = _vendored_module_names(nsx_cfg)

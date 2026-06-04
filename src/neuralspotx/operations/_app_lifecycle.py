@@ -154,7 +154,7 @@ def _create_app_body(
         info("  3) Add modules with `nsx module add <module> --app-dir .`")
         return app_dir
 
-    registry = _effective_registry(base_registry, nsx_cfg)
+    registry = _effective_registry(base_registry, nsx_cfg, app_dir=app_dir)
 
     # Pre-acquire seed modules so their nsx-module.yaml metadata is
     # available for dependency resolution below.
