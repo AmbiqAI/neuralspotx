@@ -26,7 +26,6 @@ from ..module_registry import (
 )
 from ..project_config import (
     _copy_packaged_tree,
-    _write_cmake_nsx_gitignore,
     _effective_registry,
     _load_registry,
     _nsx_tool_major,
@@ -34,6 +33,7 @@ from ..project_config import (
     _save_app_cfg,
     _unique_preserving_order,
     _write_app_module_file,
+    _write_cmake_nsx_gitignore,
     _write_modules_gitignore,
 )
 from ..templating import render_template_tree

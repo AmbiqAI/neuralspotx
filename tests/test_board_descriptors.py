@@ -8,10 +8,10 @@ from __future__ import annotations
 
 from neuralspotx import board_descriptors as bd
 from neuralspotx.constants import (
+    _BOARD_ORDER,
     BOARD_SDK_PROVIDER,
     DEFAULT_SOC_FOR_BOARD,
     SDK_PROVIDERS,
-    _BOARD_ORDER,
 )
 
 

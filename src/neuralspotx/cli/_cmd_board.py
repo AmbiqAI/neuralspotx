@@ -10,7 +10,6 @@ from __future__ import annotations
 
 import argparse
 import json
-from pathlib import Path
 
 from .. import board_descriptors as bd
 from .._errors import NSXConfigError

@@ -40,13 +40,13 @@ from ..nsx_lock import (
 )
 from ..project_config import (
     _copy_packaged_tree,
-    _write_cmake_nsx_gitignore,
     _effective_registry,
     _load_app_cfg,
     _load_registry,
     _nsx_tool_version,
     _registry_project_entry,
     _write_app_module_file,
+    _write_cmake_nsx_gitignore,
     _write_modules_gitignore_for_module_names,
 )
 from ._common import OutdatedStatus, _log
