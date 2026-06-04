@@ -26,6 +26,7 @@ from ..module_registry import (
 )
 from ..project_config import (
     _copy_packaged_tree,
+    _write_cmake_nsx_gitignore,
     _effective_registry,
     _load_registry,
     _nsx_tool_major,
@@ -128,6 +129,7 @@ def _create_app_body(
     """Inner body of create_app_impl, separated for rollback wrapping."""
 
     _copy_packaged_tree("neuralspotx", "cmake", app_dir / "cmake" / "nsx")
+    _write_cmake_nsx_gitignore(app_dir)
 
     current_nsx_version = _nsx_tool_version()
     current_nsx_major = _nsx_tool_major(current_nsx_version)

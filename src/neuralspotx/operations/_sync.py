@@ -18,6 +18,7 @@ from ..nsx_lock import (
 )
 from ..project_config import (
     _copy_packaged_tree,
+    _write_cmake_nsx_gitignore,
     _effective_registry,
     _load_app_cfg,
     _load_registry,
@@ -344,6 +345,7 @@ def _sync_app_impl_unlocked(
     # modules.cmake + modules/.gitignore — these are cheap and keep
     # the build inputs aligned.
     _copy_packaged_tree("neuralspotx", "cmake", app_dir / "cmake" / "nsx")
+    _write_cmake_nsx_gitignore(app_dir)
     ordered_modules = list(lock.modules)
     _write_app_module_file(app_dir, nsx_cfg, module_names=ordered_modules)
     _write_modules_gitignore_for_module_names(app_dir, nsx_cfg, ordered_modules)
