@@ -13,7 +13,7 @@
 #define NSX_PMU_PROFILER_H
 
 #include "tensorflow/lite/micro/micro_profiler_interface.h"
-#include "ns_pmu_utils.h"
+#include "nsx_pmu_utils.h"
 
 class NsxPmuProfiler : public tflite::MicroProfilerInterface {
  public:
@@ -25,7 +25,7 @@ class NsxPmuProfiler : public tflite::MicroProfilerInterface {
     ~NsxPmuProfiler() override = default;
 
     /// Initialise PMU hardware with a preset. Call once before Invoke().
-    void Init(ns_pmu_preset_e preset = NS_PMU_PRESET_ML_DEFAULT);
+    void Init(nsx_pmu_preset_e preset = NSX_PMU_PRESET_ML_DEFAULT);
 
     /// MicroProfilerInterface hooks — called by TFLM per operator.
     uint32_t BeginEvent(const char* tag) override;
@@ -45,7 +45,7 @@ class NsxPmuProfiler : public tflite::MicroProfilerInterface {
         uint32_t counters[kNumEvents];
     };
 
-    ns_pmu_config_t pmu_cfg_ = {};
+    nsx_pmu_config_t pmu_cfg_ = {};
     LayerRecord layers_[kMaxLayers] = {};
     int num_events_ = 0;
     bool initialized_ = false;

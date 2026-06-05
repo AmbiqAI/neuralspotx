@@ -11,6 +11,8 @@
 #include <cstdio>
 #include <cstring>
 
+#include "am_mcu_apollo.h"
+
 // TFLM / HeliaRT headers
 #include "tensorflow/lite/micro/micro_interpreter.h"
 #include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
@@ -23,7 +25,6 @@
 
 // NSX runtime
 #include "ns_core.h"
-#include "ns_ambiqsuite_harness.h"
 #include "nsx_mem.h"
 #include "nsx_system.h"
 
@@ -94,90 +95,91 @@ int main(void) {
     sys_cfg.perf_mode = NSX_PERF_LOW;  // 96 MHz — best energy efficiency
     sys_cfg.skip_bsp_init = true;  // fast startup, no BSP delay
     NS_TRY(nsx_system_init(&sys_cfg), "System init failed\n");
+    nsx_itm_printf_enable();
 
     dwt_init();
 
-    ns_printf("KWS Inference Demo (HeliaRT)\n");
-    ns_printf("Model size: %u bytes\n", kws_model_data_len);
+    nsx_printf("KWS Inference Demo (HeliaRT)\n");
+    nsx_printf("Model size: %u bytes\n", kws_model_data_len);
 
     // --- TFLM setup ---
     tflite::InitializeTarget();
 
     const tflite::Model *model = tflite::GetModel(kws_model_data);
     if (model->version() != TFLITE_SCHEMA_VERSION) {
-        ns_printf("ERROR: Model schema version %lu != expected %d\n",
-                  model->version(), TFLITE_SCHEMA_VERSION);
+        nsx_printf("ERROR: Model schema version %lu != expected %d\n",
+                   model->version(), TFLITE_SCHEMA_VERSION);
         while (1) {}
     }
 
     tflite::MicroMutableOpResolver<kNumOps> &resolver = get_resolver();
 
     // Init PMU profiler with ML-default counters
-    g_profiler.Init(NS_PMU_PRESET_ML_DEFAULT);
+    g_profiler.Init(NSX_PMU_PRESET_ML_DEFAULT);
 
     tflite::MicroInterpreter interpreter(model, resolver, g_arena, kArenaSize,
                                          nullptr, &g_profiler);
 
     TfLiteStatus status = interpreter.AllocateTensors();
     if (status != kTfLiteOk) {
-        ns_printf("ERROR: AllocateTensors() failed\n");
+        nsx_printf("ERROR: AllocateTensors() failed\n");
         while (1) {}
     }
 
     // Report arena usage
     size_t used = interpreter.arena_used_bytes();
-    ns_printf("Arena: %u / %u bytes used (%.1f%%)\n",
-              (unsigned)used, kArenaSize, 100.0f * used / kArenaSize);
+    nsx_printf("Arena: %u / %u bytes used (%.1f%%)\n",
+               (unsigned)used, kArenaSize, 100.0f * used / kArenaSize);
 
     TfLiteTensor *input  = interpreter.input(0);
     TfLiteTensor *output = interpreter.output(0);
 
-    ns_printf("Input:  dims=[%d,%d,%d,%d] type=%d\n",
-              input->dims->data[0], input->dims->data[1],
-              input->dims->data[2], input->dims->data[3],
-              input->type);
-    ns_printf("Output: dims=[%d,%d] type=%d\n",
-              output->dims->data[0], output->dims->data[1],
-              output->type);
+    nsx_printf("Input:  dims=[%d,%d,%d,%d] type=%d\n",
+               input->dims->data[0], input->dims->data[1],
+               input->dims->data[2], input->dims->data[3],
+               input->type);
+    nsx_printf("Output: dims=[%d,%d] type=%d\n",
+               output->dims->data[0], output->dims->data[1],
+               output->type);
 
     // --- Fill input with dummy data (zeros = silence) ---
     memset(input->data.int8, 0, input->bytes);
 
     // --- Run inference ---
-    ns_printf("Running inference...\n");
+    nsx_printf("Running inference...\n");
 
     uint32_t start_cyc = dwt_cycles();
     status = interpreter.Invoke();
     uint32_t end_cyc = dwt_cycles();
 
     if (status != kTfLiteOk) {
-        ns_printf("ERROR: Invoke() failed\n");
+        nsx_printf("ERROR: Invoke() failed\n");
         while (1) {}
     }
 
     // CPU runs at ~96 MHz
     uint32_t elapsed_us = (end_cyc - start_cyc) / 96;
-    ns_printf("Inference time: %lu us (%lu cycles)\n",
-              (unsigned long)elapsed_us, (unsigned long)(end_cyc - start_cyc));
+    nsx_printf("Inference time: %lu us (%lu cycles)\n",
+               (unsigned long)elapsed_us, (unsigned long)(end_cyc - start_cyc));
 
     // --- Per-layer PMU stats ---
-    ns_printf("\n--- Per-Layer PMU Profile ---\n");
+    nsx_printf("\n--- Per-Layer PMU Profile ---\n");
     g_profiler.PrintCsv();
     g_profiler.ClearEvents();
 
     // --- Print output scores ---
-    ns_printf("\n--- Results ---\n");
+    nsx_printf("\n--- Results ---\n");
     int8_t best_score = -128;
     int    best_idx   = 0;
     for (int i = 0; i < kNumClasses && i < output->dims->data[1]; i++) {
         int8_t score = output->data.int8[i];
-        ns_printf("  [%2d] %-10s  score=%4d\n", i, kLabels[i], (int)score);
+        nsx_printf("  [%2d] %-10s  score=%4d\n", i, kLabels[i], (int)score);
         if (score > best_score) {
             best_score = score;
             best_idx   = i;
         }
     }
-    ns_printf("\nPrediction: \"%s\" (score=%d)\n", kLabels[best_idx], (int)best_score);
+    nsx_printf("\nPrediction: \"%s\" (score=%d)\n", kLabels[best_idx], (int)best_score);
 
     // --- Loop forever (re-run every ~2 seconds using DWT busy-wait) ---
     while (1) {
@@ -210,8 +212,8 @@ int main(void) {
                 best_idx   = i;
             }
         }
-        ns_printf("Inference: %lu us -> \"%s\" (score=%d)\n",
-                  (unsigned long)elapsed_us, kLabels[best_idx], (int)best_score);
+        nsx_printf("Inference: %lu us -> \"%s\" (score=%d)\n",
+                 (unsigned long)elapsed_us, kLabels[best_idx], (int)best_score);
     }
 
     return 0;
