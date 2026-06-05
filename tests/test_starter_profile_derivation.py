@@ -36,7 +36,7 @@ def test_packaged_lock_has_no_compat_matrix_or_literal_profiles() -> None:
 def test_derived_profiles_cover_all_board_profiles() -> None:
     reg = _packaged_registry()
     profiles = reg["starter_profiles"]
-    assert len(profiles) == 15
+    assert len(profiles) == 16
     for board in reg["board_profiles"]:
         assert f"{board}_minimal" in profiles
 

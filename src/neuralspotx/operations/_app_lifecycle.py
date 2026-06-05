@@ -10,6 +10,7 @@ from pathlib import Path
 from .._errors import NSXConfigError, NSXModuleError
 from .._io import info, warn
 from ..constants import (
+    BOARD_SDK_PROVIDER,
     DEFAULT_SOC_FOR_BOARD,
     DEFAULT_TOOLCHAIN,
     normalize_board,
@@ -93,6 +94,7 @@ def create_app_impl(
                 "app_name": app_name,
                 "board": board,
                 "soc": soc,
+                "sdk_provider": BOARD_SDK_PROVIDER.get(board, ""),
             },
         )
 

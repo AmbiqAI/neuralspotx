@@ -28,6 +28,7 @@ _BOARD_ORDER: tuple[str, ...] = (
     "apollo510_evb",
     "apollo510b_evb",
     "apollo330mP_evb",
+    "atomiq110_fpga_turbo",
 )
 
 _DESCRIPTORS = load_board_descriptors()
@@ -121,6 +122,7 @@ class SDKProvider(str, enum.Enum):
     R3 = "ambiqsuite-r3"
     R4 = "ambiqsuite-r4"
     R5 = "ambiqsuite-r5"
+    R6 = "ambiqsuite-r6"
 
     def __str__(self) -> str:  # pragma: no cover — trivial
         return self.value

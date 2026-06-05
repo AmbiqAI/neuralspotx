@@ -140,6 +140,10 @@ modules:
     project: nsx-ambiq-sdk-r5
     revision: main
     metadata: modules/nsx-ambiqsuite-r5/nsx-module.yaml
+  nsx-ambiqsuite-r6:
+    project: nsx-ambiq-sdk-r6
+    revision: main
+    metadata: modules/nsx-ambiqsuite-r6/nsx-module.yaml
   nsx-ambiq-hal-r3:
     project: nsx-ambiq-sdk-r3
     revision: main
@@ -152,6 +156,10 @@ modules:
     project: nsx-ambiq-sdk-r5
     revision: main
     metadata: modules/nsx-ambiq-hal-r5/nsx-module.yaml
+  nsx-ambiq-hal-r6:
+    project: nsx-ambiq-sdk-r6
+    revision: main
+    metadata: modules/nsx-ambiq-hal-r6/nsx-module.yaml
   nsx-ambiq-bsp-r3:
     project: nsx-ambiq-sdk-r3
     revision: main
@@ -164,6 +172,10 @@ modules:
     project: nsx-ambiq-sdk-r5
     revision: main
     metadata: modules/nsx-ambiq-bsp-r5/nsx-module.yaml
+  nsx-ambiq-bsp-r6:
+    project: nsx-ambiq-sdk-r6
+    revision: main
+    metadata: modules/nsx-ambiq-bsp-r6/nsx-module.yaml
   nsx-ambiq-usb-r4:
     project: nsx-ambiq-sdk-r4
     revision: main
@@ -244,6 +256,10 @@ modules:
     project: neuralspotx
     revision: main
     metadata: src/neuralspotx/boards/apollo4p_blue_kxr_evb/nsx-module.yaml
+  nsx-board-atomiq110-fpga-turbo:
+    project: neuralspotx
+    revision: main
+    metadata: src/neuralspotx/boards/atomiq110_fpga_turbo/nsx-module.yaml
   nsx-core:
     project: nsx-core
     revision: fac6a0149246c3794e3b61f4e87c7fbfadfa66ba
@@ -416,6 +432,31 @@ soc_families:
       - nsx-timer
       - nsx-uart
       - nsx-usb
+  r6:
+    provider: nsx-ambiqsuite-r6
+    project: nsx-ambiq-sdk-r6
+    revision: main
+    # The R6 tier folds the legacy nsx-harness / nsx-utils runtime helpers
+    # into nsx-core, so the shared core_modules default is overridden here.
+    core_modules:
+      - nsx-core
+      - nsx-tooling
+    modules:
+      - nsx-ambiqsuite-r6
+      - nsx-ambiq-hal-r6
+      - nsx-ambiq-bsp-r6
+      - nsx-soc-hal
+      - nsx-cmsis-startup
+    sdk_modules:
+      - nsx-ambiqsuite-r6
+      - nsx-ambiq-hal-r6
+      - nsx-ambiq-bsp-r6
+      - nsx-soc-hal
+      - nsx-cmsis-core
+      - nsx-cmsis-startup
+      - nsx-core
+      - nsx-gpio
+      - nsx-interrupt
 
 # Per-board profile registration. Order here defines starter-profile order.
 # 'channel' defaults to profile_defaults.channel when omitted.
@@ -435,3 +476,4 @@ board_profiles:
   apollo4p_evb: {channel: preview}
   apollo4p_blue_kbr_evb: {channel: preview}
   apollo4p_blue_kxr_evb: {channel: preview}
+  atomiq110_fpga_turbo: {channel: preview}
