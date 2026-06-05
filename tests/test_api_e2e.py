@@ -528,6 +528,14 @@ def test_commands_parser_wiring() -> None:
     assert args.func == cli.cmd_commands
 
 
+def test_probes_parser_wiring() -> None:
+    parser = cli._build_parser()
+    args = parser.parse_args(["probes", "--json"])
+
+    assert args.json is True
+    assert args.func == cli.cmd_probes
+
+
 def test_cmd_module_search_json_matches_capability_terms(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

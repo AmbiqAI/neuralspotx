@@ -30,6 +30,7 @@ from ..metadata import SUPPORTED_MODULE_TYPES
 from ..models import CommandCategory, CommandHint, CommandScope, OutdatedReport
 from ..project_config import resolve_app_dir
 from ..subprocess_utils import format_subprocess_error
+from ..tooling import JLinkProbe, list_jlink_probes
 from ._cmd_board import cmd_board_create, cmd_board_list, cmd_board_show
 from ._cmd_cache import cmd_cache_clean, cmd_cache_info
 from ._cmd_module import (
@@ -146,6 +147,34 @@ def cmd_doctor(args: argparse.Namespace) -> None:
         raise NSXToolchainError("One or more required tools are missing or misconfigured.")
     # G4: success-path next-step suggestion.
     print("Next: nsx create-app my_app")
+
+
+def _probe_to_dict(probe: JLinkProbe) -> dict[str, object]:
+    return {
+        "index": probe.index,
+        "serial": probe.serial,
+        "product": probe.product,
+        "nickname": probe.nickname,
+    }
+
+
+@command_hint("probes", _C.DISCOVERY, _S.ENVIRONMENT, "nsx flash --probe-serial <sn>")
+def cmd_probes(args: argparse.Namespace) -> None:
+    probes = list_jlink_probes()
+    if args.json:
+        print(json.dumps([_probe_to_dict(probe) for probe in probes], indent=2))
+        return
+    if not probes:
+        print("No J-Link probes found.")
+        return
+    serial_w = max(len(probe.serial) for probe in probes)
+    product_w = max(len(probe.product) for probe in probes)
+    print(f"{'SERIAL':<{serial_w}}  {'PRODUCT':<{product_w}}  NICKNAME")
+    for probe in probes:
+        print(
+            f"{probe.serial:<{serial_w}}  {probe.product:<{product_w}}  "
+            f"{probe.nickname or '-'}"
+        )
 
 
 @command_hint(
@@ -333,6 +362,7 @@ _HELP_GROUPS: tuple[tuple[str, tuple[tuple[str, str], ...]], ...] = (
             ("create-app", "Create a new standalone NSX app project"),
             ("new", "Alias for create-app"),
             ("doctor", "Check the local NSX toolchain environment"),
+            ("probes", "List connected SEGGER J-Link debug probes"),
             ("configure", "Configure a generated NSX app with CMake"),
             ("build", "Build a generated NSX app"),
             ("flash", "Build and flash a generated NSX app"),
@@ -483,6 +513,18 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Emit the full doctor report as machine-readable JSON",
     )
     p_doctor.set_defaults(func=cmd_doctor)
+
+    p_probes = sub.add_parser(
+        "probes",
+        help="List connected SEGGER J-Link debug probes",
+        description="Enumerate connected J-Link probes and print their USB serial numbers.",
+    )
+    p_probes.add_argument(
+        "--json",
+        action="store_true",
+        help="Emit machine-readable JSON instead of human-readable text",
+    )
+    p_probes.set_defaults(func=cmd_probes)
 
     p_commands = sub.add_parser(
         "commands",
