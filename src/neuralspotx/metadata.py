@@ -95,7 +95,7 @@ def _derive_starter_profiles(data: dict[str, Any]) -> dict[str, Any]:
     defaults = _expect_type(data, "profile_defaults", dict, "registry.lock")
     default_toolchain = defaults.get("toolchain", "arm-none-eabi-gcc")
     default_channel = defaults.get("channel", "stable")
-    core_modules = list(defaults.get("core_modules", []))
+    default_core_modules = list(defaults.get("core_modules", []))
 
     families = _expect_type(data, "soc_families", dict, "registry.lock")
     board_profiles = _expect_type(data, "board_profiles", dict, "registry.lock")
@@ -129,6 +129,11 @@ def _derive_starter_profiles(data: dict[str, Any]) -> dict[str, Any]:
         # app pulling it resolves to the tier-correct source. Defaults to just
         # the provider for back-compat with split-repo families.
         sdk_modules = family.get("sdk_modules", [provider])
+        # ``core_modules`` are appended after the board module for every
+        # profile. A family may override the shared default (e.g. the R6
+        # tier whose runtime helpers live in nsx-core rather than the
+        # standalone nsx-harness / nsx-utils modules).
+        core_modules = list(family.get("core_modules", default_core_modules))
         board_module = "nsx-board-" + board.replace("_", "-").lower()
         module_overrides = {
             name: {
