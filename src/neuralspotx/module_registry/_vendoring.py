@@ -9,6 +9,7 @@ from typing import Any
 from .. import module_cache
 from .._errors import NSXConfigError
 from ..metadata import registry_entry_for_module
+from ..nsx_lock._constants import _HASH_EXCLUDE_DIRS
 from ..project_config import (
     _is_packaged_module,
     _module_clone_dir,
@@ -189,7 +190,7 @@ def _vendor_local_module_into_app(
         source_dir,
         destination_dir,
         dirs_exist_ok=True,
-        ignore=shutil.ignore_patterns(".git", "__pycache__"),
+        ignore=shutil.ignore_patterns(*sorted(_HASH_EXCLUDE_DIRS)),
     )
 
 

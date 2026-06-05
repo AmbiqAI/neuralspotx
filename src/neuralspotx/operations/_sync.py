@@ -126,6 +126,7 @@ def _sync_app_impl_unlocked(
         _log.warning("nsx.yml has changed since nsx.lock was written; run `nsx lock` to refresh.")
 
     changed = 0
+    cmake_nsx = app_dir / "cmake" / "nsx"
     # Track resolved vendored directories so two module entries that
     # share one project/path don't each trigger a redundant re-vendor
     # in the same `nsx sync` run.
@@ -292,7 +293,14 @@ def _sync_app_impl_unlocked(
             continue
 
         # ----- packaged / git: fetchable upstream artifacts -----
-        on_disk_hash = hash_tree(vendored_dir) if vendored_dir.exists() else None
+        if entry.kind == LockKind.PACKAGED and vendored_dir == cmake_nsx:
+            on_disk_hash = (
+                hash_tree(vendored_dir, exclude_names=NSX_TOOLING_AUTOGEN_FILES)
+                if vendored_dir.exists()
+                else None
+            )
+        else:
+            on_disk_hash = hash_tree(vendored_dir) if vendored_dir.exists() else None
         if not force and on_disk_hash == entry.content_hash:
             vendored_paths.add(vendored_dir)
             continue
@@ -356,7 +364,6 @@ def _sync_app_impl_unlocked(
     # verify any packaged lock entry mapped to that path against its
     # recorded content_hash. Done after the refresh so the warning (if
     # any) reflects the final on-disk state, not the pre-refresh state.
-    cmake_nsx = app_dir / "cmake" / "nsx"
     for name, entry in lock.modules.items():
         if entry.kind != LockKind.PACKAGED:
             continue
