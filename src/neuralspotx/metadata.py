@@ -120,20 +120,31 @@ def _derive_starter_profiles(data: dict[str, Any]) -> dict[str, Any]:
             )
         provider = family["provider"]
         revision = family["revision"]
+        # ``project`` is the (consolidated SDK monorepo) repository that hosts
+        # the provider module; it defaults to the provider module name for the
+        # legacy one-repo-per-module layout.
+        project = family.get("project", provider)
+        # ``sdk_modules`` lists every module vendored by the SDK monorepo for
+        # this family. Each is repointed at the monorepo project so that any
+        # app pulling it resolves to the tier-correct source. Defaults to just
+        # the provider for back-compat with split-repo families.
+        sdk_modules = family.get("sdk_modules", [provider])
         board_module = "nsx-board-" + board.replace("_", "-").lower()
+        module_overrides = {
+            name: {
+                "project": project,
+                "revision": revision,
+                "metadata": f"modules/{name}/nsx-module.yaml",
+            }
+            for name in sdk_modules
+        }
         profiles[f"{board}_minimal"] = {
             "board": board,
             "soc": descriptor.soc,
             "toolchain": entry.get("toolchain", default_toolchain),
             "channel": entry.get("channel", default_channel),
-            "project_overrides": {provider: {"revision": revision}},
-            "module_overrides": {
-                provider: {
-                    "project": provider,
-                    "revision": revision,
-                    "metadata": f"modules/{provider}/nsx-module.yaml",
-                }
-            },
+            "project_overrides": {project: {"revision": revision}},
+            "module_overrides": module_overrides,
             "modules": [*family["modules"], board_module, *core_modules],
             "features": {},
         }
