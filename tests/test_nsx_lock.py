@@ -374,6 +374,66 @@ class TestSyncFrozen:
         sync_app_impl(app)
         assert (app / "modules" / "my-local" / "src.c").read_text(encoding="utf-8") == "// v2"
 
+    def test_local_project_ignores_virtualenv_noise_for_frozen_sync(
+        self, app: Path, tmp_path: Path
+    ) -> None:
+        ext = tmp_path / "ext-proj"
+        ext.mkdir()
+        (ext / "src.c").write_text("// from local project", encoding="utf-8")
+        (ext / "nsx-module.yaml").write_text(
+            "\n".join([
+                "schema_version: 1",
+                "module:",
+                "  name: local-mod",
+                "  type: runtime",
+                '  version: "0.1.0"',
+                "support:",
+                "  ambiqsuite: true",
+                "  zephyr: false",
+                "build:",
+                "  cmake:",
+                "    package: local_mod",
+                "    targets: [local_mod]",
+                "depends:",
+                "  required: []",
+                "  optional: []",
+                "compatibility:",
+                '  boards: ["*"]',
+                '  socs: ["*"]',
+                '  toolchains: ["arm-none-eabi-gcc"]',
+            ])
+            + "\n",
+            encoding="utf-8",
+        )
+        (ext / ".venv" / "lib64" / "site.py").parent.mkdir(parents=True)
+        (ext / ".venv" / "lib64" / "site.py").write_text("# local venv noise\n", encoding="utf-8")
+
+        _write_nsx_yml(
+            app,
+            [{"name": "local-mod", "project": "local-proj", "revision": "main"}],
+            registry_overrides={
+                "projects": {
+                    "local-proj": {
+                        "local_path": str(ext),
+                        "revision": "main",
+                        "path": "modules/local-proj",
+                    }
+                },
+                "modules": {
+                    "local-mod": {
+                        "project": "local-proj",
+                        "revision": "main",
+                        "metadata": "modules/local-proj/nsx-module.yaml",
+                    }
+                },
+            },
+        )
+
+        lock_app_impl(app)
+        sync_app_impl(app)
+        sync_app_impl(app, frozen=True)
+        assert not (app / "modules" / "local-proj" / ".venv").exists()
+
 
 # ---------------------------------------------------------------------------
 # Local kind
@@ -1036,6 +1096,15 @@ class TestPackagedDriftRegression:
             "nsx-tooling content_hash drifts with app's module list "
             f"(got {h_a!r}, {h_b!r}, {h_c!r})"
         )
+
+    def test_nsx_tooling_frozen_sync_ignores_generated_modules_cmake(self, app: Path) -> None:
+        _write_nsx_yml(app, [{"name": "nsx-tooling"}])
+
+        lock_app_impl(app)
+        sync_app_impl(app)
+
+        assert (app / "cmake" / "nsx" / "modules.cmake").exists()
+        sync_app_impl(app, frozen=True)
 
 
 # ---------------------------------------------------------------------------

@@ -16,7 +16,11 @@ LOCK_SCHEMA_VERSION = 3
 _ARTIFACT_HASH_CACHE_SCHEMA_VERSION = 1
 
 # Files/dirs to exclude when hashing a vendored module tree.
-_HASH_EXCLUDE_DIRS = frozenset({".git", "__pycache__", ".pytest_cache", ".DS_Store"})
+# Local-source mirrors should ignore developer-only environment/cache
+# directories so ``nsx lock`` and ``nsx sync --frozen`` remain stable.
+_HASH_EXCLUDE_DIRS = frozenset(
+	{".git", "__pycache__", ".pytest_cache", ".DS_Store", ".venv", "venv"}
+)
 
 # Auto-generated overlays written into ``app_dir/cmake/nsx/`` by
 # ``_write_app_module_file`` after ``_copy_packaged_tree``. These files
