@@ -21,15 +21,17 @@ Provider modules:
 
 ## Provider Revisions
 
-Provider revisions are board-selectable.
+Each provider family is sourced from a single consolidated SDK monorepo that
+vendors the AmbiqSuite drop, the HAL/BSP wrappers, and the shared NSX module
+set for that release line:
 
-Examples:
+1. `ambiqsuite-r3` → `nsx-ambiq-sdk-r3` (`main`)
+2. `ambiqsuite-r4` → `nsx-ambiq-sdk-r4` (`main`)
+3. `ambiqsuite-r5` → `nsx-ambiq-sdk-r5` (`main`)
 
-1. `nsx-ambiqsuite-r3` uses `r3.1.1`
-2. `nsx-ambiqsuite-r4` defaults to `r4.5.0`
-3. `nsx-ambiqsuite-r5` uses SDK-aligned release tags such as `r5.2.0`
-
-The selected revision is persisted in generated app metadata.
+The provider module (`nsx-ambiqsuite-r*`) and every module the monorepo
+vendors resolve to the tier's `nsx-ambiq-sdk-r*` project. The selected
+project and revision are persisted in generated app metadata.
 
 ## Contracts
 

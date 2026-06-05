@@ -11,21 +11,16 @@ projects:
     url: https://github.com/AmbiqAI/neuralspotx.git
     revision: main
     path: neuralspotx
-  nsx-ambiqsuite-r3:
-    name: nsx-ambiqsuite-r3
-    url: https://github.com/AmbiqAI/nsx-ambiqsuite-r3.git
-    revision: r3.1.1
-    path: modules/nsx-ambiqsuite-r3
-  nsx-ambiqsuite-r4:
-    name: nsx-ambiqsuite-r4
-    url: https://github.com/AmbiqAI/nsx-ambiqsuite-r4.git
-    revision: r4.5.0
-    path: modules/nsx-ambiqsuite-r4
-  nsx-ambiqsuite-r5:
-    name: nsx-ambiqsuite-r5
-    url: https://github.com/AmbiqAI/nsx-ambiqsuite-r5.git
-    revision: r5.2.0
-    path: modules/nsx-ambiqsuite-r5
+  nsx-ambiq-sdk-r3:
+    name: nsx-ambiq-sdk-r3
+    url: https://github.com/AmbiqAI/nsx-ambiq-sdk-r3.git
+    revision: main
+    path: modules/nsx-ambiq-sdk-r3
+  nsx-ambiq-sdk-r4:
+    name: nsx-ambiq-sdk-r4
+    url: https://github.com/AmbiqAI/nsx-ambiq-sdk-r4.git
+    revision: main
+    path: modules/nsx-ambiq-sdk-r4
   nsx-ambiq-sdk-r5:
     name: nsx-ambiq-sdk-r5
     url: https://github.com/AmbiqAI/nsx-ambiq-sdk-r5.git
@@ -36,36 +31,6 @@ projects:
     url: https://github.com/AmbiqAI/nsx-ambiq-sdk-r6.git
     revision: main
     path: modules/nsx-ambiq-sdk-r6
-  nsx-ambiq-hal-r3:
-    name: nsx-ambiq-hal-r3
-    url: https://github.com/AmbiqAI/nsx-ambiq-hal-r3.git
-    revision: v0.1.0
-    path: modules/nsx-ambiq-hal-r3
-  nsx-ambiq-hal-r4:
-    name: nsx-ambiq-hal-r4
-    url: https://github.com/AmbiqAI/nsx-ambiq-hal-r4.git
-    revision: v0.1.0
-    path: modules/nsx-ambiq-hal-r4
-  nsx-ambiq-hal-r5:
-    name: nsx-ambiq-hal-r5
-    url: https://github.com/AmbiqAI/nsx-ambiq-hal-r5.git
-    revision: v0.1.0
-    path: modules/nsx-ambiq-hal-r5
-  nsx-ambiq-bsp-r3:
-    name: nsx-ambiq-bsp-r3
-    url: https://github.com/AmbiqAI/nsx-ambiq-bsp-r3.git
-    revision: v0.1.0
-    path: modules/nsx-ambiq-bsp-r3
-  nsx-ambiq-bsp-r4:
-    name: nsx-ambiq-bsp-r4
-    url: https://github.com/AmbiqAI/nsx-ambiq-bsp-r4.git
-    revision: v0.1.0
-    path: modules/nsx-ambiq-bsp-r4
-  nsx-ambiq-bsp-r5:
-    name: nsx-ambiq-bsp-r5
-    url: https://github.com/AmbiqAI/nsx-ambiq-bsp-r5.git
-    revision: v0.1.0
-    path: modules/nsx-ambiq-bsp-r5
   nsx-soc-hal:
     name: nsx-soc-hal
     url: https://github.com/AmbiqAI/nsx-soc-hal.git
@@ -164,41 +129,49 @@ projects:
 
 modules:
   nsx-ambiqsuite-r3:
-    project: nsx-ambiqsuite-r3
-    revision: r3.1.1
+    project: nsx-ambiq-sdk-r3
+    revision: main
     metadata: modules/nsx-ambiqsuite-r3/nsx-module.yaml
   nsx-ambiqsuite-r4:
-    project: nsx-ambiqsuite-r4
-    revision: r4.5.0
+    project: nsx-ambiq-sdk-r4
+    revision: main
     metadata: modules/nsx-ambiqsuite-r4/nsx-module.yaml
   nsx-ambiqsuite-r5:
-    project: nsx-ambiqsuite-r5
-    revision: r5.2.0
+    project: nsx-ambiq-sdk-r5
+    revision: main
     metadata: modules/nsx-ambiqsuite-r5/nsx-module.yaml
   nsx-ambiq-hal-r3:
-    project: nsx-ambiq-hal-r3
-    revision: v0.1.0
+    project: nsx-ambiq-sdk-r3
+    revision: main
     metadata: modules/nsx-ambiq-hal-r3/nsx-module.yaml
   nsx-ambiq-hal-r4:
-    project: nsx-ambiq-hal-r4
-    revision: v0.1.0
+    project: nsx-ambiq-sdk-r4
+    revision: main
     metadata: modules/nsx-ambiq-hal-r4/nsx-module.yaml
   nsx-ambiq-hal-r5:
-    project: nsx-ambiq-hal-r5
-    revision: v0.1.0
+    project: nsx-ambiq-sdk-r5
+    revision: main
     metadata: modules/nsx-ambiq-hal-r5/nsx-module.yaml
   nsx-ambiq-bsp-r3:
-    project: nsx-ambiq-bsp-r3
-    revision: v0.1.0
+    project: nsx-ambiq-sdk-r3
+    revision: main
     metadata: modules/nsx-ambiq-bsp-r3/nsx-module.yaml
   nsx-ambiq-bsp-r4:
-    project: nsx-ambiq-bsp-r4
-    revision: v0.1.0
+    project: nsx-ambiq-sdk-r4
+    revision: main
     metadata: modules/nsx-ambiq-bsp-r4/nsx-module.yaml
   nsx-ambiq-bsp-r5:
-    project: nsx-ambiq-bsp-r5
-    revision: v0.1.0
+    project: nsx-ambiq-sdk-r5
+    revision: main
     metadata: modules/nsx-ambiq-bsp-r5/nsx-module.yaml
+  nsx-ambiq-usb-r4:
+    project: nsx-ambiq-sdk-r4
+    revision: main
+    metadata: modules/nsx-ambiq-usb-r4/nsx-module.yaml
+  nsx-ambiq-usb-r5:
+    project: nsx-ambiq-sdk-r5
+    revision: main
+    metadata: modules/nsx-ambiq-usb-r5/nsx-module.yaml
   nsx-soc-hal:
     project: nsx-soc-hal
     revision: v0.1.0
@@ -359,31 +332,90 @@ profile_defaults:
 soc_families:
   r3:
     provider: nsx-ambiqsuite-r3
-    revision: r3.1.1
+    project: nsx-ambiq-sdk-r3
+    revision: main
     modules:
       - nsx-ambiqsuite-r3
       - nsx-ambiq-hal-r3
       - nsx-ambiq-bsp-r3
       - nsx-soc-hal
       - nsx-cmsis-startup
+    # Every module vendored by the nsx-ambiq-sdk-r3 monorepo. Listed modules
+    # resolve to the monorepo (tier-correct source) wherever an app uses them.
+    sdk_modules:
+      - nsx-ambiqsuite-r3
+      - nsx-ambiq-hal-r3
+      - nsx-ambiq-bsp-r3
+      - nsx-soc-hal
+      - nsx-cmsis-core
+      - nsx-cmsis-startup
+      - nsx-core
+      - nsx-audio
+      - nsx-gpio
+      - nsx-i2c
+      - nsx-interrupt
+      - nsx-perf
+      - nsx-spi
+      - nsx-timer
+      - nsx-uart
   r4:
     provider: nsx-ambiqsuite-r4
-    revision: r4.5.0
+    project: nsx-ambiq-sdk-r4
+    revision: main
     modules:
       - nsx-ambiqsuite-r4
       - nsx-ambiq-hal-r4
       - nsx-ambiq-bsp-r4
       - nsx-soc-hal
       - nsx-cmsis-startup
+    sdk_modules:
+      - nsx-ambiqsuite-r4
+      - nsx-ambiq-hal-r4
+      - nsx-ambiq-bsp-r4
+      - nsx-ambiq-usb-r4
+      - nsx-soc-hal
+      - nsx-cmsis-core
+      - nsx-cmsis-startup
+      - nsx-core
+      - nsx-audio
+      - nsx-gpio
+      - nsx-i2c
+      - nsx-interrupt
+      - nsx-perf
+      - nsx-spi
+      - nsx-timer
+      - nsx-uart
+      - nsx-usb
   r5:
     provider: nsx-ambiqsuite-r5
-    revision: r5.2.0
+    project: nsx-ambiq-sdk-r5
+    revision: main
     modules:
       - nsx-ambiqsuite-r5
       - nsx-ambiq-hal-r5
       - nsx-ambiq-bsp-r5
       - nsx-soc-hal
       - nsx-cmsis-startup
+    sdk_modules:
+      - nsx-ambiqsuite-r5
+      - nsx-ambiq-hal-r5
+      - nsx-ambiq-bsp-r5
+      - nsx-ambiq-usb-r5
+      - nsx-soc-hal
+      - nsx-cmsis-core
+      - nsx-cmsis-startup
+      - nsx-core
+      - nsx-audio
+      - nsx-gpio
+      - nsx-i2c
+      - nsx-interrupt
+      - nsx-perf
+      - nsx-pmu-armv8m
+      - nsx-power
+      - nsx-spi
+      - nsx-timer
+      - nsx-uart
+      - nsx-usb
 
 # Per-board profile registration. Order here defines starter-profile order.
 # 'channel' defaults to profile_defaults.channel when omitted.

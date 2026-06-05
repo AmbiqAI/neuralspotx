@@ -26,7 +26,22 @@ def _resolve_profile(registry: dict[str, Any], board: str) -> dict[str, Any]:
     return profile
 
 
-def _module_record(module_name: str, registry: dict[str, Any]) -> dict[str, str]:
+def _module_record(
+    module_name: str,
+    registry: dict[str, Any],
+    overrides: dict[str, Any] | None = None,
+) -> dict[str, str]:
+    # A profile-level module override (e.g. a module sourced from a consolidated
+    # SDK monorepo) must win over the base registry's tier-agnostic default so
+    # the generated ``modules:`` pin agrees with ``module_registry.modules`` and
+    # passes the partial-migration alignment guard.
+    override = (overrides or {}).get(module_name)
+    if isinstance(override, dict) and "project" in override:
+        return {
+            "name": module_name,
+            "revision": override.get("revision", ""),
+            "project": override["project"],
+        }
     entry = registry_entry_for_module(registry, module_name)
     return {
         "name": module_name,
@@ -64,7 +79,9 @@ def _generate_nsx_config(
         "channel": profile.get("channel", "stable"),
         "profile": _starter_profile_name(board),
         "profile_status": profile.get("status", "active"),
-        "modules": [_module_record(name, registry) for name in profile_modules],
+        "modules": [
+            _module_record(name, registry, profile_module_overrides) for name in profile_modules
+        ],
         "features": profile.get("features", {}),
         "tooling": {
             "nsx": {

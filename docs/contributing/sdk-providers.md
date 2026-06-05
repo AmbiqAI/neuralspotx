@@ -1,18 +1,20 @@
 # SDK Providers
 
-Raw SDK provider repos expose the imported SDK payload used by NSX.
+Each AmbiqSuite release line is delivered as a single consolidated SDK monorepo
+that vendors the imported SDK payload, the HAL/BSP wrappers, and the shared NSX
+module set used by NSX.
 
 Current families:
 
-- `nsx-ambiqsuite-r3`
-- `nsx-ambiqsuite-r4`
-- `nsx-ambiqsuite-r5`
+- `nsx-ambiq-sdk-r3` (provider module `nsx-ambiqsuite-r3`)
+- `nsx-ambiq-sdk-r4` (provider module `nsx-ambiqsuite-r4`)
+- `nsx-ambiq-sdk-r5` (provider module `nsx-ambiqsuite-r5`)
 
 ## Current Branch Model
 
-- `nsx-ambiqsuite-r3`: `main`, `r3.1.1`
-- `nsx-ambiqsuite-r4`: `main`, `r4.4.1`, `r4.5.0`
-- `nsx-ambiqsuite-r5`: `main`, `r5.2`, `r5.2.0`
+- `nsx-ambiq-sdk-r3`: `main`
+- `nsx-ambiq-sdk-r4`: `main`
+- `nsx-ambiq-sdk-r5`: `main`
 
 ## Contributor Expectations
 
