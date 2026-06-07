@@ -53,6 +53,32 @@ from ..project_config import (
 from ._common import OutdatedStatus, _log
 
 
+def _looks_like_full_sha(ref: str) -> bool:
+    return len(ref) == 40 and all(ch in "0123456789abcdefABCDEF" for ch in ref)
+
+
+def _should_reuse_previous_git_resolution(
+    previous_entry: ResolvedModule | None,
+    *,
+    constraint: str,
+    url: str,
+    refresh_floating_refs: bool,
+) -> bool:
+    """Return True only for pinned git constraints safe to reuse."""
+
+    if previous_entry is None:
+        return False
+    if previous_entry.kind != LockKind.GIT:
+        return False
+    if previous_entry.constraint != constraint or previous_entry.url != url:
+        return False
+    if not previous_entry.commit:
+        return False
+    if not refresh_floating_refs:
+        return True
+    return _looks_like_full_sha(constraint) or previous_entry.tag == constraint
+
+
 def _resolved_module_path(
     app_dir: Path,
     module_name: str,
@@ -99,9 +125,10 @@ def _build_lock_for_app(
     For ``kind=unresolved``: best-effort hash of whatever is on disk
     (or the previous lock's recorded hash, if nothing is on disk).
 
-    Re-uses entries from *previous* (the existing lock) when the
-    constraint is unchanged \u2014 avoids redundant ``git ls-remote`` calls
-    *and* avoids re-cloning to recompute the upstream hash.
+        Re-uses entries from *previous* (the existing lock) only when the
+        constraint is pinned (exact SHA or previously-resolved tag).
+        Floating refs such as branches are re-resolved on every
+        ``nsx lock`` so the lockfile tracks the current upstream tip.
 
     When ``write_side_effects`` is False, the build-glue side effects
     (``cmake/nsx/`` copy, ``modules.cmake``, ``modules/.gitignore``)
@@ -176,6 +203,7 @@ def _build_lock_for_app(
     )
 
     prev_modules = previous.modules if previous else {}
+    refresh_floating_git_refs = write_side_effects
     # Per-call cache: a single ``nsx lock`` invocation may have multiple
     # modules sharing one (url, commit) pair; clone once.
     git_artifact_hash_cache: dict[tuple[str, str], str] = {}
@@ -211,14 +239,13 @@ def _build_lock_for_app(
                 continue
             cons = str(ent.revision or "main")
             prev = prev_modules.get(nm)
-            if (
-                prev
-                and prev.kind == LockKind.GIT
-                and prev.constraint == cons
-                and prev.url == proj.url
-                and prev.commit
+            if _should_reuse_previous_git_resolution(
+                prev,
+                constraint=cons,
+                url=proj.url,
+                refresh_floating_refs=refresh_floating_git_refs,
             ):
-                # Re-use of previous SHA short-circuits resolve_ref.
+                # Re-use of a pinned previous SHA short-circuits resolve_ref.
                 continue
             jobs[(proj.url, cons)] = None
         return list(jobs.keys())
@@ -447,15 +474,13 @@ def _build_lock_for_app(
         previous_entry = prev_modules.get(name)
         commit: str | None
         tag: str | None
-        if (
-            previous_entry
-            and previous_entry.kind == LockKind.GIT
-            and previous_entry.constraint == constraint
-            and previous_entry.url == url
-            and previous_entry.commit
+        if _should_reuse_previous_git_resolution(
+            previous_entry,
+            constraint=constraint,
+            url=url,
+            refresh_floating_refs=refresh_floating_git_refs,
         ):
-            # Re-use the previously resolved SHA \u2014 ``nsx update`` is the
-            # explicit way to re-resolve.
+            # Re-use the previously resolved SHA only for pinned refs.
             commit = previous_entry.commit
             tag = previous_entry.tag
         else:

@@ -807,6 +807,42 @@ class TestGitKind:
         # hash_git_artifact, not a hash of modules/<name>/.
         assert m.content_hash == "sha256:" + "f" * 64
 
+    def test_git_lock_refreshes_branch_constraints_each_run(
+        self, app: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        first_sha = "a" * 40
+        second_sha = "b" * 40
+        seen: list[str] = []
+
+        def _resolve(url: str, ref: str) -> tuple[str, str]:
+            seen.append(ref)
+            return ((first_sha if len(seen) == 1 else second_sha), "branch")
+
+        monkeypatch.setattr(operations._lock, "resolve_ref", _resolve)
+        monkeypatch.setattr(
+            operations._lock,
+            "hash_git_artifact",
+            lambda url, commit: "sha256:" + commit[:1] * 64,
+        )
+
+        _write_nsx_yml(
+            app,
+            [{"name": "fake-mod", "project": "fake-proj", "revision": "main"}],
+            registry_overrides=_GIT_PROJECT_OVERRIDES,
+        )
+        _write_fake_git_metadata(app)
+
+        lock_app_impl(app)
+        first_lock = read_lock(app)
+        assert first_lock is not None
+        assert first_lock.modules["fake-mod"].commit == first_sha
+
+        lock_app_impl(app)
+        second_lock = read_lock(app)
+        assert second_lock is not None
+        assert second_lock.modules["fake-mod"].commit == second_sha
+        assert seen == ["main", "main"]
+
     def test_unresolved_when_resolver_fails(
         self, app: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
