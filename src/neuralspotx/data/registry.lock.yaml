@@ -37,16 +37,6 @@ projects:
     url: https://github.com/AmbiqAI/nsx-core.git
     revision: fac6a0149246c3794e3b61f4e87c7fbfadfa66ba
     path: modules/nsx-core
-  nsx-harness:
-    name: nsx-harness
-    url: https://github.com/AmbiqAI/nsx-harness.git
-    revision: 0a705f60536455f076b637ce6b20b97664d47fa0
-    path: modules/nsx-harness
-  nsx-utils:
-    name: nsx-utils
-    url: https://github.com/AmbiqAI/nsx-utils.git
-    revision: f2f906926127205326c99a4e837a562d95f11950
-    path: modules/nsx-utils
   nsx-perf:
     name: nsx-perf
     url: https://github.com/AmbiqAI/nsx-perf.git
@@ -57,21 +47,11 @@ projects:
     url: https://github.com/AmbiqAI/nsx-pmu-armv8m.git
     revision: 4234717c2148424bd53bc204aaf86b12f05c299f
     path: modules/nsx-pmu-armv8m
-  nsx-peripherals:
-    name: nsx-peripherals
-    url: https://github.com/AmbiqAI/nsx-peripherals.git
-    revision: v0.1.0
-    path: modules/nsx-peripherals
   nsx-power:
     name: nsx-power
     url: https://github.com/AmbiqAI/nsx-power.git
     revision: 1ebe9d7ffeb149d375970e80df533f3a6f0e4d2d
     path: modules/nsx-power
-  nsx-portable-api:
-    name: nsx-portable-api
-    url: https://github.com/AmbiqAI/nsx-portable-api.git
-    revision: v0.1.0
-    path: modules/nsx-portable-api
   nsx-uart:
     name: nsx-uart
     url: https://github.com/AmbiqAI/nsx-uart.git
@@ -266,14 +246,6 @@ modules:
     project: nsx-core
     revision: fac6a0149246c3794e3b61f4e87c7fbfadfa66ba
     metadata: modules/nsx-core/nsx-module.yaml
-  nsx-harness:
-    project: nsx-harness
-    revision: 0a705f60536455f076b637ce6b20b97664d47fa0
-    metadata: modules/nsx-harness/nsx-module.yaml
-  nsx-utils:
-    project: nsx-utils
-    revision: f2f906926127205326c99a4e837a562d95f11950
-    metadata: modules/nsx-utils/nsx-module.yaml
   nsx-perf:
     project: nsx-perf
     revision: v0.1.0
@@ -282,18 +254,10 @@ modules:
     project: nsx-pmu-armv8m
     revision: 4234717c2148424bd53bc204aaf86b12f05c299f
     metadata: modules/nsx-pmu-armv8m/nsx-module.yaml
-  nsx-peripherals:
-    project: nsx-peripherals
-    revision: v0.1.0
-    metadata: modules/nsx-peripherals/nsx-module.yaml
   nsx-power:
     project: nsx-power
     revision: 1ebe9d7ffeb149d375970e80df533f3a6f0e4d2d
     metadata: modules/nsx-power/nsx-module.yaml
-  nsx-portable-api:
-    project: nsx-portable-api
-    revision: v0.1.0
-    metadata: modules/nsx-portable-api/nsx-module.yaml
   nsx-uart:
     project: nsx-uart
     revision: v0.1.0
