@@ -1,7 +1,7 @@
 #include <stdint.h>
-#include "ns_core.h"
+#include "nsx_core.h"
 #include "am_mcu_apollo.h"
-#include "am_util_pmu.h"
+#include "nsx_pmu_utils.h"
 
 #define VECTOR_LEN  256
 #define OUTER_LOOPS 100
@@ -19,36 +19,34 @@ static void workload(void)
 
 int main(void)
 {
-    ns_core_config_t core_cfg = {
-        .api = &ns_core_V1_0_0,
+    nsx_core_config_t core_cfg = {
+        .api = &nsx_core_V1_0_0,
     };
-    (void)ns_core_init(&core_cfg);
+    (void)nsx_core_init(&core_cfg);
 
     nsx_itm_printf_enable();
 
-    am_util_pmu_config_t pmu_cfg = {0};
-    am_util_pmu_profiling_t profiling = {0};
+    nsx_pmu_config_t pmu_cfg = {0};
+    nsx_pmu_apply_preset(&pmu_cfg, NSX_PMU_PRESET_BASIC_CPU);
+    pmu_cfg.api = &nsx_pmu_V1_0_0;
 
-    pmu_cfg.ui32Counters = PMU_CNTENSET_CNT0_ENABLE_Msk |
-                           PMU_CNTENSET_CCNTR_ENABLE_Msk;
-    pmu_cfg.ui32EventType[0] = ARM_PMU_INST_RETIRED;
-
-    am_util_pmu_enable();
-    am_util_pmu_init(&pmu_cfg);
+    if (nsx_pmu_init(&pmu_cfg) != NSX_STATUS_SUCCESS) {
+        nsx_printf("PMU init failed\r\n");
+        while (1) {
+        }
+    }
 
     while (1) {
-        ARM_PMU_CYCCNT_Reset();
-        ARM_PMU_EVCNTR_ALL_Reset();
+        nsx_pmu_reset_counters();
 
         for (uint32_t n = 0; n < OUTER_LOOPS; ++n) {
             workload();
         }
 
         nsx_printf("--- PMU after %u iterations ---\r\n", (unsigned)OUTER_LOOPS);
-        am_util_pmu_get_profiling(&pmu_cfg, &profiling);
-        nsx_printf("cycles=%lu instructions=%lu\r\n",
-                   (unsigned long)profiling.cycleProfiling.ui32CountValue,
-                   (unsigned long)profiling.eventProfiling[0].ui32CountValue);
+        if (nsx_pmu_get_counters(&pmu_cfg) == NSX_STATUS_SUCCESS) {
+            nsx_pmu_print_counters(&pmu_cfg);
+        }
         nsx_delay_us(2000000);
     }
 }

@@ -1,5 +1,5 @@
 #include <string.h>
-#include "ns_core.h"
+#include "nsx_core.h"
 #include "nsx_mem.h"
 #include "nsx_audio.h"
 
@@ -27,10 +27,10 @@ static void audio_cb(nsx_audio_config_t *cfg, void *buffer, uint32_t num_samples
 
 int main(void)
 {
-    ns_core_config_t core_cfg = {
-        .api = &ns_core_V1_0_0,
+    nsx_core_config_t core_cfg = {
+        .api = &nsx_core_V1_0_0,
     };
-    (void)ns_core_init(&core_cfg);
+    (void)nsx_core_init(&core_cfg);
 
     nsx_itm_printf_enable();
     nsx_cache_enable();

@@ -1,11 +1,11 @@
-#include "ns_core.h"
+#include "nsx_core.h"
 
 int main(void)
 {
-    ns_core_config_t cfg = {
-        .api = &ns_core_V1_0_0,
+    nsx_core_config_t cfg = {
+        .api = &nsx_core_V1_0_0,
     };
-    (void)ns_core_init(&cfg);
+    (void)nsx_core_init(&cfg);
 
     nsx_itm_printf_enable();
 

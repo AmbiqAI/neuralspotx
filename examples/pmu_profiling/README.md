@@ -8,10 +8,10 @@ SWO every 2 seconds.
 ## What is the PMU?
 
 The Cortex-M55 has a hardware PMU with 8 configurable event counters plus a
-dedicated cycle counter.  Each counter can be assigned to any of ~70 hardware
-events (cache misses, stalls, MVE instructions, bus accesses, etc.).  The
-**nsx-pmu-armv8m** module provides a simple C API to configure, read, and
-print these counters.
+dedicated cycle counter. Each counter can be assigned to any of ~70 hardware
+events (cache misses, stalls, MVE instructions, bus accesses, etc.). The
+standalone **nsx-pmu-armv8m** module provides the shared PMU API, while the
+selected SDK supplies the local `nsx_ambiq_pmu` backend shim.
 
 ### Built-in Presets
 
@@ -60,28 +60,29 @@ dependencies.
 
 ```c
 // Apply a preset — configures 4 event counters
-ns_pmu_apply_preset(&g_pmu, NS_PMU_PRESET_BASIC_CPU);
-ns_pmu_init(&g_pmu);
+nsx_pmu_apply_preset(&g_pmu, NSX_PMU_PRESET_BASIC_CPU);
+g_pmu.api = &nsx_pmu_V1_0_0;
+nsx_pmu_init(&g_pmu);
 
 // Reset, run workload, read
-ns_pmu_reset_counters();
+nsx_pmu_reset_counters();
 workload();
-ns_pmu_get_counters(&g_pmu);
-ns_pmu_print_counters(&g_pmu);
+nsx_pmu_get_counters(&g_pmu);
+nsx_pmu_print_counters(&g_pmu);
 ```
 
 ## Customizing
 
-To switch presets, change the `ns_pmu_apply_preset()` call in `src/main.c`:
+To switch presets, change the `nsx_pmu_apply_preset()` call in `src/main.c`:
 
 ```c
-ns_pmu_apply_preset(&g_pmu, NS_PMU_PRESET_MEMORY);   // cache & bus events
-ns_pmu_apply_preset(&g_pmu, NS_PMU_PRESET_MVE);       // Helium/MVE events
+nsx_pmu_apply_preset(&g_pmu, NSX_PMU_PRESET_MEMORY);  // cache & bus events
+nsx_pmu_apply_preset(&g_pmu, NSX_PMU_PRESET_MVE);     // Helium/MVE events
 ```
 
 Or assign individual events to specific counter slots:
 
 ```c
-ns_pmu_event_create(&cfg.events[0], 0x0011, NS_PMU_EVENT_COUNTER_SIZE_32); // CPU_CYCLES
-ns_pmu_event_create(&cfg.events[1], 0x0039, NS_PMU_EVENT_COUNTER_SIZE_32); // L1D_CACHE_MISS_RD
+nsx_pmu_event_create(&cfg.events[0], 0x0011, NSX_PMU_EVENT_COUNTER_SIZE_32); // CPU_CYCLES
+nsx_pmu_event_create(&cfg.events[1], 0x0039, NSX_PMU_EVENT_COUNTER_SIZE_32); // L1D_CACHE_MISS_RD
 ```
