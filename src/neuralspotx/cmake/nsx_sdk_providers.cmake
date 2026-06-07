@@ -63,9 +63,10 @@ function(_nsx_resolve_provider_board board_name out_var)
 endfunction()
 
 function(nsx_select_sdk_provider board_name)
-    set(NSX_SDK_PROVIDER "" CACHE STRING "SDK provider module (ambiqsuite-r3|ambiqsuite-r4|ambiqsuite-r5|ambiqsuite-r6)")
-    set_property(CACHE NSX_SDK_PROVIDER PROPERTY STRINGS ambiqsuite-r3 ambiqsuite-r4 ambiqsuite-r5 ambiqsuite-r6)
+    set(NSX_SDK_PROVIDER "" CACHE STRING "SDK provider module (ambiqsuite-r2|ambiqsuite-r3|ambiqsuite-r4|ambiqsuite-r5|ambiqsuite-r6)")
+    set_property(CACHE NSX_SDK_PROVIDER PROPERTY STRINGS ambiqsuite-r2 ambiqsuite-r3 ambiqsuite-r4 ambiqsuite-r5 ambiqsuite-r6)
 
+    set(NSX_AMBIQSUITE_R2_ROOT "" CACHE PATH "Path to AmbiqSuite R2 root")
     set(NSX_AMBIQSUITE_R3_ROOT "" CACHE PATH "Path to AmbiqSuite R3 root")
     set(NSX_AMBIQSUITE_R4_ROOT "" CACHE PATH "Path to AmbiqSuite R4 root")
     set(NSX_AMBIQSUITE_R5_ROOT "" CACHE PATH "Path to AmbiqSuite R5 root")
@@ -78,12 +79,28 @@ function(nsx_select_sdk_provider board_name)
         if(NSX_SDK_PROVIDER STREQUAL "")
             message(FATAL_ERROR
                 "Unable to infer SDK provider for board '${board_name}'. "
-                "Set -DNSX_SDK_PROVIDER=ambiqsuite-r3|ambiqsuite-r4|ambiqsuite-r5|ambiqsuite-r6."
+                "Set -DNSX_SDK_PROVIDER=ambiqsuite-r2|ambiqsuite-r3|ambiqsuite-r4|ambiqsuite-r5|ambiqsuite-r6."
             )
         endif()
     endif()
 
-    if(NSX_SDK_PROVIDER STREQUAL "ambiqsuite-r3")
+    if(NSX_SDK_PROVIDER STREQUAL "ambiqsuite-r2")
+        set(version "R2.5.1")
+        _nsx_module_relpath_or_default(_ambiqsuite_module_dir "nsx-ambiqsuite-r2")
+        set(module_default_root "${NSX_ROOT}/${_ambiqsuite_module_dir}/sdk")
+        if(NSX_AMBIQSUITE_R2_ROOT STREQUAL "")
+            _nsx_pick_first_existing(
+                NSX_AMBIQSUITE_R2_ROOT_CANDIDATE
+                "${module_default_root}"
+                "${NSX_ROOT}/modules/nsx-ambiqsuite-r2/sdk"
+            )
+            if(NOT NSX_AMBIQSUITE_R2_ROOT_CANDIDATE STREQUAL "")
+                set(NSX_AMBIQSUITE_R2_ROOT "${NSX_AMBIQSUITE_R2_ROOT_CANDIDATE}" CACHE PATH "Path to AmbiqSuite R2 root" FORCE)
+            endif()
+        endif()
+        set(root "${NSX_AMBIQSUITE_R2_ROOT}")
+        set(selected_target "nsx_sdk_ambiqsuite_r2")
+    elseif(NSX_SDK_PROVIDER STREQUAL "ambiqsuite-r3")
         set(version "R3.1.1")
         _nsx_module_relpath_or_default(_ambiqsuite_module_dir "nsx-ambiqsuite-r3")
         set(module_default_root "${NSX_ROOT}/${_ambiqsuite_module_dir}/sdk")
@@ -156,11 +173,12 @@ function(nsx_select_sdk_provider board_name)
             "SDK provider '${NSX_SDK_PROVIDER}' selected for board '${board_name}', "
             "but AmbiqSuite root is not configured.\n"
             "Set one of:\n"
+            "  -DNSX_AMBIQSUITE_R2_ROOT=...\n"
             "  -DNSX_AMBIQSUITE_R3_ROOT=...\n"
             "  -DNSX_AMBIQSUITE_R4_ROOT=...\n"
             "  -DNSX_AMBIQSUITE_R5_ROOT=...\n"
             "  -DNSX_AMBIQSUITE_R6_ROOT=...\n"
-            "Default module-local roots are used for R3/R4/R5/R6 if vendored payload is present."
+            "Default module-local roots are used for R2/R3/R4/R5/R6 if vendored payload is present."
         )
     endif()
 

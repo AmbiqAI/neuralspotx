@@ -12,6 +12,7 @@ endif()
 
 set(NSX_AMBIQ_BOARD_NAME "apollo3_evb_cygnus")
 set(NSX_AMBIQ_PART_NAME "apollo3")
+set(NSX_AMBIQ_BSP_LIB_SUBDIR "apollo3_evb_cygnus")
 set(NSX_AMBIQ_BSP_DIR "${NSX_AMBIQSUITE_ROOT}/boards/${NSX_AMBIQ_BOARD_NAME}/bsp")
 set(NSX_AMBIQ_MCU_DIR "${NSX_AMBIQSUITE_ROOT}/mcu/${NSX_AMBIQ_PART_NAME}")
 set(NSX_AMBIQ_HAL_DIR "${NSX_AMBIQ_MCU_DIR}/hal")
@@ -19,9 +20,12 @@ set(NSX_AMBIQ_HAL_MCU_DIR "${NSX_AMBIQ_HAL_DIR}/mcu")
 
 include("${NSX_CMAKE_DIR}/nsx_toolchain_flags.cmake")
 
-set(NSX_STARTUP_SOURCE "${NSX_ROOT}/modules/nsx-core/src/apollo3/gcc/startup_gcc.c")
+nsx_module_dir_for_name(_nsx_core_module_dir "nsx-core")
+set(NSX_CORE_DIR "${NSX_ROOT}/${_nsx_core_module_dir}")
+
+set(NSX_STARTUP_SOURCE "${NSX_CORE_DIR}/src/apollo3/gcc/startup_gcc.c")
 set(NSX_SYSTEM_SOURCE "${NSX_AMBIQSUITE_ROOT}/CMSIS/AmbiqMicro/Source/system_apollo3.c")
-set(NSX_LINKER_SCRIPT "${NSX_ROOT}/modules/nsx-core/src/apollo3/gcc/linker_script.ld")
+set(NSX_LINKER_SCRIPT "${NSX_CORE_DIR}/src/apollo3/gcc/linker_script.ld")
 include("${NSX_CMAKE_DIR}/segger/socs/apollo3p.cmake")
 
 set(NSX_BOARD_TARGET nsx_board_apollo3_evb_cygnus)
@@ -45,7 +49,6 @@ add_library(nsx::board_apollo3_evb_cygnus ALIAS ${NSX_BOARD_TARGET})
 add_library(nsx::board_flags ALIAS ${NSX_BOARD_FLAGS_TARGET})
 
 target_compile_definitions(${NSX_BOARD_FLAGS_TARGET} INTERFACE
-    NEURALSPOT
     apollo3_evb_cygnus
     PART_apollo3
     PART_APOLLO3

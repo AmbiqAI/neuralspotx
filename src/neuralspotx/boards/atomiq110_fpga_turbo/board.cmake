@@ -55,7 +55,6 @@ add_library(nsx::board_atomiq110_fpga_turbo ALIAS ${NSX_BOARD_TARGET})
 add_library(nsx::board_flags ALIAS ${NSX_BOARD_FLAGS_TARGET})
 
 target_compile_definitions(${NSX_BOARD_FLAGS_TARGET} INTERFACE
-    NEURALSPOT
     atomiq110_fpga_turbo
     PART_atomiq110
     AM_PART_ATOMIQ110

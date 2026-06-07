@@ -14,6 +14,7 @@ from .board_descriptors import load_board_descriptors
 # :mod:`neuralspotx.board_descriptors`. A board ships a descriptor with
 # ``registered: false`` to remain out of these tables.
 _BOARD_ORDER: tuple[str, ...] = (
+    "apollo2_evb",
     "apollo3_evb",
     "apollo3_evb_cygnus",
     "apollo3p_evb",
@@ -119,6 +120,7 @@ BOARD_SDK_PROVIDER: dict[str, str] = {
 class SDKProvider(str, enum.Enum):
     """Canonical SDK provider identifiers."""
 
+    R2 = "ambiqsuite-r2"
     R3 = "ambiqsuite-r3"
     R4 = "ambiqsuite-r4"
     R5 = "ambiqsuite-r5"

@@ -36,7 +36,7 @@ def test_packaged_lock_has_no_compat_matrix_or_literal_profiles() -> None:
 def test_derived_profiles_cover_all_board_profiles() -> None:
     reg = _packaged_registry()
     profiles = reg["starter_profiles"]
-    assert len(profiles) == 16
+    assert len(profiles) == len(reg["board_profiles"])
     for board in reg["board_profiles"]:
         assert f"{board}_minimal" in profiles
 
@@ -54,19 +54,19 @@ def test_derived_profile_module_layout() -> None:
         "nsx-board-apollo510-evb",
         *core,
     ]
-    # R5 is sourced from the consolidated nsx-ambiq-sdk-r5 monorepo: the
+    # R5 is sourced from the consolidated nsx-ambiq-sdk monorepo: the
     # project override pins the monorepo and every module the monorepo
     # vendors gets a module override pointing back at it.
-    assert prof["project_overrides"] == {"nsx-ambiq-sdk-r5": {"revision": "main"}}
+    assert prof["project_overrides"] == {"nsx-ambiq-sdk": {"revision": "main"}}
     assert set(prof["module_overrides"]) == set(family["sdk_modules"])
     assert prof["module_overrides"]["nsx-ambiqsuite-r5"] == {
-        "project": "nsx-ambiq-sdk-r5",
+        "project": "nsx-ambiq-sdk",
         "revision": "main",
         "metadata": "modules/nsx-ambiqsuite-r5/nsx-module.yaml",
     }
     # A shared-name module (also vendored by the monorepo) resolves to the
     # tier-correct monorepo source rather than its standalone repo.
-    assert prof["module_overrides"]["nsx-soc-hal"]["project"] == "nsx-ambiq-sdk-r5"
+    assert prof["module_overrides"]["nsx-soc-hal"]["project"] == "nsx-ambiq-sdk"
 
 
 def test_channel_defaulting_and_override() -> None:

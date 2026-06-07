@@ -23,6 +23,7 @@ compatibility:
   boards:
     - "*"
   socs:
+    - apollo2
     - apollo3
     - apollo3p
     - apollo4l

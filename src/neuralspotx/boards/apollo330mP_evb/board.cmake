@@ -11,6 +11,7 @@ endif()
 
 set(NSX_AMBIQ_BOARD_NAME "apollo330mP_evb")
 set(NSX_AMBIQ_PART_NAME "apollo330P")
+set(NSX_AMBIQ_BSP_LIB_SUBDIR "apollo330mP_evb")
 set(NSX_AMBIQ_BSP_DIR "${NSX_AMBIQSUITE_ROOT}/boards/${NSX_AMBIQ_BOARD_NAME}/bsp")
 set(NSX_AMBIQ_MCU_DIR "${NSX_AMBIQSUITE_ROOT}/mcu/${NSX_AMBIQ_PART_NAME}")
 set(NSX_AMBIQ_HAL_DIR "${NSX_AMBIQ_MCU_DIR}/hal")
@@ -18,14 +19,17 @@ set(NSX_AMBIQ_HAL_MCU_DIR "${NSX_AMBIQ_HAL_DIR}/mcu")
 
 include("${NSX_CMAKE_DIR}/nsx_toolchain_flags.cmake")
 
+nsx_module_dir_for_name(_nsx_core_module_dir "nsx-core")
+set(NSX_CORE_DIR "${NSX_ROOT}/${_nsx_core_module_dir}")
+
 if(NSX_TOOLCHAIN_FAMILY STREQUAL "armclang")
-    set(NSX_STARTUP_SOURCE "${NSX_ROOT}/modules/nsx-core/src/apollo330P/armclang/startup_keil6.c")
+    set(NSX_STARTUP_SOURCE "${NSX_CORE_DIR}/src/apollo330P/armclang/startup_keil6.c")
     set(NSX_SYSTEM_SOURCE "${NSX_AMBIQSUITE_ROOT}/src/apollo330P/system_apollo330P.c")
-    set(NSX_LINKER_SCRIPT "${NSX_ROOT}/modules/nsx-core/src/apollo330P/armclang/linker_script_sbl.sct")
+    set(NSX_LINKER_SCRIPT "${NSX_CORE_DIR}/src/apollo330P/armclang/linker_script_sbl.sct")
 else()
-    set(NSX_STARTUP_SOURCE "${NSX_ROOT}/modules/nsx-core/src/apollo330P/gcc/startup_gcc.c")
+    set(NSX_STARTUP_SOURCE "${NSX_CORE_DIR}/src/apollo330P/gcc/startup_gcc.c")
     set(NSX_SYSTEM_SOURCE "${NSX_AMBIQSUITE_ROOT}/src/apollo330P/system_apollo330P.c")
-    set(NSX_LINKER_SCRIPT "${NSX_ROOT}/modules/nsx-core/src/apollo330P/gcc/linker_script_sbl.ld")
+    set(NSX_LINKER_SCRIPT "${NSX_CORE_DIR}/src/apollo330P/gcc/linker_script_sbl.ld")
 endif()
 
 include("${NSX_CMAKE_DIR}/segger/socs/apollo330.cmake")
@@ -51,7 +55,6 @@ add_library(nsx::board_apollo330mP_evb ALIAS ${NSX_BOARD_TARGET})
 add_library(nsx::board_flags ALIAS ${NSX_BOARD_FLAGS_TARGET})
 
 target_compile_definitions(${NSX_BOARD_FLAGS_TARGET} INTERFACE
-    NEURALSPOT
     apollo330mP_evb
     PART_apollo330P
     AM_PART_APOLLO330P

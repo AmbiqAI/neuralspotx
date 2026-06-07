@@ -1,6 +1,7 @@
 {% if sdk_provider == "ambiqsuite-r6" -%}
 #include "nsx_core.h"
 #include "nsx_system.h"
+#include "nsx_presets.h"
 
 int main(void)
 {
@@ -13,21 +14,20 @@ int main(void)
     }
 }
 {% else -%}
-#include "ns_core.h"
-#include "ns_ambiqsuite_harness.h"
+#include "nsx_core.h"
 
 int main(void)
 {
-    ns_core_config_t cfg = {
-        .api = &ns_core_V1_0_0,
+    nsx_core_config_t cfg = {
+        .api = &nsx_core_V1_0_0,
     };
-    (void)ns_core_init(&cfg);
+    (void)nsx_core_init(&cfg);
 
-    ns_itm_printf_enable();
+    nsx_itm_printf_enable();
 
     while (1) {
-        ns_printf("nsx hello from generated app\r\n");
-        ns_delay_us(1000000);
+        nsx_printf("nsx hello from generated app\r\n");
+        nsx_delay_us(1000000);
     }
 }
 {% endif -%}

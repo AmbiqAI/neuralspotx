@@ -9,7 +9,9 @@
 
 function(nsx_lookup_sdk_provider board_name out_var)
     string(TOLOWER "${board_name}" _board_lc)
-    if(_board_lc STREQUAL "apollo3_evb")
+    if(_board_lc STREQUAL "apollo2_evb")
+        set(${out_var} "ambiqsuite-r2" PARENT_SCOPE)
+    elseif(_board_lc STREQUAL "apollo3_evb")
         set(${out_var} "ambiqsuite-r3" PARENT_SCOPE)
     elseif(_board_lc STREQUAL "apollo3_evb_cygnus")
         set(${out_var} "ambiqsuite-r3" PARENT_SCOPE)

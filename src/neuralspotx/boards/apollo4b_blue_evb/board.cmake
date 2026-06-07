@@ -22,14 +22,17 @@ set(NSX_HAL_LIB "${NSX_AMBIQSUITE_ROOT}/lib/apollo4p/libam_hal.a" CACHE FILEPATH
 
 include("${NSX_CMAKE_DIR}/nsx_toolchain_flags.cmake")
 
+nsx_module_dir_for_name(_nsx_core_module_dir "nsx-core")
+set(NSX_CORE_DIR "${NSX_ROOT}/${_nsx_core_module_dir}")
+
 if(NSX_TOOLCHAIN_FAMILY STREQUAL "armclang")
-    set(NSX_STARTUP_SOURCE "${NSX_ROOT}/modules/nsx-core/src/apollo4p/armclang/startup_armclang.s")
-    set(NSX_SYSTEM_SOURCE "${NSX_ROOT}/modules/nsx-core/src/apollo4p/armclang/system_apollo4p.c")
-    set(NSX_LINKER_SCRIPT "${NSX_ROOT}/modules/nsx-core/src/apollo4p/armclang/linker_script.sct")
+    set(NSX_STARTUP_SOURCE "${NSX_CORE_DIR}/src/apollo4p/armclang/startup_armclang.s")
+    set(NSX_SYSTEM_SOURCE "${NSX_AMBIQSUITE_ROOT}/CMSIS/AmbiqMicro/Source/system_apollo4p.c")
+    set(NSX_LINKER_SCRIPT "${NSX_CORE_DIR}/src/apollo4p/armclang/linker_script.sct")
 else()
-    set(NSX_STARTUP_SOURCE "${NSX_ROOT}/modules/nsx-core/src/apollo4p/gcc/startup_gcc.c")
-    set(NSX_SYSTEM_SOURCE "${NSX_ROOT}/modules/nsx-core/src/apollo4p/armclang/system_apollo4p.c")
-    set(NSX_LINKER_SCRIPT "${NSX_ROOT}/modules/nsx-core/src/apollo4p/gcc/linker_script.ld")
+    set(NSX_STARTUP_SOURCE "${NSX_CORE_DIR}/src/apollo4p/gcc/startup_gcc.c")
+    set(NSX_SYSTEM_SOURCE "${NSX_AMBIQSUITE_ROOT}/CMSIS/AmbiqMicro/Source/system_apollo4p.c")
+    set(NSX_LINKER_SCRIPT "${NSX_CORE_DIR}/src/apollo4p/gcc/linker_script.ld")
 endif()
 
 include("${NSX_CMAKE_DIR}/segger/socs/apollo4p.cmake")
@@ -55,7 +58,6 @@ add_library(nsx::board_apollo4b_blue_evb ALIAS ${NSX_BOARD_TARGET})
 add_library(nsx::board_flags ALIAS ${NSX_BOARD_FLAGS_TARGET})
 
 target_compile_definitions(${NSX_BOARD_FLAGS_TARGET} INTERFACE
-    NEURALSPOT
     apollo4b_blue_evb
     PART_apollo4b
     AM_PART_APOLLO4B

@@ -53,7 +53,7 @@ function(nsx_bootstrap_app)
 
     include("${NSX_CMAKE_DIR}/nsx_helpers.cmake")
     # Bring each vendored project's own CMake helpers into scope. A
-    # consolidated SDK bundle (e.g. nsx-ambiq-sdk-r5) ships its assert/
+    # consolidated SDK bundle (e.g. nsx-ambiq-sdk) ships its assert/
     # select/toolchain helpers under <project>/cmake/*.cmake; the vendored
     # module CMakeLists call them, so they must be included before any
     # module add_subdirectory(). NSX_APP_PROJECT_DIRS is emitted by Python

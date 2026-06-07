@@ -21,17 +21,19 @@ Provider modules:
 
 ## Provider Revisions
 
-Each provider family is sourced from a single consolidated SDK monorepo that
-vendors the AmbiqSuite drop, the HAL/BSP wrappers, and the shared NSX module
-set for that release line:
+Each provider family is sourced from the unified SDK monorepo, which vendors
+the AmbiqSuite drop, the HAL/BSP wrappers, and the shared NSX module set for
+every supported release line:
 
-1. `ambiqsuite-r3` → `nsx-ambiq-sdk-r3` (`main`)
-2. `ambiqsuite-r4` → `nsx-ambiq-sdk-r4` (`main`)
-3. `ambiqsuite-r5` → `nsx-ambiq-sdk-r5` (`main`)
+1. `ambiqsuite-r2` → `nsx-ambiq-sdk` (`main`)
+2. `ambiqsuite-r3` → `nsx-ambiq-sdk` (`main`)
+3. `ambiqsuite-r4` → `nsx-ambiq-sdk` (`main`)
+4. `ambiqsuite-r5` → `nsx-ambiq-sdk` (`main`)
+5. `ambiqsuite-r6` → `nsx-ambiq-sdk` (`main`)
 
-The provider module (`nsx-ambiqsuite-r*`) and every module the monorepo
-vendors resolve to the tier's `nsx-ambiq-sdk-r*` project. The selected
-project and revision are persisted in generated app metadata.
+The provider module (`nsx-ambiqsuite-r*`) and the SDK wrapper modules that the
+bundle vendors resolve to the unified `nsx-ambiq-sdk` project by default. The
+selected project and revision are persisted in generated app metadata.
 
 ## Contracts
 

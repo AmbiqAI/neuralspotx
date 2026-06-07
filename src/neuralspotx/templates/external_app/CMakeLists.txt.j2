@@ -23,6 +23,11 @@ target_link_libraries({{ app_name }} PRIVATE
     nsx::runtime_core
 )
 
+{% if sdk_provider == "ambiqsuite-r6" -%}
+# Opinionated presets are opt-in (not part of the runtime_core umbrella).
+target_link_libraries({{ app_name }} PRIVATE nsx::presets)
+{% endif -%}
+
 if(FOO_USE_NSX_PORTABLE)
     target_link_libraries({{ app_name }} PRIVATE nsx::portable_api)
 endif()

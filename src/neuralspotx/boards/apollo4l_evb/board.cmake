@@ -19,14 +19,17 @@ set(NSX_AMBIQ_HAL_MCU_DIR "${NSX_AMBIQ_HAL_DIR}/mcu")
 
 include("${NSX_CMAKE_DIR}/nsx_toolchain_flags.cmake")
 
+nsx_module_dir_for_name(_nsx_core_module_dir "nsx-core")
+set(NSX_CORE_DIR "${NSX_ROOT}/${_nsx_core_module_dir}")
+
 if(NSX_TOOLCHAIN_FAMILY STREQUAL "armclang")
-    set(NSX_STARTUP_SOURCE "${NSX_ROOT}/modules/nsx-core/src/apollo4l/armclang/startup_keil6.s")
+    set(NSX_STARTUP_SOURCE "${NSX_CORE_DIR}/src/apollo4l/armclang/startup_keil6.s")
     set(NSX_SYSTEM_SOURCE "")
-    set(NSX_LINKER_SCRIPT "${NSX_ROOT}/modules/nsx-core/src/apollo4l/armclang/linker_script.sct")
+    set(NSX_LINKER_SCRIPT "${NSX_CORE_DIR}/src/apollo4l/armclang/linker_script.sct")
 else()
-    set(NSX_STARTUP_SOURCE "${NSX_ROOT}/modules/nsx-core/src/apollo4l/gcc/startup_gcc.c")
+    set(NSX_STARTUP_SOURCE "${NSX_CORE_DIR}/src/apollo4l/gcc/startup_gcc.c")
     set(NSX_SYSTEM_SOURCE "")
-    set(NSX_LINKER_SCRIPT "${NSX_ROOT}/modules/nsx-core/src/apollo4l/gcc/linker_script.ld")
+    set(NSX_LINKER_SCRIPT "${NSX_CORE_DIR}/src/apollo4l/gcc/linker_script.ld")
 endif()
 include("${NSX_CMAKE_DIR}/segger/socs/apollo4p.cmake")
 
@@ -50,7 +53,6 @@ add_library(nsx::board_apollo4l_evb ALIAS ${NSX_BOARD_TARGET})
 add_library(nsx::board_flags ALIAS ${NSX_BOARD_FLAGS_TARGET})
 
 target_compile_definitions(${NSX_BOARD_FLAGS_TARGET} INTERFACE
-    NEURALSPOT
     apollo4l_evb
     PART_apollo4l
     AM_PART_APOLLO4L

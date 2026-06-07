@@ -1,0 +1,36 @@
+schema_version: 1
+
+module:
+  name: nsx-board-apollo2-evb
+  type: board
+  version: "0.1.0"
+
+support:
+  ambiqsuite: true
+  zephyr: false
+
+build:
+  cmake:
+    package: nsx_board_apollo2_evb
+    targets:
+      - nsx::board_apollo2_evb
+
+depends:
+  required:
+    - nsx-ambiq-hal-r2
+    - nsx-ambiq-bsp-r2
+    - nsx-soc-hal
+    - nsx-cmsis-startup
+    - nsx-ambiqsuite-r2
+  optional: []
+
+constraints:
+  required_sdk_provider: nsx-ambiqsuite-r2
+
+compatibility:
+  boards:
+    - apollo2_evb
+  socs:
+    - apollo2
+  toolchains:
+    - arm-none-eabi-gcc

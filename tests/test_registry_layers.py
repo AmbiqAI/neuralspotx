@@ -156,12 +156,12 @@ def test_multi_key_layer_mapping_raises() -> None:
 
 
 def _bundle_base_registry() -> dict:
-    """Base registry where the SDK module still points at its old split repo."""
+    """Base registry where the SDK module still points at the unified monorepo."""
 
     return {
         "projects": {
             "nsx-ambiq-bsp-r5": {"name": "nsx-ambiq-bsp-r5", "revision": "v0.1.0"},
-            "nsx-ambiq-sdk-r5": {"name": "nsx-ambiq-sdk-r5", "revision": "main"},
+            "nsx-ambiq-sdk": {"name": "nsx-ambiq-sdk", "revision": "main"},
         },
         "modules": {
             "nsx-ambiq-bsp-r5": {
@@ -179,13 +179,13 @@ def test_alignment_passes_when_module_override_present() -> None:
     base = _bundle_base_registry()
     nsx_cfg = {
         "modules": [
-            {"name": "nsx-ambiq-bsp-r5", "project": "nsx-ambiq-sdk-r5"},
+            {"name": "nsx-ambiq-bsp-r5", "project": "nsx-ambiq-sdk"},
         ],
         "module_registry": {
-            "projects": {"nsx-ambiq-sdk-r5": {"revision": "main"}},
+            "projects": {"nsx-ambiq-sdk": {"revision": "main"}},
             "modules": {
                 "nsx-ambiq-bsp-r5": {
-                    "project": "nsx-ambiq-sdk-r5",
+                    "project": "nsx-ambiq-sdk",
                     "revision": "main",
                     "metadata": "modules/nsx-ambiq-bsp-r5/nsx-module.yaml",
                 },
@@ -203,10 +203,10 @@ def test_alignment_detects_partial_migration() -> None:
     base = _bundle_base_registry()
     nsx_cfg = {
         "modules": [
-            {"name": "nsx-ambiq-bsp-r5", "project": "nsx-ambiq-sdk-r5"},
+            {"name": "nsx-ambiq-bsp-r5", "project": "nsx-ambiq-sdk"},
         ],
         "module_registry": {
-            "projects": {"nsx-ambiq-sdk-r5": {"revision": "main"}},
+            "projects": {"nsx-ambiq-sdk": {"revision": "main"}},
             # NOTE: no modules override for nsx-ambiq-bsp-r5 — the partial
             # migration that broke the examples.
         },
@@ -216,7 +216,7 @@ def test_alignment_detects_partial_migration() -> None:
         validate_app_module_alignment(nsx_cfg, registry)
     msg = str(exc.value)
     assert "nsx-ambiq-bsp-r5" in msg
-    assert "nsx-ambiq-sdk-r5" in msg
+    assert "nsx-ambiq-sdk" in msg
     assert "nsx-ambiq-bsp-r5" in msg  # the stale resolved project name
 
 
@@ -231,14 +231,13 @@ def test_alignment_ignores_local_and_vendored_modules() -> None:
     base = _bundle_base_registry()
     nsx_cfg = {
         "modules": [
-            {"name": "my-local", "project": "nsx-ambiq-sdk-r5", "local": True},
+            {"name": "my-local", "project": "nsx-ambiq-sdk", "local": True},
             {
                 "name": "my-vendored",
-                "project": "nsx-ambiq-sdk-r5",
+                "project": "nsx-ambiq-sdk",
                 "source": {"vendored": True},
             },
         ]
     }
     registry = _effective_registry(base, nsx_cfg)
     validate_app_module_alignment(nsx_cfg, registry)
-
