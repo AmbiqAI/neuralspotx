@@ -128,7 +128,8 @@ class RpcTransport:
     def __init__(self, port: str, baudrate: int = 115200, timeout: float = 5.0) -> None:
         self._ser = serial.Serial(port, baudrate=baudrate, timeout=timeout)
         self._ser.dtr = True  # Required: device checks DTR for CDC connected
-        time.sleep(0.3)  # Let DTR propagate
+        self._ser.reset_input_buffer()
+        time.sleep(2.0)  # Let the device observe DTR and enter its connected loop
 
     def close(self) -> None:
         self._ser.close()

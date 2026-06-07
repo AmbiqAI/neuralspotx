@@ -43,6 +43,15 @@ static const nsx_gpio_config_t s_power_monitor_gpio_0 = {
     .initial_level = NSX_GPIO_LEVEL_LOW,
 };
 
+static const nsx_system_config_t s_coremark_system_config = {
+    .perf_mode        = NSX_PERF_HIGH,
+    .enable_cache     = true,
+    .enable_sram      = true,
+    .debug            = { .transport = NSX_DEBUG_ITM },
+    .skip_bsp_init    = false,
+    .spot_mgr_profile = true,
+};
+
 static const nsx_gpio_config_t s_power_monitor_gpio_1 = {
     .api = &nsx_gpio_V0_0_1,
     .pin = NS_POWER_MONITOR_GPIO_1,
@@ -212,7 +221,7 @@ portable_init(core_portable *p, int *argc, char *argv[])
                               SEGGER_RTT_MODE_NO_BLOCK_TRIM);
 
     /* Full SoC init: caches, SWO debug output (starts in HP mode) */
-    nsx_system_init(&nsx_system_development);
+    nsx_system_init(&s_coremark_system_config);
 
 #ifndef COREMARK_HP_MODE
     /* Switch to LP 96 MHz for non-HP builds */

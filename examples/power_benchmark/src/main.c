@@ -23,7 +23,6 @@
 #include "nsx_core.h"
 #include "nsx_timer.h"
 #include "nsx_gpio.h"
-#include "ns_core.h"
 #include "am_mcu_apollo.h"
 #include "am_bsp.h"
 #include "am_util.h"
@@ -51,6 +50,15 @@ static const nsx_gpio_config_t s_power_monitor_gpio_1 = {
     .pin = NS_POWER_MONITOR_GPIO_1,
     .mode = NSX_GPIO_MODE_OUTPUT,
     .initial_level = NSX_GPIO_LEVEL_LOW,
+};
+
+static const nsx_system_config_t s_power_benchmark_system_config = {
+    .perf_mode        = NSX_PERF_HIGH,
+    .enable_cache     = true,
+    .enable_sram      = true,
+    .debug            = { .transport = NSX_DEBUG_ITM },
+    .skip_bsp_init    = false,
+    .spot_mgr_profile = true,
 };
 
 static void
@@ -535,10 +543,10 @@ main(void)
 #ifdef BENCHMARK_SDK5_MIMIC
     /* ---------------------------------------------------------------
      * SDK5-identical init — bypass NSX system init entirely.
-     * Only ns_core_init is needed for the timer in core_portme.c.
+    * Only nsx_core_init is needed for the timer in core_portme.c.
      * --------------------------------------------------------------- */
-    ns_core_config_t core_cfg = { .api = &ns_core_V1_0_0 };
-    ns_core_init(&core_cfg);
+    nsx_core_config_t core_cfg = { .api = &nsx_core_V1_0_0 };
+    nsx_core_init(&core_cfg);
 
     /* BSP init (identical to SDK5 portable_init first call):
      * 2 s delay, am_hal_pwrctrl_low_power_init, caches, SIMOBUCK_INIT,
@@ -578,7 +586,7 @@ main(void)
     nsx_system_init(&minmem_cfg);
 #else
     /* Full system init: caches, clocks, SWO debug output */
-    nsx_system_init(&nsx_system_development);
+    nsx_system_init(&s_power_benchmark_system_config);
 #endif
 
     /* Configure power-monitor GPIOs for Joulescope phase detection */

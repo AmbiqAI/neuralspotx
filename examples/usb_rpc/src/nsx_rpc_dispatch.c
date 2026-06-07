@@ -17,7 +17,7 @@
 #include "pb_encode.h"
 
 #include "am_mcu_apollo.h"  /* am_hal_timer_count64 for uptime */
-#include "ns_core.h"        /* nsx_printf */
+#include "nsx_core.h"       /* nsx_printf */
 
 /* Shorthand aliases for nanopb-generated enum values. */
 #define NSX_MSG_PING_REQ     NsxRpcMsgType_NSX_MSG_PING_REQ

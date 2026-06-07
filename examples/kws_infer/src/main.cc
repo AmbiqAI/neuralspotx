@@ -24,7 +24,7 @@
 #include "nsx_pmu_profiler.h"
 
 // NSX runtime
-#include "ns_core.h"
+#include "nsx_core.h"
 #include "nsx_mem.h"
 #include "nsx_system.h"
 
@@ -54,6 +54,15 @@ static const char *kLabels[] = {
     "left", "right", "on", "off", "stop", "go"
 };
 static constexpr int kNumClasses = 12;
+
+static const nsx_system_config_t kKwsSystemConfig = {
+    .perf_mode        = NSX_PERF_LOW,
+    .enable_cache     = true,
+    .enable_sram      = true,
+    .debug            = { .transport = NSX_DEBUG_ITM },
+    .skip_bsp_init    = true,
+    .spot_mgr_profile = true,
+};
 
 /* ------------------------------------------------------------------ */
 /* Globals                                                             */
@@ -91,10 +100,7 @@ static tflite::MicroMutableOpResolver<kNumOps> &get_resolver() {
 int main(void) {
     // --- NSX system init: LP mode, caches, ITM/SWO, SpotManager ---
     // Uses minimal HW init (skips BSP's 2-second delay) with ITM debug.
-    nsx_system_config_t sys_cfg = nsx_system_development;
-    sys_cfg.perf_mode = NSX_PERF_LOW;  // 96 MHz — best energy efficiency
-    sys_cfg.skip_bsp_init = true;  // fast startup, no BSP delay
-    NS_TRY(nsx_system_init(&sys_cfg), "System init failed\n");
+    NSX_TRY(nsx_system_init(&kKwsSystemConfig), "System init failed\n");
     nsx_itm_printf_enable();
 
     dwt_init();

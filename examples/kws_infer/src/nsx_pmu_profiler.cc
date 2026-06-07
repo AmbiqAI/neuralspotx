@@ -6,7 +6,7 @@
 #include "nsx_pmu_profiler.h"
 
 #include "am_mcu_apollo.h"
-#include "ns_core.h"
+#include "nsx_core.h"
 #include "nsx_pmu_map.h"
 
 void NsxPmuProfiler::Init(nsx_pmu_preset_e preset) {
