@@ -55,7 +55,6 @@ add_library(nsx::board_apollo510_evb ALIAS ${NSX_BOARD_TARGET})
 add_library(nsx::board_flags ALIAS ${NSX_BOARD_FLAGS_TARGET})
 
 target_compile_definitions(${NSX_BOARD_FLAGS_TARGET} INTERFACE
-    NEURALSPOT
     apollo510_evb
     PART_apollo510
     AM_PART_APOLLO5B
