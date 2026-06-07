@@ -21,11 +21,11 @@ include("${NSX_CMAKE_DIR}/nsx_toolchain_flags.cmake")
 
 if(NSX_TOOLCHAIN_FAMILY STREQUAL "armclang")
     set(NSX_STARTUP_SOURCE "${NSX_ROOT}/modules/nsx-core/src/apollo4p/armclang/startup_armclang.s")
-    set(NSX_SYSTEM_SOURCE "${NSX_ROOT}/modules/nsx-core/src/apollo4p/armclang/system_apollo4p.c")
+    set(NSX_SYSTEM_SOURCE "${NSX_AMBIQSUITE_ROOT}/CMSIS/AmbiqMicro/Source/system_apollo4p.c")
     set(NSX_LINKER_SCRIPT "${NSX_ROOT}/modules/nsx-core/src/apollo4p/armclang/linker_script.sct")
 else()
     set(NSX_STARTUP_SOURCE "${NSX_ROOT}/modules/nsx-core/src/apollo4p/gcc/startup_gcc.c")
-    set(NSX_SYSTEM_SOURCE "${NSX_ROOT}/modules/nsx-core/src/apollo4p/armclang/system_apollo4p.c")
+    set(NSX_SYSTEM_SOURCE "${NSX_AMBIQSUITE_ROOT}/CMSIS/AmbiqMicro/Source/system_apollo4p.c")
     set(NSX_LINKER_SCRIPT "${NSX_ROOT}/modules/nsx-core/src/apollo4p/gcc/linker_script.ld")
 endif()
 
