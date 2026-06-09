@@ -97,10 +97,10 @@ modules:
     constraint: main
     resolved:
       url: https://github.com/AmbiqAI/nsx-pmu-armv8m.git
-      commit: c5c6406d36be45015faa6cae00a639aaeaad2311
+      commit: 8eac1905ee16bf24974acb32f353d873d3fe8f8d
       vendored_at: modules/nsx-pmu-armv8m
-      content_hash: sha256:4bc992357be23a6689f85bffbb5886067a04a64876c1002eab9e5a38ecf7eac0
-      acquired_at: '2026-06-07T21:22:00+00:00'
+      content_hash: sha256:cabe315aad8f1ff59b2830d23c3966496edd95c5b22f54254a52257a71f2b901
+      acquired_at: '2026-06-09T21:38:49+00:00'
   nsx-tooling:
     project: neuralspotx
     kind: packaged
