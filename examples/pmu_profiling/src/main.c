@@ -27,8 +27,10 @@ int main(void)
     nsx_itm_printf_enable();
 
     nsx_pmu_config_t pmu_cfg = {0};
-    nsx_pmu_apply_preset(&pmu_cfg, NSX_PMU_PRESET_BASIC_CPU);
     pmu_cfg.api = &nsx_pmu_V1_0_0;
+    nsx_pmu_reset_config(&pmu_cfg);
+    nsx_pmu_event_create(&pmu_cfg.events[0], ARM_PMU_CPU_CYCLES, NSX_PMU_EVENT_COUNTER_SIZE_32);
+    nsx_pmu_event_create(&pmu_cfg.events[1], ARM_PMU_INST_RETIRED, NSX_PMU_EVENT_COUNTER_SIZE_32);
 
     if (nsx_pmu_init(&pmu_cfg) != NSX_STATUS_SUCCESS) {
         nsx_printf("PMU init failed\r\n");
