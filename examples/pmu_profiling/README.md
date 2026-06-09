@@ -1,9 +1,9 @@
 # pmu_profiling
 
-Demonstrates the **nsx-pmu-armv8m** module on the Apollo510 EVB.  Configures
+Demonstrates the **nsx-pmu-armv8m** module on the Apollo510 EVB. Configures
 the Arm Cortex-M55 Performance Monitoring Unit (PMU) with the *BASIC_CPU*
-preset and profiles a tight integer workload, printing counter values over
-SWO every 2 seconds.
+preset and profiles a tight integer workload, printing a minimal cycle and
+instruction summary over SWO every 2 seconds.
 
 ## What is the PMU?
 
@@ -36,25 +36,18 @@ nsx view      --app-dir .          # opens SWO viewer
 
 ## Expected Output
 
-The SWO viewer will print counter dumps every ~2 seconds:
+The SWO viewer will print a compact PMU summary every ~2 seconds:
 
 ```
 --- PMU after 100 iterations ---
-  ARM_PMU_CPU_CYCLES        :     614400
-  ARM_PMU_INST_RETIRED      :     307200
-  ARM_PMU_STALL_FRONTEND    :          0
-  ARM_PMU_STALL_BACKEND     :       3072
+cycles=230563 inst=130093
 --- PMU after 100 iterations ---
-  ARM_PMU_CPU_CYCLES        :     614400
-  ARM_PMU_INST_RETIRED      :     307200
-  ARM_PMU_STALL_FRONTEND    :          0
-  ARM_PMU_STALL_BACKEND     :       3072
+cycles=230563 inst=130093
 ```
 
 The workload is a fixed `256 × i²` accumulation loop repeated 100 times, so
-counter values are deterministic across runs.  Frontend stalls are typically
-zero (the loop fits in I-cache); backend stalls reflect pipeline data
-dependencies.
+counter values are usually stable across runs. Occasional small outliers are
+expected from normal runtime noise such as interrupts or SWO activity.
 
 ## How It Works
 
@@ -68,7 +61,9 @@ nsx_pmu_init(&g_pmu);
 nsx_pmu_reset_counters();
 workload();
 nsx_pmu_get_counters(&g_pmu);
-nsx_pmu_print_counters(&g_pmu);
+nsx_printf("cycles=%lu inst=%lu\r\n",
+           (unsigned long)g_pmu.counter[0].counterValue,
+           (unsigned long)g_pmu.counter[1].counterValue);
 ```
 
 ## Customizing
