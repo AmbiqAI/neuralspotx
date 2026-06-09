@@ -73,9 +73,6 @@ repeatable:
 cp /path/to/model.tflite ./model.tflite
 ```
 
-For the ResNet walkthrough we used the model from the
-[helia-model-zoo ResNet example](https://github.com/AmbiqAI/helia-model-zoo/tree/main/vision/mlperf-tiny/resnet).
-
 ## 4. Run heliaAOT
 
 Generate an NSX module directly into your app's `modules/` directory:
@@ -196,9 +193,6 @@ For a reproducible app, commit:
   fits cleanly into NSX's app-local module model.
 - Generated module names and C symbols come from `--module.name` and
   `--module.prefix`; choose those carefully before sharing the app.
-- Some models need extra input-preparation code before `*_model_run()`. The
-  ResNet example uses the Ambiq model-zoo golden input tensor and checks for
-  the expected class plus a small logit tolerance on device.
 
 ## Related Reading
 
