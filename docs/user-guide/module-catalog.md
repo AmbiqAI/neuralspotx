@@ -50,7 +50,6 @@ the page size selector as needed.
 | `nsx-core` | :material-cog: Runtime | Core runtime initialization and baseline support for most NSX apps. | All |
 | `nsx-harness` | :material-cog: Runtime | Harness-side helpers for logging, smoke tests, and instrumentation-friendly app output. | All |
 | `nsx-utils` | :material-cog: Runtime | Shared utility helpers for common runtime tasks. | All |
-| `nsx-portable-api` | :material-cog: Runtime | Thin convenience wrappers for migration-friendly app development. | All |
 | `nsx-tooling` | :material-wrench: Tooling | CLI-generated app CMake/tooling integration. | All |
 | `nsx-soc-hal` | :material-chip: Platform | Shared SoC-level HAL integration layer for NSX targets. | All |
 | `nsx-cmsis-startup` | :material-chip: Platform | CMSIS startup integration — vector tables, startup code, early boot wiring. | All |
@@ -135,8 +134,11 @@ These make up the common reusable runtime layer for NSX apps.
 | `nsx-core` | Common runtime initialization and baseline app support. | Almost every NSX app uses this directly or indirectly. | [GitHub](https://github.com/AmbiqAI/nsx-core) |
 | `nsx-harness` | Debug-print, low-power print, and harness-side helpers. | Bring-up, smoke tests, and instrumentation-friendly apps. | [GitHub](https://github.com/AmbiqAI/nsx-harness) |
 | `nsx-utils` | Small common helpers that do not deserve their own specialized module. | Light utility needs broader than one board or app. | [GitHub](https://github.com/AmbiqAI/nsx-utils) |
-| `nsx-portable-api` | Thin migration-friendly convenience wrappers. | Ease migration from older code or reduce direct SDK coupling in simple apps. | [GitHub](https://github.com/AmbiqAI/nsx-portable-api) |
 | `nsx-tooling` | Generated app CMake and tooling integration packaged from `neuralspotx`. | Internal CLI-generated app support and helper wiring. | [GitHub](https://github.com/AmbiqAI/neuralspotx/tree/main/src/neuralspotx/cmake) |
+
+Migration-friendly portable helpers such as `nsx_printf`, `nsx_delay_us`, and
+interrupt master enable/disable now live in `nsx-core` directly rather than in
+a separate first-class `nsx-portable-api` module.
 
 ### Profiling and Instrumentation Modules
 
