@@ -22,6 +22,7 @@ nsx view      --app-dir .        # (optional) SWO viewer
 | `power_benchmark`| `nsx-power`        | Power measurement: CoreMark, while(1), deep sleep |
 | `coremark`       | `nsx-power`        | EEMBC CoreMark with ITCM + NVM shutdown |
 | `kws_infer`      | `cmsis-nn`         | Keyword-spotting TFLite Micro inference  |
+| `resnet_example` | `nsx-helia-rt`, `nsx-cmsis-nn` | ResNet AOT model integration tutorial example |
 | `pmu_profiling`  | `nsx-pmu-armv8m`   | PMU cycle / event counting              |
 | `audio_capture`  | `nsx-audio`        | PDM microphone capture + SWO stats      |
 | `usb_serial`     | `nsx-usb`          | USB CDC echo                            |

@@ -1,6 +1,6 @@
 # Examples
 
-Eight ready-to-build example apps live in the
+Nine ready-to-build example apps live in the
 [`examples/`](https://github.com/AmbiqAI/neuralspotx/tree/main/examples)
 directory of the `neuralspotx` repo. Each one is a self-contained NSX
 app — the same shape that `nsx create-app` produces — with its own
@@ -45,6 +45,10 @@ is `nsx` itself, via `pipx`).
 
 All examples target the **Apollo510 EVB** (`apollo510_evb` profile).
 
+These examples are ready-made apps. If you want a step-by-step tutorial for
+starting from your own `.tflite` model and generating the NSX module yourself,
+see [Custom Models with heliaAOT](../user-guide/custom-models.md).
+
 ### :material-hand-wave: hello_world
 
 Minimal app — a SWO printf loop and nothing else. Start here to verify
@@ -83,6 +87,14 @@ CMSIS-NN optimized kernels. Runs a small neural network on a canned audio
 buffer and reports the classification result.
 
 **Extra modules:** `cmsis-nn`
+
+### :material-image-filter-center-focus: resnet_example
+
+ResNet image classification using a `helia-aot` generated NSX module. Pairs
+well with the [Custom Models with heliaAOT](../user-guide/custom-models.md)
+tutorial if you want to see both the guided workflow and the resulting app.
+
+**Extra modules:** `nsx-helia-rt`, `nsx-cmsis-nn`
 
 ### :material-microphone: audio_capture
 

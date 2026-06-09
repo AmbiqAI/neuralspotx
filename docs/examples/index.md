@@ -1,12 +1,16 @@
 # Examples
 
-Eight ready-to-build example apps live in the
+Nine ready-to-build example apps live in the
 [`examples/`](https://github.com/AmbiqAI/neuralspotx/tree/main/examples)
 directory of the `neuralspotx` repo. Each one is a self-contained NSX
 app — the same shape that `nsx create-app` produces — with its own
 `nsx.yml` manifest and `nsx.lock` receipt.
 
 All examples target the **Apollo510 EVB** (`apollo510_evb` profile).
+
+If you want to bring your own `.tflite` model and walk through the full
+`helia-aot` to NSX integration flow yourself, see
+[Custom Models with heliaAOT](../user-guide/custom-models.md).
 
 ## Quick Start
 
@@ -52,6 +56,10 @@ Cortex-M55 PMU cycle counting, cache hits, and branch mispredicts.
 <div class="card" markdown>
 ### :material-brain: [kws_infer](kws_infer.md)
 TFLite Micro keyword-spotting inference with CMSIS-NN kernels.
+</div>
+<div class="card" markdown>
+### :material-image-filter-center-focus: [resnet_example](resnet_example.md)
+ResNet image classification with a heliaAOT-generated NSX module and tutorial companion flow.
 </div>
 <div class="card" markdown>
 ### :material-microphone: [audio_capture](audio_capture.md)
