@@ -45,6 +45,10 @@ is `nsx` itself, via `pipx`).
 
 All examples target the **Apollo510 EVB** (`apollo510_evb` profile).
 
+These examples are ready-made apps. If you want a step-by-step tutorial for
+starting from your own `.tflite` model and generating the NSX module yourself,
+see [Custom Models with heliaAOT](../user-guide/custom-models.md).
+
 ### :material-hand-wave: hello_world
 
 Minimal app — a SWO printf loop and nothing else. Start here to verify
