@@ -1,9 +1,9 @@
 # pmu_profiling
 
 Demonstrates the **nsx-pmu-armv8m** module on the Apollo510 EVB. Configures
-the Arm Cortex-M55 Performance Monitoring Unit (PMU) with the *BASIC_CPU*
-preset and profiles a tight integer workload, printing a minimal cycle and
-instruction summary over SWO every 2 seconds.
+the Arm Cortex-M55 Performance Monitoring Unit (PMU) to track CPU cycles and
+retired instructions for a tight integer workload, printing a minimal summary
+over SWO every 2 seconds.
 
 ## What is the PMU?
 
@@ -12,15 +12,6 @@ dedicated cycle counter. Each counter can be assigned to any of ~70 hardware
 events (cache misses, stalls, MVE instructions, bus accesses, etc.). The
 standalone **nsx-pmu-armv8m** module provides the shared PMU API, while the
 selected SDK supplies the local `nsx_ambiq_pmu` backend shim.
-
-### Built-in Presets
-
-| Preset | Counters (4 × 32-bit) |
-|--------|----------------------|
-| `NS_PMU_PRESET_BASIC_CPU` | CPU cycles, instructions retired, frontend stalls, backend stalls |
-| `NS_PMU_PRESET_MEMORY` | Memory accesses, L1 D-cache refills, bus accesses, bus cycles |
-| `NS_PMU_PRESET_MVE` | MVE instructions, MVE int MACs, MVE multi-reg loads/stores, MVE stalls |
-| `NS_PMU_PRESET_ML_DEFAULT` | MVE instructions, MVE int MACs, instructions retired, bus cycles |
 
 You can also configure individual events from any of the 70+ Cortex-M55 PMU
 events (see `ns_pmu_map[]` in `ns_pmu_utils.c` for the full list).
@@ -52,9 +43,11 @@ expected from normal runtime noise such as interrupts or SWO activity.
 ## How It Works
 
 ```c
-// Apply a preset — configures 4 event counters
-nsx_pmu_apply_preset(&g_pmu, NSX_PMU_PRESET_BASIC_CPU);
+// Configure the two counters this example prints
 g_pmu.api = &nsx_pmu_V1_0_0;
+nsx_pmu_reset_config(&g_pmu);
+nsx_pmu_event_create(&g_pmu.events[0], ARM_PMU_CPU_CYCLES, NSX_PMU_EVENT_COUNTER_SIZE_32);
+nsx_pmu_event_create(&g_pmu.events[1], ARM_PMU_INST_RETIRED, NSX_PMU_EVENT_COUNTER_SIZE_32);
 nsx_pmu_init(&g_pmu);
 
 // Reset, run workload, read
@@ -68,14 +61,8 @@ nsx_printf("cycles=%lu inst=%lu\r\n",
 
 ## Customizing
 
-To switch presets, change the `nsx_pmu_apply_preset()` call in `src/main.c`:
-
-```c
-nsx_pmu_apply_preset(&g_pmu, NSX_PMU_PRESET_MEMORY);  // cache & bus events
-nsx_pmu_apply_preset(&g_pmu, NSX_PMU_PRESET_MVE);     // Helium/MVE events
-```
-
-Or assign individual events to specific counter slots:
+To profile different events, change the two `nsx_pmu_event_create()` calls in
+`src/main.c`:
 
 ```c
 nsx_pmu_event_create(&cfg.events[0], 0x0011, NSX_PMU_EVENT_COUNTER_SIZE_32); // CPU_CYCLES
