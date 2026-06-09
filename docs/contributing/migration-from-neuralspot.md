@@ -51,15 +51,14 @@ That is why the first migration wave emphasizes modules such as:
 3. `nsx-utils`
 4. `nsx-perf`
 5. `nsx-pmu-armv8m`
-6. `nsx-peripherals`
-7. `nsx-power`
-8. `nsx-i2c`
-9. `nsx-spi`
-10. `nsx-uart`
-11. `nsx-soc-hal`
-12. `nsx-cmsis-startup`
-13. `nsx-ambiq-hal-r*`
-14. `nsx-ambiq-bsp-r*`
+6. `nsx-power`
+7. `nsx-i2c`
+8. `nsx-spi`
+9. `nsx-uart`
+10. `nsx-soc-hal`
+11. `nsx-cmsis-startup`
+12. `nsx-ambiq-hal-r*`
+13. `nsx-ambiq-bsp-r*`
 
 ## Refactoring Direction
 
@@ -82,7 +81,9 @@ Examples already visible in the current module set:
 1. legacy PMU and perf helpers were separated from `ns-utils` into
    `nsx-pmu-armv8m` and `nsx-perf`
 2. legacy power functionality now has a first-class home in `nsx-power`
-3. platform SDK consumption is split across provider, HAL, BSP, startup, and
+3. legacy mixed peripheral helpers were retired into focused surfaces such as
+   `nsx-power`, `nsx-psram`, and board-owned button facts layered on `nsx-gpio`
+4. platform SDK consumption is split across provider, HAL, BSP, startup, and
    SoC integration modules instead of being buried inside app code
 
 ## Migration Matrix
@@ -107,7 +108,7 @@ Status definitions:
 | `ns-spi` | Migrated | `nsx-spi` | SPI wrapper support is available. |
 | `ns-uart` | Migrated | `nsx-uart` | UART wrapper support is available. |
 | `ns-features` | Partial | `ns-features` | The legacy features area has a module directory but has not been fully migrated to the NSX module system. |
-| `ns-peripherals` | Split | `nsx-peripherals`, `nsx-power` | Generic peripherals and power policy were separated into clearer modules. |
+| `ns-peripherals` | Migrated | `nsx-power`, `nsx-psram`, board button facts on `nsx-gpio` | The mixed legacy bucket was retired into focused unified surfaces rather than kept as a same-name module. |
 | `ns-utils` | Split | `nsx-utils`, `nsx-perf`, `nsx-pmu-armv8m`, `nsx-power` | Legacy utilities bundled several concerns that are now being separated. |
 | `ns-ble` | Partial | no first-class `nsx-ble` yet | BLE-related code exists in add-on areas, but not as a clean first-class NSX module. |
 | `ns-usb` | Migrated | `nsx-usb` | USB CDC serial driver using TinyUSB with proper error handling. |

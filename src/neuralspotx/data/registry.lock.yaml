@@ -47,11 +47,6 @@ projects:
     url: https://github.com/AmbiqAI/nsx-pmu-armv8m.git
     revision: 60384f86d7b5fa6b97148e822f608b8a4d0d9a07
     path: modules/nsx-pmu-armv8m
-  nsx-power:
-    name: nsx-power
-    url: https://github.com/AmbiqAI/nsx-power.git
-    revision: 1ebe9d7ffeb149d375970e80df533f3a6f0e4d2d
-    path: modules/nsx-power
   nsx-uart:
     name: nsx-uart
     url: https://github.com/AmbiqAI/nsx-uart.git
@@ -255,8 +250,8 @@ modules:
     revision: 60384f86d7b5fa6b97148e822f608b8a4d0d9a07
     metadata: modules/nsx-pmu-armv8m/nsx-module.yaml
   nsx-power:
-    project: nsx-power
-    revision: 1ebe9d7ffeb149d375970e80df533f3a6f0e4d2d
+    project: nsx-ambiq-sdk
+    revision: main
     metadata: modules/nsx-power/nsx-module.yaml
   nsx-uart:
     project: nsx-uart

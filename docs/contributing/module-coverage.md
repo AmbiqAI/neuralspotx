@@ -24,7 +24,7 @@ These major internal areas already have clear NSX coverage.
 | `ns-utils` | `nsx-utils` | Timer, malloc, and energy helpers are present. |
 | `ns_perf_profile` | `nsx-perf` | Generic DWT/cache/PC-sampling performance capture is split into its own module. |
 | `ns_pmu_*` | `nsx-pmu-armv8m` | Arm PMU configuration, presets, and accumulation are split into a dedicated module. |
-| `ns-peripherals` generic helpers | `nsx-peripherals` | Button, PSRAM, and NVM support are present. |
+| `ns-peripherals` generic helpers | `nsx-power`, `nsx-psram`, board button facts on `nsx-gpio` | Legacy mixed helpers were retired into focused unified surfaces instead of a single replacement module. |
 | `ns-power` | `nsx-power` | Power policy, block shutdown, retention, and sleep helpers are present as a first-class module. |
 | `ns-uart` | `nsx-uart` | Optional UART wrapper migrated with current shim dependencies. |
 | `ns-i2c` | `nsx-i2c` | Optional I2C wrapper and register-driver helpers are migrated. |

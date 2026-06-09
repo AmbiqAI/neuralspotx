@@ -44,7 +44,7 @@ nsx module list --registry-only
 ## Add a Module
 
 ```bash
-nsx module add nsx-peripherals --app-dir <app-dir>
+nsx module add nsx-uart --app-dir <app-dir>
 ```
 
 When you add a module, NSX:
@@ -71,7 +71,7 @@ This is the normal path for installing a supported built-in module into an app.
 ## Remove a Module
 
 ```bash
-nsx module remove nsx-peripherals --app-dir <app-dir>
+nsx module remove nsx-uart --app-dir <app-dir>
 ```
 
 ## Update Modules

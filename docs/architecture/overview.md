@@ -40,7 +40,7 @@ Generated apps receive:
 flowchart BT
     SDK["SDK Provider\nnsx-ambiqsuite-r3 / r4 / r5"] --> HAL["HAL + BSP Wrappers\nnsx-ambiq-hal-r* / nsx-ambiq-bsp-r*"]
     HAL --> INT["Integration\nnsx-soc-hal / nsx-cmsis-startup"]
-    INT --> RT["Runtime\nnsx-core / nsx-harness / nsx-utils / nsx-peripherals"]
+   INT --> RT["Runtime\nnsx-core / nsx-harness / nsx-utils / nsx-power / nsx-perf"]
     RT --> APP["App"]
 ```
 
@@ -51,7 +51,7 @@ flowchart BT
 3. shared NSX integration modules such as `nsx-soc-hal` and
    `nsx-cmsis-startup`
 4. higher-level runtime modules such as `nsx-core`, `nsx-harness`,
-   `nsx-utils`, and `nsx-peripherals`
+   `nsx-utils`, `nsx-power`, and `nsx-perf`
 
 ## Target Environment
 
