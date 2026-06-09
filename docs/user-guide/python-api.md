@@ -91,7 +91,7 @@ build_app(
 ```python
 from neuralspotx import add_module
 
-add_module("hello_ap510", "nsx-peripherals")
+add_module("hello_ap510", "nsx-uart")
 ```
 
 ## Example: Register A Local Custom Module

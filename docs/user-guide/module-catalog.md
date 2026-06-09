@@ -63,8 +63,7 @@ the page size selector as needed.
 | `nsx-ambiq-bsp-r3` | :material-package-variant: SDK | Curated BSP wrapper for board-support on AmbiqSuite r3 targets. | Apollo3, 3P |
 | `nsx-ambiq-bsp-r4` | :material-package-variant: SDK | Curated BSP wrapper for board-support on AmbiqSuite r4 targets. | Apollo4L, 4P |
 | `nsx-ambiq-bsp-r5` | :material-package-variant: SDK | Curated BSP wrapper for board-support on AmbiqSuite r5 targets. | 510, 510B, 510L, 330P |
-| `nsx-peripherals` | :material-expansion-card: Peripheral | Common peripheral-access helpers for board devices and attached hardware. | All |
-| `nsx-power` | :material-expansion-card: Peripheral | Power-management helpers — sleep policy, shutdown control, low-power workflows. | All |
+| `nsx-power` | :material-expansion-card: Peripheral | Power-management helpers — sleep policy, shutdown control, low-power workflows. | Apollo3, 3P, 4L, 4P, 330P, 510, 510B, 510L |
 | `nsx-uart` | :material-expansion-card: Peripheral | UART wrapper for serial communication, console I/O, and host-device links. | All |
 | `nsx-i2c` | :material-expansion-card: Peripheral | I2C wrapper for integrating sensors and peripherals over the I2C bus. | All |
 | `nsx-spi` | :material-expansion-card: Peripheral | SPI wrapper for talking to SPI-attached devices and peripherals. | All |
@@ -155,11 +154,14 @@ helpers into the baseline runtime core.
 
 | Module | What it provides | Typical use | More info |
 | --- | --- | --- | --- |
-| `nsx-peripherals` | Common board-peripheral helpers such as NVM or PSRAM-facing support. | Generic board peripheral access for smoke tests and small apps. | [GitHub](https://github.com/AmbiqAI/nsx-peripherals) |
-| `nsx-power` | Power-policy and sleep-oriented helpers. | Low-power behavior, block shutdown control, and power-state utilities. | [GitHub](https://github.com/AmbiqAI/nsx-power) |
+| `nsx-power` | Power-policy and sleep-oriented helpers. | Low-power behavior, block shutdown control, and power-state utilities. | [GitHub](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules/nsx-power) |
 | `nsx-i2c` | I2C wrapper and related helpers. | Sensor and peripheral bring-up over I2C. | [GitHub](https://github.com/AmbiqAI/nsx-i2c) |
 | `nsx-spi` | SPI wrapper and related helpers. | SPI device bring-up and integration. | [GitHub](https://github.com/AmbiqAI/nsx-spi) |
 | `nsx-uart` | UART wrapper and related helpers. | Serial communication, console, or bridge workflows. | [GitHub](https://github.com/AmbiqAI/nsx-uart) |
+
+Legacy `nsx-peripherals` is no longer a first-class packaged module. Its useful
+pieces were retired into focused unified surfaces such as `nsx-power`,
+`nsx-psram`, and board button facts layered on `nsx-gpio`.
 
 ## What Is Not First-Class Yet
 
@@ -174,7 +176,7 @@ or future migration targets from legacy `neuralSPOT`.
 ### Add a module to your app
 
 ```bash
-nsx module add nsx-peripherals --app-dir my-app
+nsx module add nsx-uart --app-dir my-app
 ```
 
 NSX resolves the full dependency closure, validates board/SoC compatibility,
@@ -195,7 +197,7 @@ nsx module search "uart serial"
 ### Remove a module
 
 ```bash
-nsx module remove nsx-peripherals --app-dir my-app
+nsx module remove nsx-uart --app-dir my-app
 ```
 
 ---

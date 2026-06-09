@@ -26,9 +26,8 @@ field that tells NSX where the module's contents come from.
 
 ```yaml
 modules:
-  - name: nsx-peripherals
+  - name: nsx-uart
     revision: main
-    project: nsx-peripherals
 ```
 
 NSX resolves the module against the packaged registry (or any

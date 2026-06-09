@@ -92,7 +92,7 @@ nsx module add [--app-dir APP_DIR] [--local] [--vendored] [--dry-run] module
 Example:
 
 ```bash
-nsx module add nsx-peripherals --app-dir <app-dir>
+nsx module add nsx-uart --app-dir <app-dir>
 ```
 
 For built-in modules, NSX uses the registry's default upstream repo and
