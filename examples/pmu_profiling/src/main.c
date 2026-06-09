@@ -45,7 +45,11 @@ int main(void)
 
         nsx_printf("--- PMU after %u iterations ---\r\n", (unsigned)OUTER_LOOPS);
         if (nsx_pmu_get_counters(&pmu_cfg) == NSX_STATUS_SUCCESS) {
-            nsx_pmu_print_counters(&pmu_cfg);
+            nsx_printf("cycles=%lu inst=%lu\r\n",
+                       (unsigned long)pmu_cfg.counter[0].counterValue,
+                       (unsigned long)pmu_cfg.counter[1].counterValue);
+        } else {
+            nsx_printf("PMU read failed\r\n");
         }
         nsx_delay_us(2000000);
     }
