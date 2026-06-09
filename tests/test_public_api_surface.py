@@ -27,13 +27,26 @@ def test_public_surface_exports_lock_sync_outdated_update() -> None:
         "AppOutdatedRequest",
         "AppUpdateRequest",
         "lock_app",
+        "load_registry",
         "sync_app",
         "outdated_app",
+        "registry_module_project",
+        "starter_profile",
         "update_app",
     }
     assert expected.issubset(set(neuralspotx.__all__))
     for name in expected:
         assert getattr(neuralspotx, name) is getattr(api, name)
+
+
+def test_public_registry_helpers_return_packaged_data() -> None:
+    registry = neuralspotx.load_registry()
+    assert "starter_profiles" in registry
+    profile = neuralspotx.starter_profile("apollo510_evb")
+    assert profile is not None
+    assert profile["board"] == "apollo510_evb"
+    assert "nsx-cmsis-core" in profile["modules"]
+    assert neuralspotx.registry_module_project("nsx-soc-hal") == "nsx-soc-hal"
 
 
 def test_app_update_request_roundtrip() -> None:

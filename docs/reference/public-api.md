@@ -71,6 +71,9 @@ tagged; this page will be updated at the v1.0 release.
 | `generate_sbom` | `str` (JSON) | Provisional |
 | `find_app_root` | `Path \| None` | Provisional |
 | `resolve_app_dir` | `Path` | Provisional |
+| `load_registry` | `dict[str, Any]` | Provisional |
+| `starter_profile` | `dict[str, Any] \| None` | Provisional |
+| `registry_module_project` | `str \| None` | Provisional |
 
 ## Request dataclasses
 

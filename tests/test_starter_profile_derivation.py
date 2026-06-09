@@ -45,7 +45,7 @@ def test_derived_profile_module_layout() -> None:
     reg = _packaged_registry()
     prof = reg["starter_profiles"]["apollo510_evb_minimal"]
     family = reg["soc_families"]["r5"]
-    core = reg["profile_defaults"]["core_modules"]
+    core = family.get("core_modules", reg["profile_defaults"]["core_modules"])
     assert prof["board"] == "apollo510_evb"
     assert prof["soc"] == "apollo510"
     assert prof["channel"] == "stable"
@@ -67,6 +67,15 @@ def test_derived_profile_module_layout() -> None:
     # A shared-name module (also vendored by the monorepo) resolves to the
     # tier-correct monorepo source rather than its standalone repo.
     assert prof["module_overrides"]["nsx-soc-hal"]["project"] == "nsx-ambiq-sdk"
+    assert "nsx-cmsis-core" in prof["modules"]
+    assert "nsx-pmu-armv8m" in prof["modules"]
+
+
+def test_non_r5_profiles_do_not_gain_armv8m_pmu() -> None:
+    reg = _packaged_registry()
+    prof = reg["starter_profiles"]["apollo4p_evb_minimal"]
+    assert "nsx-cmsis-core" in prof["modules"]
+    assert "nsx-pmu-armv8m" not in prof["modules"]
 
 
 def test_channel_defaulting_and_override() -> None:

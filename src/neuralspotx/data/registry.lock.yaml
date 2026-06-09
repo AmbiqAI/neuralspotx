@@ -301,6 +301,7 @@ profile_defaults:
   channel: stable
   # Common modules appended after the per-board board module for every profile.
   core_modules:
+    - nsx-cmsis-core
     - nsx-core
     - nsx-tooling
 
@@ -410,6 +411,11 @@ soc_families:
       - nsx-timer
       - nsx-uart
       - nsx-usb
+    core_modules:
+      - nsx-cmsis-core
+      - nsx-core
+      - nsx-pmu-armv8m
+      - nsx-tooling
   r6:
     provider: nsx-ambiqsuite-r6
     project: nsx-ambiq-sdk

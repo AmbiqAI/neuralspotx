@@ -36,6 +36,7 @@ from ._modules import (
     update_modules,
     validate_module_metadata,
 )
+from ._registry import load_registry, registry_module_project, starter_profile
 from ._requests import (
     AppActionRequest,
     AppBuildRequest,
@@ -90,11 +91,14 @@ __all__ = [
     "init_module",
     "list_modules",
     "lock_app",
+    "load_registry",
     "outdated_app",
+    "registry_module_project",
     "register_module",
     "remove_module",
     "resolve_app_dir",
     "search_modules",
+    "starter_profile",
     "sync_app",
     "update_app",
     "update_modules",
