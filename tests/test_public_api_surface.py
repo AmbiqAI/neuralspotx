@@ -46,7 +46,7 @@ def test_public_registry_helpers_return_packaged_data() -> None:
     assert profile is not None
     assert profile["board"] == "apollo510_evb"
     assert "nsx-cmsis-core" in profile["modules"]
-    assert neuralspotx.registry_module_project("nsx-soc-hal") == "nsx-soc-hal"
+    assert neuralspotx.registry_module_project("nsx-soc-hal") == "nsx-ambiq-sdk"
 
 
 def test_app_update_request_roundtrip() -> None:
