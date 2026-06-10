@@ -158,16 +158,16 @@ modules:
     revision: main
     metadata: modules/nsx-ambiq-usb-r5/nsx-module.yaml
   nsx-soc-hal:
-    project: nsx-soc-hal
-    revision: v0.1.0
+    project: nsx-ambiq-sdk
+    revision: main
     metadata: modules/nsx-soc-hal/nsx-module.yaml
   nsx-cmsis-core:
-    project: nsx-cmsis-core
-    revision: v0.1.0
+    project: nsx-ambiq-sdk
+    revision: main
     metadata: modules/nsx-cmsis-core/nsx-module.yaml
   nsx-cmsis-startup:
-    project: nsx-cmsis-startup
-    revision: v0.1.0
+    project: nsx-ambiq-sdk
+    revision: main
     metadata: modules/nsx-cmsis-startup/nsx-module.yaml
   nsx-board-apollo2-evb:
     project: neuralspotx
@@ -238,12 +238,12 @@ modules:
     revision: main
     metadata: src/neuralspotx/boards/atomiq110_fpga_turbo/nsx-module.yaml
   nsx-core:
-    project: nsx-core
-    revision: fac6a0149246c3794e3b61f4e87c7fbfadfa66ba
+    project: nsx-ambiq-sdk
+    revision: main
     metadata: modules/nsx-core/nsx-module.yaml
   nsx-perf:
-    project: nsx-perf
-    revision: v0.1.0
+    project: nsx-ambiq-sdk
+    revision: main
     metadata: modules/nsx-perf/nsx-module.yaml
   nsx-pmu-armv8m:
     project: nsx-pmu-armv8m
@@ -254,24 +254,24 @@ modules:
     revision: main
     metadata: modules/nsx-power/nsx-module.yaml
   nsx-uart:
-    project: nsx-uart
-    revision: v0.1.0
+    project: nsx-ambiq-sdk
+    revision: main
     metadata: modules/nsx-uart/nsx-module.yaml
   nsx-i2c:
-    project: nsx-i2c
-    revision: v0.1.0
+    project: nsx-ambiq-sdk
+    revision: main
     metadata: modules/nsx-i2c/nsx-module.yaml
   nsx-spi:
-    project: nsx-spi
-    revision: v0.1.0
+    project: nsx-ambiq-sdk
+    revision: main
     metadata: modules/nsx-spi/nsx-module.yaml
   nsx-audio:
-    project: nsx-audio
-    revision: v0.1.0
+    project: nsx-ambiq-sdk
+    revision: main
     metadata: modules/nsx-audio/nsx-module.yaml
   nsx-usb:
-    project: nsx-usb
-    revision: v0.1.0
+    project: nsx-ambiq-sdk
+    revision: main
     metadata: modules/nsx-usb/nsx-module.yaml
   nsx-nanopb:
     project: nsx-nanopb
