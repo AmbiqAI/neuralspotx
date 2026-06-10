@@ -3,6 +3,4 @@
 helia-rt/
 ns-cmsis-nn/
 nsx-ambiq-sdk/
-
-# Vendored modules (committed in this app) are NOT ignored:
-# resnet-aot/  (kept in git)
+resnet-aot/

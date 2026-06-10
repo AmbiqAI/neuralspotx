@@ -2,8 +2,13 @@
 #include <string.h>
 
 #include "nsx_core.h"
+
+#if defined(RESNET_EXAMPLE_HAS_AOT) && defined(RESNET_EXAMPLE_HAS_SAMPLE_DATA)
 #include "resnet_model.h"
 #include "resnet_sample_data.h"
+#endif
+
+#if defined(RESNET_EXAMPLE_HAS_AOT) && defined(RESNET_EXAMPLE_HAS_SAMPLE_DATA)
 
 static int argmax_int8(const int8_t *values, int count)
 {
@@ -18,17 +23,6 @@ static int argmax_int8(const int8_t *values, int count)
     }
 
     return best_index;
-}
-
-static int all_equal_int8(const int8_t *lhs, const int8_t *rhs, int count)
-{
-    for (int i = 0; i < count; ++i) {
-        if (lhs[i] != rhs[i]) {
-            return 0;
-        }
-    }
-
-    return 1;
 }
 
 static int max_abs_diff_int8(const int8_t *lhs, const int8_t *rhs, int count)
@@ -50,12 +44,13 @@ static int max_abs_diff_int8(const int8_t *lhs, const int8_t *rhs, int count)
 
 static const int kLogitTolerance = 8;
 
+#endif
+
 int main(void)
 {
     nsx_core_config_t cfg = {
         .api = &nsx_core_V1_0_0,
     };
-    resnet_model_context_t model_ctx = {0};
     int32_t status;
 
     status = nsx_core_init(&cfg);
@@ -65,6 +60,21 @@ int main(void)
 
     nsx_itm_printf_enable();
     nsx_printf("resnet_example: initializing AOT model\r\n");
+
+#if !defined(RESNET_EXAMPLE_HAS_AOT) || !defined(RESNET_EXAMPLE_HAS_SAMPLE_DATA)
+    nsx_printf("tutorial scaffold is incomplete\r\n");
+#if !defined(RESNET_EXAMPLE_HAS_AOT)
+    nsx_printf("missing generated module: modules/resnet-aot/\r\n");
+#endif
+#if !defined(RESNET_EXAMPLE_HAS_SAMPLE_DATA)
+    nsx_printf("missing generated sample data: src/resnet_sample_data.h\r\n");
+#endif
+    nsx_printf("download the Ambiq model-zoo artifacts and follow README.md\r\n");
+    while (1) {
+        nsx_delay_us(1000000);
+    }
+#else
+    resnet_model_context_t model_ctx = {0};
 
     status = resnet_model_init(&model_ctx);
     if (status != resnet_status_ok) {
@@ -121,4 +131,5 @@ int main(void)
     while (1) {
         nsx_delay_us(1000000);
     }
+#endif
 }

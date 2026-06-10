@@ -1,10 +1,12 @@
 # Examples
 
-Nine ready-to-build example apps live in the
+The `examples/` directory includes eight ready-to-build apps plus one
+tutorial-oriented scaffold:
+
 [`examples/`](https://github.com/AmbiqAI/neuralspotx/tree/main/examples)
-directory of the `neuralspotx` repo. Each one is a self-contained NSX
+directory of the `neuralspotx` repo. Each entry is a self-contained NSX
 app — the same shape that `nsx create-app` produces — with its own
-`nsx.yml` manifest and `nsx.lock` receipt.
+`nsx.yml` manifest and `nsx.lock` receipt or tutorial instructions.
 
 All examples target the **Apollo510 EVB** (`apollo510_evb` profile).
 
@@ -59,7 +61,7 @@ TFLite Micro keyword-spotting inference with CMSIS-NN kernels.
 </div>
 <div class="card" markdown>
 ### :material-image-filter-center-focus: [resnet_example](resnet_example.md)
-ResNet image classification with a heliaAOT-generated NSX module and tutorial companion flow.
+ResNet custom-model tutorial scaffold where you fetch the model-zoo assets and generate the AOT module yourself.
 </div>
 <div class="card" markdown>
 ### :material-microphone: [audio_capture](audio_capture.md)

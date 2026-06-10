@@ -7,7 +7,7 @@ app-local module, and then build, flash, and run like any other NSX app.
 This page documents the full manual workflow. Unlike the ready-made apps in
 [Examples](../examples/index.md), this is a bring-your-own-model tutorial.
 
-If you want a concrete reference app after following the steps, see
+If you want a concrete scaffold after following the steps, see
 [resnet_example](../examples/resnet_example.md) under `examples/`.
 
 ## When To Use This Flow
@@ -59,7 +59,7 @@ and board content.
 ## 2. Add Runtime Dependencies
 
 If your generated model depends on NSX-managed runtime modules, add them before
-you build. For the ResNet tutorial flow we used:
+you build. One common example is:
 
 ```bash
 nsx module add nsx-helia-rt --app-dir .
@@ -75,9 +75,6 @@ repeatable:
 ```bash
 cp /path/to/model.tflite ./model.tflite
 ```
-
-For the ResNet walkthrough we used the model from the
-[helia-model-zoo ResNet example](https://github.com/AmbiqAI/helia-model-zoo/tree/main/vision/mlperf-tiny/resnet).
 
 ## 4. Run heliaAOT
 
@@ -199,9 +196,9 @@ For a reproducible app, commit:
   fits cleanly into NSX's app-local module model.
 - Generated module names and C symbols come from `--module.name` and
   `--module.prefix`; choose those carefully before sharing the app.
-- Some models need extra input-preparation code before `*_model_run()`. The
-  ResNet example uses the Ambiq model-zoo golden input tensor and checks for
-  the expected class plus a small logit tolerance on device.
+- Some models need extra input-preparation code before `*_model_run()`, and
+  some workflows may also generate helper headers or fixtures alongside the AOT
+  module.
 
 ## Related Reading
 

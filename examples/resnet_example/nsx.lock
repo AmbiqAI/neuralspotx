@@ -122,11 +122,3 @@ modules:
       vendored_at: modules/helia-rt
       content_hash: sha256:75b415b1be12d035a0389778b7e7786104c6d6dcd206d4c70ce9662b2df62354
       acquired_at: '2026-06-09T21:23:30+00:00'
-  resnet-aot:
-    project: resnet-aot
-    kind: vendored
-    constraint: vendored
-    resolved:
-      vendored_at: modules/resnet-aot
-      content_hash: sha256:06b814aed6c20a96c4407e8a377a9603cbb95042c09b3a3cae6791c2a3a8dbf2
-      acquired_at: '2026-06-09T21:23:30+00:00'

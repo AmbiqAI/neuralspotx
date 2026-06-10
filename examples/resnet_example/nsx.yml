@@ -42,9 +42,6 @@ modules:
 - name: nsx-helia-rt
   revision: helia-rt-v1.16.0
   project: helia-rt
-- name: resnet-aot
-  source:
-    vendored: true
 features: {}
 tooling:
   nsx:

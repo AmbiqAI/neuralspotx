@@ -1,10 +1,12 @@
 # Examples
 
-Nine ready-to-build example apps live in the
+The `examples/` directory includes eight ready-to-build apps plus one
+tutorial-oriented scaffold:
+
 [`examples/`](https://github.com/AmbiqAI/neuralspotx/tree/main/examples)
-directory of the `neuralspotx` repo. Each one is a self-contained NSX
+directory of the `neuralspotx` repo. Each entry is a self-contained NSX
 app — the same shape that `nsx create-app` produces — with its own
-`nsx.yml` manifest and `nsx.lock` receipt.
+`nsx.yml` manifest and `nsx.lock` receipt or tutorial instructions.
 
 ## Quick Start
 
@@ -45,9 +47,9 @@ is `nsx` itself, via `pipx`).
 
 All examples target the **Apollo510 EVB** (`apollo510_evb` profile).
 
-These examples are ready-made apps. If you want a step-by-step tutorial for
-starting from your own `.tflite` model and generating the NSX module yourself,
-see [Custom Models with heliaAOT](../user-guide/custom-models.md).
+Most of these examples are ready-made apps. If you want a step-by-step tutorial
+for starting from your own `.tflite` model and generating the NSX module
+yourself, see [Custom Models with heliaAOT](../user-guide/custom-models.md).
 
 ### :material-hand-wave: hello_world
 
@@ -90,9 +92,9 @@ buffer and reports the classification result.
 
 ### :material-image-filter-center-focus: resnet_example
 
-ResNet image classification using a `helia-aot` generated NSX module. Pairs
-well with the [Custom Models with heliaAOT](../user-guide/custom-models.md)
-tutorial if you want to see both the guided workflow and the resulting app.
+ResNet custom-model tutorial scaffold. You fetch `model.tflite` and
+`golden.npz` from the Ambiq model zoo, generate the sample header locally, and
+run `helia-aot` yourself before building.
 
 **Extra modules:** `nsx-helia-rt`, `nsx-cmsis-nn`
 
@@ -143,4 +145,5 @@ Each example follows a consistent structure:
 ```
 
 The `modules/` and `build/` directories are gitignored and regenerated
-by `nsx configure` — you'll never need to check them in.
+by `nsx configure`. `resnet_example` also ignores its fetched model-zoo assets
+and generated AOT output because that example is tutorial-oriented.

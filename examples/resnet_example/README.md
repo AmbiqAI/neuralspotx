@@ -1,35 +1,51 @@
 # resnet_example
 
-NSX example app that runs the MLPerf Tiny ResNet image classification model on
-`apollo510_evb` using a heliaAOT-generated NSX module.
+Tutorial-oriented NSX app scaffold for running the MLPerf Tiny ResNet model on
+`apollo510_evb`.
 
-This example is the companion app for the "Custom Models with heliaAOT"
-tutorial. It shows the resulting app layout after walking through the full
-model-to-module flow yourself.
+This example intentionally does not commit:
 
-## App Layout
+- `model.tflite`
+- `golden.npz`
+- `src/resnet_sample_data.h`
+- `modules/resnet-aot/`
 
-- `model.tflite` is the copied model artifact from
-  `helia-model-zoo/vision/mlperf-tiny/resnet/`.
-- `golden.npz` is the Ambiq model-zoo golden fixture containing the model-ready
-  input tensor and expected output logits.
-- `modules/resnet-aot/` is the vendored heliaAOT-generated NSX module that the
-  app links.
-- `src/main.c` initializes the generated model, copies the golden input tensor
-  into the model input, runs inference once, and checks the output against the
-  expected golden classification.
+You fetch the model-zoo assets yourself, generate the sample header yourself,
+and run `helia-aot` yourself.
 
-## Golden Input Preview
+## What This Example Contains
 
-The source fixture comes from the Ambiq model zoo:
+- `nsx.yml` with the runtime dependencies needed for the ResNet flow
+- `CMakeLists.txt` that links `nsx::resnet_aot` when the generated module is
+  present
+- `src/main.c` that runs the generated model when both the AOT module and
+  generated sample header exist, otherwise prints setup instructions
+- `tools/generate_sample_header.py` to convert the model-zoo `golden.npz` file
+  into `src/resnet_sample_data.h`
 
-- `helia-model-zoo/vision/mlperf-tiny/resnet/golden.npz`
+## 1. Fetch The Model-Zoo Assets
 
-That fixture stores the model-ready quantized tensor, not the original camera
-image file. In this example, class index `3` maps to `cat` under the standard
-CIFAR-10 label order used by the MLPerf Tiny ResNet task.
+```bash
+cd neuralspotx/examples/resnet_example
 
-## Regenerate The AOT Module
+git clone https://github.com/AmbiqAI/helia-model-zoo.git /tmp/helia-model-zoo
+cp /tmp/helia-model-zoo/vision/mlperf-tiny/resnet/model.tflite ./model.tflite
+cp /tmp/helia-model-zoo/vision/mlperf-tiny/resnet/golden.npz ./golden.npz
+```
+
+## 2. Generate The Sample Header
+
+```bash
+cd neuralspotx/examples/resnet_example
+
+uv run --with numpy python tools/generate_sample_header.py \
+    --golden ./golden.npz \
+    --output ./src/resnet_sample_data.h
+```
+
+That creates the embedded input/output fixture used by `src/main.c`.
+
+## 3. Run heliaAOT
 
 ```bash
 cd neuralspotx/examples/resnet_example
@@ -44,9 +60,19 @@ uvx --python python3.12 helia-aot convert \
     --force
 ```
 
-That writes the generated module directly to `modules/resnet-aot/`.
+That writes the generated module to `modules/resnet-aot/`.
 
-## Build
+## 4. Mark The Generated Module As Vendored
+
+Add this entry to `nsx.yml` under `modules:` before you lock/build:
+
+```yaml
+- name: resnet-aot
+  source:
+    vendored: true
+```
+
+## 5. Build
 
 ```bash
 cd neuralspotx/examples/resnet_example
@@ -55,7 +81,7 @@ nsx configure --app-dir .
 nsx build --app-dir .
 ```
 
-## Flash And View
+## 6. Flash And View
 
 ```bash
 cd neuralspotx/examples/resnet_example
@@ -76,3 +102,8 @@ classification match: PASS
 max logit diff vs golden: ...
 logit tolerance match (+/-8): PASS
 ```
+
+## Clean Working Tree
+
+The fetched and generated files are ignored by git so this scaffold can stay in
+the repo without tracking model-zoo binaries or AOT output.

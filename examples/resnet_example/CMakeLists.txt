@@ -21,8 +21,20 @@ add_executable(resnet_example
 target_link_libraries(resnet_example PRIVATE
     nsx::board_apollo510_evb
     nsx::runtime_core
-    nsx::resnet_aot
 )
+
+if(TARGET nsx::resnet_aot)
+    target_link_libraries(resnet_example PRIVATE nsx::resnet_aot)
+    target_compile_definitions(resnet_example PRIVATE RESNET_EXAMPLE_HAS_AOT=1)
+else()
+    message(STATUS "resnet_example: resnet-aot module not present yet; building tutorial scaffold")
+endif()
+
+if(EXISTS "${CMAKE_CURRENT_LIST_DIR}/src/resnet_sample_data.h")
+    target_compile_definitions(resnet_example PRIVATE RESNET_EXAMPLE_HAS_SAMPLE_DATA=1)
+else()
+    message(STATUS "resnet_example: resnet_sample_data.h not present yet; building tutorial scaffold")
+endif()
 
 if(FOO_USE_NSX_PORTABLE)
     target_link_libraries(resnet_example PRIVATE nsx::portable_api)
