@@ -1,5 +1,39 @@
 # Changelog
 
+## [0.6.2](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.6.1...neuralspotx-v0.6.2) (2026-06-10)
+
+
+### Features
+
+* add unified sdk provider plumbing ([0ed922b](https://github.com/AmbiqAI/neuralspotx/commit/0ed922bb4209598878da4fa26f3fd0ddddd13c2c))
+* **boards:** land board descriptors and registry refactor ([#100](https://github.com/AmbiqAI/neuralspotx/issues/100)) ([3fc226c](https://github.com/AmbiqAI/neuralspotx/commit/3fc226c4355b7abff34069761219c827682e42af))
+* **cli:** add nsx probes command ([#105](https://github.com/AmbiqAI/neuralspotx/issues/105)) ([fd1a8b0](https://github.com/AmbiqAI/neuralspotx/commit/fd1a8b04d3e50929c414b74dc701d0d21abdf3fe))
+* **cli:** support selecting a J-Link probe by serial ([#102](https://github.com/AmbiqAI/neuralspotx/issues/102)) ([ff5e513](https://github.com/AmbiqAI/neuralspotx/commit/ff5e513edcd44ab824dc21b8a8e3cde894f12105))
+* **examples:** migrate maintained apps to nsx modules ([a3ef9e7](https://github.com/AmbiqAI/neuralspotx/commit/a3ef9e7716f35dff87e111e5fb27cd9073b82479))
+* **examples:** migrate maintained apps to nsx modules ([28a096a](https://github.com/AmbiqAI/neuralspotx/commit/28a096a37e6364f8b3dd35d691ccd93337d8966c))
+* migrate kws_infer to nsx PMU APIs ([d681436](https://github.com/AmbiqAI/neuralspotx/commit/d681436b3fdb4c782ab85bf86cab191c3643c8cd))
+* **platform:** add Atomiq110 FPGA board and R6 SDK tier ([#104](https://github.com/AmbiqAI/neuralspotx/issues/104)) ([d074fb3](https://github.com/AmbiqAI/neuralspotx/commit/d074fb300704e327178fea0bd03d2b774bb72d2b))
+* publish registry helpers and profile-owned starter modules ([8aea048](https://github.com/AmbiqAI/neuralspotx/commit/8aea048fbc821411f6216f5b3fb552fe81401948))
+* **registry:** source R3-R5 SDKs from consolidated nsx-ambiq-sdk monorepos ([#103](https://github.com/AmbiqAI/neuralspotx/issues/103)) ([ca8d95b](https://github.com/AmbiqAI/neuralspotx/commit/ca8d95ba81908872ab6d4d4c9c2644a2e5896c9d))
+* Using temporary file to replace depreciated commandfile ([143a8a9](https://github.com/AmbiqAI/neuralspotx/commit/143a8a962e366e26b56d62502a6efadca2e7c8f8))
+
+
+### Bug Fixes
+
+* align KWS example with merged NSX module updates ([9c63ef8](https://github.com/AmbiqAI/neuralspotx/commit/9c63ef8d7a689e63a0b33b4bc93c8e62f54f2749))
+* align pmu example config with output ([#109](https://github.com/AmbiqAI/neuralspotx/issues/109)) ([3964ae7](https://github.com/AmbiqAI/neuralspotx/commit/3964ae70974a5da22a85210fcf0a8d5d18663bfb))
+* **boards:** use AmbiqSuite CMSIS system_apollo4p.c for startup ([5ba22f0](https://github.com/AmbiqAI/neuralspotx/commit/5ba22f084413fe7446f3d727ccc4fe1ff534bec8))
+* include NSX headers directly in KWS C++ ([77b2320](https://github.com/AmbiqAI/neuralspotx/commit/77b23207b9cad7283392d6656f765378a292ce91))
+* migrate example apps to nsx core apis ([07ede51](https://github.com/AmbiqAI/neuralspotx/commit/07ede510edbdc0e6543cadf3f45f31092a7232b7))
+* **pmu_profiling:** bump nsx-pmu-armv8m to readable print format ([43cde4c](https://github.com/AmbiqAI/neuralspotx/commit/43cde4cc79af1107da53c8adaa3a2ef62479874f))
+* point unified core modules at nsx-ambiq-sdk ([#113](https://github.com/AmbiqAI/neuralspotx/issues/113)) ([1684426](https://github.com/AmbiqAI/neuralspotx/commit/1684426ab1d7bef5f2cb59135301f009ea9afe9a))
+* refresh apollo510 example validation slice ([e55819e](https://github.com/AmbiqAI/neuralspotx/commit/e55819ea6728215b2fd4571a4b520a0ab0a29163))
+* refresh example locks for merged modules ([3bb9fe5](https://github.com/AmbiqAI/neuralspotx/commit/3bb9fe5d4031527af2ee30059d9ac9976a22c344))
+* refresh floating refs during lock ([a335f6b](https://github.com/AmbiqAI/neuralspotx/commit/a335f6ba0fd851ec15e919ec05f71bfd68f0b53f))
+* relock kws_infer against merged R5 SDK ([4f07c34](https://github.com/AmbiqAI/neuralspotx/commit/4f07c34929d5b2b09648bf96bf1c0c41da2fa999))
+* simplify pmu profiling example output ([#108](https://github.com/AmbiqAI/neuralspotx/issues/108)) ([654c4a6](https://github.com/AmbiqAI/neuralspotx/commit/654c4a6ca2a367fcea30fb2e41830c6163b0a95c))
+* stabilize local-source sync hashing ([d08a750](https://github.com/AmbiqAI/neuralspotx/commit/d08a7504a8c4a02619a3aeac369ab8bea9c73879))
+
 ## [0.6.1](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.6.0...neuralspotx-v0.6.1) (2026-05-14)
 
 
