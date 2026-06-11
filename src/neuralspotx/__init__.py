@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026, Ambiq
 """Canonical Python package for neuralspotx tooling.
 
 The names exposed here form the **public Python API** of NSX. Anything

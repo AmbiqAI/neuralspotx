@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026, Ambiq
 """NSX CLI — create and manage bare-metal Ambiq applications.
 
 Public entry point. The ``cmd_*`` handlers and supporting helpers are
