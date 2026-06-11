@@ -73,8 +73,8 @@ jobs:
       - name: Validate manual tag input
         if: github.event_name == 'workflow_dispatch' && inputs.tag != ''
         run: |
-          if [[ ! "${{ inputs.tag }}" =~ ^v ]]; then
-            echo "Manual release rebuilds must target an existing v* tag."
+          if [[ ! "${{ inputs.tag }}" =~ (^v|.+-v) ]]; then
+            echo "Manual release rebuilds must target an existing release tag such as v0.6.3 or neuralspotx-v0.6.3."
             exit 1
           fi
           git rev-parse "refs/tags/${{ inputs.tag }}" >/dev/null 2>&1
@@ -92,20 +92,16 @@ jobs:
       - name: Validate tag matches package version
         run: |
           python - <<'PY'
-          import sys
           import tomllib
           from pathlib import Path
 
           tag = "${{ env.RELEASE_TAG }}"
-          if not tag.startswith("v"):
-              raise SystemExit(f"Release tag must start with 'v', got: {tag}")
-
           data = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
           version = data["project"]["version"]
-          expected = f"v{version}"
-          if tag != expected:
+          expected_suffix = f"v{version}"
+          if tag != expected_suffix and not tag.endswith(f"-{expected_suffix}"):
               raise SystemExit(
-                  f"Release tag {tag} does not match pyproject.toml version {version}."
+              f"Release tag {tag} does not match pyproject.toml version {version}."
               )
           print(f"Validated release tag {tag} against package version {version}.")
           PY
