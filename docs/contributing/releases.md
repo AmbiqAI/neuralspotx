@@ -6,26 +6,30 @@ releases for the Python package.
 ## Release Flow
 
 1. Changes land on `main`.
-2. Release Please updates or opens a release PR.
-3. When the release PR is merged, Release Please creates:
+2. The `release.yml` workflow runs Release Please on `main`.
+3. Release Please updates or opens a release PR.
+4. When the release PR is merged, the next `release.yml` run on `main` creates:
    - a new version commit
    - an updated `CHANGELOG.md`
    - a `v*` git tag
-4. The tag triggers the release workflow.
-5. The release workflow:
-   - checks out the tagged ref
+  - the GitHub release entry
+5. That same `release.yml` run then:
+  - checks out the created tag
    - validates that the tag matches `pyproject.toml`
    - builds the Python distributions
    - attaches the artifacts to the GitHub release
+  - publishes the distributions to PyPI
 
 ```mermaid
 flowchart LR
-    A[Merge changes to main] --> B[Release Please updates release PR]
-    B --> C[Merge release PR]
-    C --> D[Create v* tag]
-    D --> E[Run release.yml]
-    E --> F[Build dist artifacts]
-    F --> G[Attach artifacts to GitHub release]
+   A[Merge changes to main] --> B[Run release.yml]
+   B --> C[Release Please updates release PR]
+   C --> D[Merge release PR]
+   D --> E[Run release.yml on main]
+   E --> F[Create v* tag and GitHub release]
+   F --> G[Build dist artifacts from created tag]
+   G --> H[Attach artifacts to GitHub release]
+   H --> I[Publish to PyPI]
 ```
 
 ## Version Source of Truth
@@ -55,17 +59,21 @@ when:
 - artifact upload failed
 - the workflow logic changed and you need to regenerate release artifacts
 
-This manual path does not create a new version. It rebuilds artifacts for an
-existing `v*` tag.
+This manual path does not create a new version or release PR. It rebuilds
+artifacts for an existing `v*` tag.
 
 ## PyPI Publishing
 
-The workflow includes a disabled PyPI publish placeholder in the same workflow
-file.
+PyPI publishing runs in the same `release.yml` workflow as Release Please, the
+artifact build, and the GitHub release asset upload.
 
 This is intentional. PyPI trusted publishing must stay in the same workflow
 file as the release job, because PyPI does not support delegating the publish
 step to a reusable workflow.
+
+The publish job uses GitHub OIDC trusted publishing against the repository's
+configured PyPI project. It runs when Release Please creates a root release in
+that workflow, or when a manual rebuild targets an existing `v*` tag.
 
 ## Contributor Guidance
 

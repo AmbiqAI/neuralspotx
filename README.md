@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/AmbiqAI/neuralspotx/actions/workflows/ci.yml/badge.svg)](https://github.com/AmbiqAI/neuralspotx/actions/workflows/ci.yml)
 [![Pages](https://github.com/AmbiqAI/neuralspotx/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/AmbiqAI/neuralspotx/actions/workflows/deploy-pages.yml)
-[![Release Please](https://github.com/AmbiqAI/neuralspotx/actions/workflows/release-please.yml/badge.svg)](https://github.com/AmbiqAI/neuralspotx/actions/workflows/release-please.yml)
+[![Release](https://github.com/AmbiqAI/neuralspotx/actions/workflows/release.yml/badge.svg)](https://github.com/AmbiqAI/neuralspotx/actions/workflows/release.yml)
 
 `neuralspotx` is the NSX tooling repo.
 
@@ -53,7 +53,7 @@ vendored modules, board definitions, and build helpers.
 For app users, the cleanest install path is `pipx`:
 
 ```bash
-pipx install git+https://github.com/AmbiqAI/neuralspotx.git
+pipx install neuralspotx
 nsx doctor
 nsx create-app hello_ap510 --board apollo510_evb
 ```

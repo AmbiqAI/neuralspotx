@@ -45,23 +45,35 @@ nsx module list --app-dir <app-dir>
 Use the built-in search field above the table to filter modules, then adjust
 the page size selector as needed.
 
+Most first-class modules for the current Ambiq families are sourced from the
+unified `nsx-ambiq-sdk` monorepo. That includes the SDK providers, HAL/BSP
+wrappers, CMSIS/startup integration, and most common runtime and peripheral
+modules across the `r3`, `r4`, and `r5` lines.
+
+Only a small set of first-class modules are currently sourced from separate
+repositories, notably `nsx-pmu-armv8m`, `nsx-cmsis-nn`, `nsx-helia-rt`,
+`nsx-nanopb`, and the packaged board/tooling content that ships directly from
+`neuralspotx`.
+
 | Module | Category | Description | SoC Support |
 | --- | --- | --- | --- |
-| `nsx-core` | :material-cog: Runtime | Core runtime initialization and baseline support for most NSX apps. | All |
-| `nsx-harness` | :material-cog: Runtime | Harness-side helpers for logging, smoke tests, and instrumentation-friendly app output. | All |
-| `nsx-utils` | :material-cog: Runtime | Shared utility helpers for common runtime tasks. | All |
+| `nsx-ambiqsuite-r3` | :material-package-variant: SDK | Unified AmbiqSuite SDK provider for Apollo3 and Apollo3P targets. | Apollo3, Apollo3P |
+| `nsx-ambiqsuite-r4` | :material-package-variant: SDK | Unified AmbiqSuite SDK provider for Apollo4L and Apollo4P targets. | Apollo4L, Apollo4P |
+| `nsx-ambiqsuite-r5` | :material-package-variant: SDK | Unified AmbiqSuite SDK provider for Apollo330P, Apollo510, Apollo510B, Apollo510L, and Apollo5B targets. | Apollo330P, Apollo510, Apollo510B, Apollo510L, Apollo5B |
+| `nsx-ambiq-hal-r3` | :material-package-variant: SDK | HAL wrapper surface for the unified `r3` SDK line. | Apollo3, Apollo3P |
+| `nsx-ambiq-hal-r4` | :material-package-variant: SDK | HAL wrapper surface for the unified `r4` SDK line. | Apollo4L, Apollo4P |
+| `nsx-ambiq-hal-r5` | :material-package-variant: SDK | HAL wrapper surface for the unified `r5` SDK line. | Apollo330P, Apollo510, Apollo510B, Apollo510L, Apollo5B |
+| `nsx-ambiq-bsp-r3` | :material-package-variant: SDK | Board-support wrapper surface for the unified `r3` SDK line. | Apollo3, Apollo3P |
+| `nsx-ambiq-bsp-r4` | :material-package-variant: SDK | Board-support wrapper surface for the unified `r4` SDK line. | Apollo4L, Apollo4P |
+| `nsx-ambiq-bsp-r5` | :material-package-variant: SDK | Board-support wrapper surface for the unified `r5` SDK line. | Apollo330P, Apollo510, Apollo510B, Apollo510L, Apollo5B |
+| `nsx-ambiq-usb-r4` | :material-package-variant: SDK | USB integration layer bundled with the unified `r4` SDK line. | Apollo4P |
+| `nsx-ambiq-usb-r5` | :material-package-variant: SDK | USB integration layer bundled with the unified `r5` SDK line. | Apollo510, Apollo510B, Apollo5B |
+| `nsx-cmsis-core` | :material-chip: Platform | CMSIS core support and integration from the unified SDK stack. | All |
 | `nsx-tooling` | :material-wrench: Tooling | CLI-generated app CMake/tooling integration. | All |
 | `nsx-soc-hal` | :material-chip: Platform | Shared SoC-level HAL integration layer for NSX targets. | All |
 | `nsx-cmsis-startup` | :material-chip: Platform | CMSIS startup integration — vector tables, startup code, early boot wiring. | All |
-| `nsx-ambiqsuite-r3` | :material-package-variant: SDK | AmbiqSuite r3 SDK provider for Apollo3 / Apollo3P targets. | Apollo3, 3P |
-| `nsx-ambiqsuite-r4` | :material-package-variant: SDK | AmbiqSuite r4 SDK provider for Apollo4L / Apollo4P targets. | Apollo4L, 4P |
-| `nsx-ambiqsuite-r5` | :material-package-variant: SDK | AmbiqSuite r5 SDK provider for Apollo510 / Apollo510L / Apollo330P targets. | 510, 510B, 510L, 330P |
-| `nsx-ambiq-hal-r3` | :material-package-variant: SDK | Curated HAL wrapper surface for AmbiqSuite r3 targets. | Apollo3, 3P |
-| `nsx-ambiq-hal-r4` | :material-package-variant: SDK | Curated HAL wrapper surface for AmbiqSuite r4 targets. | Apollo4L, 4P |
-| `nsx-ambiq-hal-r5` | :material-package-variant: SDK | Curated HAL wrapper surface for AmbiqSuite r5 targets. | 510, 510B, 510L, 330P |
-| `nsx-ambiq-bsp-r3` | :material-package-variant: SDK | Curated BSP wrapper for board-support on AmbiqSuite r3 targets. | Apollo3, 3P |
-| `nsx-ambiq-bsp-r4` | :material-package-variant: SDK | Curated BSP wrapper for board-support on AmbiqSuite r4 targets. | Apollo4L, 4P |
-| `nsx-ambiq-bsp-r5` | :material-package-variant: SDK | Curated BSP wrapper for board-support on AmbiqSuite r5 targets. | 510, 510B, 510L, 330P |
+| `nsx-core` | :material-cog: Runtime | Core runtime initialization and baseline support for most NSX apps. | All |
+| `nsx-perf` | :material-speedometer: Profiling | Generic performance measurement helpers for timing and lightweight profiling. | All |
 | `nsx-power` | :material-expansion-card: Peripheral | Power-management helpers — sleep policy, shutdown control, low-power workflows. | Apollo3, 3P, 4L, 4P, 330P, 510, 510B, 510L |
 | `nsx-uart` | :material-expansion-card: Peripheral | UART wrapper for serial communication, console I/O, and host-device links. | All |
 | `nsx-i2c` | :material-expansion-card: Peripheral | I2C wrapper for integrating sensors and peripherals over the I2C bus. | All |
@@ -69,8 +81,9 @@ the page size selector as needed.
 | `nsx-audio` | :material-expansion-card: Peripheral | PDM audio capture driver with DMA-backed sampling and callback delivery. | Apollo5B, 510, 510B |
 | `nsx-usb` | :material-expansion-card: Peripheral | USB CDC serial driver using TinyUSB with proper error handling. | Apollo5B, 510, 510B, 4P |
 | `nsx-nanopb` | :material-library: Library | Vendored nanopb — zero-dynamic-memory Protocol Buffers in ANSI C. | All |
-| `nsx-perf` | :material-speedometer: Profiling | Generic performance measurement helpers for timing and lightweight profiling. | All |
 | `nsx-pmu-armv8m` | :material-speedometer: Profiling | Armv8-M PMU helpers for hardware counter configuration, capture, and transport. | Apollo5B, 510, 510B, 330P |
+| `nsx-cmsis-nn` | :material-brain: ML | CMSIS-NN kernels and NSX integration for ML inference workloads. | Apollo5B, Apollo510, Apollo510B, Apollo510L |
+| `nsx-helia-rt` | :material-brain: ML | Helia runtime integration for NSX-managed inference applications. | Apollo5B, Apollo510, Apollo510B, Apollo510L |
 
 ## Module Families
 
@@ -84,7 +97,7 @@ dependency graph.
 
 | Module family | What it provides | Typical use | More info |
 | --- | --- | --- | --- |
-| `nsx-ambiqsuite-r3`, `nsx-ambiqsuite-r4`, `nsx-ambiqsuite-r5` | Curated AmbiqSuite provider selection by release family. | Select the SDK baseline for a target and downstream wrapper stack. | [r3](https://github.com/AmbiqAI/nsx-ambiqsuite-r3), [r4](https://github.com/AmbiqAI/nsx-ambiqsuite-r4), [r5](https://github.com/AmbiqAI/nsx-ambiqsuite-r5) |
+| `nsx-ambiqsuite-r3`, `nsx-ambiqsuite-r4`, `nsx-ambiqsuite-r5` | Unified AmbiqSuite provider selection by release family. | Select the SDK baseline for a target and downstream wrapper stack. | [nsx-ambiq-sdk](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules) |
 
 ### SDK Wrapper and Platform Integration Modules
 
@@ -92,10 +105,10 @@ These adapt raw SDK content into the NSX build and target model.
 
 | Module family | What it provides | Typical use | More info |
 | --- | --- | --- | --- |
-| `nsx-ambiq-hal-r3`, `nsx-ambiq-hal-r4`, `nsx-ambiq-hal-r5` | Curated HAL wrapper surface for each AmbiqSuite release family. | Pull in supported HAL utilities without wiring raw SDK files by hand. | [r3](https://github.com/AmbiqAI/nsx-ambiq-hal-r3), [r4](https://github.com/AmbiqAI/nsx-ambiq-hal-r4), [r5](https://github.com/AmbiqAI/nsx-ambiq-hal-r5) |
-| `nsx-ambiq-bsp-r3`, `nsx-ambiq-bsp-r4`, `nsx-ambiq-bsp-r5` | Curated BSP wrapper surface for each AmbiqSuite release family. | Board-support wiring layered on top of the chosen SDK release family. | [r3](https://github.com/AmbiqAI/nsx-ambiq-bsp-r3), [r4](https://github.com/AmbiqAI/nsx-ambiq-bsp-r4), [r5](https://github.com/AmbiqAI/nsx-ambiq-bsp-r5) |
-| `nsx-soc-hal` | Shared SoC-level integration across targets. | Common SoC policy and low-level platform integration. | [GitHub](https://github.com/AmbiqAI/nsx-soc-hal) |
-| `nsx-cmsis-startup` | CMSIS and startup integration for NSX targets. | Startup files, vector-table wiring, and common boot integration. | [GitHub](https://github.com/AmbiqAI/nsx-cmsis-startup) |
+| `nsx-ambiq-hal-r3`, `nsx-ambiq-hal-r4`, `nsx-ambiq-hal-r5` | HAL wrapper surface for each unified AmbiqSuite release family. | Pull in supported HAL utilities without wiring raw SDK files by hand. | [nsx-ambiq-sdk](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules) |
+| `nsx-ambiq-bsp-r3`, `nsx-ambiq-bsp-r4`, `nsx-ambiq-bsp-r5` | BSP wrapper surface for each unified AmbiqSuite release family. | Board-support wiring layered on top of the chosen SDK release family. | [nsx-ambiq-sdk](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules) |
+| `nsx-soc-hal` | Shared SoC-level integration across targets. | Common SoC policy and low-level platform integration. | [nsx-ambiq-sdk](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules/nsx-soc-hal) |
+| `nsx-cmsis-core`, `nsx-cmsis-startup` | CMSIS core and startup integration for NSX targets. | Core CMSIS headers plus startup files, vector-table wiring, and common boot integration. | [nsx-ambiq-sdk](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules) |
 
 ### Board Modules
 
@@ -131,9 +144,7 @@ These make up the common reusable runtime layer for NSX apps.
 
 | Module | What it provides | Typical use | More info |
 | --- | --- | --- | --- |
-| `nsx-core` | Common runtime initialization and baseline app support. | Almost every NSX app uses this directly or indirectly. | [GitHub](https://github.com/AmbiqAI/nsx-core) |
-| `nsx-harness` | Debug-print, low-power print, and harness-side helpers. | Bring-up, smoke tests, and instrumentation-friendly apps. | [GitHub](https://github.com/AmbiqAI/nsx-harness) |
-| `nsx-utils` | Small common helpers that do not deserve their own specialized module. | Light utility needs broader than one board or app. | [GitHub](https://github.com/AmbiqAI/nsx-utils) |
+| `nsx-core` | Common runtime initialization and baseline app support. | Almost every NSX app uses this directly or indirectly. | [nsx-ambiq-sdk](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules/nsx-core) |
 | `nsx-tooling` | Generated app CMake and tooling integration packaged from `neuralspotx`. | Internal CLI-generated app support and helper wiring. | [GitHub](https://github.com/AmbiqAI/neuralspotx/tree/main/src/neuralspotx/cmake) |
 
 Migration-friendly portable helpers such as `nsx_printf`, `nsx_delay_us`, and
@@ -146,8 +157,20 @@ These are the current first-class path for performance instrumentation.
 
 | Module | What it provides | Typical use | More info |
 | --- | --- | --- | --- |
-| `nsx-perf` | Generic performance capture helpers such as DWT or related profiling support. | Perf bring-up, benchmarking, and runtime instrumentation. | [GitHub](https://github.com/AmbiqAI/nsx-perf) |
+| `nsx-perf` | Generic performance capture helpers such as DWT or related profiling support. | Perf bring-up, benchmarking, and runtime instrumentation. | [nsx-ambiq-sdk](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules/nsx-perf) |
 | `nsx-pmu-armv8m` | Armv8-M PMU configuration, presets, capture, and transport support. | Function-, layer-, and model-level PMU workflows on supported cores. | [GitHub](https://github.com/AmbiqAI/nsx-pmu-armv8m) |
+
+### External First-Class Modules
+
+These are still part of the built-in NSX catalog, but they are sourced from
+separate upstream repositories instead of the unified `nsx-ambiq-sdk` monorepo.
+
+| Module | What it provides | Typical use | More info |
+| --- | --- | --- | --- |
+| `nsx-pmu-armv8m` | Armv8-M PMU configuration, presets, capture, and transport support. | Hardware-counter-based profiling on supported M55-class targets. | [GitHub](https://github.com/AmbiqAI/nsx-pmu-armv8m) |
+| `nsx-cmsis-nn` | CMSIS-NN kernels and NSX integration for ML inference workloads. | Accelerated neural-network kernels for inference apps. | [GitHub](https://github.com/AmbiqAI/ns-cmsis-nn) |
+| `nsx-helia-rt` | Helia runtime integration for NSX-managed inference applications. | Runtime support for Helia-based inference deployments. | [GitHub](https://github.com/AmbiqAI/helia-rt) |
+| `nsx-nanopb` | Vendored nanopb with NSX packaging metadata. | Protocol Buffers support for RPC and host/device message transport. | [GitHub](https://github.com/AmbiqAI/nsx-nanopb) |
 
 ### Peripheral and Bus Modules
 
@@ -157,9 +180,9 @@ helpers into the baseline runtime core.
 | Module | What it provides | Typical use | More info |
 | --- | --- | --- | --- |
 | `nsx-power` | Power-policy and sleep-oriented helpers. | Low-power behavior, block shutdown control, and power-state utilities. | [GitHub](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules/nsx-power) |
-| `nsx-i2c` | I2C wrapper and related helpers. | Sensor and peripheral bring-up over I2C. | [GitHub](https://github.com/AmbiqAI/nsx-i2c) |
-| `nsx-spi` | SPI wrapper and related helpers. | SPI device bring-up and integration. | [GitHub](https://github.com/AmbiqAI/nsx-spi) |
-| `nsx-uart` | UART wrapper and related helpers. | Serial communication, console, or bridge workflows. | [GitHub](https://github.com/AmbiqAI/nsx-uart) |
+| `nsx-i2c` | I2C wrapper and related helpers. | Sensor and peripheral bring-up over I2C. | [GitHub](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules/nsx-i2c) |
+| `nsx-spi` | SPI wrapper and related helpers. | SPI device bring-up and integration. | [GitHub](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules/nsx-spi) |
+| `nsx-uart` | UART wrapper and related helpers. | Serial communication, console, or bridge workflows. | [GitHub](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules/nsx-uart) |
 
 Legacy `nsx-peripherals` is no longer a first-class packaged module. Its useful
 pieces were retired into focused unified surfaces such as `nsx-power`,

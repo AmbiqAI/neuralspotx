@@ -43,13 +43,19 @@ to select an alternate toolchain. See
 If you just want the `nsx` CLI as a standalone tool:
 
 ```bash
-pipx install git+https://github.com/AmbiqAI/neuralspotx.git
+pipx install neuralspotx
 ```
 
 This gives you:
 
 - The `nsx` CLI on your `PATH`
 - All runtime Python dependencies in an isolated environment
+
+If you want a specific published version, pin it explicitly:
+
+```bash
+pipx install 'neuralspotx==<version>'
+```
 
 Verify the install:
 
