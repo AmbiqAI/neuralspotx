@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.3](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.6.2...neuralspotx-v0.6.3) (2026-06-11)
+
+
+### Features
+
+* Release and publish to PyPI ([#114](https://github.com/AmbiqAI/neuralspotx/issues/114)) ([e8a09ba](https://github.com/AmbiqAI/neuralspotx/commit/e8a09ba3f74380e170012983e7b6318bbdc10a5a))
+
 ## [0.6.2](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.6.1...neuralspotx-v0.6.2) (2026-06-10)
 
 
