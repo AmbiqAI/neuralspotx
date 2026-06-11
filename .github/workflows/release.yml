@@ -121,7 +121,7 @@ jobs:
     needs:
       - release-please
       - build
-    if: needs.build.result == 'success'
+    if: ${{ always() && needs.build.result == 'success' }}
     env:
       RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || needs.release-please.outputs.tag_name }}
 
@@ -145,7 +145,7 @@ jobs:
     needs:
       - release-please
       - build
-    if: needs.build.result == 'success'
+    if: ${{ always() && needs.build.result == 'success' }}
 
     steps:
       - name: Download release artifacts
@@ -163,7 +163,7 @@ jobs:
       - release-please
       - github-release
       - pypi-publish
-    if: ${{ needs.release-please.outputs.release_created == 'true' && needs.github-release.result == 'success' && needs.pypi-publish.result == 'success' }}
+    if: ${{ always() && needs.release-please.outputs.release_created == 'true' && needs.github-release.result == 'success' && needs.pypi-publish.result == 'success' }}
 
     steps:
       - name: Checkout main
