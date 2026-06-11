@@ -409,8 +409,12 @@ def _module_gitignore_relpath(
     Mirrors :func:`_module_source_dir_relative_to_app` /
     :func:`_resolved_module_path`: a module that resolves to a registry
     project is vendored under its project clone dir (``modules/<project>``),
-    everything else under ``modules/<name>``. ``KeyError`` / ``ValueError`` /
-    ``TypeError`` (no registry entry) fall back to ``<name>``.
+    everything else under ``modules/<name>``.
+
+    Raises ``ValueError`` when the module has no registry entry (or resolves
+    outside ``modules/``); callers decide whether that means *skip* (registry
+    modules) or *fall back to* ``modules/<name>`` (local modules).
+    Malformed-registry ``KeyError`` / ``TypeError`` fall back to ``<name>``.
     """
     from .metadata import registry_entry_for_module
 
@@ -465,7 +469,11 @@ def _local_module_gitignore_paths(
     registry = _effective_registry(_load_registry(), nsx_cfg, app_dir=app_dir)
     paths: dict[str, str] = {}
     for name in sorted(local_names):
-        rel = _module_gitignore_relpath(app_dir, registry, name)
+        try:
+            rel = _module_gitignore_relpath(app_dir, registry, name)
+        except ValueError:
+            # Bare local module with no registry entry — stays at modules/<name>/.
+            rel = Path(name)
         paths[name] = rel.as_posix().rstrip("/") + "/"
     return paths
 
