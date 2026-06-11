@@ -80,12 +80,12 @@ that workflow, or when a manual rebuild targets an existing release tag.
 
 ## uv.lock Refresh
 
-After a successful new release from `main`, the same workflow runs `uv lock` on
-the updated default branch. If that changes only the editable `neuralspotx`
-entry in `uv.lock`, the workflow opens or updates a follow-up PR with the lock
-refresh and dispatches CI on that branch. If `uv lock` would also refresh other
-dependencies, the workflow fails instead of opening a broader dependency-update
-PR implicitly.
+After a successful new release from `main`, the same workflow updates the
+editable `neuralspotx` version line in `uv.lock` to match `pyproject.toml` and
+opens or updates a follow-up PR with that change, then dispatches CI on that
+branch. Only the editable package version line is touched; transitive
+dependency pins are left untouched, and the job is a no-op (no PR) when the
+lockfile is already in sync.
 
 ## Contributor Guidance
 

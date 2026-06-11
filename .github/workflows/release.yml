@@ -171,75 +171,41 @@ jobs:
         with:
           ref: refs/heads/main
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
-
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.11"
 
-      - name: Refresh uv.lock
-        run: uv lock
-
-      - name: Verify uv.lock change is version-only
-        run: |
-          python - <<'PY'
-          import copy
-          import subprocess
-          import tomllib
-          from pathlib import Path
-
-          previous = subprocess.run(
-              ["git", "show", "HEAD:uv.lock"],
-              check=True,
-              capture_output=True,
-              text=True,
-          ).stdout
-          current = Path("uv.lock").read_text(encoding="utf-8")
-
-          if previous == current:
-              raise SystemExit(0)
-
-          previous_data = tomllib.loads(previous)
-          current_data = tomllib.loads(current)
-
-          def find_local_package(data):
-              for package in data["package"]:
-                  if package.get("name") == "neuralspotx" and package.get("source") == {"editable": "."}:
-                      return package
-              raise SystemExit("Could not locate editable neuralspotx package block in uv.lock.")
-
-          previous_package = find_local_package(previous_data)
-          current_package = find_local_package(current_data)
-          previous_version = previous_package.get("version")
-          current_version = current_package.get("version")
-
-          if previous_version == current_version:
-              raise SystemExit("uv.lock changed without updating the editable neuralspotx version.")
-
-          normalized_previous = copy.deepcopy(previous_data)
-          normalized_current = copy.deepcopy(current_data)
-          find_local_package(normalized_previous)["version"] = "__NSX_VERSION__"
-          find_local_package(normalized_current)["version"] = "__NSX_VERSION__"
-
-          if normalized_previous != normalized_current:
-              raise SystemExit(
-                  "uv.lock refresh changed more than the editable neuralspotx version; skipping auto PR."
-              )
-          PY
-
-      - name: Read package version
+      - name: Sync uv.lock to package version
         id: version
         run: |
           python - <<'PY' >> "$GITHUB_OUTPUT"
+          import re
           import tomllib
           from pathlib import Path
 
-          data = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
-          print(f"version={data['project']['version']}")
+          version = tomllib.loads(
+              Path("pyproject.toml").read_text(encoding="utf-8")
+          )["project"]["version"]
+
+          lock_path = Path("uv.lock")
+          text = lock_path.read_text(encoding="utf-8")
+
+          # Update only the editable neuralspotx package version. This keeps the
+          # lockfile in sync with pyproject.toml without sweeping in unrelated
+          # transitive dependency updates that a full `uv lock` would pull in.
+          pattern = re.compile(
+              r'(\[\[package\]\]\nname = "neuralspotx"\nversion = ")[^"]*(")'
+          )
+          if not pattern.search(text):
+              raise SystemExit(
+                  "Could not locate editable neuralspotx package block in uv.lock."
+              )
+
+          updated = pattern.sub(rf"\g<1>{version}\g<2>", text, count=1)
+          lock_path.write_text(updated, encoding="utf-8")
+
+          print(f"version={version}")
           PY
 
       - name: Create uv.lock refresh PR
@@ -255,7 +221,8 @@ jobs:
 
             This keeps the editable package entry in `uv.lock` aligned with `pyproject.toml` after Release Please bumps the package version.
 
-            The workflow only opens this PR when the lockfile diff is limited to the editable `neuralspotx` version line.
+            Only the editable `neuralspotx` version line is changed; transitive
+            dependency pins are left untouched.
           add-paths: |
             uv.lock
 
