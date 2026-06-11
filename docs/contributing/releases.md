@@ -39,7 +39,7 @@ Python package at release time.
 
 The release workflow validates that:
 
-- the release tag ends with `v<version>`
+- the release tag is exactly `v<version>` or `neuralspotx-v<version>`
 - the tag version exactly matches `pyproject.toml`
 
 Example:
@@ -60,7 +60,8 @@ when:
 - the workflow logic changed and you need to regenerate release artifacts
 
 This manual path does not create a new version or release PR. It rebuilds
-artifacts for an existing release tag such as `neuralspotx-v0.6.3`.
+artifacts for an existing release tag such as `neuralspotx-v0.6.3` or the
+legacy form `v0.6.3`.
 
 ## PyPI Publishing
 
