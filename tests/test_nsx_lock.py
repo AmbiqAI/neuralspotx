@@ -30,6 +30,7 @@ from neuralspotx.operations import (
     outdated_app_impl,
     sync_app_impl,
 )
+from neuralspotx.project_config import _write_app_module_file
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -560,6 +561,58 @@ class TestLocalKind:
         assert Path(m.vendored_at).as_posix() == "modules/local-proj"
         assert m.content_hash.startswith("sha256:")
 
+    def test_local_module_with_registry_project_uses_project_clone_dir(self, app: Path) -> None:
+        """A ``local: true`` module whose registry project differs from its
+        own name resolves its generated CMake module dir to the *project
+        clone dir* — the directory ``nsx lock`` / ``nsx sync`` vendor it into
+        — not ``modules/<name>``.
+
+        Regression: ``_module_source_dir_relative_to_app`` short-circuited all
+        opaque (local/vendored) modules to ``modules/<name>``, so the
+        ``modules.cmake`` DIR map disagreed with the lock's ``vendored_at``
+        for name≠project local modules and the CMake ``add_subdirectory``
+        bootstrap could not find the module.
+        """
+        _write_nsx_yml(
+            app,
+            [{"name": "nsx-foo", "local": True}],
+            registry_overrides={
+                "projects": {
+                    "foo-proj": {
+                        "name": "foo-proj",
+                        "url": "https://example.com/foo.git",
+                        "revision": "main",
+                        "path": "modules/foo-proj",
+                    }
+                },
+                "modules": {
+                    "nsx-foo": {
+                        "project": "foo-proj",
+                        "revision": "main",
+                        "metadata": "modules/foo-proj/nsx/nsx-module.yaml",
+                    }
+                },
+            },
+        )
+        nsx_cfg = yaml.safe_load((app / "nsx.yml").read_text(encoding="utf-8"))
+
+        _write_app_module_file(app, nsx_cfg, module_names=["nsx-foo"])
+
+        modules_cmake = (app / "cmake" / "nsx" / "modules.cmake").read_text(encoding="utf-8")
+        assert 'set(NSX_APP_MODULE_DIR_nsx_foo "modules/foo-proj/nsx")' in modules_cmake
+        assert "modules/nsx-foo" not in modules_cmake
+
+    def test_bare_local_module_without_registry_entry_uses_name_dir(self, app: Path) -> None:
+        """A ``local: true`` module with no registry entry (e.g.
+        ``nsx module add --local``) still resolves to ``modules/<name>``."""
+        _write_nsx_yml(app, [{"name": "bare-local", "local": True}])
+        nsx_cfg = yaml.safe_load((app / "nsx.yml").read_text(encoding="utf-8"))
+
+        _write_app_module_file(app, nsx_cfg, module_names=["bare-local"])
+
+        modules_cmake = (app / "cmake" / "nsx" / "modules.cmake").read_text(encoding="utf-8")
+        assert 'set(NSX_APP_MODULE_DIR_bare_local "modules/bare-local")' in modules_cmake
+
     def test_lock_resolves_transitive_closure_for_nested_module_roots(
         self, app: Path, tmp_path: Path
     ) -> None:
@@ -611,9 +664,7 @@ class TestLocalKind:
         nsx_cfg = yaml.safe_load((app / "nsx.yml").read_text(encoding="utf-8"))
         assert [item["name"] for item in nsx_cfg["modules"]] == ["nsx-app"]
 
-        modules_cmake = (app / "cmake" / "nsx" / "modules.cmake").read_text(
-            encoding="utf-8"
-        )
+        modules_cmake = (app / "cmake" / "nsx" / "modules.cmake").read_text(encoding="utf-8")
         assert modules_cmake.index("    nsx-dep") < modules_cmake.index("    nsx-app")
         assert 'set(NSX_APP_MODULE_DIR_nsx_dep "modules/dep-proj/nsx")' in modules_cmake
         assert 'set(NSX_APP_MODULE_DIR_nsx_app "modules/app-proj/nsx")' in modules_cmake
