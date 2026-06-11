@@ -11,7 +11,7 @@ releases for the Python package.
 4. When the release PR is merged, the next `release.yml` run on `main` creates:
    - a new version commit
    - an updated `CHANGELOG.md`
-   - a `v*` git tag
+  - a release tag such as `neuralspotx-v0.6.3`
     - the GitHub release entry
 5. That same `release.yml` run then:
     - checks out the created tag
@@ -39,13 +39,13 @@ Python package at release time.
 
 The release workflow validates that:
 
-- the release tag starts with `v`
-- the tag exactly matches `pyproject.toml`
+- the release tag is exactly `v<version>` or `neuralspotx-v<version>`
+- the tag version exactly matches `pyproject.toml`
 
 Example:
 
 - `pyproject.toml`: `0.2.0`
-- release tag: `v0.2.0`
+- release tag: `neuralspotx-v0.2.0`
 
 If those do not match, the release build fails.
 
@@ -60,7 +60,8 @@ when:
 - the workflow logic changed and you need to regenerate release artifacts
 
 This manual path does not create a new version or release PR. It rebuilds
-artifacts for an existing `v*` tag.
+artifacts for an existing release tag such as `neuralspotx-v0.6.3` or the
+legacy form `v0.6.3`.
 
 ## PyPI Publishing
 
@@ -73,7 +74,7 @@ step to a reusable workflow.
 
 The publish job uses GitHub OIDC trusted publishing against the repository's
 configured PyPI project. It runs when Release Please creates a root release in
-that workflow, or when a manual rebuild targets an existing `v*` tag.
+that workflow, or when a manual rebuild targets an existing release tag.
 
 ## Contributor Guidance
 
