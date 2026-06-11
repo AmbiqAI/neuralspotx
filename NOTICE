@@ -23,9 +23,15 @@ its own license:
 Modules Fetched at App-Generation Time
 ================================================================================
 
-NSX generates apps that vendor module sources resolved from the packaged
-registry (see src/neuralspotx/data/registry.lock.yaml). These module sources are
-cloned from their upstream repositories at app-generation time and are NOT
+NSX resolves app content from the packaged registry
+(see src/neuralspotx/data/registry.lock.yaml).
+
+Some registry-resolved resources, such as packaged board or build support
+content shipped with `neuralspotx`, are distributed as part of this repository
+and the published `neuralspotx` package.
+
+Other registry entries cause NSX to clone module sources from their upstream
+repositories at app-generation time. Those fetched module sources are not
 distributed as part of this repository or the published `neuralspotx` package.
 
 Each fetched module is governed by the license in its own repository. Notable
