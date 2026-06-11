@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.6.4](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.6.3...neuralspotx-v0.6.4) (2026-06-11)
+
+
+### Features
+
+* auto refresh uv.lock after release ([47589b9](https://github.com/AmbiqAI/neuralspotx/commit/47589b951b0db5ea58b12389e6fb72508fed04e7))
+
+
+### Bug Fixes
+
+* constrain release uv.lock refresh ([0a5daae](https://github.com/AmbiqAI/neuralspotx/commit/0a5daaeaa3ac750483a4311fafc44d40cedc9500))
+* release workflow tag validation ([#116](https://github.com/AmbiqAI/neuralspotx/issues/116)) ([77d0001](https://github.com/AmbiqAI/neuralspotx/commit/77d0001d0e36fe4c4df0d8c8d8b86b4a7632ac2e))
+
 ## [0.6.3](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.6.2...neuralspotx-v0.6.3) (2026-06-11)
 
 
