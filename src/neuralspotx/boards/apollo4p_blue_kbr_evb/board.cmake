@@ -1,8 +1,9 @@
-set(NSX_SOC_FAMILY "apollo4p")
-set(NSX_CPU "cortex-m4")
-set(NSX_FPU "fpv4-sp-d16")
-set(NSX_FLOAT_ABI "hard")
-set(NSX_ABI_FLAGS "thumbv7em-fpv4sp-hard")
+# SoC facts (NSX_SOC_* + NSX_CPU/NSX_FPU/NSX_FLOAT_ABI/NSX_ABI_FLAGS) come from
+# the nsx-ambiq-sdk single source of truth so they cannot drift from the SDK's
+# own SoC descriptor. This also publishes the RTOS port facts the optional
+# nsx-freertos module consumes. nsx_load_soc_facts() is provided by the SDK's
+# auto-included cmake/nsx_soc_facts.cmake.
+nsx_load_soc_facts("apollo4p")
 
 if(NOT NSX_SDK_PROVIDER STREQUAL "ambiqsuite-r4")
     message(FATAL_ERROR
