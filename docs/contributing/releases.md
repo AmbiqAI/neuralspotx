@@ -12,13 +12,13 @@ releases for the Python package.
    - a new version commit
    - an updated `CHANGELOG.md`
    - a `v*` git tag
-  - the GitHub release entry
+    - the GitHub release entry
 5. That same `release.yml` run then:
-  - checks out the created tag
+    - checks out the created tag
    - validates that the tag matches `pyproject.toml`
    - builds the Python distributions
    - attaches the artifacts to the GitHub release
-  - publishes the distributions to PyPI
+    - publishes the distributions to PyPI
 
 ```mermaid
 flowchart LR
