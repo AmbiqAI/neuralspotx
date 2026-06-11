@@ -83,7 +83,9 @@ that workflow, or when a manual rebuild targets an existing release tag.
 After a successful new release from `main`, the same workflow runs `uv lock` on
 the updated default branch. If that changes only the editable `neuralspotx`
 entry in `uv.lock`, the workflow opens or updates a follow-up PR with the lock
-refresh and dispatches CI on that branch.
+refresh and dispatches CI on that branch. If `uv lock` would also refresh other
+dependencies, the workflow fails instead of opening a broader dependency-update
+PR implicitly.
 
 ## Contributor Guidance
 
