@@ -1,0 +1,42 @@
+neuralspotx (NSX)
+Copyright (c) 2026, Ambiq
+All rights reserved.
+
+This product is licensed under the BSD 3-Clause License. See the LICENSE file
+for the full license text.
+
+================================================================================
+Third-Party Components
+================================================================================
+
+The `neuralspotx` Python distribution declares the following runtime
+dependencies. These packages are installed separately by the package manager
+(pip / uv) and are not bundled in this repository. Each is distributed under
+its own license:
+
+  - Jinja2 ........................ BSD-3-Clause
+    https://github.com/pallets/jinja
+  - PyYAML ........................ MIT
+    https://github.com/yaml/pyyaml
+
+================================================================================
+Modules Fetched at App-Generation Time
+================================================================================
+
+NSX generates apps that vendor module sources resolved from the packaged
+registry (see src/neuralspotx/data/registry.lock.yaml). These module sources are
+cloned from their upstream repositories at app-generation time and are NOT
+distributed as part of this repository or the published `neuralspotx` package.
+
+Each fetched module is governed by the license in its own repository. Notable
+third-party-origin modules include:
+
+  - ns-cmsis-nn (ARM CMSIS-NN integration) ... Apache-2.0
+    https://github.com/AmbiqAI/ns-cmsis-nn
+  - nsx-nanopb (nanopb integration) .......... zlib
+    https://github.com/AmbiqAI/nsx-nanopb
+
+All other modules published under the AmbiqAI organization carry their own
+LICENSE files in their respective repositories. Consumers should review the
+license of each fetched module and generate a Software Bill of Materials with
+`nsx sbom` to capture the exact resolved components for a given app.

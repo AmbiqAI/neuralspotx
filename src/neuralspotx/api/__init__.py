@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026, Ambiq
 """Programmatic API for the NSX workflow.
 
 Stable public surface for embedders. The actual implementations live in
