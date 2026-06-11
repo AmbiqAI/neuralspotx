@@ -30,7 +30,14 @@ from neuralspotx.operations import (
     outdated_app_impl,
     sync_app_impl,
 )
-from neuralspotx.project_config import _write_app_module_file
+from neuralspotx.operations._lock import _resolved_module_path
+from neuralspotx.project_config import (
+    _effective_registry,
+    _load_registry,
+    _module_source_dir_relative_to_app,
+    _write_app_module_file,
+    _write_modules_gitignore_for_module_names,
+)
 
 # ---------------------------------------------------------------------------
 # Helpers
@@ -597,10 +604,27 @@ class TestLocalKind:
         nsx_cfg = yaml.safe_load((app / "nsx.yml").read_text(encoding="utf-8"))
 
         _write_app_module_file(app, nsx_cfg, module_names=["nsx-foo"])
+        _write_modules_gitignore_for_module_names(app, nsx_cfg, ["nsx-foo"])
 
         modules_cmake = (app / "cmake" / "nsx" / "modules.cmake").read_text(encoding="utf-8")
         assert 'set(NSX_APP_MODULE_DIR_nsx_foo "modules/foo-proj/nsx")' in modules_cmake
         assert "modules/nsx-foo" not in modules_cmake
+
+        # The DIR map must live inside the directory `nsx lock` / `nsx sync`
+        # vendor the module into — otherwise the CMake bootstrap and the lock
+        # resolver disagree (the bug this fix addresses). Tie them together so
+        # the two resolvers cannot silently drift apart again.
+        registry = _effective_registry(_load_registry(), nsx_cfg, app_dir=app)
+        vendored_rel = _resolved_module_path(app, "nsx-foo", registry).relative_to(app)
+        source_rel = _module_source_dir_relative_to_app("nsx-foo", registry, nsx_cfg)
+        assert vendored_rel.as_posix() == "modules/foo-proj"
+        assert source_rel.is_relative_to(vendored_rel)
+
+        # The generated modules/.gitignore must ignore the *vendored* dir
+        # (modules/foo-proj/), not the empty modules/nsx-foo/.
+        gitignore = (app / "modules" / ".gitignore").read_text(encoding="utf-8")
+        assert "foo-proj/" in gitignore
+        assert "nsx-foo/" not in gitignore
 
     def test_bare_local_module_without_registry_entry_uses_name_dir(self, app: Path) -> None:
         """A ``local: true`` module with no registry entry (e.g.
@@ -609,9 +633,14 @@ class TestLocalKind:
         nsx_cfg = yaml.safe_load((app / "nsx.yml").read_text(encoding="utf-8"))
 
         _write_app_module_file(app, nsx_cfg, module_names=["bare-local"])
+        _write_modules_gitignore_for_module_names(app, nsx_cfg, ["bare-local"])
 
         modules_cmake = (app / "cmake" / "nsx" / "modules.cmake").read_text(encoding="utf-8")
         assert 'set(NSX_APP_MODULE_DIR_bare_local "modules/bare-local")' in modules_cmake
+
+        # Bare locals are still ignored under their own name.
+        gitignore = (app / "modules" / ".gitignore").read_text(encoding="utf-8")
+        assert "bare-local/" in gitignore
 
     def test_lock_resolves_transitive_closure_for_nested_module_roots(
         self, app: Path, tmp_path: Path
