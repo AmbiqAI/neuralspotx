@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.5](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.6.4...neuralspotx-v0.6.5) (2026-06-11)
+
+
+### Bug Fixes
+
+* deterministic uv.lock version sync in release ([7b4764b](https://github.com/AmbiqAI/neuralspotx/commit/7b4764b8736a3199eb03380c09484b52c8c98bc0))
+* make release downstream jobs robust to skipped deps ([5818bf8](https://github.com/AmbiqAI/neuralspotx/commit/5818bf8739d4f4a2a36ebc050f8ef2a61c0a4c48))
+
 ## [0.6.4](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.6.3...neuralspotx-v0.6.4) (2026-06-11)
 
 
