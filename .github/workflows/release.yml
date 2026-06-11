@@ -156,3 +156,67 @@ jobs:
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+
+  refresh-uv-lock:
+    runs-on: ubuntu-latest
+    needs:
+      - release-please
+      - github-release
+      - pypi-publish
+    if: ${{ needs.release-please.outputs.release_created == 'true' && needs.github-release.result == 'success' && needs.pypi-publish.result == 'success' }}
+
+    steps:
+      - name: Checkout main
+        uses: actions/checkout@v4
+        with:
+          ref: refs/heads/main
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Refresh uv.lock
+        run: uv lock
+
+      - name: Read package version
+        id: version
+        run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import tomllib
+          from pathlib import Path
+
+          data = tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))
+          print(f"version={data['project']['version']}")
+          PY
+
+      - name: Create uv.lock refresh PR
+        id: cpr
+        uses: peter-evans/create-pull-request@v8
+        with:
+          branch: automation/update-uv-lock
+          delete-branch: true
+          commit-message: "chore: refresh uv.lock after release"
+          title: "chore: refresh uv.lock for neuralspotx v${{ steps.version.outputs.version }}"
+          body: |
+            Refresh `uv.lock` after the `neuralspotx` release workflow published v${{ steps.version.outputs.version }}.
+
+            This keeps the editable package entry in `uv.lock` aligned with `pyproject.toml` after Release Please bumps the package version.
+          add-paths: |
+            uv.lock
+
+      # PRs opened by GITHUB_TOKEN do not trigger other workflows, so dispatch
+      # CI explicitly on the created/updated lock-refresh branch.
+      - name: Dispatch CI on uv.lock refresh PR branch
+        if: ${{ steps.cpr.outputs.pull-request-operation == 'created' || steps.cpr.outputs.pull-request-operation == 'updated' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          branch="${{ steps.cpr.outputs.pull-request-branch }}"
+          echo "Dispatching CI on branch: $branch"
+          gh workflow run ci.yml --ref "$branch" --repo "$GITHUB_REPOSITORY"

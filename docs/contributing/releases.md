@@ -19,6 +19,7 @@ releases for the Python package.
    - builds the Python distributions
    - attaches the artifacts to the GitHub release
     - publishes the distributions to PyPI
+  - opens or updates a follow-up PR if `uv.lock` needs a version refresh
 
 ```mermaid
 flowchart LR
@@ -30,6 +31,7 @@ flowchart LR
    F --> G[Build dist artifacts from created tag]
    G --> H[Attach artifacts to GitHub release]
    H --> I[Publish to PyPI]
+  I --> J[Open uv.lock refresh PR if needed]
 ```
 
 ## Version Source of Truth
@@ -75,6 +77,13 @@ step to a reusable workflow.
 The publish job uses GitHub OIDC trusted publishing against the repository's
 configured PyPI project. It runs when Release Please creates a root release in
 that workflow, or when a manual rebuild targets an existing release tag.
+
+## uv.lock Refresh
+
+After a successful new release from `main`, the same workflow runs `uv lock` on
+the updated default branch. If that changes only the editable `neuralspotx`
+entry in `uv.lock`, the workflow opens or updates a follow-up PR with the lock
+refresh and dispatches CI on that branch.
 
 ## Contributor Guidance
 
