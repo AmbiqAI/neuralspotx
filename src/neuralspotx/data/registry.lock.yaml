@@ -405,7 +405,6 @@ soc_families:
       - nsx-i2c
       - nsx-interrupt
       - nsx-perf
-      - nsx-pmu-armv8m
       - nsx-power
       - nsx-spi
       - nsx-timer

@@ -67,6 +67,7 @@ def test_derived_profile_module_layout() -> None:
     # A shared-name module (also vendored by the monorepo) resolves to the
     # tier-correct monorepo source rather than its standalone repo.
     assert prof["module_overrides"]["nsx-soc-hal"]["project"] == "nsx-ambiq-sdk"
+    assert "nsx-pmu-armv8m" not in prof["module_overrides"]
     assert "nsx-cmsis-core" in prof["modules"]
     assert "nsx-pmu-armv8m" in prof["modules"]
 
