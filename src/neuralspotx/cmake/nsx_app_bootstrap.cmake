@@ -10,6 +10,13 @@ function(nsx_module_dir_for_name out_var module_name)
         set(${out_var} "${${module_dir_var}}" PARENT_SCOPE)
         return()
     endif()
+
+    get_directory_property(module_dir_definition DEFINITION ${module_dir_var})
+    if(NOT module_dir_definition STREQUAL "")
+        set(${out_var} "${module_dir_definition}" PARENT_SCOPE)
+        return()
+    endif()
+
     set(${out_var} "modules/${module_name}" PARENT_SCOPE)
 endfunction()
 

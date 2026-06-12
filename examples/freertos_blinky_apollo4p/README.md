@@ -1,15 +1,14 @@
-# freertos_blinky
+# freertos_blinky_apollo4p
 
 Reference **nsx** application that runs the optional `nsx-freertos` module on
-the Apollo510 EVB. It creates a single FreeRTOS task that prints a tick counter
-(and the vendored kernel version) once every 500 ms, then starts the scheduler.
+the Apollo4P Blue KXR EVB. It creates a single FreeRTOS task that prints a tick
+counter (and the vendored kernel version) once every 500 ms, then starts the
+scheduler.
 
-This is the canonical integration example for the FreeRTOS enablement work:
-it demonstrates the `nsx::freertos_config` contract, application-owned hooks,
-and the Cortex-M55 (`ARM_CM55_NTZ`) generic port.
-
-For the Cortex-M4F (`ARM_CM4F`) path validated on Apollo4 hardware, see the
-sibling example in [../freertos_blinky_apollo4p](../freertos_blinky_apollo4p).
+This example is the canonical Cortex-M4F (`ARM_CM4F`) companion to
+[../freertos_blinky](../freertos_blinky): it demonstrates the same
+`nsx::freertos_config` contract and application-owned hooks, but exercises the
+indirect handler-routing path validated on Apollo4P hardware.
 
 ## How FreeRTOS is wired in
 
@@ -27,11 +26,11 @@ add_library(nsx::freertos_config ALIAS app_freertos_config)
 ```
 
 The kernel config lives in [config/FreeRTOSConfig.h](config/FreeRTOSConfig.h)
-(seeded from the module template). On ARMv8-M the kernel's strong
-`SVC_Handler`, `PendSV_Handler`, and `SysTick_Handler` override the startup's
-weak vectors automatically — no handler remapping macros are needed. The config
-copy is also kept compatible with the CM4F path so the shared application
-policy stays aligned with the SDK template.
+(seeded from the module template). On Cortex-M4F, `nsx-freertos` provides strong
+shim `SVC_Handler`, `PendSV_Handler`, and `SysTick_Handler` symbols that route
+the weak NSX startup vectors to FreeRTOS' `vPortSVCHandler`,
+`xPortPendSVHandler`, and `xPortSysTickHandler` entry points. No handler
+remapping macros are needed in the application.
 
 The application also provides the hooks the config enables
 (`vApplicationMallocFailedHook`, `vApplicationStackOverflowHook`) in
@@ -42,7 +41,7 @@ The application also provides the hooks the config enables
 ```bash
 nsx configure --app-dir .
 nsx build     --app-dir .
-nsx flash     --app-dir .      # requires JLink + Apollo510 EVB
+nsx flash     --app-dir .      # requires JLink + Apollo4P Blue KXR EVB
 nsx view      --app-dir .      # opens SWO viewer
 ```
 
@@ -58,4 +57,6 @@ freertos_blinky: tick 2 (kernel V11.1.0)
 
 Messages repeat roughly twice per second. If you see only the
 `starting scheduler` line, the scheduler failed to start — check that the
-SoC's `NSX_SOC_RTOS_PORT_GENERIC` resolves to `ARM_CM55_NTZ` (Apollo510 does).
+SoC's `NSX_SOC_RTOS_PORT_GENERIC` resolves to `ARM_CM4F` (Apollo4P does) and
+that the example's application-owned `FreeRTOSConfig.h` stays aligned with the
+current SDK template.
