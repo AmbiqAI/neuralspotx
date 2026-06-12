@@ -26,7 +26,7 @@ At a high level:
 1. create a normal NSX app
 2. add any runtime dependencies the generated model needs
 3. run `helia-aot convert` on your `.tflite`
-4. place the generated output in `app/modules/<your-model>/`
+4. place the generated output in `modules/<your-model>/`
 5. mark that module as `source: { vendored: true }`
 6. run the normal `nsx lock`, `nsx configure`, `nsx build`, `nsx flash`, and
    `nsx view` flow
