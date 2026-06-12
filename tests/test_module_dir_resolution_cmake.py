@@ -6,10 +6,9 @@ The app bootstrap resolves each module's vendored directory through
 generated ``cmake/nsx/modules.cmake`` emits ``NSX_APP_MODULE_DIR_<id>``
 overrides that must win over the flat ``modules/<name>`` default.
 
-Regression guard for the bootstrap fix that made the override resolve
-reliably: ``nsx_module_dir_for_name`` first honours the override variable
-when it is visible in scope and otherwise falls back to the directory-scope
-``DEFINITION`` lookup before defaulting. These tests drive the real packaged
+Regression guard for that contract: ``nsx_module_dir_for_name`` honours an
+``NSX_APP_MODULE_DIR_<id>`` override when present and otherwise falls back
+to the flat ``modules/<name>`` layout. These tests drive the real packaged
 CMake via ``cmake -P`` script mode, so they exercise the helper end to end
 without a firmware build or toolchain.
 """
