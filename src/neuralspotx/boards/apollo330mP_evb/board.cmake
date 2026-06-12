@@ -37,10 +37,15 @@ else()
 endif()
 
 if(NOT DEFINED NSX_LINKER_SCRIPT)
-    nsx_select_linker_script(
-        DEFAULT "${_nsx_linker_script_default}"
-        ITCM "${_nsx_linker_script_itcm}"
-    )
+    if(COMMAND nsx_select_linker_script)
+        nsx_select_linker_script(
+            DEFAULT "${_nsx_linker_script_default}"
+            ITCM "${_nsx_linker_script_itcm}"
+        )
+    else()
+        # SDK predates named linker profiles — fall back to the default script.
+        set(NSX_LINKER_SCRIPT "${_nsx_linker_script_default}")
+    endif()
 endif()
 
 include("${NSX_CMAKE_DIR}/segger/socs/apollo330.cmake")
