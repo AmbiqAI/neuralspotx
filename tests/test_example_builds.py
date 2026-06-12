@@ -15,6 +15,8 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import sys
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -62,7 +64,18 @@ def example_app(request: pytest.FixtureRequest, tmp_path: Path) -> Path:
     """Copy the requested example into *tmp_path* and return the app dir."""
     name: str = request.param
     src = EXAMPLES_DIR / name
-    dst = tmp_path / name
+    if sys.platform == "win32":
+        # Windows enforces a 260-char MAX_PATH and CMake caps object paths at
+        # 250. pytest's tmp_path is already deeply nested, so combining it with
+        # long example/board names (e.g. freertos_blinky_apollo4p /
+        # apollo4p_blue_kxr_evb) and the deep vendored SDK tree (e.g.
+        # FreeRTOS-Kernel/portable/GCC/ARM_CM55_NTZ/non_secure/...) overflows
+        # the limit during vendoring and compilation. Use a short temp root.
+        root = Path(tempfile.mkdtemp(prefix="nsx"))
+        request.addfinalizer(lambda: shutil.rmtree(root, ignore_errors=True))
+        dst = root / name
+    else:
+        dst = tmp_path / name
     shutil.copytree(src, dst, ignore=shutil.ignore_patterns("build"))
     return dst
 
