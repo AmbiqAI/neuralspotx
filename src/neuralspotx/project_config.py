@@ -90,7 +90,7 @@ def _iter_registry_layers(
                 "single-key mapping ({workspace: ...} or {inline: ...}).",
                 field=f"registry.layers[{index}]",
             )
-        (kind, value), = layer.items()
+        ((kind, value),) = layer.items()
         if kind == "packaged":
             continue
         if kind == "workspace":
@@ -126,9 +126,7 @@ def _effective_registry(
     merged = base_registry
     for layer in _iter_registry_layers(nsx_cfg, app_dir):
         merged = layer.merge_into(merged)
-    return ModuleRegistryOverride.from_mapping(nsx_cfg.get("module_registry")).merge_into(
-        merged
-    )
+    return ModuleRegistryOverride.from_mapping(nsx_cfg.get("module_registry")).merge_into(merged)
 
 
 def validate_app_module_alignment(
@@ -364,15 +362,12 @@ def _write_app_module_file(
             continue
         if source_dir.parts[:1] != ("modules",):
             continue
-        lines.append(
-            f'set(NSX_APP_MODULE_DIR_{name.replace("-", "_")} "{source_dir.as_posix()}")'
-        )
+        lines.append(f'set(NSX_APP_MODULE_DIR_{name.replace("-", "_")} "{source_dir.as_posix()}")')
 
     project_dirs = sorted({
         project_dir.as_posix()
         for name in ordered_module_names
-        if (project_dir := _module_project_dir_relative_to_app(name, registry, nsx_cfg))
-        is not None
+        if (project_dir := _module_project_dir_relative_to_app(name, registry, nsx_cfg)) is not None
     })
     if project_dirs:
         lines.append("")
@@ -404,6 +399,37 @@ def _write_modules_gitignore(app_dir: Path, nsx_cfg: dict[str, Any]) -> None:
     )
 
 
+def _module_gitignore_relpath(
+    app_dir: Path,
+    registry: dict[str, Any],
+    name: str,
+) -> Path:
+    """Resolve the ``modules/``-relative directory a module is vendored into.
+
+    Mirrors :func:`_module_source_dir_relative_to_app` /
+    :func:`_resolved_module_path`: a module that resolves to a registry
+    project is vendored under its project clone dir (``modules/<project>``),
+    everything else under ``modules/<name>``.
+
+    Raises ``ValueError`` when the module has no registry entry (or resolves
+    outside ``modules/``); callers decide whether that means *skip* (registry
+    modules) or *fall back to* ``modules/<name>`` (local modules).
+    Malformed-registry ``KeyError`` / ``TypeError`` fall back to ``<name>``.
+    """
+    from .metadata import registry_entry_for_module
+
+    modules_root = app_dir / "modules"
+    try:
+        entry = registry_entry_for_module(registry, name)
+        if _is_packaged_module(registry, name):
+            target_dir = _vendored_target_dir(app_dir, name, entry.metadata)
+        else:
+            target_dir = _module_clone_dir(app_dir, entry.project, registry)
+        return target_dir.relative_to(modules_root)
+    except (KeyError, ValueError, TypeError):
+        return Path(name)
+
+
 def _module_gitignore_entries(
     app_dir: Path,
     *,
@@ -412,35 +438,51 @@ def _module_gitignore_entries(
     local_names: set[str],
     vendored_names: set[str],
 ) -> list[str]:
-    from .metadata import registry_entry_for_module
-
     registry = _effective_registry(_load_registry(), nsx_cfg, app_dir=app_dir)
-    modules_root = app_dir / "modules"
     entries: list[str] = []
     for name in module_names:
         if name in local_names or name in vendored_names:
             continue
         try:
-            entry = registry_entry_for_module(registry, name)
-            if _is_packaged_module(registry, name):
-                target_dir = _vendored_target_dir(app_dir, name, entry.metadata)
-            else:
-                target_dir = _module_clone_dir(app_dir, entry.project, registry)
-            rel = target_dir.relative_to(modules_root)
+            rel = _module_gitignore_relpath(app_dir, registry, name)
         except ValueError:
             continue
-        except (KeyError, TypeError):
-            rel = Path(name)
         if rel.parts:
             entries.append(rel.as_posix().rstrip("/") + "/")
     return _unique_preserving_order(entries)
+
+
+def _local_module_gitignore_paths(
+    app_dir: Path,
+    nsx_cfg: dict[str, Any],
+    local_names: set[str],
+) -> dict[str, str]:
+    """Map each local module name to the ``modules/``-relative dir it is
+    vendored into.
+
+    A ``local: true`` module that resolves to a registry project whose name
+    differs from the module name (e.g. ``nsx-helia-rt`` in project
+    ``helia-rt``) is vendored under ``modules/<project>`` by ``nsx sync``, so
+    that — not ``modules/<name>`` — is what must be ignored. Bare local
+    modules with no registry entry stay at ``modules/<name>``.
+    """
+    registry = _effective_registry(_load_registry(), nsx_cfg, app_dir=app_dir)
+    paths: dict[str, str] = {}
+    for name in sorted(local_names):
+        try:
+            rel = _module_gitignore_relpath(app_dir, registry, name)
+        except ValueError:
+            # Bare local module with no registry entry — stays at modules/<name>/.
+            rel = Path(name)
+        paths[name] = rel.as_posix().rstrip("/") + "/"
+    return paths
 
 
 def _write_modules_gitignore_for_names(
     app_dir: Path,
     *,
     registry_entries: list[str],
-    local_names: set[str],
+    local_entries: dict[str, str],
     vendored_names: set[str],
 ) -> None:
     """Generate ``modules/.gitignore`` for a resolved module set."""
@@ -451,11 +493,11 @@ def _write_modules_gitignore_for_names(
     ]
     for entry in sorted(registry_entries):
         lines.append(entry)
-    if local_names:
+    if local_entries:
         lines.append("")
         lines.append("# Local modules (mirrored from external path) are ignored:")
-        for name in sorted(local_names):
-            lines.append(f"{name}/")
+        for entry in sorted(set(local_entries.values())):
+            lines.append(entry)
     if vendored_names:
         lines.append("")
         lines.append("# Vendored modules (committed in this app) are NOT ignored:")
@@ -484,7 +526,7 @@ def _write_modules_gitignore_for_module_names(
     _write_modules_gitignore_for_names(
         app_dir,
         registry_entries=registry_entries,
-        local_names=local_names,
+        local_entries=_local_module_gitignore_paths(app_dir, nsx_cfg, local_names),
         vendored_names=vendored_names,
     )
 
@@ -525,7 +567,7 @@ def _metadata_path_relative_to_project(metadata: Path, project_path: str | None)
             if metadata.parts[: len(project_parts)] == project_parts:
                 return Path(*metadata.parts[len(project_parts) :])
         return metadata
-    return metadata.name
+    return Path(metadata.name)
 
 
 def _is_packaged_module(registry: dict[str, Any], module_name: str) -> bool:
@@ -562,16 +604,40 @@ def _module_source_dir_relative_to_app(
     Git modules are vendored under their *project* clone directory (a whole
     monorepo may host many modules), so the module dir is the project clone
     dir joined with the module's metadata path taken relative to the project
-    root. Packaged modules keep their vendored target layout; opaque modules
-    live at ``modules/<name>``.
+    root. Packaged modules keep their vendored target layout.
+
+    Vendored modules (``source: {vendored: true}``) and bare local modules
+    (``local: true`` with no registry entry, e.g. ``nsx module add --local``)
+    have no registry project, so their source IS ``modules/<name>``.
+
+    A ``local: true`` module that *does* resolve to a registry project — e.g.
+    an engine module pinned to a monorepo project whose name differs from the
+    module name (``nsx-helia-rt`` in project ``helia-rt``) — is resolved
+    through the project clone dir, then the module's own metadata sub-path
+    (``modules/helia-rt/nsx``), exactly like a git module. ``nsx lock`` /
+    ``nsx sync`` (via ``_resolved_module_path``) vendor the project clone dir
+    itself (``modules/helia-rt``), so this returns a subdirectory of that
+    same vendored tree — keeping the generated ``modules.cmake`` module-dir
+    map (consumed by the CMake ``add_subdirectory`` bootstrap) pointing inside
+    the directory the module is actually vendored into.
     """
 
     from .metadata import registry_entry_for_module
 
-    if module_name in AppConfig.from_mapping(nsx_cfg).opaque_modules():
+    app_cfg = AppConfig.from_mapping(nsx_cfg)
+
+    # Vendored modules: the source IS modules/<name>/ (no registry project).
+    if module_name in app_cfg.vendored_module_names():
         return Path("modules") / module_name
 
-    entry = registry_entry_for_module(registry, module_name)
+    try:
+        entry = registry_entry_for_module(registry, module_name)
+    except ValueError:
+        # Bare local module with no registry entry (`nsx module add
+        # --local`) — the source IS modules/<name>/.
+        if module_name in app_cfg.local_module_names():
+            return Path("modules") / module_name
+        raise
 
     if _is_packaged_module(registry, module_name):
         return _vendored_target_dir(Path("."), module_name, entry.metadata)
@@ -586,14 +652,30 @@ def _module_project_dir_relative_to_app(
     registry: dict[str, Any],
     nsx_cfg: dict[str, Any],
 ) -> Path | None:
-    """Resolve a git module's project clone dir (where its bundle-level
-    ``cmake/`` helpers live), or ``None`` for opaque/packaged modules."""
+    """Resolve a module's project clone dir (where its bundle-level ``cmake/``
+    helpers live), or ``None`` when the module has no registry project.
+
+    Vendored modules and bare local modules (``local: true`` with no registry
+    entry) have no project clone dir → ``None``. A ``local: true`` module that
+    *does* resolve to a registry project (e.g. ``nsx-helia-rt`` in project
+    ``helia-rt``) returns its project clone dir, exactly like a git module, so
+    its bundle-level ``cmake/*.cmake`` helpers are made available to the app
+    bootstrap. (A self-contained wrapper with no ``cmake/`` helpers is
+    harmless: the bootstrap simply globs an empty set.)
+    """
 
     from .metadata import registry_entry_for_module
 
-    if module_name in AppConfig.from_mapping(nsx_cfg).opaque_modules():
+    app_cfg = AppConfig.from_mapping(nsx_cfg)
+    if module_name in app_cfg.vendored_module_names():
         return None
-    entry = registry_entry_for_module(registry, module_name)
+    try:
+        entry = registry_entry_for_module(registry, module_name)
+    except ValueError:
+        # Bare local module with no registry entry — no project clone dir.
+        if module_name in app_cfg.local_module_names():
+            return None
+        raise
     if _is_packaged_module(registry, module_name):
         return None
     return _module_clone_dir(Path("."), entry.project, registry)
