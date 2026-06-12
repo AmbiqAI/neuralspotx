@@ -11,6 +11,12 @@ function(nsx_module_dir_for_name out_var module_name)
         return()
     endif()
 
+    # The generated cmake/nsx/modules.cmake emits NSX_APP_MODULE_DIR_<name>
+    # overrides (e.g. unified-SDK modules mapped under
+    # modules/nsx-ambiq-sdk/modules/<name>). Those are set in the including
+    # directory's scope, which is not always visible to DEFINED here when this
+    # function runs from a different scope. Fall back to a directory-scope
+    # lookup so the override still wins over the default modules/<name> path.
     get_directory_property(module_dir_definition DEFINITION ${module_dir_var})
     if(NOT module_dir_definition STREQUAL "")
         set(${out_var} "${module_dir_definition}" PARENT_SCOPE)

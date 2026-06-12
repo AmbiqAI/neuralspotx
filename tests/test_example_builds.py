@@ -78,15 +78,22 @@ def test_example_configures_and_builds(example_app: Path) -> None:
     subprocess.run(configure_cmd, check=True, timeout=300)
     subprocess.run(build_cmd, check=True, timeout=300)
 
-    # The build target name matches the directory / project name.
+    # The build target name matches the directory / project name. The build
+    # tree is nested under build/<board>/, where <board> is the example's
+    # target board (not necessarily apollo510_evb), so discover it rather
+    # than hard-coding a single board.
     app_name = example_app.name
-    build_dir = example_app / "build" / "apollo510_evb"
+    build_root = example_app / "build"
+    build_dirs = [d for d in build_root.iterdir() if d.is_dir()] if build_root.is_dir() else []
     # The executable suffix depends on toolchain (.axf for GCC, .elf for armclang)
     # and may be absent depending on CMake configuration.
     candidates = [
-        build_dir / f"{app_name}.axf",
-        build_dir / f"{app_name}.elf",
-        build_dir / app_name,
+        build_dir / name
+        for build_dir in build_dirs
+        for name in (f"{app_name}.axf", f"{app_name}.elf", app_name)
     ]
     elf = next((c for c in candidates if c.exists()), None)
-    assert elf is not None, f"Expected ELF at {build_dir}/{app_name}[.axf|.elf]"
+    assert elf is not None, (
+        f"Expected ELF for {app_name} under {build_root}/<board>/[.axf|.elf]; "
+        f"searched board dirs: {[d.name for d in build_dirs]}"
+    )
