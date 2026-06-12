@@ -2,4 +2,4 @@
 
 If you want a step-by-step workflow for compiling your own `.tflite` into an
 NSX module with `helia-aot`, see
-[Custom Models with heliaAOT](../user-guide/custom-models.md).
+[Custom Models with helia-aot](../user-guide/custom-models.md).

@@ -10,7 +10,7 @@ All examples target the **Apollo510 EVB** (`apollo510_evb` profile).
 
 If you want to bring your own `.tflite` model and walk through the full
 `helia-aot` to NSX integration flow yourself, see
-[Custom Models with heliaAOT](../user-guide/custom-models.md).
+[Custom Models with helia-aot](../user-guide/custom-models.md).
 
 ## Quick Start
 

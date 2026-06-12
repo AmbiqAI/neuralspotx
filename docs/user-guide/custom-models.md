@@ -1,7 +1,7 @@
-# Custom Models with heliaAOT
+# Custom Models with helia-aot
 
 NSX can host a model that you compile yourself with
-[`helia-aot`](https://github.com/AmbiqAI/helia-aot), vendor into an app as an
+[`helia-aot`](https://github.com/AmbiqAI/helia-aot), then vendor the generated output into an app as an
 app-local module, and then build, flash, and run like any other NSX app.
 
 This page documents the full manual workflow. Unlike the ready-made apps in
@@ -34,7 +34,7 @@ At a high level:
 ```mermaid
 flowchart LR
     A["model.tflite"] --> B["helia-aot convert"]
-    B --> D["app/modules/my-model/"]
+    B --> D["./modules/my-model/"]
     D --> E["nsx lock"]
     E --> F["nsx configure"]
     F --> G["nsx build"]
@@ -73,7 +73,7 @@ repeatable:
 cp /path/to/model.tflite ./model.tflite
 ```
 
-## 4. Run heliaAOT
+## 4. Run helia-aot
 
 Generate an NSX module directly into your app's `modules/` directory:
 

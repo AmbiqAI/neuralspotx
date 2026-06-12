@@ -58,7 +58,7 @@ continue with the sections below.
 
 If your goal is to compile a `.tflite` model with `helia-aot` and drop the
 generated output into an NSX app, see
-[Custom Models with heliaAOT](custom-models.md).
+[Custom Models with helia-aot](custom-models.md).
 
 ## Build a Module from Scratch
 
