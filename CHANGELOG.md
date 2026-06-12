@@ -1,5 +1,23 @@
 # Changelog
 
+## [0.6.6](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.6.5...neuralspotx-v0.6.6) (2026-06-12)
+
+
+### Features
+
+* add CM4F FreeRTOS example apps ([#128](https://github.com/AmbiqAI/neuralspotx/issues/128)) ([e9e6c40](https://github.com/AmbiqAI/neuralspotx/commit/e9e6c40c3a651d6abc1667ff37cfe89997fc6b84))
+* **examples:** add freertos_blinky Apollo510 reference app ([#122](https://github.com/AmbiqAI/neuralspotx/issues/122)) ([325e68e](https://github.com/AmbiqAI/neuralspotx/commit/325e68e831c491af09ce9c33cfd77c4dc4a757b5))
+* support named linker profiles in M55 board modules ([#129](https://github.com/AmbiqAI/neuralspotx/issues/129)) ([8e2790d](https://github.com/AmbiqAI/neuralspotx/commit/8e2790d351d1541d2bb9e1ea932ad1376b0c2ca3))
+
+
+### Bug Fixes
+
+* preserve skip-on-missing-registry semantics for gitignore entries ([19dc454](https://github.com/AmbiqAI/neuralspotx/commit/19dc4549fe440b318920253b10197a33d40e8db9))
+* **registry:** keep nsx-pmu-armv8m standalone on apollo5 ([#124](https://github.com/AmbiqAI/neuralspotx/issues/124)) ([6c26f1f](https://github.com/AmbiqAI/neuralspotx/commit/6c26f1fa48c26af4e619ebdb92f6bcf9ac0e4b80))
+* resolve local module CMake dir to project clone dir ([57b1eb8](https://github.com/AmbiqAI/neuralspotx/commit/57b1eb814509e2f01b6603cd9f4c9e6662b31a14))
+* resolve local module CMake dir to project clone dir ([f80bbe0](https://github.com/AmbiqAI/neuralspotx/commit/f80bbe0c8b6a36d0872420490a8bfa9941b667f8))
+* resolve local-module gitignore + project dir to project clone path ([1872d2e](https://github.com/AmbiqAI/neuralspotx/commit/1872d2ee045a9abd65a6720e02ee88b687e1d807))
+
 ## [0.6.5](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.6.4...neuralspotx-v0.6.5) (2026-06-11)
 
 
