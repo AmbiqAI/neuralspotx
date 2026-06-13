@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.7](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.6.6...neuralspotx-v0.6.7) (2026-06-13)
+
+
+### Bug Fixes
+
+* **nsx-tooling:** declare armclang and atfe toolchain compatibility ([#131](https://github.com/AmbiqAI/neuralspotx/issues/131)) ([dece5de](https://github.com/AmbiqAI/neuralspotx/commit/dece5def1483b379cc865cffb8409cc3051a417c))
+
 ## [0.6.6](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.6.5...neuralspotx-v0.6.6) (2026-06-12)
 
 
