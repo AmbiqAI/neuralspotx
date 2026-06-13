@@ -11,6 +11,7 @@
 static NSX_MEM_SRAM_BSS uint8_t g_usb_tx_buf[USB_TX_BUF_SIZE];
 static NSX_MEM_SRAM_BSS uint8_t g_usb_rx_buf[USB_RX_BUF_SIZE];
 static uint8_t g_echo_buf[ECHO_BUF_SIZE];
+static bool g_logged_connected = false;
 
 int main(void)
 {
@@ -44,8 +45,13 @@ int main(void)
 
     while (1) {
         if (!nsx_usb_connected(&usb)) {
+            g_logged_connected = false;
             nsx_delay_us(100000);
             continue;
+        }
+
+        if (!g_logged_connected) {
+            g_logged_connected = true;
         }
 
         uint32_t n = 0;
