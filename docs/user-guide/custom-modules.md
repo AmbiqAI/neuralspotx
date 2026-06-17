@@ -56,6 +56,10 @@ This creates `nsx-module.yaml`, `CMakeLists.txt`, a public header tree under
 For a full walkthrough of the generated files and how to register the module,
 continue with the sections below.
 
+If your goal is to compile a `.tflite` model with `helia-aot` and drop the
+generated output into an NSX app, see
+[Custom Models with heliaAOT](custom-models.md).
+
 ## Build a Module from Scratch
 
 The shortest end-to-end path is:

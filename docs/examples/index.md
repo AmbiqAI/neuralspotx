@@ -8,6 +8,10 @@ app — the same shape that `nsx create-app` produces — with its own
 
 All examples target the **Apollo510 EVB** (`apollo510_evb` profile).
 
+If you want to bring your own `.tflite` model and walk through the full
+`helia-aot` to NSX integration flow yourself, see
+[Custom Models with heliaAOT](../user-guide/custom-models.md).
+
 ## Quick Start
 
 The recommended flow is to install `nsx` once and create your own app
