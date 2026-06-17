@@ -34,6 +34,10 @@ directory when enabled. The only difference is how NSX discovers them:
 - **Custom** modules are resolved from the app-local `nsx.yml` overrides
   created by `nsx module register`.
 
+If your goal is to compile a `.tflite` model with `helia-aot` and drop the
+generated output into an NSX app, see
+[Custom Models with heliaAOT](custom-models.md).
+
 ## Scaffolding a New Module
 
 Use `nsx module init` to generate a standard custom-module layout instead of

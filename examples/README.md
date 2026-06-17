@@ -2,7 +2,8 @@
 
 Self-contained example applications that showcase different nsx-module
 combinations.  Each directory is a complete **nsx app** – it has an
-`nsx.yml`, a `CMakeLists.txt`, and a `src/main.c`.
+`nsx.yml`, a `CMakeLists.txt`, and a `src/main.c` or tutorial setup
+instructions.
 
 ## Quick start
 
@@ -22,6 +23,7 @@ nsx view      --app-dir .        # (optional) SWO viewer
 | `power_benchmark`| `nsx-power`        | Power measurement: CoreMark, while(1), deep sleep |
 | `coremark`       | `nsx-power`        | EEMBC CoreMark with ITCM + NVM shutdown |
 | `kws_infer`      | `cmsis-nn`         | Keyword-spotting TFLite Micro inference  |
+| `resnet_example` | `nsx-helia-rt`, `nsx-cmsis-nn` | ResNet tutorial scaffold; fetch model-zoo assets and generate AOT output yourself |
 | `pmu_profiling`  | `nsx-pmu-armv8m`   | PMU cycle / event counting              |
 | `audio_capture`  | `nsx-audio`        | PDM microphone capture + SWO stats      |
 | `usb_serial`     | `nsx-usb`          | USB CDC echo                            |
