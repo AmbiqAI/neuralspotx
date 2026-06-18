@@ -9,13 +9,13 @@ app — the same shape that `nsx create-app` produces — with its own
 ## Quick Start
 
 The normal app-developer flow is to install `nsx` once with `pipx` (see
-[Install and Setup](install.md)) and create your own app:
+[Install and Setup](install/index.md)) and create your own app:
 
 ```bash
 nsx create-app my_app
 cd my_app
-nsx configure --app-dir .
-nsx build     --app-dir .
+nsx configure
+nsx build
 ```
 
 To try a maintained example without a git clone or a separate workspace,
@@ -28,14 +28,17 @@ curl -fL https://github.com/AmbiqAI/neuralspotx/archive/refs/heads/main.tar.gz \
   | tar -xz -f - --strip-components=2 neuralspotx-main/examples/hello_world
 cd hello_world
 
-nsx configure --app-dir .
-nsx build     --app-dir .
-nsx flash     --app-dir .   # requires an EVB connected via J-Link
-nsx view      --app-dir .   # streams SWO output in the terminal
+nsx configure
+nsx build
+nsx flash   # requires an EVB connected via J-Link
+nsx view    # streams SWO output in the terminal
 ```
 
 If you already have the repo cloned for contributing,
 `cd neuralspotx/examples/hello_world` works the same way.
+
+In both flows above, NSX resolves the app directory from the current working
+directory by finding the nearest `nsx.yml`.
 
 `nsx configure` automatically fetches any missing registry modules —
 no separate module-install step is required (the only one-time install
@@ -113,8 +116,8 @@ Every example follows the same workflow — just change directories:
 
 ```bash
 cd ../pmu_profiling
-nsx configure --app-dir .
-nsx build     --app-dir .
+nsx configure
+nsx build
 ```
 
 ## Example Directory Layout

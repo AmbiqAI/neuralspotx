@@ -2,6 +2,10 @@
 
 NSX wraps the normal firmware lifecycle around generated CMake targets.
 
+Run these commands from the app root when possible. NSX resolves the active app
+by walking upward to the nearest `nsx.yml`, so `--app-dir` is only needed when
+you want to target a different app explicitly.
+
 ```mermaid
 sequenceDiagram
     participant User
@@ -27,19 +31,19 @@ sequenceDiagram
 ## Configure
 
 ```bash
-nsx configure --app-dir <app-dir>
+nsx configure
 ```
 
 ## Build
 
 ```bash
-nsx build --app-dir <app-dir>
+nsx build
 ```
 
 ## Flash
 
 ```bash
-nsx flash --app-dir <app-dir>
+nsx flash
 ```
 
 This builds the app if needed and then invokes the SEGGER flash path defined by
@@ -48,7 +52,7 @@ the app’s generated CMake support.
 ## View SWO Output
 
 ```bash
-nsx view --app-dir <app-dir>
+nsx view
 ```
 
 `nsx view` launches the SEGGER SWO viewer for the active board target, waits briefly
@@ -62,16 +66,16 @@ the attach delay with `--reset-delay-ms`.
 ## Clean
 
 ```bash
-nsx clean --app-dir <app-dir>
+nsx clean
 ```
 
 ## Typical Sequence
 
 ```bash
-nsx configure --app-dir <app-dir>
-nsx build --app-dir <app-dir>
-nsx flash --app-dir <app-dir>
-nsx view --app-dir <app-dir>
+nsx configure
+nsx build
+nsx flash
+nsx view
 ```
 
 For Apollo510, the validated behavior is to keep the normal `Reset` sequence and

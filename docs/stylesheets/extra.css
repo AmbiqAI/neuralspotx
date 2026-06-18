@@ -79,104 +79,329 @@
 /* ── Layout ───────────────────────────────────────────────────────── */
 .md-grid { max-width: 1840px; }
 
-/* ── Landing page ─────────────────────────────────────────────────── */
+/* ═══════════════════════════════════════════════════════════════════
+   Landing page — reusable component system
+   Tokens → primitives (.l-card, .l-grid, .l-section) → compositions.
+   Grids use auto-fit + minmax(min(100%, …)) so nothing is ever cut off
+   on small screens; cards reflow from 1 → N columns fluidly.
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── Design tokens ───────────────────────────────────────────────── */
 .landing {
-  max-width: 1120px;
+  --l-ink: #0b1220;
+  --l-muted: #4a5567;
+  --l-surface: #ffffff;
+  --l-surface-2: #f6f8fa;
+  --l-border: rgba(15, 23, 42, 0.1);
+  --l-accent: #0d8f88;
+  --l-accent-contrast: #ffffff;
+  --l-accent-soft: rgba(13, 143, 136, 0.1);
+  --l-code-bg: #f6f8fa;
+  --l-shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 8px 24px rgba(15, 23, 42, 0.06);
+  --l-shadow-hover: 0 2px 6px rgba(15, 23, 42, 0.06), 0 18px 40px rgba(13, 143, 136, 0.16);
+
+  max-width: 1080px;
   margin: 0 auto;
+  color: var(--l-ink);
 }
-.landing h2 {
+
+[data-md-color-scheme="slate"] .landing {
+  --l-ink: #f1f5f9;
+  --l-muted: #aeb9c9;
+  --l-surface: #0e131c;
+  --l-surface-2: #131a26;
+  --l-border: rgba(226, 232, 240, 0.1);
+  --l-accent: #2dd4bf;
+  --l-accent-contrast: #04211e;
+  --l-accent-soft: rgba(45, 212, 191, 0.12);
+  --l-code-bg: #0b0f17;
+  --l-shadow: 0 1px 2px rgba(0, 0, 0, 0.3), 0 10px 30px rgba(0, 0, 0, 0.35);
+  --l-shadow-hover: 0 2px 6px rgba(0, 0, 0, 0.4), 0 18px 44px rgba(45, 212, 191, 0.12);
+}
+
+.landing :is(h1, h2, h3, h4) .headerlink {
+  display: none;
+}
+
+/* ── Section primitive ───────────────────────────────────────────── */
+.l-section {
+  margin: 4.5rem 0 0;
+}
+.l-section__head {
+  max-width: 46rem;
+  margin: 0 auto 1.75rem;
   text-align: center;
-  margin-top: 0.5rem;
 }
-.landing hr {
-  border: none;
-  border-top: 1px solid var(--md-default-fg-color--lightest);
-  margin: 3rem 0;
-}
-
-/* Hero */
-.landing .hero { text-align: center; margin: 3rem 0 0; }
-.hero-logo { max-width: min(460px, 80%); height: auto; }
-.landing .hero h1 {
-  font-size: 1.5rem;
+.l-eyebrow {
+  margin: 0 0 0.6rem;
+  color: var(--l-accent);
+  font-size: 0.72rem;
   font-weight: 700;
-  letter-spacing: -0.02em;
-  margin: 0 0 0.5rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
 }
-.hero-sub {
-  font-size: 1.05rem;
-  color: var(--md-default-fg-color--light);
-  margin-bottom: 1.5rem;
+.l-section__head h2 {
+  margin: 0 0 0.6rem;
+  font-size: clamp(1.5rem, 3vw, 2rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  color: var(--l-ink);
+}
+.l-lead {
+  margin: 0 auto;
+  max-width: 42rem;
+  color: var(--l-muted);
+  font-size: 1.02rem;
+  line-height: 1.6;
 }
 
-.quick-links {
+/* ── Hero ────────────────────────────────────────────────────────── */
+.l-hero {
+  text-align: center;
+  max-width: 50rem;
+  margin: 3rem auto 0;
+}
+.l-hero h1 {
+  font-size: clamp(2.3rem, 5vw, 3.6rem);
+  font-weight: 760;
+  line-height: 1.04;
+  letter-spacing: -0.035em;
+  margin: 0 auto 1.1rem;
+  max-width: 18ch;
+  color: var(--l-ink);
+}
+.l-hero .l-lead {
+  font-size: clamp(1.05rem, 1.6vw, 1.2rem);
+}
+.l-hero__cta {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: 0.5rem;
-  margin: 0.5rem 0 0;
+  gap: 0.75rem;
+  margin-top: 1.6rem;
 }
-.quick-links .md-button {
+.l-hero__cta .md-button {
   margin: 0;
-  padding: 0.35rem 0.65rem;
-  font-size: 0.72rem;
+  padding: 0.72rem 1.4rem;
+  font-weight: 600;
   border-radius: 999px;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+.l-hero__cta .md-button--primary {
+  background: var(--l-accent);
+  border-color: var(--l-accent);
+  color: var(--l-accent-contrast);
+}
+.l-hero__cta .md-button--primary:hover {
+  transform: translateY(-1px);
+  box-shadow: var(--l-shadow-hover);
+}
+.l-hero__cta .md-button:not(.md-button--primary) {
+  border-color: var(--l-border);
+  color: var(--l-ink);
+}
+.l-hero__cta .md-button:not(.md-button--primary):hover {
+  border-color: var(--l-accent);
+  color: var(--l-accent);
 }
 
-/* Subtitle paragraphs */
-.section-sub {
-  text-align: center;
-  color: var(--md-default-fg-color--light);
+/* ── Terminal card ───────────────────────────────────────────────── */
+.l-terminal {
+  position: relative;
+  max-width: 44rem;
+  margin: 2.2rem auto 0;
+  padding: 2.7rem 0.9rem 0.9rem;
+  border: 1px solid var(--l-border);
+  border-radius: 16px;
+  background: var(--l-surface);
+  box-shadow: var(--l-shadow);
+  text-align: left;
+}
+.l-terminal::before {
+  content: "";
+  position: absolute;
+  top: 1.05rem;
+  left: 1.1rem;
+  width: 0.72rem;
+  height: 0.72rem;
+  border-radius: 50%;
+  background: #ff5f57;
+  box-shadow: 1.15rem 0 #febc2e, 2.3rem 0 #28c840;
+}
+.l-terminal::after {
+  content: "nsx";
+  position: absolute;
+  top: 0.95rem;
+  right: 1.1rem;
+  color: var(--l-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+.l-terminal .highlight,
+.l-terminal pre {
+  margin: 0;
+}
+.l-terminal pre {
+  border: none;
+  border-radius: 10px;
+  background: var(--l-code-bg);
+  overflow-x: auto;
+}
+
+/* ── Grid primitive ──────────────────────────────────────────────── */
+.l-grid {
+  display: grid;
+  gap: 1rem;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 17rem), 1fr));
+}
+.l-grid--4 {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13.5rem), 1fr));
+}
+
+/* ── Card primitive ──────────────────────────────────────────────── */
+.l-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 1.4rem;
+  border: 1px solid var(--l-border);
+  border-radius: 16px;
+  background: var(--l-surface);
+  box-shadow: var(--l-shadow);
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
+}
+.l-card__icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.4rem;
+  height: 2.4rem;
+  margin-bottom: 0.9rem;
+  border-radius: 12px;
+  background: var(--l-accent-soft);
+  color: var(--l-accent);
+}
+.l-card__icon svg {
+  width: 1.3rem;
+  height: 1.3rem;
+  fill: currentColor;
+}
+.l-card :is(h3, h4) {
+  margin: 0 0 0.4rem;
+  font-size: 1.02rem;
+  font-weight: 650;
+  line-height: 1.25;
+  color: var(--l-ink);
+}
+.l-card p {
+  margin: 0;
+  color: var(--l-muted);
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+.l-card p + p {
+  margin-top: 0.6rem;
+}
+.l-card__link {
+  margin-top: 0.9rem;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: var(--l-accent);
+}
+/* Whole-card click target without nesting block-level anchors */
+.l-card--link .l-card__link::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+}
+.l-card--link:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--l-shadow-hover);
+  border-color: var(--l-accent);
+}
+
+/* ── Step cards (numbered workflow) ──────────────────────────────── */
+.l-steps {
+  counter-reset: l-step;
+}
+.l-step {
+  padding-top: 1.5rem;
+}
+.l-step::before {
+  counter-increment: l-step;
+  content: counter(l-step);
+  position: absolute;
+  top: 1.1rem;
+  right: 1.2rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.7rem;
+  height: 1.7rem;
+  border-radius: 999px;
+  background: var(--l-accent-soft);
+  color: var(--l-accent);
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+.l-step :is(h3, h4) {
+  font-family: var(--md-code-font-family, monospace);
   font-size: 0.95rem;
 }
 
-/* SVG diagrams */
-.diagram { display: block; margin: 1.5rem auto; width: 100%; height: auto; }
-.diagram--narrow { max-width: 680px; }
+/* ── Closing CTA band ────────────────────────────────────────────── */
+.l-cta {
+  margin: 4.5rem 0 1rem;
+  padding: 2.4rem 1.6rem;
+  border: 1px solid var(--l-border);
+  border-radius: 20px;
+  background:
+    radial-gradient(120% 140% at 0% 0%, var(--l-accent-soft), transparent 55%),
+    var(--l-surface-2);
+  text-align: center;
+}
+.l-cta h2 {
+  margin: 0 0 0.5rem;
+  font-size: clamp(1.4rem, 2.6vw, 1.9rem);
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--l-ink);
+}
+.l-cta p {
+  margin: 0 auto 1.4rem;
+  max-width: 38rem;
+  color: var(--l-muted);
+}
+.l-cta__actions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.7rem;
+}
+.l-cta__actions .md-button {
+  margin: 0;
+  padding: 0.68rem 1.3rem;
+  border-radius: 999px;
+}
+.l-cta__actions .md-button--primary {
+  background: var(--l-accent);
+  border-color: var(--l-accent);
+  color: var(--l-accent-contrast);
+}
 
-/* Material grid cards on the home page */
-.landing .grid.cards > ul > li > p {
-  font-size: 0.9rem;
-  line-height: 1.55;
-}
-.landing .grid.cards > ul > li > p:first-child {
-  font-size: 0.84rem;
-  line-height: 1.4;
-}
-.landing .grid.cards > ul > li > p:first-child strong {
-  font-weight: 600;
-}
-
-.landing .feature-cards > ul > li {
-  padding: 0.7rem 0.8rem;
-}
-.landing .feature-cards > ul > li > p {
-  font-size: 0.84rem;
-  line-height: 1.45;
-}
-.landing .feature-cards > ul > li > p:first-child {
-  font-size: 0.79rem;
-  line-height: 1.25;
-}
-
-/* ── Card grid for non-landing pages (getting-started, examples) ──── */
-.card-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 1rem;
-  margin: 0 0 1rem;
-}
-.card-grid .card {
-  border: 1px solid var(--md-default-fg-color--lightest);
-  border-radius: 8px;
-  padding: 1.3rem 1.4rem;
-  transition: border-color 0.2s;
-}
-.card-grid .card:hover { border-color: var(--md-accent-fg-color); }
-.card-grid .card h3 { margin: 0 0 0.35rem; font-size: 0.98rem; font-weight: 600; }
-.card-grid .card p  { margin: 0; font-size: 0.88rem; line-height: 1.6; color: var(--md-default-fg-color--light); }
-.card-grid--3 { grid-template-columns: repeat(3, 1fr); }
-.card-grid--2 { grid-template-columns: repeat(2, 1fr); }
-@media (max-width: 900px) {
-  .card-grid--3, .card-grid--2 { grid-template-columns: 1fr; }
+@media (max-width: 600px) {
+  .l-section {
+    margin-top: 3.25rem;
+  }
+  .l-card {
+    padding: 1.2rem;
+  }
 }

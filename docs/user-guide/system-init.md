@@ -79,7 +79,7 @@ Two transports are supported:
 |-----------|-------------|
 | `NSX_DEBUG_ITM` | SWO/ITM over JLink. On Apollo510 this handles DCU enable, TPIU config, SWO pin, and printf backend automatically. On Apollo3/4 uses the BSP helper. |
 | `NSX_DEBUG_UART` | UART through BSP pins. Calls `am_bsp_uart_printf_enable()`. |
-| `NSX_DEBUG_NONE` | No debug output (production). |
+| `NSX_DEBUG_NONE` | No debug output (silent / power-sensitive runs). |
 
 After init, use `ns_printf()` for output — it routes through whichever
 backend was configured.
@@ -131,8 +131,9 @@ int main(void) {
 | Debug/trace | Disabled | Not touched |
 
 Use `nsx_minimal_hw_init()` when you want fast startup during development
-and don't need full power optimization. Use `nsx_hw_init()` for production
-deployments where power efficiency matters.
+and don't need full power optimization. Use `nsx_hw_init()` when power
+efficiency matters — for example, power benchmarking and battery-life
+characterization.
 
 ## Platform Backends
 

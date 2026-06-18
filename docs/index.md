@@ -1,169 +1,166 @@
 ---
 hide:
-  - navigation
   - toc
 ---
 
 <div class="landing" markdown>
 
-<div class="hero" markdown>
+<section class="l-hero" markdown>
 
-![neuralspotx](./assets/neuralspotx-logo-light.png#only-light){ .hero-logo }
-![neuralspotx](./assets/neuralspotx-logo-dark.png#only-dark){ .hero-logo }
+<p class="l-eyebrow">AI on Ambiq</p>
 
-# Bare-metal firmware development, simplified.
+# neuralSPOT-X
 
-A CLI-first build workflow for Ambiq SoCs — scaffold, build, flash, and
-stream live output in five commands.
-{ .hero-sub }
+<p class="l-lead">The single CLI, <strong>NSX</strong> for short, that scaffolds, builds,
+flashes, and profiles firmware for Ambiq SoCs, with first-class paths into the
+Helia runtime, ahead-of-time, and profiling stack.</p>
 
-[Get Started](getting-started/index.md){ .md-button .md-button--primary }
-[View on GitHub](https://github.com/AmbiqAI/neuralspotx){ .md-button }
-
+<div class="l-hero__cta" markdown>
+[Get started](getting-started/index.md){ .md-button .md-button--primary }
+[Build your first app](getting-started/first-app.md){ .md-button }
 </div>
 
----
-
-## Quick Links
-
-<div class="quick-links" markdown>
-
-[Features](#features-at-a-glance){ .md-button }
-[What is NSX?](#what-is-nsx){ .md-button }
-[How it Works](#how-it-works){ .md-button }
-[Module Catalog](user-guide/module-catalog.md){ .md-button }
-[Create First App](getting-started/first-app.md){ .md-button }
-[Examples](examples/index.md){ .md-button }
-
-</div>
-
----
-
-## Features at a Glance
-
-<div class="grid cards feature-cards" markdown>
-
--   :material-console: __5-command lifecycle__
-
-    ---
-
-    Create, configure, build, flash, and live-view from one CLI.
-
--   :material-package-variant: __Registry-backed modules__
-
-    ---
-
-    Declarative dependencies with versioned module resolution.
-
--   :material-chip: __Board-ready targets__
-
-    ---
-
-    Built-in Apollo3, Apollo4, Apollo5, and Apollo510 board coverage.
-
--   :material-cog: __Standard CMake output__
-
-    ---
-
-    Generated projects stay transparent and fully editable.
-
--   :material-speedometer: __Perf and power tooling__
-
-    ---
-
-    PMU profiling, cycle counters, and Joulescope workflows included.
-
--   :material-usb: __Maintained example apps__
-
-    ---
-
-    Ready-to-run examples for USB, audio, CoreMark, and more.
-
-</div>
-
----
-
-## What is NSX?
-
-NSX is a CLI-first firmware workflow for Ambiq SoCs that keeps app projects
-simple, reproducible, and easy to inspect.
-{ .section-sub }
-
-It focuses on source-controlled configuration, reusable modules, and generated
-vanilla CMake projects so teams can move quickly without hidden build tooling.
-{ .section-sub }
-
----
-
-## How it Works
-
-Five commands cover the full firmware lifecycle.
-{ .section-sub }
-
-![NSX workflow](./assets/workflow-light.svg#only-light){ .diagram }
-![NSX workflow](./assets/workflow-dark.svg#only-dark){ .diagram }
+<div class="l-terminal" markdown>
 
 ```bash
 nsx create-app my_app --board apollo510_evb
-nsx configure  --app-dir my_app
-nsx build      --app-dir my_app
-nsx flash      --app-dir my_app   # J-Link / SWD
-nsx view       --app-dir my_app   # live SWO stream
+cd my_app
+nsx configure
+nsx build
+nsx flash
+nsx view
 ```
 
-Every generated project is vanilla CMake — inspect, extend, or eject with no vendor lock-in.
-{ .section-sub }
+</div>
 
----
+</section>
 
-## Module Ecosystem
+<section class="l-section" markdown>
 
-Declare dependencies in YAML. NSX resolves versioned modules and wires them into your build.
-{ .section-sub }
+<div class="l-section__head" markdown>
+<p class="l-eyebrow">Workflow</p>
+## Five commands, idea to silicon
+<p class="l-lead">Every NSX app follows the same lifecycle. Each step is a single command
+against a transparent CMake + Ninja project you can always inspect.</p>
+</div>
 
-![Module ecosystem](./assets/ecosystem-light.svg#only-light){ .diagram .diagram--narrow }
-![Module ecosystem](./assets/ecosystem-dark.svg#only-dark){ .diagram .diagram--narrow }
+<div class="l-grid l-grid--4 l-steps" markdown>
 
-Modules are plain Git repos with an `nsx-module.yaml` descriptor. Adding one is a pull request, not a toolchain project.
-{ .section-sub }
+<div class="l-card l-step" markdown>
+#### `create-app`
+Scaffold an app project targeting a real Ambiq board.
+</div>
 
----
+<div class="l-card l-step" markdown>
+#### `configure`
+Resolve YAML module dependencies and lock versions.
+</div>
 
-## Where to Start
+<div class="l-card l-step" markdown>
+#### `build`
+Compile with CMake and Ninja into a flashable image.
+</div>
 
-<div class="grid cards" markdown>
+<div class="l-card l-step" markdown>
+#### `flash`
+Program the connected board and start the firmware.
+</div>
 
--   :material-rocket-launch: __New to NSX?__
+<div class="l-card l-step" markdown>
+#### `view`
+Stream live SWO output and inspect on-device results.
+</div>
 
-    ---
+</div>
 
-    Install the toolchain, create your first app, and build it in minutes.
+</section>
 
-    [Getting Started →](getting-started/index.md)
+<section class="l-section" markdown>
 
--   :material-book-open-variant: __Deep Dive__
+<div class="l-section__head" markdown>
+<p class="l-eyebrow">Helia stack</p>
+## A direct path to AI on device
+<p class="l-lead">NSX is the build-and-deploy vehicle for Ambiq's Helia tooling. Bring a model,
+choose a runtime path, and measure it on silicon.</p>
+</div>
 
-    ---
+<div class="l-grid l-grid--3" markdown>
 
-    App model, module resolution, board definitions, and build workflows.
+<div class="l-card l-card--link" markdown>
+:material-chip:{ .l-card__icon }
+### heliaRT
+An optimized LiteRT runtime tuned for Cortex-M cores and Apollo silicon.
+[Open docs](https://ambiqai.github.io/helia-rt/){ .l-card__link }
+</div>
 
-    [User Guide →](user-guide/app-model.md)
+<div class="l-card l-card--link" markdown>
+:material-code-braces:{ .l-card__icon }
+### heliaAOT
+Ahead-of-time C generation for compact, dependency-light deployment.
+[Open docs](https://ambiqai.github.io/helia-aot/){ .l-card__link }
+</div>
 
--   :material-console-line: __CLI Reference__
+<div class="l-card l-card--link" markdown>
+:material-speedometer:{ .l-card__icon }
+### heliaPROFILER
+On-device model profiling to compare paths against real hardware cost.
+[Open docs](https://ambiqai.github.io/helia-profiler/){ .l-card__link }
+</div>
 
-    ---
+</div>
 
-    Flags, options, and usage for every `nsx` subcommand.
+</section>
 
-    [Commands →](reference/cli-overview.md)
+<section class="l-section" markdown>
 
--   :material-flask-outline: __Browse Examples__
+<div class="l-section__head" markdown>
+<p class="l-eyebrow">Why NSX</p>
+## Built to stay inspectable
+<p class="l-lead">No hidden build magic. NSX generates standard projects you can read,
+edit, and reason about, then measures them where it counts.</p>
+</div>
 
-    ---
+<div class="l-grid l-grid--4" markdown>
 
-    CoreMark, PMU profiling, power benchmarking, USB serial, and more.
+<div class="l-card" markdown>
+:material-eye-outline:{ .l-card__icon }
+### Transparent builds
+Generated apps use CMake and Ninja, so projects stay readable and editable.
+</div>
 
-    [Examples →](examples/index.md)
+<div class="l-card" markdown>
+:material-source-branch:{ .l-card__icon }
+### Module resolution
+Declare dependencies in YAML and lock resolved versions into the app.
+</div>
+
+<div class="l-card" markdown>
+:material-developer-board:{ .l-card__icon }
+### Board-ready workflow
+Create, configure, build, flash, and view output for Ambiq targets.
+</div>
+
+<div class="l-card" markdown>
+:material-chart-line:{ .l-card__icon }
+### On-device measurement
+Benchmark firmware and profile model paths against real silicon.
+</div>
+
+</div>
+
+</section>
+
+<div class="l-cta" markdown>
+
+## Ready to build on Ambiq?
+
+<p>Install the CLI, scaffold your first board app, and explore the examples.</p>
+
+<div class="l-cta__actions" markdown>
+[Install NSX](getting-started/install/index.md){ .md-button .md-button--primary }
+[First app](getting-started/first-app.md){ .md-button }
+[Browse examples](examples/index.md){ .md-button }
+</div>
 
 </div>
 

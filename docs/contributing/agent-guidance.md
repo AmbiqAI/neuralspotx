@@ -70,9 +70,9 @@ Intended layering:
 
 In practice:
 
-- shared workflow logic belongs in `src/neuralspotx/operations.py`
-- the public programmatic surface belongs in `src/neuralspotx/api.py`
-- `src/neuralspotx/cli.py` should stay thin and delegate
+- shared workflow logic belongs in the `src/neuralspotx/operations/` package
+- the public programmatic surface belongs in the `src/neuralspotx/api/` package
+- the `src/neuralspotx/cli/` package should stay thin and delegate
 
 When adding behavior, update the shared library path first and let both the API
 and CLI consume it.

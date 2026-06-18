@@ -4,31 +4,55 @@ Go from a fresh machine to a running firmware image in minutes. The three
 guides below cover everything you need — prerequisites, your first build,
 and a library of ready-made examples to explore.
 
-<div class="card-grid card-grid--3" markdown>
-<div class="card" markdown>
-### :material-download: Install and Setup
-Install the toolchain, set up the Python environment, and verify
-everything works with `nsx doctor`.
+!!! info "What NSX is for"
+    NSX is a development and evaluation vehicle for Ambiq SoCs — ideal for
+    AI/ML bring-up, profiling, benchmarking, and demos. Prototype and
+    measure here, then graduate proven work into your own build.
 
-[Install &rarr;](install.md)
-</div>
-<div class="card" markdown>
-### :material-hammer-wrench: First App
-Scaffold a project, resolve modules, build the firmware, flash it to an
-EVB, and stream live SWO output.
+## What You'll Build
 
-[Build your first app &rarr;](first-app.md)
-</div>
-<div class="card" markdown>
-### :material-folder-open: Examples
-Eight maintained example apps — hello world, CoreMark, PMU profiling,
-power benchmarking, audio capture, USB serial, and more.
+In about five minutes you'll scaffold an app, cross-compile it for an
+**Apollo510 EVB**, flash it over J-Link, and watch a live SWO heartbeat
+stream from the board — all driven by five `nsx` commands.
 
-[Browse examples &rarr;](examples.md)
-</div>
+No board on hand? You can still install the toolchain and `configure` +
+`build` a firmware image. Only `flash` and `view` need hardware.
+
+<div class="grid cards" markdown>
+
+-   :material-download:{ .lg .middle } __Install and Setup__
+
+    ---
+
+    Install the toolchain, set up the Python environment, and verify
+    everything works with `nsx doctor`.
+
+    [:octicons-arrow-right-24: Install](install/index.md)
+
+-   :material-hammer-wrench:{ .lg .middle } __First App__
+
+    ---
+
+    Scaffold a project, resolve modules, build the firmware, flash it to an
+    EVB, and stream live SWO output.
+
+    [:octicons-arrow-right-24: Build your first app](first-app.md)
+
+-   :material-folder-open:{ .lg .middle } __Examples__
+
+    ---
+
+    Eight maintained example apps — hello world, CoreMark, PMU profiling,
+    power benchmarking, audio capture, USB serial, and more.
+
+    [:octicons-arrow-right-24: Browse examples](examples.md)
+
 </div>
 
 ## What You'll Need
+
+A quick glance — see [Install and Setup](install/index.md) for versions and
+platform-specific install commands.
 
 | Requirement | Why |
 |---|---|
@@ -36,13 +60,10 @@ power benchmarking, audio capture, USB serial, and more.
 | **uv** | Fast dependency manager used by the project |
 | **CMake + Ninja** | Build system underneath every generated app |
 | **Arm GNU Toolchain** | Default cross-compiler for Cortex-M targets |
-| **SEGGER J-Link** | Flash and SWO viewer (`nsx flash` / `nsx view`) |
+| **SEGGER J-Link** | Flash and SWO viewer — only needed for `nsx flash` / `nsx view` |
 
-Optional: **armclang** (Arm Compiler for Embedded) and **ATfE** (Arm
-Toolchain for Embedded) are also supported. See
-[Install and Setup](install.md) for details.
-
-All of these are covered in detail on the [Install and Setup](install.md) page.
+armclang and ATfE are also supported, but optional — GCC builds every
+example.
 
 ## Notation
 

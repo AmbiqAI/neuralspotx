@@ -23,7 +23,8 @@ nsx module list [--app-dir APP_DIR] [--registry-only] [--json]
 Example:
 
 ```bash
-nsx module list --app-dir <app-dir>
+cd <app-dir>
+nsx module list --app-dir .
 ```
 
 Built-in entries come from the packaged NSX registry.
@@ -43,8 +44,9 @@ nsx module describe [--app-dir APP_DIR] [--json] module
 Examples:
 
 ```bash
-nsx module describe nsx-pmu-armv8m --app-dir <app-dir>
-nsx module describe nsx-pmu-armv8m --json
+cd <app-dir>
+nsx module describe --app-dir . nsx-pmu-armv8m
+nsx module describe --app-dir . nsx-pmu-armv8m --json
 ```
 
 `describe` is intended as the per-module discovery surface for tools and agents.
@@ -64,8 +66,9 @@ nsx module search [--app-dir APP_DIR]
 Examples:
 
 ```bash
-nsx module search profiling --app-dir <app-dir>
-nsx module search pmu --soc apollo510 --json
+cd <app-dir>
+nsx module search profiling --app-dir .
+nsx module search pmu --app-dir . --soc apollo510 --json
 ```
 
 `search` is intended as the query surface for tools and agents.
@@ -79,9 +82,9 @@ It searches current module metadata such as:
 - `provides.features`
 - optional future semantic fields such as `capabilities`, `use_cases`, or `summary`
 
-When `--app-dir` is provided, NSX uses the app-effective registry and the app's
-target context by default. Use `--include-incompatible` if you want to keep
-non-matching results in the output for comparison or planning.
+Use `--app-dir` when you want NSX to search the app-effective registry and use
+the app's target context by default. Use `--include-incompatible` if you want
+to keep non-matching results in the output for comparison or planning.
 
 ## `nsx module add`
 
@@ -92,7 +95,8 @@ nsx module add [--app-dir APP_DIR] [--local] [--vendored] [--dry-run] module
 Example:
 
 ```bash
-nsx module add nsx-uart --app-dir <app-dir>
+cd <app-dir>
+nsx module add nsx-uart
 ```
 
 For built-in modules, NSX uses the registry's default upstream repo and
@@ -228,23 +232,23 @@ Checks include:
 Local filesystem example:
 
 ```bash
+cd <app-dir>
 nsx module register my-custom-module \
     --metadata /path/to/my-custom-module/nsx-module.yaml \
     --project my_custom_repo \
-    --project-local-path /path/to/my-custom-module \
-    --app-dir <app-dir>
+    --project-local-path /path/to/my-custom-module
 ```
 
 Git-backed example:
 
 ```bash
+cd <app-dir>
 nsx module register my-custom-module \
     --metadata /path/to/my-custom-module/nsx-module.yaml \
     --project my_custom_repo \
     --project-url https://github.com/myorg/my_custom_repo.git \
     --project-revision main \
-    --project-path modules/my_custom_repo \
-    --app-dir <app-dir>
+    --project-path modules/my_custom_repo
 ```
 
 `register` writes an app-local override into `nsx.yml` and then vendors the
