@@ -15,6 +15,8 @@ from __future__ import annotations
 import os
 import shutil
 import subprocess
+import sys
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -62,7 +64,18 @@ def example_app(request: pytest.FixtureRequest, tmp_path: Path) -> Path:
     """Copy the requested example into *tmp_path* and return the app dir."""
     name: str = request.param
     src = EXAMPLES_DIR / name
-    dst = tmp_path / name
+    if sys.platform == "win32":
+        # Windows enforces a 260-char MAX_PATH and CMake caps object paths at
+        # 250. pytest's tmp_path is already deeply nested, so combining it with
+        # long example/board names (e.g. freertos_blinky_apollo4p /
+        # apollo4p_blue_kxr_evb) and the deep vendored SDK tree (e.g.
+        # FreeRTOS-Kernel/portable/GCC/ARM_CM55_NTZ/non_secure/...) overflows
+        # the limit during vendoring and compilation. Use a short temp root.
+        root = Path(tempfile.mkdtemp(prefix="nsx"))
+        request.addfinalizer(lambda: shutil.rmtree(root, ignore_errors=True))
+        dst = root / name
+    else:
+        dst = tmp_path / name
     shutil.copytree(src, dst, ignore=shutil.ignore_patterns("build"))
     return dst
 
@@ -78,15 +91,22 @@ def test_example_configures_and_builds(example_app: Path) -> None:
     subprocess.run(configure_cmd, check=True, timeout=300)
     subprocess.run(build_cmd, check=True, timeout=300)
 
-    # The build target name matches the directory / project name.
+    # The build target name matches the directory / project name. The build
+    # tree is nested under build/<board>/, where <board> is the example's
+    # target board (not necessarily apollo510_evb), so discover it rather
+    # than hard-coding a single board.
     app_name = example_app.name
-    build_dir = example_app / "build" / "apollo510_evb"
+    build_root = example_app / "build"
+    build_dirs = [d for d in build_root.iterdir() if d.is_dir()] if build_root.is_dir() else []
     # The executable suffix depends on toolchain (.axf for GCC, .elf for armclang)
     # and may be absent depending on CMake configuration.
     candidates = [
-        build_dir / f"{app_name}.axf",
-        build_dir / f"{app_name}.elf",
-        build_dir / app_name,
+        build_dir / name
+        for build_dir in build_dirs
+        for name in (f"{app_name}.axf", f"{app_name}.elf", app_name)
     ]
     elf = next((c for c in candidates if c.exists()), None)
-    assert elf is not None, f"Expected ELF at {build_dir}/{app_name}[.axf|.elf]"
+    assert elf is not None, (
+        f"Expected ELF for {app_name} under {build_root}/<board>/[.axf|.elf]; "
+        f"searched board dirs: {[d.name for d in build_dirs]}"
+    )

@@ -64,7 +64,7 @@ doc = generate_sbom("/path/to/app", format="spdx")
 
 ## Related Commands
 
-- [`nsx lock`](../guides/locking-and-syncing.md) — produce or refresh
+- [`nsx lock`](../user-guide/lock-and-sync.md) — produce or refresh
   `nsx.lock` (the SBOM input).
-- [`nsx sync`](../guides/locking-and-syncing.md) — materialise the
+- [`nsx sync`](../user-guide/lock-and-sync.md) — materialise the
   modules described by the lock.

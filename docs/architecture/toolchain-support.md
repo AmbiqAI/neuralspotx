@@ -11,7 +11,7 @@ NSX supports three toolchains for building firmware:
 !!! warning "ATfE is experimental"
     ATfE (Arm Toolchain for Embedded) builds and runs correctly on Apollo5
     targets, but has not been validated as extensively as GCC or armclang.
-    Use it for evaluation; production deployments should use GCC or armclang.
+    Use it for evaluation; for validated work, prefer GCC or armclang.
 
 **ATfE** is the [Arm Toolchain for Embedded](https://github.com/arm/arm-toolchain)
 — Arm's LLVM-based bare-metal toolchain (clang + lld + compiler-rt + picolibc

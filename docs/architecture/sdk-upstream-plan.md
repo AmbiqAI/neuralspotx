@@ -1,90 +1,58 @@
-# SDK Upstream Plan
+# SDK Upstream Model
 
-This document defines the intended upstream shape for the raw SDK provider
-repos.
+This document describes how the AmbiqSuite SDK is sourced and provisioned for
+NSX board and SoC modules.
 
-## Goal
+!!! info "Status: unified"
+    NSX originally planned one upstream repo per AmbiqSuite major line
+    (`nsx-ambiqsuite-r3`, `-r4`, `-r5`). That plan has been superseded: all
+    AmbiqSuite lines now resolve from a single **unified SDK repo**,
+    [`nsx-ambiq-sdk`](https://github.com/AmbiqAI/nsx-ambiq-sdk). The historical
+    per-major plan is summarized at the end for context.
 
-Each raw SDK provider repo should have a coherent provenance story that can be
-explained clearly from the repo itself.
+## Current Model
 
-The preferred model is:
+One repo, [`nsx-ambiq-sdk`](https://github.com/AmbiqAI/nsx-ambiq-sdk), vendors
+the AmbiqSuite drop, the HAL/BSP wrappers, and the shared NSX module set for
+every supported release line (r2 through r6). It tracks `main`.
 
-1. one repo per major provider family
-2. one branch per upstream minor or variant lineage when needed
-3. NSX board defaults select the appropriate provider revision
+The release-specific modules NSX resolves are thin metadata views onto that one
+project:
 
-## R3
+| Provider / wrapper module | Project | Revision |
+|---|---|---|
+| `nsx-ambiqsuite-r2` … `-r6` | `nsx-ambiq-sdk` | `main` |
+| `nsx-ambiq-hal-r2` … `-r6` | `nsx-ambiq-sdk` | `main` |
+| `nsx-ambiq-bsp-r2` … `-r6` | `nsx-ambiq-sdk` | `main` |
 
-Local inventory:
+Board profiles depend on the provider module for their SoC family, and NSX
+vendors the resolved SDK content into the generated app. See
+[SDK Provider Model](sdk-provider-model.md) for how providers are selected and
+[SDK Provider Selection](../user-guide/sdk-provider-selection.md) for the
+user-facing controls.
 
-1. `R3.1.1`
+## Why a Single Repo
 
-Local board/header coverage in `R3.1.1` already includes:
-
-1. `apollo3_evb`
-2. `apollo3_evb_cygnus`
-3. `apollo3p_evb`
-4. `apollo3p_evb_cygnus`
-
-Recommendation:
-
-1. upstream `nsx-ambiqsuite-r3` as a single repo
-2. make `r3.1.1` the default branch or a first-class release branch
-3. no additional R3 branch split is required based on current local coverage
-
-## R4
-
-Local inventory:
-
-1. `R4.4.1`
-2. `R4.5.0`
-
-Both local drops expose the same board/header family needed for current NSX
-coverage:
-
-1. `apollo4l_evb`
-2. `apollo4l_blue_evb`
-3. `apollo4p_evb`
-4. `apollo4p_blue_kbr_evb`
-5. `apollo4p_blue_kxr_evb`
-
-Recommendation:
-
-1. upstream `nsx-ambiqsuite-r4` as a single repo
-2. default to `r4.5.0`
-3. keep an optional `r4.4.1` branch only if a real board or binary-compat
-   requirement emerges
-
-Current evidence does not justify making board defaults depend on `r4.4.1`
-instead of `r4.5.0`.
-
-## R5
-
-Local inventory:
-
-1. `R5.1.0_rc27`
-2. `R5.2.0`
-3. `R5.2.alpha.1.1`
-4. `R5.3.0`
-
-Current board support maps to the unified AmbiqSuite 5.2.0 RC4 provider tag:
-
-1. `apollo510_evb` -> `r5.2.0`
-2. `apollo510b_evb` -> `r5.2.0`
-3. `apollo510dL_evb` -> `r5.2.0`
-4. `apollo330mP_evb` -> `r5.2.0`
-
-Recommendation:
-
-1. upstream `nsx-ambiqsuite-r5` as one repo
-2. pin NSX board profiles to SDK-aligned release tags such as `r5.2.0`
-3. keep branch names only as maintainer conveniences, not public starter-profile
-   constraints
+- one provenance story to explain, audit, and update
+- no cross-repo version skew between the SDK drop, HAL/BSP wrappers, and shared
+  module sources
+- release lines are selected through module metadata, not through separate
+  upstreams or branch pinning
 
 ## Apollo510L
 
-Apollo510L is exposed through the AmbiqSuite RC4 board name
-`apollo510dL_evb`. The latest R5 provider includes the CMSIS device files,
-system source, board headers, and prebuilt HAL/BSP libraries required by that
-board.
+Apollo510L is exposed through the board name `apollo510dL_evb`. The unified SDK
+provides the CMSIS device files, system source, board headers, and prebuilt
+HAL/BSP libraries that board requires.
+
+## Historical Plan (superseded)
+
+The original intent was one upstream repo per major line, with NSX board
+defaults pinned to SDK-aligned release tags (for example `r5.2.0`):
+
+1. `nsx-ambiqsuite-r3` — Apollo3 / Apollo3 Plus boards
+2. `nsx-ambiqsuite-r4` — Apollo4 Lite / Apollo4 Plus boards
+3. `nsx-ambiqsuite-r5` — Apollo510 / Apollo510B / Apollo510L / Apollo330P boards
+
+The unified `nsx-ambiq-sdk` repo replaced this approach, removing the need for
+per-major repos and per-release tag pinning.

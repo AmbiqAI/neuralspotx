@@ -35,7 +35,8 @@ Useful commands:
 
 ```bash
 nsx module list --registry-only
-nsx module list --app-dir <app-dir>
+cd <app-dir>
+nsx module list --app-dir .
 ```
 
 ---
@@ -201,7 +202,8 @@ or future migration targets from legacy `neuralSPOT`.
 ### Add a module to your app
 
 ```bash
-nsx module add nsx-uart --app-dir my-app
+cd my-app
+nsx module add nsx-uart
 ```
 
 NSX resolves the full dependency closure, validates board/SoC compatibility,
@@ -216,13 +218,14 @@ nsx module describe nsx-audio
 ### Search by keyword
 
 ```bash
-nsx module search "uart serial"
+nsx module search "uart serial" --app-dir .
 ```
 
 ### Remove a module
 
 ```bash
-nsx module remove nsx-uart --app-dir my-app
+cd my-app
+nsx module remove nsx-uart
 ```
 
 ---

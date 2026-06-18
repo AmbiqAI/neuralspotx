@@ -8,6 +8,9 @@ This is the canonical integration example for the FreeRTOS enablement work:
 it demonstrates the `nsx::freertos_config` contract, application-owned hooks,
 and the Cortex-M55 (`ARM_CM55_NTZ`) generic port.
 
+For the Cortex-M4F (`ARM_CM4F`) path validated on Apollo4 hardware, see the
+sibling example in [../freertos_blinky_apollo4p](../freertos_blinky_apollo4p).
+
 ## How FreeRTOS is wired in
 
 The `nsx-freertos` module deliberately does **not** ship a `FreeRTOSConfig.h`.
@@ -26,7 +29,9 @@ add_library(nsx::freertos_config ALIAS app_freertos_config)
 The kernel config lives in [config/FreeRTOSConfig.h](config/FreeRTOSConfig.h)
 (seeded from the module template). On ARMv8-M the kernel's strong
 `SVC_Handler`, `PendSV_Handler`, and `SysTick_Handler` override the startup's
-weak vectors automatically — no handler remapping macros are needed.
+weak vectors automatically — no handler remapping macros are needed. The config
+copy is also kept compatible with the CM4F path so the shared application
+policy stays aligned with the SDK template.
 
 The application also provides the hooks the config enables
 (`vApplicationMallocFailedHook`, `vApplicationStackOverflowHook`) in
@@ -41,13 +46,9 @@ nsx flash     --app-dir .      # requires JLink + Apollo510 EVB
 nsx view      --app-dir .      # opens SWO viewer
 ```
 
-> **Note:** `nsx-freertos` must be reachable on the configured channel. Until
-> the module is published to `main`, point the `nsx-freertos` entry in
-> [nsx.yml](nsx.yml) at the branch that carries it.
-
 ## Expected Output
 
-```
+```text
 freertos_blinky: starting scheduler
 freertos_blinky: tick 0 (kernel V11.1.0)
 freertos_blinky: tick 1 (kernel V11.1.0)

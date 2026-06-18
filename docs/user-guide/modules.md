@@ -1,35 +1,50 @@
 # Modules
 
-NSX manages modules as app-local vendored dependencies.
+A module is a reusable unit of firmware — an SDK provider, a HAL or BSP
+wrapper, a peripheral driver, a profiler, and so on. Each app declares the
+modules it needs in `nsx.yml`, and NSX assembles them into the app's build.
 
-Built-in modules come from the packaged NSX registry. Their default source is
-the upstream repo and revision recorded there. Custom modules are registered
-explicitly per app.
+Whatever a module's origin, NSX always **vendors** it: the module's source is
+copied into the app's `modules/` directory so the app builds from a
+self-contained tree with no hidden external references.
 
-## Module Terms
+## Where a Module Comes From
 
-- first-class module: a module present in the packaged NSX registry and supported through the normal CLI and API workflows
-- vendored module: module content copied into `app/modules/` for the specific app
-- built-in module: a registry-backed module whose default source comes from the packaged catalog
-- custom module: a module registered explicitly for one app, either from a local filesystem path or a git-backed project entry
+Modules are not really different *types* — they differ only in **where their
+source comes from**. That choice is the one thing you decide when adding a
+module. There are three options, from most common to least:
 
-First-class and vendored are not opposites.
-A first-class module is about catalog and support status.
-Vendored is about where the app builds from.
+| Source | When to use | Committed in app git? | How to add |
+| --- | --- | --- | --- |
+| **Registry module** | The normal case: a supported module from the packaged NSX catalog. | No — gitignored and re-vendored from upstream | `nsx module add <name>` |
+| **Custom module** | A third-party or in-house module from a local path or git repo that is not in the catalog. | No — gitignored and re-vendored from its source | `nsx module register …`, then `nsx module add <name>` |
+| **Vendored-in-app module** | Code that must live with the app, such as AOT-generated kernels or a one-off in-house driver. | Yes — committed and never touched by `nsx sync` | `nsx module add <name> --vendored` |
 
-In normal use, a first-class module is resolved from the packaged registry and
-then vendored into the app.
+!!! note "What 'first-class' means"
+    Elsewhere you may see registry modules called **first-class**. That is not
+    a separate kind of module — it simply means the module is in the packaged
+    catalog and supported through the normal CLI and API workflows.
 
-For the built-in registry catalog, compatibility tables, and first-class module
+!!! tip "Advanced: local mirror"
+    A fourth option, `nsx module add <name> --local`, mirrors a module from an
+    external path on every `nsx sync` (gitignored, not committed). Use it when
+    actively developing a module outside the app. See
+    [Custom Modules](custom-modules.md).
+
+For the built-in registry catalog, compatibility tables, and supported module
 families, see [Module Catalog](module-catalog.md).
 
 For local or third-party module authoring, registration, and scaffolding, see
 [Custom Modules](custom-modules.md).
 
+In the examples below, run the commands from the app root unless noted
+otherwise. Commands that inspect app-local module state use `--app-dir .`
+explicitly.
+
 ## List Modules
 
 ```bash
-nsx module list --app-dir <app-dir>
+nsx module list --app-dir .
 ```
 
 This shows the built-in module catalog and highlights which ones are enabled
@@ -44,7 +59,7 @@ nsx module list --registry-only
 ## Add a Module
 
 ```bash
-nsx module add nsx-uart --app-dir <app-dir>
+nsx module add nsx-uart
 ```
 
 When you add a module, NSX:
@@ -71,13 +86,13 @@ This is the normal path for installing a supported built-in module into an app.
 ## Remove a Module
 
 ```bash
-nsx module remove nsx-uart --app-dir <app-dir>
+nsx module remove nsx-uart
 ```
 
 ## Update Modules
 
 ```bash
-nsx module update --app-dir <app-dir>
+nsx module update
 ```
 
 Use this after changing registry defaults or when you want to re-vendor module
@@ -91,23 +106,23 @@ not part of the built-in NSX catalog.
 Register from a local filesystem path:
 
 ```bash
+cd <app-dir>
 nsx module register my-custom-module \
   --metadata /path/to/my-custom-module/nsx-module.yaml \
   --project my_custom_repo \
-  --project-local-path /path/to/my-custom-module \
-  --app-dir <app-dir>
+  --project-local-path /path/to/my-custom-module
 ```
 
 Register from a git-backed project definition:
 
 ```bash
+cd <app-dir>
 nsx module register my-custom-module \
   --metadata /path/to/my-custom-module/nsx-module.yaml \
   --project my_custom_repo \
   --project-url https://github.com/myorg/my_custom_repo.git \
   --project-revision main \
-  --project-path modules/my_custom_repo \
-  --app-dir <app-dir>
+  --project-path modules/my_custom_repo
 ```
 
 In both cases, the registration is app-local. NSX records the custom project

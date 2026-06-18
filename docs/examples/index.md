@@ -21,48 +21,68 @@ curl -fL https://github.com/AmbiqAI/neuralspotx/archive/refs/heads/main.tar.gz \
   | tar -xz -f - --strip-components=2 neuralspotx-main/examples/hello_world
 cd hello_world
 
-nsx configure --app-dir .
-nsx build     --app-dir .
-nsx flash     --app-dir .   # requires J-Link
-nsx view      --app-dir .   # live SWO stream
+nsx configure
+nsx build
+nsx flash   # requires J-Link
+nsx view    # live SWO stream
 ```
 
 Contributors who already have the repo cloned can simply
 `cd neuralspotx/examples/hello_world` and run the same commands.
 
+Because those commands run from the app root, NSX resolves the app directory
+from the nearest `nsx.yml` automatically.
+
 ## Available Examples
 
-<div class="card-grid card-grid--2" markdown>
-<div class="card" markdown>
-### :material-hand-wave: [hello_world](hello_world.md)
-Minimal SWO printf loop. Start here to verify your toolchain and board.
-</div>
-<div class="card" markdown>
-### :material-speedometer: [coremark](coremark.md)
-EEMBC CoreMark with ITCM execution and NVM shutdown for clean power numbers.
-</div>
-<div class="card" markdown>
-### :material-lightning-bolt: [power_benchmark](power_benchmark.md)
-Three-phase power measurement: CoreMark, idle, and deep sleep.
-</div>
-<div class="card" markdown>
-### :material-counter: [pmu_profiling](pmu_profiling.md)
-Cortex-M55 PMU cycle counting, cache hits, and branch mispredicts.
-</div>
-<div class="card" markdown>
-### :material-brain: [kws_infer](kws_infer.md)
-TFLite Micro keyword-spotting inference with CMSIS-NN kernels.
-</div>
-<div class="card" markdown>
-### :material-microphone: [audio_capture](audio_capture.md)
-PDM microphone capture with RMS/peak statistics over SWO.
-</div>
-<div class="card" markdown>
-### :material-usb: [usb_serial](usb_serial.md)
-USB CDC virtual COM port echo app.
-</div>
-<div class="card" markdown>
-### :material-swap-horizontal: [usb_rpc](usb_rpc.md)
-USB vendor-class RPC with nanopb protobuf serialization.
-</div>
+<div class="grid cards" markdown>
+
+-   :material-hand-wave:{ .lg .middle } __[hello_world](hello_world.md)__
+
+    ---
+
+    Minimal SWO printf loop. Start here to verify your toolchain and board.
+
+-   :material-speedometer:{ .lg .middle } __[coremark](coremark.md)__
+
+    ---
+
+    EEMBC CoreMark with ITCM execution and NVM shutdown for clean power numbers.
+
+-   :material-lightning-bolt:{ .lg .middle } __[power_benchmark](power_benchmark.md)__
+
+    ---
+
+    Three-phase power measurement: CoreMark, idle, and deep sleep.
+
+-   :material-counter:{ .lg .middle } __[pmu_profiling](pmu_profiling.md)__
+
+    ---
+
+    Cortex-M55 PMU cycle counting, cache hits, and branch mispredicts.
+
+-   :material-brain:{ .lg .middle } __[kws_infer](kws_infer.md)__
+
+    ---
+
+    TFLite Micro keyword-spotting inference with CMSIS-NN kernels.
+
+-   :material-microphone:{ .lg .middle } __[audio_capture](audio_capture.md)__
+
+    ---
+
+    PDM microphone capture with RMS/peak statistics over SWO.
+
+-   :material-usb:{ .lg .middle } __[usb_serial](usb_serial.md)__
+
+    ---
+
+    USB CDC virtual COM port echo app.
+
+-   :material-swap-horizontal:{ .lg .middle } __[usb_rpc](usb_rpc.md)__
+
+    ---
+
+    USB vendor-class RPC with nanopb protobuf serialization.
+
 </div>

@@ -6,35 +6,46 @@ live SWO output. The whole process takes about two minutes.
 
 !!! info "Prerequisites"
     Make sure `nsx doctor` passes before continuing.
-    See [Install and Setup](install.md) if anything is missing.
+
+See [Install and Setup](install/index.md) if anything is missing.
+
+If you do not have a board yet, you can still run through `configure` and
+`build`; the J-Link checks are needed before `flash` and `view`.
 
 ## The Five-Command Workflow
 
-Every NSX project follows the same pattern:
+After a one-time `nsx doctor` environment check, every NSX project follows
+the same five-command lifecycle:
 
 ```mermaid
 flowchart LR
-    A["nsx doctor"] --> B["nsx create-app"]
+    A["nsx doctor"]:::pre -.-> B["nsx create-app"]
     B --> C["nsx configure"]
     C --> D["nsx build"]
     D --> E["nsx flash"]
     E --> F["nsx view"]
+    classDef pre fill:#0000,stroke-dasharray:4 4;
 ```
 
-## Step 1 — Check Your Environment
+## Pre-flight — Check Your Environment
 
 ```bash
 nsx doctor
 ```
 
-`doctor` scans for Python, CMake, Ninja, the Arm toolchain, and J-Link.
-Fix any flagged issues before moving on.
+`doctor` scans for Python, CMake, Ninja, the Arm toolchain, and J-Link. Fix any
+flagged issues before flashing or viewing on hardware. If you are only
+configuring and building without a board, the J-Link failures can wait.
 
-## Step 2 — Scaffold a New App
+## Step 1 — Scaffold a New App
 
 ```bash
 nsx create-app hello_ap510 --board apollo510_evb
+cd hello_ap510
 ```
+
+`--board` defaults to `apollo510_evb`, so you can omit it for that target.
+Run `nsx board list` to see every built-in board.
 
 NSX creates a new directory called `hello_ap510/` containing:
 
@@ -48,10 +59,13 @@ NSX creates a new directory called `hello_ap510/` containing:
 
 Everything is ordinary CMake — no proprietary build wrappers.
 
-## Step 3 — Resolve Modules and Generate the Build
+From here on, the commands are run from the app root. In that case, NSX finds
+the nearest `nsx.yml` automatically, so `--app-dir` is optional.
+
+## Step 2 — Resolve Modules and Generate the Build
 
 ```bash
-nsx configure --app-dir hello_ap510
+nsx configure
 ```
 
 `configure` reads `nsx.yml`, fetches any required modules from the
@@ -62,32 +76,54 @@ registry (SDK provider, BSP, HAL, peripheral drivers), vendors them into
     First runs download modules from GitHub. Subsequent runs are fast
     because modules are cached locally.
 
-## Step 4 — Build the Firmware
+## Step 3 — Build the Firmware
 
 ```bash
-nsx build --app-dir hello_ap510
+nsx build
 ```
 
 CMake + Ninja compile and link the firmware. The output binary lands in
 `build/` — typically a `.bin` and `.axf` file ready for flashing.
 
-## Step 5 — Flash the EVB (Optional)
+## Step 4 — Flash the EVB (Optional)
 
 ```bash
-nsx flash --app-dir hello_ap510
+nsx flash
 ```
 
 Requires a SEGGER J-Link connected to your Apollo510 EVB. The command
 programs the binary over SWD and resets the target.
 
-## Step 6 — Stream SWO Output (Optional)
+!!! tip "Multiple J-Links attached?"
+    If you have more than one probe connected, pass the serial explicitly
+    so NSX flashes the right board:
+    ```bash
+    nsx flash --probe-serial <jlink-serial>
+    ```
+    The serial is printed by the J-Link tools and on the probe label.
+
+## Step 5 — Stream SWO Output (Optional)
 
 ```bash
-nsx view --app-dir hello_ap510
+nsx view
 ```
 
-Opens a live SWO viewer. You should see the hello-world print loop
-streaming from the board.
+Opens a live SWO viewer. The generated app prints a heartbeat once per
+second, so you should see:
+
+```text
+nsx hello from generated app
+nsx hello from generated app
+nsx hello from generated app
+...
+```
+
+Press ++ctrl+c++ to stop the viewer.
+
+!!! success "That's the full lifecycle"
+    You've scaffolded, configured, built, flashed, and observed a firmware
+    image on real hardware. Every NSX app — including the
+    [examples](examples.md) — follows these same five commands.
 
 ## What's in the Generated App
 
@@ -116,3 +152,8 @@ automatically — your source tree stays clean.
   generated directory structure
 - **[Modules](../user-guide/modules.md)** — add or remove dependencies
   from your app manifest
+
+!!! question "Something not working?"
+    If a command fails, start with `nsx doctor`, then check the
+    [Troubleshooting](../user-guide/troubleshooting.md) guide for common
+    configure, flash, and SWO issues.

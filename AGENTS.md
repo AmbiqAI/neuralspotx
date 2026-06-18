@@ -70,16 +70,16 @@ The intended layering is:
 
 Today that means:
 
-- shared workflow logic belongs in `src/neuralspotx/operations.py`
-- helper concerns belong in small focused modules such as:
-  - `models.py`
+- shared workflow logic belongs in the `src/neuralspotx/operations/` package
+- helper concerns belong in small focused modules and packages such as:
+  - `models/`
   - `project_config.py`
-  - `module_registry.py`
+  - `module_registry/`
   - `templating.py`
   - `tooling.py`
-  - `subprocess_utils.py`
-- `api.py` should expose a clean, typed public programmatic surface
-- `cli.py` should stay thin and delegate
+  - `subprocess_utils/`
+- the `api/` package should expose a clean, typed public programmatic surface
+- the `cli/` package should stay thin and delegate
 
 When adding behavior, prefer changing the shared library path first and then
 have both the API and CLI consume it.
@@ -125,7 +125,7 @@ install path are regressions.
 
 ### Prefer Focused Modules
 
-If `cli.py`, `operations.py`, or another file starts accumulating multiple
+If `cli/`, `operations/`, or another module starts accumulating multiple
 distinct responsibilities, extract a focused helper module instead of growing
 the file indefinitely.
 
