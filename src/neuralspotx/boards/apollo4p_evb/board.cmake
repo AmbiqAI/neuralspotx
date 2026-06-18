@@ -33,6 +33,8 @@ else()
     set(NSX_LINKER_SCRIPT "${NSX_CORE_DIR}/src/apollo4p/gcc/linker_script.ld")
 endif()
 
+set(NSX_SEGGER_DEVICE "AMAP42KP-KBR")
+
 include("${NSX_CMAKE_DIR}/segger/socs/apollo4p.cmake")
 
 set(NSX_BOARD_TARGET nsx_board_apollo4p_evb)

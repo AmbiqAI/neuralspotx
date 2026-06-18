@@ -14,7 +14,8 @@ endif()
 set(NSX_AMBIQ_BOARD_NAME "apollo4b_blue_evb")
 set(NSX_AMBIQ_PART_NAME "apollo4b")
 set(NSX_AMBIQ_BSP_DIR "${NSX_AMBIQSUITE_ROOT}/boards/${NSX_AMBIQ_BOARD_NAME}/bsp")
-set(NSX_AMBIQ_MCU_DIR "${NSX_AMBIQSUITE_ROOT}/mcu/${NSX_AMBIQ_PART_NAME}")
+# Apollo4B reuses the Apollo4P MCU/HAL directory layout in AmbiqSuite r4.
+set(NSX_AMBIQ_MCU_DIR "${NSX_AMBIQSUITE_ROOT}/mcu/apollo4p")
 set(NSX_AMBIQ_HAL_DIR "${NSX_AMBIQ_MCU_DIR}/hal")
 set(NSX_AMBIQ_HAL_MCU_DIR "${NSX_AMBIQ_HAL_DIR}/mcu")
 
@@ -35,6 +36,10 @@ else()
     set(NSX_SYSTEM_SOURCE "${NSX_AMBIQSUITE_ROOT}/CMSIS/AmbiqMicro/Source/system_apollo4p.c")
     set(NSX_LINKER_SCRIPT "${NSX_CORE_DIR}/src/apollo4p/gcc/linker_script.ld")
 endif()
+
+# Keep the Apollo4B Blue EVB on the Apollo4P KBR target until a distinct
+# Apollo4B-specific J-Link device ID is verified in-tree.
+set(NSX_SEGGER_DEVICE "AMAP42KP-KBR")
 
 include("${NSX_CMAKE_DIR}/segger/socs/apollo4p.cmake")
 

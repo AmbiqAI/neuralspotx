@@ -32,6 +32,8 @@ else()
     set(NSX_SYSTEM_SOURCE "")
     set(NSX_LINKER_SCRIPT "${NSX_CORE_DIR}/src/apollo4l/gcc/linker_script.ld")
 endif()
+
+set(NSX_SEGGER_DEVICE "AMAP42KL-KBR")
 include("${NSX_CMAKE_DIR}/segger/socs/apollo4p.cmake")
 
 set(NSX_BOARD_TARGET nsx_board_apollo4l_evb)
