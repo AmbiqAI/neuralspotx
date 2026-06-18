@@ -21,7 +21,6 @@ _BOARD_ORDER: tuple[str, ...] = (
     "apollo3p_evb_cygnus",
     "apollo4l_evb",
     "apollo4l_blue_evb",
-    "apollo4b_blue_evb",
     "apollo4p_evb",
     "apollo4p_blue_kbr_evb",
     "apollo4p_blue_kxr_evb",
