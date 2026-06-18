@@ -5,34 +5,28 @@ releases for the Python package.
 
 ## Release Flow
 
-1. Changes land on `main`.
-2. The `release.yml` workflow runs Release Please on `main`.
-3. Release Please updates or opens a release PR.
-4. When the release PR is merged, the next `release.yml` run on `main` creates:
-   - a new version commit
-   - an updated `CHANGELOG.md`
-  - a release tag such as `neuralspotx-v0.6.3`
-    - the GitHub release entry
-5. That same `release.yml` run then:
-    - checks out the created tag
-   - validates that the tag matches `pyproject.toml`
-   - builds the Python distributions
-   - attaches the artifacts to the GitHub release
-    - publishes the distributions to PyPI
-  - opens or updates a follow-up PR if `uv.lock` needs a version refresh
+Releases are automated through the `release.yml` workflow. As a contributor you
+take **two actions** — everything else runs in CI:
+
+1. **Merge your change to `main`.** Release Please opens or updates a *release
+   PR* that accumulates the version bump and changelog.
+2. **Merge the release PR.** That triggers the release: tag, GitHub release,
+   built distributions, and a PyPI publish.
 
 ```mermaid
-flowchart LR
-   A[Merge changes to main] --> B[Run release.yml]
-   B --> C[Release Please updates release PR]
-   C --> D[Merge release PR]
-   D --> E[Run release.yml on main]
-   E --> F[Create v* tag and GitHub release]
-   F --> G[Build dist artifacts from created tag]
-   G --> H[Attach artifacts to GitHub release]
-   H --> I[Publish to PyPI]
-  I --> J[Open uv.lock refresh PR if needed]
+gitGraph
+    commit id: "feature"
+    branch release-please
+    commit id: "version + changelog"
+    checkout main
+    merge release-please tag: "neuralspotx-v0.6.3"
+    commit id: "uv.lock refresh" type: HIGHLIGHT
 ```
+
+The tag triggers the rest of `release.yml` automatically: it builds the Python
+distributions, attaches them to the GitHub release, and publishes to PyPI. A
+follow-up PR is opened only if `uv.lock` needs a version refresh (see
+[uv.lock Refresh](#uvlock-refresh)).
 
 ## Version Source of Truth
 

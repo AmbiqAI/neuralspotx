@@ -48,6 +48,12 @@ python -c "import serial; s=serial.Serial('COM3',115200); s.dtr=True; s.write(b'
 > **pyserial note:** You must set `ser.dtr = True` before the device
 > reports as connected.  Without DTR, the device ignores incoming data.
 
+> **Pick the right port:** a J-Link probe also exposes its own virtual
+> COM port, so you may see two `/dev/cu.usbmodem*` devices. The NSX CDC
+> device enumerates with VID/PID `0xCafe`/`0x4011` — connect to that one,
+> not the J-Link VCP. List ports with
+> `python3 -m serial.tools.list_ports -v` to confirm which is which.
+
 ## Expected Behavior
 
 Everything you type (or send) is echoed back character-by-character:

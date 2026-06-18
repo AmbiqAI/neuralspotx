@@ -17,6 +17,15 @@ NSX is a lightweight bare-metal workflow for Ambiq targets. It provides:
 The primary audience is app developers creating small, focused NSX applications
 for bring-up, profiling, validation, and simple demos.
 
+NSX is also the build-and-deploy vehicle for Ambiq's **Helia** AI stack:
+
+- [heliaRT](https://github.com/AmbiqAI/helia-rt) — optimized LiteRT (TFLite
+  Micro) runtime, shipped as an NSX module
+- [heliaAOT](https://github.com/AmbiqAI/helia-aot) — ahead-of-time compiler that
+  generates NSX modules from `.tflite` models
+- [heliaPROFILER](https://github.com/AmbiqAI/helia-profiler) — on-device model
+  profiler built on NSX
+
 For contributor workflows such as releases, CI, and the Python API surface, use
 the docs site under `docs/`.
 

@@ -322,18 +322,18 @@ data = validate_module_metadata("path/to/nsx-module.yaml")
 Register the module from a local filesystem path:
 
 ```bash
+cd my-app
 nsx module register my-sensor-driver \
   --metadata ./my-sensor-driver/nsx-module.yaml \
   --project my_sensor_driver \
-  --project-local-path ./my-sensor-driver \
-  --app-dir my-app
+  --project-local-path ./my-sensor-driver
 ```
 
 Then enable it and build:
 
 ```bash
-nsx module add my-sensor-driver --app-dir my-app
-nsx build --app-dir my-app
+nsx module add my-sensor-driver
+nsx build
 ```
 
 At that point the module is vendored into `my-app/modules/my-sensor-driver/`
@@ -346,11 +346,11 @@ alongside any built-in dependencies the app already uses.
 Use `--project-local-path` when the module source lives on disk.
 
 ```bash
+cd <app-dir>
 nsx module register my-custom-module \
   --metadata /path/to/my-custom-module/nsx-module.yaml \
   --project my_custom_repo \
-  --project-local-path /path/to/my-custom-module \
-  --app-dir .
+  --project-local-path /path/to/my-custom-module
 ```
 
 NSX copies the module content into the app's `modules/my-custom-module/`
@@ -361,13 +361,13 @@ directory, exactly like a built-in module.
 Use `--project-url` and `--project-revision` for a git-backed module.
 
 ```bash
+cd <app-dir>
 nsx module register my-custom-module \
   --metadata modules/my-custom-module/nsx-module.yaml \
   --project my_custom_repo \
   --project-url https://github.com/myorg/my-custom-module.git \
   --project-revision main \
-  --project-path modules/my-custom-module \
-  --app-dir .
+  --project-path modules/my-custom-module
 ```
 
 NSX clones the repository, resolves the module from the specified path within
@@ -378,12 +378,12 @@ the repo, and vendors it into the app.
 You can override a built-in module with a custom version by using `--override`:
 
 ```bash
+cd <app-dir>
 nsx module register nsx-core \
   --metadata /path/to/my-fork/nsx-module.yaml \
   --project my_nsx_core_fork \
   --project-local-path /path/to/my-fork \
-  --override \
-  --app-dir .
+  --override
 ```
 
 The override is app-local and does not affect other apps or the packaged
@@ -433,7 +433,7 @@ Custom modules registered for an app appear in all discovery commands:
 
 ```bash
 nsx module list --app-dir .
-nsx module describe my-custom-module --app-dir .
+nsx module describe my-custom-module
 nsx module search "my capability" --app-dir .
 ```
 

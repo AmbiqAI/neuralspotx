@@ -11,7 +11,7 @@ nsx configure [--app-dir APP_DIR] [--board BOARD] [--build-dir BUILD_DIR]
 
 ## Main Arguments
 
-- `--app-dir`: app directory containing `nsx.yml`
+- `--app-dir`: app directory containing `nsx.yml`; when omitted, NSX searches upward from the current directory
 - `--board`: override board from `nsx.yml`
 - `--build-dir`: override build directory
 - `--toolchain`: toolchain override (`gcc`, `armclang`, `atfe`). Defaults to `nsx.yml` → `arm-none-eabi-gcc`
@@ -19,7 +19,8 @@ nsx configure [--app-dir APP_DIR] [--board BOARD] [--build-dir BUILD_DIR]
 ## Example
 
 ```bash
-nsx configure --app-dir <app-dir>
+cd <app-dir>
+nsx configure
 ```
 
 ## Notes

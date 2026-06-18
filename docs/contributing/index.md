@@ -12,7 +12,7 @@ Topics covered here:
 - adding boards
 - adding modules
 - internal module coverage
-- SDK provider branch model
+- SDK provider model
 
 ## Contributor Expectations
 
