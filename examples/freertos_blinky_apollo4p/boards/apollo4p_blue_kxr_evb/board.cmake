@@ -5,15 +5,16 @@
 # auto-included cmake/nsx_soc_facts.cmake.
 nsx_load_soc_facts("apollo4p")
 
-if(NOT NSX_SDK_PROVIDER STREQUAL "ambiqsuite-r4")
+if(NOT NSX_SDK_PROVIDER STREQUAL "ambiqsuite")
     message(FATAL_ERROR
-        "apollo4p_blue_kxr_evb requires NSX_SDK_PROVIDER=ambiqsuite-r4, got '${NSX_SDK_PROVIDER}'."
+        "apollo4p_blue_kxr_evb requires NSX_SDK_PROVIDER=ambiqsuite, got '${NSX_SDK_PROVIDER}'."
     )
 endif()
 
 set(NSX_AMBIQ_BOARD_NAME "apollo4p_blue_kxr_evb")
 set(NSX_AMBIQ_PART_NAME "apollo4p")
 set(NSX_AMBIQ_BSP_DIR "${NSX_AMBIQSUITE_ROOT}/boards/${NSX_AMBIQ_BOARD_NAME}/bsp")
+set(NSX_AMBIQ_BSP_LIB_SUBDIR "apollo4p_blue_kxr_evb")
 set(NSX_AMBIQ_MCU_DIR "${NSX_AMBIQSUITE_ROOT}/mcu/${NSX_AMBIQ_PART_NAME}")
 set(NSX_AMBIQ_HAL_DIR "${NSX_AMBIQ_MCU_DIR}/hal")
 set(NSX_AMBIQ_HAL_MCU_DIR "${NSX_AMBIQ_HAL_DIR}/mcu")
@@ -32,6 +33,8 @@ else()
     set(NSX_SYSTEM_SOURCE "${NSX_AMBIQSUITE_ROOT}/CMSIS/AmbiqMicro/Source/system_apollo4p.c")
     set(NSX_LINKER_SCRIPT "${NSX_CORE_DIR}/src/apollo4p/gcc/linker_script.ld")
 endif()
+
+set(NSX_SEGGER_DEVICE "AMA4B2KP-KXR")
 include("${NSX_CMAKE_DIR}/segger/socs/apollo4p.cmake")
 
 set(NSX_BOARD_TARGET nsx_board_apollo4p_blue_kxr_evb)
