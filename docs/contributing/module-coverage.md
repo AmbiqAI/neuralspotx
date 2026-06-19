@@ -32,7 +32,7 @@ These major internal areas already have clear NSX coverage.
 | `ns-audio` | `nsx-audio` | PDM audio capture driver with DMA-backed sampling and callback delivery. |
 | `ns-usb` | `nsx-usb` | USB CDC serial driver using TinyUSB with proper error handling. |
 | `ns-nanopb` | `nsx-nanopb` | Vendored nanopb — zero-dynamic-memory Protocol Buffers in ANSI C. |
-| Ambiq HAL/BSP wiring | `nsx-ambiq-hal-r*`, `nsx-ambiq-bsp-r*`, `nsx-soc-hal`, `nsx-cmsis-startup` | Split into SDK-facing wrappers plus SoC/startup integration. |
+| Ambiq HAL/BSP wiring | `nsx-ambiq-hal`, `nsx-ambiq-bsp`, `nsx-soc-hal`, `nsx-cmsis-startup` | Split into SDK-facing wrappers plus SoC/startup integration. |
 | thin common wrappers | `nsx-core` | The legacy migration shim is now absorbed into `nsx-core`, which exports printf, delay, and interrupt helpers directly. |
 
 ## Partially covered areas

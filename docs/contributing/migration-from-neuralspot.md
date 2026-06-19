@@ -57,8 +57,8 @@ That is why the first migration wave emphasizes modules such as:
 9. `nsx-uart`
 10. `nsx-soc-hal`
 11. `nsx-cmsis-startup`
-12. `nsx-ambiq-hal-r*`
-13. `nsx-ambiq-bsp-r*`
+12. `nsx-ambiq-hal`
+13. `nsx-ambiq-bsp`
 
 ## Refactoring Direction
 
