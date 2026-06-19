@@ -5,9 +5,9 @@
 # auto-included cmake/nsx_soc_facts.cmake.
 nsx_load_soc_facts("apollo3p")
 
-if(NOT NSX_SDK_PROVIDER STREQUAL "ambiqsuite-r3")
+if(NOT NSX_SDK_PROVIDER STREQUAL "ambiqsuite")
     message(FATAL_ERROR
-        "apollo3p_evb_cygnus requires NSX_SDK_PROVIDER=ambiqsuite-r3, got '${NSX_SDK_PROVIDER}'."
+        "apollo3p_evb_cygnus requires NSX_SDK_PROVIDER=ambiqsuite, got '${NSX_SDK_PROVIDER}'."
     )
 endif()
 

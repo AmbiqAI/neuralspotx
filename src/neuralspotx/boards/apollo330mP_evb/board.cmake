@@ -5,9 +5,9 @@
 # auto-included cmake/nsx_soc_facts.cmake.
 nsx_load_soc_facts("apollo330P")
 
-if(NOT NSX_SDK_PROVIDER STREQUAL "ambiqsuite-r5")
+if(NOT NSX_SDK_PROVIDER STREQUAL "ambiqsuite")
     message(FATAL_ERROR
-        "apollo330mP_evb requires NSX_SDK_PROVIDER=ambiqsuite-r5, got '${NSX_SDK_PROVIDER}'."
+        "apollo330mP_evb requires NSX_SDK_PROVIDER=ambiqsuite, got '${NSX_SDK_PROVIDER}'."
     )
 endif()
 

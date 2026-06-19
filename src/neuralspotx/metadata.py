@@ -84,10 +84,10 @@ def load_yaml(path: Path) -> dict[str, Any]:
 def _derive_starter_profiles(data: dict[str, Any]) -> dict[str, Any]:
     """Expand ``soc_families`` + ``board_profiles`` into full starter profiles.
 
-    Each profile's SoC and SDK-provider family come from the first-class
-    board descriptor, so the per-board module list is assembled from the
-    family baseline plus the board's own ``nsx-board-<board>`` module and
-    the shared ``core_modules`` — no per-board duplication in the lock.
+    Each profile's SoC family comes from the first-class board descriptor, so
+    the per-board module list is assembled from the family baseline plus the
+    board's own ``nsx-board-<board>`` module and the shared ``core_modules`` —
+    no per-board duplication in the lock.
     """
 
     from .board_descriptors import load_board
@@ -111,7 +111,7 @@ def _derive_starter_profiles(data: dict[str, Any]) -> dict[str, Any]:
                 f"registry.lock: board_profiles['{board}'] has no board descriptor "
                 f"(expected src/neuralspotx/boards/{board}/board.yaml)"
             )
-        family_key = descriptor.sdk_provider.rsplit("-", 1)[-1]
+        family_key = descriptor.soc_family
         family = families.get(family_key)
         if family is None:
             raise ValueError(
@@ -130,9 +130,8 @@ def _derive_starter_profiles(data: dict[str, Any]) -> dict[str, Any]:
         # the provider for back-compat with split-repo families.
         sdk_modules = family.get("sdk_modules", [provider])
         # ``core_modules`` are appended after the board module for every
-        # profile. A family may override the shared default (e.g. the R6
-        # tier whose runtime helpers live in nsx-core rather than the
-        # standalone nsx-harness / nsx-utils modules).
+        # profile. A family may override the shared default (e.g. the
+        # Apollo5 family whose runtime helpers add nsx-pmu-armv8m).
         core_modules = list(family.get("core_modules", default_core_modules))
         board_module = "nsx-board-" + board.replace("_", "-").lower()
         module_overrides = {

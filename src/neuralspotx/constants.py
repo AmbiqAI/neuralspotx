@@ -28,7 +28,6 @@ _BOARD_ORDER: tuple[str, ...] = (
     "apollo510_evb",
     "apollo510b_evb",
     "apollo330mP_evb",
-    "atomiq110_fpga_turbo",
 )
 
 _DESCRIPTORS = load_board_descriptors()
@@ -119,11 +118,7 @@ BOARD_SDK_PROVIDER: dict[str, str] = {
 class SDKProvider(str, enum.Enum):
     """Canonical SDK provider identifiers."""
 
-    R2 = "ambiqsuite-r2"
-    R3 = "ambiqsuite-r3"
-    R4 = "ambiqsuite-r4"
-    R5 = "ambiqsuite-r5"
-    R6 = "ambiqsuite-r6"
+    AMBIQSUITE = "ambiqsuite"
 
     def __str__(self) -> str:  # pragma: no cover — trivial
         return self.value

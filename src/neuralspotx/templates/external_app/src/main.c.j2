@@ -1,21 +1,5 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright (c) 2026, Ambiq */
-{% if sdk_provider == "ambiqsuite-r6" -%}
-#include "nsx_core.h"
-#include "nsx_system.h"
-#include "nsx_presets.h"
-
-int main(void)
-{
-    nsx_system_config_t cfg = nsx_system_development;
-    (void)nsx_system_init(&cfg);
-
-    while (1) {
-        nsx_printf("nsx hello from generated app\r\n");
-        nsx_delay_us(1000000);
-    }
-}
-{% else -%}
 #include "nsx_core.h"
 
 int main(void)
@@ -32,4 +16,3 @@ int main(void)
         nsx_delay_us(1000000);
     }
 }
-{% endif -%}

@@ -10,7 +10,7 @@ board:
   soc: apollo510
   registered: true
 soc_family: apollo510
-sdk_provider: ambiqsuite-r5
+sdk_provider: ambiqsuite
 cpu:
   core: cortex-m55
   float_abi: hard

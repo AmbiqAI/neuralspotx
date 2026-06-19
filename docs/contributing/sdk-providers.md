@@ -1,12 +1,12 @@
 # SDK Providers
 
-Each AmbiqSuite release line is delivered from a single consolidated SDK
-monorepo that vendors the imported SDK payload, the HAL/BSP wrappers, and the
-shared NSX module set used by NSX.
+All AmbiqSuite SoCs are delivered from a single consolidated SDK monorepo that
+vendors the imported SDK payload, the HAL/BSP wrappers, and the shared NSX
+module set used by NSX.
 
 Current bundle:
 
-- `nsx-ambiq-sdk` (provider modules `nsx-ambiqsuite-r2` / `r3` / `r4` / `r5` / `r6`)
+- `nsx-ambiq-sdk` (provider module `nsx-ambiqsuite`, wrappers `nsx-ambiq-hal` / `nsx-ambiq-bsp`)
 
 All provider and wrapper modules resolve to this one project on `main`. See
 [SDK Upstream Model](../architecture/sdk-upstream-plan.md) for the full picture.

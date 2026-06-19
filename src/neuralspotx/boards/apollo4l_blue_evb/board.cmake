@@ -5,9 +5,9 @@
 # auto-included cmake/nsx_soc_facts.cmake.
 nsx_load_soc_facts("apollo4l")
 
-if(NOT NSX_SDK_PROVIDER STREQUAL "ambiqsuite-r4")
+if(NOT NSX_SDK_PROVIDER STREQUAL "ambiqsuite")
     message(FATAL_ERROR
-        "apollo4l_blue_evb requires NSX_SDK_PROVIDER=ambiqsuite-r4, got '${NSX_SDK_PROVIDER}'."
+        "apollo4l_blue_evb requires NSX_SDK_PROVIDER=ambiqsuite, got '${NSX_SDK_PROVIDER}'."
     )
 endif()
 

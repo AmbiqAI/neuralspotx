@@ -58,15 +58,9 @@ repositories, notably `nsx-pmu-armv8m`, `nsx-cmsis-nn`, `nsx-helia-rt`,
 
 | Module | Category | Description | SoC Support |
 | --- | --- | --- | --- |
-| `nsx-ambiqsuite-r3` | :material-package-variant: SDK | Unified AmbiqSuite SDK provider for Apollo3 and Apollo3P targets. | Apollo3, Apollo3P |
-| `nsx-ambiqsuite-r4` | :material-package-variant: SDK | Unified AmbiqSuite SDK provider for Apollo4L and Apollo4P targets. | Apollo4L, Apollo4P |
-| `nsx-ambiqsuite-r5` | :material-package-variant: SDK | Unified AmbiqSuite SDK provider for Apollo330P, Apollo510, Apollo510B, Apollo510L, and Apollo5B targets. | Apollo330P, Apollo510, Apollo510B, Apollo510L, Apollo5B |
-| `nsx-ambiq-hal-r3` | :material-package-variant: SDK | HAL wrapper surface for the unified `r3` SDK line. | Apollo3, Apollo3P |
-| `nsx-ambiq-hal-r4` | :material-package-variant: SDK | HAL wrapper surface for the unified `r4` SDK line. | Apollo4L, Apollo4P |
-| `nsx-ambiq-hal-r5` | :material-package-variant: SDK | HAL wrapper surface for the unified `r5` SDK line. | Apollo330P, Apollo510, Apollo510B, Apollo510L, Apollo5B |
-| `nsx-ambiq-bsp-r3` | :material-package-variant: SDK | Board-support wrapper surface for the unified `r3` SDK line. | Apollo3, Apollo3P |
-| `nsx-ambiq-bsp-r4` | :material-package-variant: SDK | Board-support wrapper surface for the unified `r4` SDK line. | Apollo4L, Apollo4P |
-| `nsx-ambiq-bsp-r5` | :material-package-variant: SDK | Board-support wrapper surface for the unified `r5` SDK line. | Apollo330P, Apollo510, Apollo510B, Apollo510L, Apollo5B |
+| `nsx-ambiqsuite` | :material-package-variant: SDK | Unified AmbiqSuite SDK provider covering all supported Apollo SoCs. | Apollo2, Apollo3, Apollo3P, Apollo4L, Apollo4P, Apollo330P, Apollo510, Apollo510B, Apollo510L, Apollo5B |
+| `nsx-ambiq-hal` | :material-package-variant: SDK | Unified HAL wrapper surface (per-SoC capability-gated). | All Apollo SoCs |
+| `nsx-ambiq-bsp` | :material-package-variant: SDK | Unified board-support wrapper surface. | All Apollo SoCs |
 | `nsx-ambiq-usb-r4` | :material-package-variant: SDK | USB integration layer bundled with the unified `r4` SDK line. | Apollo4P |
 | `nsx-ambiq-usb-r5` | :material-package-variant: SDK | USB integration layer bundled with the unified `r5` SDK line. | Apollo510, Apollo510B, Apollo5B |
 | `nsx-cmsis-core` | :material-chip: Platform | CMSIS core support and integration from the unified SDK stack. | All |
@@ -98,7 +92,9 @@ dependency graph.
 
 | Module family | What it provides | Typical use | More info |
 | --- | --- | --- | --- |
-| `nsx-ambiqsuite-r3`, `nsx-ambiqsuite-r4`, `nsx-ambiqsuite-r5` | Unified AmbiqSuite provider selection by release family. | Select the SDK baseline for a target and downstream wrapper stack. | [nsx-ambiq-sdk](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules) |
+| `nsx-ambiqsuite` | :material-package-variant: SDK | Unified AmbiqSuite SDK provider covering all supported Apollo SoCs. | Apollo2, Apollo3, Apollo3P, Apollo4L, Apollo4P, Apollo330P, Apollo510, Apollo510B, Apollo510L, Apollo5B |
+| `nsx-ambiq-hal` | :material-package-variant: SDK | Unified HAL wrapper surface (per-SoC capability-gated). | All Apollo SoCs |
+| `nsx-ambiq-bsp` | :material-package-variant: SDK | Unified board-support wrapper surface. | All Apollo SoCs |
 
 ### SDK Wrapper and Platform Integration Modules
 
@@ -106,8 +102,8 @@ These adapt raw SDK content into the NSX build and target model.
 
 | Module family | What it provides | Typical use | More info |
 | --- | --- | --- | --- |
-| `nsx-ambiq-hal-r3`, `nsx-ambiq-hal-r4`, `nsx-ambiq-hal-r5` | HAL wrapper surface for each unified AmbiqSuite release family. | Pull in supported HAL utilities without wiring raw SDK files by hand. | [nsx-ambiq-sdk](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules) |
-| `nsx-ambiq-bsp-r3`, `nsx-ambiq-bsp-r4`, `nsx-ambiq-bsp-r5` | BSP wrapper surface for each unified AmbiqSuite release family. | Board-support wiring layered on top of the chosen SDK release family. | [nsx-ambiq-sdk](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules) |
+| `nsx-ambiq-hal` | Unified HAL wrapper surface (per-SoC capability-gated). | Pull in supported HAL utilities without wiring raw SDK files by hand. | [nsx-ambiq-sdk](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules) |
+| `nsx-ambiq-bsp` | Unified BSP wrapper surface. | Board-support wiring layered on top of the SDK provider. | [nsx-ambiq-sdk](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules) |
 | `nsx-soc-hal` | Shared SoC-level integration across targets. | Common SoC policy and low-level platform integration. | [nsx-ambiq-sdk](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules/nsx-soc-hal) |
 | `nsx-cmsis-core`, `nsx-cmsis-startup` | CMSIS core and startup integration for NSX targets. | Core CMSIS headers plus startup files, vector-table wiring, and common boot integration. | [nsx-ambiq-sdk](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules) |
 

@@ -6,24 +6,25 @@ NSX board and SoC modules.
 !!! info "Status: unified"
     NSX originally planned one upstream repo per AmbiqSuite major line
     (`nsx-ambiqsuite-r3`, `-r4`, `-r5`). That plan has been superseded: all
-    AmbiqSuite lines now resolve from a single **unified SDK repo**,
-    [`nsx-ambiq-sdk`](https://github.com/AmbiqAI/nsx-ambiq-sdk). The historical
-    per-major plan is summarized at the end for context.
+    AmbiqSuite SoCs now resolve from a single **unified SDK repo**,
+    [`nsx-ambiq-sdk`](https://github.com/AmbiqAI/nsx-ambiq-sdk), through a
+    single provider module. The historical per-major plan is summarized at the
+    end for context.
 
 ## Current Model
 
 One repo, [`nsx-ambiq-sdk`](https://github.com/AmbiqAI/nsx-ambiq-sdk), vendors
 the AmbiqSuite drop, the HAL/BSP wrappers, and the shared NSX module set for
-every supported release line (r2 through r6). It tracks `main`.
+every supported SoC (Apollo2 through Apollo5). It tracks `main`.
 
-The release-specific modules NSX resolves are thin metadata views onto that one
-project:
+The provider and wrapper modules NSX resolves are thin metadata views onto that
+one project:
 
 | Provider / wrapper module | Project | Revision |
 |---|---|---|
-| `nsx-ambiqsuite-r2` … `-r6` | `nsx-ambiq-sdk` | `main` |
-| `nsx-ambiq-hal-r2` … `-r6` | `nsx-ambiq-sdk` | `main` |
-| `nsx-ambiq-bsp-r2` … `-r6` | `nsx-ambiq-sdk` | `main` |
+| `nsx-ambiqsuite` | `nsx-ambiq-sdk` | `main` |
+| `nsx-ambiq-hal` | `nsx-ambiq-sdk` | `main` |
+| `nsx-ambiq-bsp` | `nsx-ambiq-sdk` | `main` |
 
 Board profiles depend on the provider module for their SoC family, and NSX
 vendors the resolved SDK content into the generated app. See
