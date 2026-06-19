@@ -3,7 +3,7 @@
 #
 # Defines: nsx_lookup_sdk_provider(board_name out_var)
 #   Sets <out_var> in the parent scope to the canonical SDK
-#   provider name (ambiqsuite-r3|ambiqsuite-r4|ambiqsuite-r5)
+#   provider name (ambiqsuite)
 #   for the given board, or to the empty string if unknown.
 #   Board matching is case-insensitive.
 

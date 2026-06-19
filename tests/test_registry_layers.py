@@ -160,12 +160,12 @@ def _bundle_base_registry() -> dict:
 
     return {
         "projects": {
-            "nsx-ambiq-bsp-r5": {"name": "nsx-ambiq-bsp-r5", "revision": "v0.1.0"},
+            "nsx-ambiq-bsp": {"name": "nsx-ambiq-bsp", "revision": "v0.1.0"},
             "nsx-ambiq-sdk": {"name": "nsx-ambiq-sdk", "revision": "main"},
         },
         "modules": {
-            "nsx-ambiq-bsp-r5": {
-                "project": "nsx-ambiq-bsp-r5",
+            "nsx-ambiq-bsp": {
+                "project": "nsx-ambiq-bsp",
                 "revision": "v0.1.0",
                 "metadata": "nsx-module.yaml",
             },
@@ -179,15 +179,15 @@ def test_alignment_passes_when_module_override_present() -> None:
     base = _bundle_base_registry()
     nsx_cfg = {
         "modules": [
-            {"name": "nsx-ambiq-bsp-r5", "project": "nsx-ambiq-sdk"},
+            {"name": "nsx-ambiq-bsp", "project": "nsx-ambiq-sdk"},
         ],
         "module_registry": {
             "projects": {"nsx-ambiq-sdk": {"revision": "main"}},
             "modules": {
-                "nsx-ambiq-bsp-r5": {
+                "nsx-ambiq-bsp": {
                     "project": "nsx-ambiq-sdk",
                     "revision": "main",
-                    "metadata": "modules/nsx-ambiq-bsp-r5/nsx-module.yaml",
+                    "metadata": "modules/nsx-ambiq-bsp/nsx-module.yaml",
                 },
             },
         },
@@ -203,11 +203,11 @@ def test_alignment_detects_partial_migration() -> None:
     base = _bundle_base_registry()
     nsx_cfg = {
         "modules": [
-            {"name": "nsx-ambiq-bsp-r5", "project": "nsx-ambiq-sdk"},
+            {"name": "nsx-ambiq-bsp", "project": "nsx-ambiq-sdk"},
         ],
         "module_registry": {
             "projects": {"nsx-ambiq-sdk": {"revision": "main"}},
-            # NOTE: no modules override for nsx-ambiq-bsp-r5 — the partial
+            # NOTE: no modules override for nsx-ambiq-bsp — the partial
             # migration that broke the examples.
         },
     }
@@ -215,14 +215,14 @@ def test_alignment_detects_partial_migration() -> None:
     with pytest.raises(NSXConfigError) as exc:
         validate_app_module_alignment(nsx_cfg, registry)
     msg = str(exc.value)
-    assert "nsx-ambiq-bsp-r5" in msg
+    assert "nsx-ambiq-bsp" in msg
     assert "nsx-ambiq-sdk" in msg
-    assert "nsx-ambiq-bsp-r5" in msg  # the stale resolved project name
+    assert "nsx-ambiq-bsp" in msg  # the stale resolved project name
 
 
 def test_alignment_ignores_modules_without_declared_project() -> None:
     base = _bundle_base_registry()
-    nsx_cfg = {"modules": [{"name": "nsx-ambiq-bsp-r5"}]}
+    nsx_cfg = {"modules": [{"name": "nsx-ambiq-bsp"}]}
     registry = _effective_registry(base, nsx_cfg)
     validate_app_module_alignment(nsx_cfg, registry)
 

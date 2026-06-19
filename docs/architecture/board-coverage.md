@@ -26,10 +26,8 @@ least through `nsx create-app`, `nsx configure`, and `nsx build`.
 
 ## Implementation Notes
 
-- Apollo3-class boards resolve through `nsx-ambiqsuite-r3`
-- Apollo4 Lite and Apollo4 Plus boards resolve through `nsx-ambiqsuite-r4`
-- Apollo510, Apollo510B, Apollo510L, Apollo330P, and legacy Apollo5B-class
-  boards resolve through `nsx-ambiqsuite-r5`
+- All Apollo-class boards (Apollo3 through Apollo510/Apollo330P) resolve through
+  the single provider `nsx-ambiqsuite`
 - board definitions are built into the tooling repo and vendored into generated
   apps
 - modules are resolved from the packaged registry, cloned from their upstream

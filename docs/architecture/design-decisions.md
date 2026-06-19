@@ -117,14 +117,11 @@ app target.
 AmbiqSuite provider modules are treated as target-specific infrastructure
 modules.
 
-Examples:
-
-1. `nsx-ambiqsuite-r3`
-2. `nsx-ambiqsuite-r4`
-3. `nsx-ambiqsuite-r5`
+A single provider module, `nsx-ambiqsuite`, mirrors the upstream AmbiqSuite
+`stable` baseline and serves every supported Apollo SoC.
 
 For families with multiple validated minor lines, board defaults pin specific
-provider branches or revisions in app metadata.
+provider revisions in app metadata.
 
 ## 10. Scope of NSX
 
