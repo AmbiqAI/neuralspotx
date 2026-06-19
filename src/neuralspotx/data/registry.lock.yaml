@@ -101,14 +101,10 @@ modules:
     project: nsx-ambiq-sdk
     revision: main
     metadata: modules/nsx-ambiq-bsp/nsx-module.yaml
-  nsx-ambiq-usb-r4:
+  nsx-ambiq-usb:
     project: nsx-ambiq-sdk
     revision: main
-    metadata: modules/nsx-ambiq-usb-r4/nsx-module.yaml
-  nsx-ambiq-usb-r5:
-    project: nsx-ambiq-sdk
-    revision: main
-    metadata: modules/nsx-ambiq-usb-r5/nsx-module.yaml
+    metadata: modules/nsx-ambiq-usb/nsx-module.yaml
   nsx-soc-hal:
     project: nsx-ambiq-sdk
     revision: main
@@ -312,7 +308,7 @@ soc_families:
       - nsx-ambiqsuite
       - nsx-ambiq-hal
       - nsx-ambiq-bsp
-      - nsx-ambiq-usb-r4
+      - nsx-ambiq-usb
       - nsx-soc-hal
       - nsx-cmsis-core
       - nsx-cmsis-startup
@@ -341,7 +337,7 @@ soc_families:
       - nsx-ambiqsuite
       - nsx-ambiq-hal
       - nsx-ambiq-bsp
-      - nsx-ambiq-usb-r5
+      - nsx-ambiq-usb
       - nsx-soc-hal
       - nsx-cmsis-core
       - nsx-cmsis-startup

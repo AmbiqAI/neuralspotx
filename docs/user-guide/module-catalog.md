@@ -61,8 +61,7 @@ repositories, notably `nsx-pmu-armv8m`, `nsx-cmsis-nn`, `nsx-helia-rt`,
 | `nsx-ambiqsuite` | :material-package-variant: SDK | Unified AmbiqSuite SDK provider covering all supported Apollo SoCs. | Apollo2, Apollo3, Apollo3P, Apollo4L, Apollo4P, Apollo330P, Apollo510, Apollo510B, Apollo510L, Apollo5B |
 | `nsx-ambiq-hal` | :material-package-variant: SDK | Unified HAL wrapper surface (per-SoC capability-gated). | All Apollo SoCs |
 | `nsx-ambiq-bsp` | :material-package-variant: SDK | Unified board-support wrapper surface. | All Apollo SoCs |
-| `nsx-ambiq-usb-r4` | :material-package-variant: SDK | USB integration layer bundled with the unified `r4` SDK line. | Apollo4P |
-| `nsx-ambiq-usb-r5` | :material-package-variant: SDK | USB integration layer bundled with the unified `r5` SDK line. | Apollo510, Apollo510B, Apollo5B |
+| `nsx-ambiq-usb` | :material-package-variant: SDK | Unified TinyUSB substrate; SoC-family DCD selected at configure time. | Apollo4P, Apollo330P, Apollo510, Apollo510B, Apollo510L, Apollo5B |
 | `nsx-cmsis-core` | :material-chip: Platform | CMSIS core support and integration from the unified SDK stack. | All |
 | `nsx-tooling` | :material-wrench: Tooling | CLI-generated app CMake/tooling integration. | All |
 | `nsx-soc-hal` | :material-chip: Platform | Shared SoC-level HAL integration layer for NSX targets. | All |
