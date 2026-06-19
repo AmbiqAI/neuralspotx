@@ -12,13 +12,13 @@ modules:
   - name: nsx-cmsis-core
     project: nsx-ambiq-sdk
     revision: main
-  - name: nsx-ambiqsuite-r5
+  - name: nsx-ambiqsuite
     project: nsx-ambiq-sdk
     revision: main
-  - name: nsx-ambiq-hal-r5
+  - name: nsx-ambiq-hal
     project: nsx-ambiq-sdk
     revision: main
-  - name: nsx-ambiq-bsp-r5
+  - name: nsx-ambiq-bsp
     project: nsx-ambiq-sdk
     revision: main
   - name: nsx-soc-hal
@@ -40,18 +40,18 @@ modules:
 features: {}
 module_registry:
   modules:
-    nsx-ambiqsuite-r5:
+    nsx-ambiqsuite:
       project: nsx-ambiq-sdk
       revision: main
-      metadata: modules/nsx-ambiqsuite-r5/nsx-module.yaml
-    nsx-ambiq-hal-r5:
+      metadata: modules/nsx-ambiqsuite/nsx-module.yaml
+    nsx-ambiq-hal:
       project: nsx-ambiq-sdk
       revision: main
-      metadata: modules/nsx-ambiq-hal-r5/nsx-module.yaml
-    nsx-ambiq-bsp-r5:
+      metadata: modules/nsx-ambiq-hal/nsx-module.yaml
+    nsx-ambiq-bsp:
       project: nsx-ambiq-sdk
       revision: main
-      metadata: modules/nsx-ambiq-bsp-r5/nsx-module.yaml
+      metadata: modules/nsx-ambiq-bsp/nsx-module.yaml
     nsx-cmsis-core:
       project: nsx-ambiq-sdk
       revision: main
