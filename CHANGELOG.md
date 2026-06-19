@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.6.8](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.6.7...neuralspotx-v0.6.8) (2026-06-19)
+
+
+### Bug Fixes
+
+* **apollo4:** align blue BSP dirs and SEGGER targets ([#139](https://github.com/AmbiqAI/neuralspotx/issues/139)) ([d164420](https://github.com/AmbiqAI/neuralspotx/commit/d1644203674a56f01ab58c4ce7853b3e97f6136a))
+* **apollo510b:** use shipped system_apollo510 source path ([#140](https://github.com/AmbiqAI/neuralspotx/issues/140)) ([5fb50fa](https://github.com/AmbiqAI/neuralspotx/commit/5fb50fa2bc70a049f27797de2a29ab379255424f))
+
+
+### Documentation
+
+* refresh NSX site and install guides ([#136](https://github.com/AmbiqAI/neuralspotx/issues/136)) ([4403057](https://github.com/AmbiqAI/neuralspotx/commit/4403057eb4a06af26549538e928b735aaeabba8c))
+
 ## [0.6.7](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.6.6...neuralspotx-v0.6.7) (2026-06-13)
 
 
