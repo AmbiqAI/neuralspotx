@@ -194,8 +194,28 @@ def jlink_failure_hint(output: str) -> str | None:
     return None
 
 
+# Number of trailing output lines echoed inline on a captured-subprocess
+# failure so the user can diagnose without re-running under ``--verbose``.
+_ERROR_OUTPUT_TAIL_LINES = 40
+
+
+def _tail(text: str, *, lines: int = _ERROR_OUTPUT_TAIL_LINES) -> str:
+    """Return the last *lines* non-empty-trimmed lines of *text*."""
+
+    rows = text.rstrip().splitlines()
+    if len(rows) <= lines:
+        return "\n".join(rows)
+    return "\n".join(["... (earlier output truncated)", *rows[-lines:]])
+
+
 def format_subprocess_error(exc: subprocess.CalledProcessError, *, context: str) -> str:
-    """Format a subprocess failure for user-facing CLI output."""
+    """Format a subprocess failure for user-facing CLI output.
+
+    When the failing subprocess was *captured* (its stdout/stderr are
+    attached to the exception), the trailing lines of that output are
+    included inline so the user can diagnose the failure without having
+    to re-run the whole command under ``--verbose``.
+    """
 
     output_parts: list[str] = []
     stdout = getattr(exc, "stdout", None)
@@ -210,11 +230,17 @@ def format_subprocess_error(exc: subprocess.CalledProcessError, *, context: str)
     hint = jlink_failure_hint(combined_output)
     if hint:
         message = f"{context} failed.\n{hint}"
-        if verbose == 0:
-            message += "\nRe-run with `--verbose` for the full tool output."
-        return message
+    else:
+        message = f"{context} failed with exit code {exc.returncode}."
 
-    message = f"{context} failed with exit code {exc.returncode}."
-    if verbose == 0:
-        message += "\nRe-run with `--verbose` for the full subprocess traceback."
+    # Surface the captured output (or its tail) inline. At verbosity 0 we
+    # show the tail; under ``--verbose`` the caller already streamed the
+    # full output, so we only append the hint to re-run for the rest.
+    if combined_output:
+        shown = combined_output if verbose > 0 else _tail(combined_output)
+        message += f"\n--- output ---\n{shown}"
+        if verbose == 0 and shown != combined_output:
+            message += "\n--- (re-run with `--verbose` for the full output) ---"
+    elif verbose == 0:
+        message += "\nRe-run with `--verbose` for the full tool output."
     return message
