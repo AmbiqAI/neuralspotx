@@ -8,7 +8,8 @@ from .._errors import NSXConfigError, NSXIntegrityError, NSXModuleError
 from .._io import info
 from .._logging import get_logger
 from ..file_lock import app_lock
-from ..module_registry import _update_module_clone
+from ..models import AppConfig
+from ..module_registry import _update_module_clone, expand_profile_seeds
 from ..nsx_lock import (
     NSX_TOOLING_AUTOGEN_FILES,
     LockKind,
@@ -29,7 +30,7 @@ from ..project_config import (
     _write_modules_gitignore_for_module_names,
     validate_app_module_alignment,
 )
-from ._lock import _resolved_module_path, lock_app_impl
+from ._lock import _apply_active_target, _resolved_module_path, lock_app_impl
 
 _log = get_logger(__name__)
 
@@ -116,7 +117,17 @@ def _sync_app_impl_unlocked(
         assert lock is not None  # noqa: S101 — invariant guaranteed by lock_app_impl
 
     nsx_cfg = _load_app_cfg(app_dir)
+    app_cfg = AppConfig.from_mapping(nsx_cfg)
+    if app_cfg.is_multi_target():
+        # Pin the active board so the seeded closure belongs to the board
+        # being synced.
+        nsx_cfg = _apply_active_target(nsx_cfg, app_cfg.resolve_target(board))
     base_registry = _load_registry()
+    # Lean manifests omit the resolved closure and ``module_registry``
+    # overrides; re-seed them (mirroring ``_build_lock_for_app``) so module
+    # resolution and the regenerated CMake glue below can find additive
+    # ``requires`` modules whose metadata lives in the board family catalog.
+    nsx_cfg = expand_profile_seeds(nsx_cfg, base_registry)
     registry = _effective_registry(base_registry, nsx_cfg, app_dir=app_dir)
     validate_app_module_alignment(nsx_cfg, registry)
 
