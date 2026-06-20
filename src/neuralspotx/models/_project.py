@@ -240,6 +240,29 @@ class ModuleRegistryOverride:
         return merged
 
 
+def _starter_profile_default(board: str) -> str:
+    """Name of the derived starter profile for *board* (``<board>_minimal``)."""
+
+    return f"{board}_minimal"
+
+
+@dataclass(frozen=True)
+class ResolvedTarget:
+    """A fully-resolved build target derived from an app manifest.
+
+    Materialised either from an explicit ``targets:`` block or from the
+    legacy singular ``target:`` / ``profile:`` keys. ``profile`` defaults to
+    the board's derived starter profile (``<board>_minimal``); ``soc`` and
+    ``toolchain`` are ``None`` when the manifest leaves them implicit, to be
+    resolved from the board descriptor / global default downstream.
+    """
+
+    board: str
+    soc: str | None = None
+    profile: str | None = None
+    toolchain: str | None = None
+
+
 @dataclass(frozen=True)
 class AppConfig:
     """Typed view of an app ``nsx.yml`` mapping."""
@@ -278,6 +301,127 @@ class AppConfig:
     def toolchain(self) -> str | None:
         toolchain = self.raw.get("toolchain")
         return toolchain if isinstance(toolchain, str) and toolchain else None
+
+    # --- Multi-target resolution --------------------------------------
+
+    def _explicit_targets_block(self) -> dict[str, Any] | None:
+        targets = self.raw.get("targets")
+        return targets if isinstance(targets, dict) else None
+
+    def _targets_from_singular(self) -> dict[str, ResolvedTarget]:
+        target = self.target
+        board = target.get("board")
+        if not isinstance(board, str) or not board:
+            return {}
+        soc = target.get("soc")
+        profile = self.raw.get("profile")
+        return {
+            board: ResolvedTarget(
+                board=board,
+                soc=soc if isinstance(soc, str) and soc else None,
+                profile=(
+                    profile
+                    if isinstance(profile, str) and profile
+                    else _starter_profile_default(board)
+                ),
+                toolchain=self.toolchain,
+            )
+        }
+
+    def _targets_from_block(self, block: dict[str, Any]) -> dict[str, ResolvedTarget]:
+        supported = block.get("supported", [])
+        singular = self.target
+        singular_board = singular.get("board") if isinstance(singular, dict) else None
+
+        entries: dict[str, dict[str, Any]] = {}
+        if isinstance(supported, list):
+            for item in supported:
+                if not isinstance(item, str) or not item:
+                    raise NSXConfigError(
+                        "nsx.yml: targets.supported list entries must be board-name strings",
+                        field="targets.supported",
+                    )
+                entries[item] = {}
+        elif isinstance(supported, dict):
+            for board, cfg in supported.items():
+                if not isinstance(board, str) or not board:
+                    raise NSXConfigError(
+                        "nsx.yml: targets.supported keys must be board names",
+                        field="targets.supported",
+                    )
+                entries[board] = cfg if isinstance(cfg, dict) else {}
+        else:
+            raise NSXConfigError(
+                "nsx.yml: targets.supported must be a list or a mapping",
+                field="targets.supported",
+            )
+
+        out: dict[str, ResolvedTarget] = {}
+        for board, cfg in entries.items():
+            soc = cfg.get("soc")
+            if not (isinstance(soc, str) and soc) and board == singular_board:
+                soc = singular.get("soc")
+            profile = cfg.get("profile")
+            toolchain = cfg.get("toolchain")
+            out[board] = ResolvedTarget(
+                board=board,
+                soc=soc if isinstance(soc, str) and soc else None,
+                profile=(
+                    profile
+                    if isinstance(profile, str) and profile
+                    else _starter_profile_default(board)
+                ),
+                toolchain=(
+                    toolchain if isinstance(toolchain, str) and toolchain else self.toolchain
+                ),
+            )
+        return out
+
+    def targets(self) -> dict[str, ResolvedTarget]:
+        """Resolve every declared build target, keyed by board name.
+
+        Uses the explicit ``targets:`` block when present; otherwise derives
+        a single target from the legacy ``target:`` / ``profile:`` keys so
+        existing single-target manifests keep working unchanged.
+        """
+
+        block = self._explicit_targets_block()
+        if block is not None:
+            return self._targets_from_block(block)
+        return self._targets_from_singular()
+
+    def default_board(self) -> str | None:
+        """Board name of the default build target, or ``None`` if undeclared."""
+
+        block = self._explicit_targets_block()
+        if block is not None:
+            default = block.get("default")
+            if isinstance(default, str) and default:
+                return default
+            return next(iter(self.targets()), None)
+        board = self.target.get("board")
+        return board if isinstance(board, str) and board else None
+
+    def resolve_target(self, board: str | None = None) -> ResolvedTarget:
+        """Return the :class:`ResolvedTarget` for *board* (or the default).
+
+        Raises:
+            NSXConfigError: When the app declares no target, or *board* is
+                not among the supported targets.
+        """
+
+        targets = self.targets()
+        if not targets:
+            raise NSXConfigError("nsx.yml declares no build target", field="target")
+        if board is None:
+            board = self.default_board()
+        if board not in targets:
+            supported = ", ".join(sorted(targets)) or "(none)"
+            raise NSXConfigError(
+                f"board '{board}' is not a supported target (supported: {supported})",
+                field="targets.supported",
+            )
+        return targets[board]
 
     def module_names(self) -> list[str]:
         return [module.name for module in self.modules]

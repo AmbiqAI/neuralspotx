@@ -30,6 +30,7 @@ _NSX_YML_KNOWN_TOP_LEVEL: tuple[str, ...] = (
     "features",
     "profile",
     "profile_status",
+    "targets",
 )
 
 
@@ -66,6 +67,47 @@ def _require_str(
     if not value and not allow_empty:
         raise NSXConfigError(f"{origin}: '{field}' must be a non-empty string", field=field)
     return value
+
+
+def _validate_targets(value: Any, *, origin: str = "nsx.yml") -> None:
+    """Validate the optional multi-target ``targets:`` block shape.
+
+    The block carries an optional ``default`` board name and a ``supported``
+    list of board names (or a mapping of board name to an optional
+    ``{soc, profile, toolchain}`` override). Resolution semantics live in
+    :meth:`AppConfig.targets`; this only enforces structural shape so a typo
+    fails fast with a typed, field-scoped error.
+    """
+
+    if value is None:
+        return
+    block = _require_mapping(value, field="targets", origin=origin)
+    default = block.get("default")
+    if default is not None:
+        _require_str(default, field="targets.default", origin=origin)
+    supported = block.get("supported")
+    if supported is None:
+        return
+    if isinstance(supported, list):
+        for idx, item in enumerate(supported):
+            _require_str(item, field=f"targets.supported[{idx}]", origin=origin)
+    elif isinstance(supported, dict):
+        for board, cfg in supported.items():
+            _require_str(board, field="targets.supported (board key)", origin=origin)
+            if cfg is None:
+                continue
+            cfg_map = _require_mapping(cfg, field=f"targets.supported.{board}", origin=origin)
+            for key in ("soc", "profile", "toolchain"):
+                if cfg_map.get(key) is not None:
+                    _require_str(
+                        cfg_map[key], field=f"targets.supported.{board}.{key}", origin=origin
+                    )
+    else:
+        raise NSXConfigError(
+            f"{origin}: 'targets.supported' must be a list or a mapping, "
+            f"got {type(supported).__name__}",
+            field="targets.supported",
+        )
 
 
 def _validate_modules_list(modules_data: Any, *, origin: str = "nsx.yml") -> tuple[AppModule, ...]:
@@ -248,6 +290,8 @@ class NsxProject:
                 field="profile_status",
             )
 
+        _validate_targets(data.get("targets"), origin=origin)
+
         extra = {k: v for k, v in data.items() if k not in _NSX_YML_KNOWN_TOP_LEVEL}
 
         return cls(
@@ -300,6 +344,18 @@ class NsxProject:
     def board(self) -> str | None:
         board = self.target.get("board") if isinstance(self.target, dict) else None
         return board if isinstance(board, str) and board else None
+
+    @property
+    def supported_boards(self) -> list[str]:
+        """Board names of every declared build target (single- or multi-target)."""
+
+        return list(self.app_config().targets())
+
+    @property
+    def default_board(self) -> str | None:
+        """Board name of the default build target, or ``None`` if undeclared."""
+
+        return self.app_config().default_board()
 
     def app_config(self) -> AppConfig:
         """Return the legacy :class:`AppConfig` view over the same mapping."""

@@ -27,11 +27,13 @@ from ._project import (
     ModuleRegistryOverride,
     ModuleSource,
     ProjectEntry,
+    ResolvedTarget,
 )
 
 __all__ = [
     "AppConfig",
     "AppModule",
+    "ResolvedTarget",
     "CacheCleanResult",
     "CacheEntry",
     "CacheInfo",
