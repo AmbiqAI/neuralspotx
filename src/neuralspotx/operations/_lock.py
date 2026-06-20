@@ -202,8 +202,15 @@ def _apply_active_target(nsx_cfg: dict[str, Any], target: ResolvedTarget) -> dic
     cfg = copy.deepcopy(nsx_cfg)
     new_target = dict(cfg.get("target") or {})
     new_target["board"] = target.board
-    if target.soc:
-        new_target["soc"] = target.soc
+    soc = target.soc
+    if not soc:
+        # Lean ``targets:`` entries leave the SoC implicit; derive it from
+        # the board descriptor so the resolver sees a complete target.
+        from ..constants import DEFAULT_SOC_FOR_BOARD, normalize_board
+
+        soc = DEFAULT_SOC_FOR_BOARD.get(normalize_board(target.board) or target.board)
+    if soc:
+        new_target["soc"] = soc
     cfg["target"] = new_target
     if target.profile:
         cfg["profile"] = target.profile
@@ -771,6 +778,18 @@ def lock_app_impl(
             )
             for b in boards
         ]
+        if len(results) > 1:
+            # Each board writes ``modules/.gitignore`` for its own closure,
+            # so the last board would otherwise win and drop sibling-only
+            # vendored modules. Rewrite it once with the union across boards
+            # (default board's order first) so every board's vendored
+            # modules stay ignored.
+            union: list[str] = []
+            for result in results:
+                for name in result.modules:
+                    if name not in union:
+                        union.append(name)
+            _write_modules_gitignore_for_module_names(app_dir, _load_app_cfg(app_dir), union)
     return results[0]
 
 

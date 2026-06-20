@@ -176,3 +176,13 @@ def test_apply_active_target_pins_board_without_mutating_input() -> None:
     assert cfg["profile"] == "old"
     assert "toolchain" not in cfg
 
+
+def test_apply_active_target_derives_soc_from_board_descriptor() -> None:
+    # Lean ``targets:`` list entries leave the SoC implicit (soc=None);
+    # the active-target injection must derive it from the board descriptor
+    # so the downstream closure resolver sees a complete target.
+    cfg: dict = {"project": {"name": "demo"}}
+    target = ResolvedTarget(board="apollo510b_evb", soc=None)
+    out = _apply_active_target(cfg, target)
+    assert out["target"]["board"] == "apollo510b_evb"
+    assert out["target"]["soc"] == "apollo510b"

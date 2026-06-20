@@ -1,18 +1,27 @@
 # hello_world
 
-Minimal **nsx** application for the Apollo510 EVB.  Initialises the
-runtime core and prints a message to SWO in a loop.
+Minimal **nsx** application. Initialises the runtime core and prints a
+message to SWO in a loop.
 
 This is the recommended starting point for new users — it validates that
 your toolchain, board connection, and SWO viewer are all working.
 
+It is also a **multi-target** example: a single lean `nsx.yml` declares a
+`targets:` block supporting both `apollo510_evb` (default) and
+`apollo510b_evb`. Each board resolves its own derived `<board>_minimal`
+profile and commits its own `nsx.<board>.lock`.
+
 ## Build & Run
 
 ```bash
+# Default board (apollo510_evb)
 nsx configure --app-dir .
 nsx build     --app-dir .
-nsx flash     --app-dir .      # requires JLink + Apollo510 EVB
+nsx flash     --app-dir .      # requires JLink + EVB
 nsx view      --app-dir .      # opens SWO viewer
+
+# Sibling board
+nsx build     --app-dir . --board apollo510b_evb
 ```
 
 ## Expected Output
