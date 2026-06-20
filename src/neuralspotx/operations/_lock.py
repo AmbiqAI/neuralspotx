@@ -23,6 +23,7 @@ from ..module_registry import (
     _module_names_from_nsx,
     _resolve_module_closure,
     _vendored_module_names,
+    expand_profile_seeds,
 )
 from ..nsx_lock import (
     NSX_TOOLING_AUTOGEN_FILES,
@@ -237,6 +238,10 @@ def _build_lock_for_app(
 
     nsx_cfg = _load_app_cfg(app_dir)
     base_registry = _load_registry()
+    # Lean manifests omit the resolved closure; expand it from the app's
+    # starter profile in-memory so the resolver below sees an equivalent
+    # fully-seeded config. Inlined manifests pass through unchanged.
+    nsx_cfg = expand_profile_seeds(nsx_cfg, base_registry)
     registry = _effective_registry(base_registry, nsx_cfg, app_dir=app_dir)
     validate_app_module_alignment(nsx_cfg, registry)
     seed_module_names = _module_names_from_nsx(nsx_cfg)

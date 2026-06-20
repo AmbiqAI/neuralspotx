@@ -30,6 +30,7 @@ from ._profile import (
     _module_record,
     _resolve_profile,
     _starter_profile_name,
+    expand_profile_seeds,
 )
 from ._rmtree import _rmtree
 from ._table import _print_module_table
@@ -72,6 +73,7 @@ __all__ = [
     "_vendor_local_module_into_app",
     "_vendor_packaged_module_into_app",
     "_vendored_module_names",
+    "expand_profile_seeds",
     "metadata_cache_scope",
     "module_cache",
     "packaged_module_metadata_path",

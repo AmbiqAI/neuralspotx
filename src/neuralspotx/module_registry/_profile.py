@@ -50,16 +50,18 @@ def _module_record(
     }
 
 
-def _generate_nsx_config(
-    app_name: str,
-    board: str,
-    soc: str,
+def _profile_seed_blocks(
     registry: dict[str, Any],
-    *,
-    default_toolchain: str,
-    nsx_version: str | None,
-    nsx_major: int | None,
-) -> dict[str, Any]:
+    board: str,
+) -> tuple[list[dict[str, str]], dict[str, Any], dict[str, Any]]:
+    """Derive the inlined ``modules`` + ``module_registry`` seed blocks for *board*.
+
+    Shared by app creation (:func:`_generate_nsx_config`) and profile-seeded
+    resolution (:func:`expand_profile_seeds`) so a lean manifest expands to a
+    closure that is byte-compatible with the one a freshly-scaffolded app
+    would inline. Returns ``(modules, module_registry, profile)``.
+    """
+
     profile = _resolve_profile(registry, board)
     profile_modules = profile.get("modules", [])
     if not isinstance(profile_modules, list):
@@ -71,6 +73,56 @@ def _generate_nsx_config(
     if not isinstance(profile_module_overrides, dict):
         raise NSXConfigError(f"Invalid module_overrides mapping in profile for board '{board}'")
 
+    modules = [_module_record(name, registry, profile_module_overrides) for name in profile_modules]
+    module_registry = {
+        "projects": copy.deepcopy(profile_project_overrides),
+        "modules": copy.deepcopy(profile_module_overrides),
+    }
+    return modules, module_registry, profile
+
+
+def expand_profile_seeds(
+    nsx_cfg: dict[str, Any],
+    registry: dict[str, Any],
+) -> dict[str, Any]:
+    """Seed ``modules``/``module_registry`` from the app's profile when absent.
+
+    Lean manifests omit the resolved module closure and registry overrides;
+    this rebuilds them in-memory from the app's starter profile (the same
+    derivation used at app creation) so the resolver sees an equivalent
+    fully-seeded config. A manifest that already declares ``modules`` (even
+    an explicitly empty ``modules: []``, e.g. ``--no-bootstrap``) is
+    returned unchanged, and any explicitly-authored ``module_registry`` is
+    preserved.
+    """
+
+    if "modules" in nsx_cfg:
+        return nsx_cfg
+    target = nsx_cfg.get("target")
+    board = target.get("board") if isinstance(target, dict) else None
+    if not isinstance(board, str) or not board:
+        return nsx_cfg
+
+    modules, module_registry, _profile = _profile_seed_blocks(registry, board)
+    expanded = dict(nsx_cfg)
+    expanded["modules"] = modules
+    if not expanded.get("module_registry"):
+        expanded["module_registry"] = module_registry
+    return expanded
+
+
+def _generate_nsx_config(
+    app_name: str,
+    board: str,
+    soc: str,
+    registry: dict[str, Any],
+    *,
+    default_toolchain: str,
+    nsx_version: str | None,
+    nsx_major: int | None,
+) -> dict[str, Any]:
+    modules, module_registry, profile = _profile_seed_blocks(registry, board)
+
     return {
         "schema_version": 1,
         "project": {"name": app_name},
@@ -79,9 +131,7 @@ def _generate_nsx_config(
         "channel": profile.get("channel", "stable"),
         "profile": _starter_profile_name(board),
         "profile_status": profile.get("status", "active"),
-        "modules": [
-            _module_record(name, registry, profile_module_overrides) for name in profile_modules
-        ],
+        "modules": modules,
         "features": profile.get("features", {}),
         "tooling": {
             "nsx": {
@@ -89,8 +139,5 @@ def _generate_nsx_config(
                 "major": nsx_major,
             }
         },
-        "module_registry": {
-            "projects": copy.deepcopy(profile_project_overrides),
-            "modules": copy.deepcopy(profile_module_overrides),
-        },
+        "module_registry": module_registry,
     }
