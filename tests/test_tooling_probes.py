@@ -8,7 +8,7 @@ import pytest
 
 from neuralspotx import tooling
 from neuralspotx._errors import NSXToolchainError
-from neuralspotx.tooling import JLinkProbe, list_jlink_probes
+from neuralspotx.tooling import JLinkProbe, find_processes_holding_probe, list_jlink_probes
 
 _SAMPLE_EMU_LIST = """\
 J-Link[0]: Connection: USB, Serial number: 1160002204, ProductName: J-Link-OB-Apollo4-CortexM
@@ -59,3 +59,28 @@ def test_list_jlink_probes_raises_without_executable(monkeypatch: pytest.MonkeyP
 
     with pytest.raises(NSXToolchainError):
         list_jlink_probes()
+
+
+def test_find_processes_holding_probe_matches_segger_session(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    fake = [
+        (4242, "JLinkSWOViewer_CL -USB 1160001350 -device AMA4B2KP-KXR -itmport 0"),
+        (4243, "/usr/bin/python3 some_script.py 1160001350"),  # serial but not SEGGER
+        (4244, "JLinkExe -USB 9999999999 -nogui 1"),  # SEGGER but other serial
+    ]
+    monkeypatch.setattr(tooling, "_iter_process_cmdlines", lambda: iter(fake))
+
+    assert find_processes_holding_probe("1160001350") == [4242]
+
+
+def test_find_processes_holding_probe_excludes_self(monkeypatch: pytest.MonkeyPatch) -> None:
+    me = tooling.os.getpid()
+    fake = [(me, "JLinkSWOViewer_CL -USB 1160001350 -itmport 0")]
+    monkeypatch.setattr(tooling, "_iter_process_cmdlines", lambda: iter(fake))
+
+    assert find_processes_holding_probe("1160001350") == []
+
+
+def test_find_processes_holding_probe_empty_serial() -> None:
+    assert find_processes_holding_probe("") == []

@@ -34,6 +34,7 @@ _NSX_YML_KNOWN_TOP_LEVEL: tuple[str, ...] = (
     "requires",
 )
 
+
 def _require_mapping(
     value: Any, *, field: str, allow_none: bool = False, origin: str = "nsx.yml"
 ) -> dict[str, Any]:

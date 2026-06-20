@@ -238,3 +238,93 @@ def test_apply_active_target_clears_requires_when_target_has_none() -> None:
     out = _apply_active_target(cfg_no_global, app_no_global.resolve_target("apollo510b_evb"))
 
     assert "requires" not in out
+
+
+# --- board-switch glue regeneration --------------------------------------
+
+
+def test_write_text_if_changed_skips_identical_content(tmp_path: Path) -> None:
+    from neuralspotx.project_config import _write_text_if_changed
+
+    target = tmp_path / "modules.cmake"
+
+    assert _write_text_if_changed(target, "one\n") is True
+    mtime = target.stat().st_mtime_ns
+
+    # Identical content must not rewrite (keeps mtime stable for
+    # CMake CONFIGURE_DEPENDS).
+    assert _write_text_if_changed(target, "one\n") is False
+    assert target.stat().st_mtime_ns == mtime
+
+    # Changed content rewrites.
+    assert _write_text_if_changed(target, "two\n") is True
+    assert target.read_text(encoding="utf-8") == "two\n"
+
+
+def test_regenerate_active_board_glue_uses_active_board_module_set(
+    tmp_path: Path, monkeypatch
+) -> None:
+    import neuralspotx.operations._sync as sync_mod
+
+    (tmp_path / "nsx.yml").write_text(
+        "schema_version: 1\n"
+        "project:\n  name: demo\n"
+        "targets:\n"
+        "  default: apollo510_evb\n"
+        "  supported: [apollo510_evb, apollo4p_blue_kxr_evb]\n",
+        encoding="utf-8",
+    )
+
+    class _FakeLock:
+        def __init__(self, names: list[str]) -> None:
+            # Ordered mapping keyed by module name (mirrors NsxLock.modules).
+            self.modules = {name: object() for name in names}
+
+    locks = {
+        "apollo510_evb": _FakeLock(["nsx-core", "nsx-pmu-armv8m"]),
+        "apollo4p_blue_kxr_evb": _FakeLock(["nsx-core"]),
+    }
+    monkeypatch.setattr(sync_mod, "read_lock", lambda _app, board_key: locks.get(board_key))
+    monkeypatch.setattr(sync_mod, "_load_registry", lambda: {})
+    monkeypatch.setattr(sync_mod, "expand_profile_seeds", lambda cfg, _reg: cfg)
+
+    captured: dict[str, list[str]] = {}
+    monkeypatch.setattr(
+        sync_mod,
+        "_write_app_module_file",
+        lambda _app, _cfg, module_names: captured.__setitem__("modules", list(module_names)),
+    )
+    monkeypatch.setattr(
+        sync_mod,
+        "_write_modules_gitignore_for_module_names",
+        lambda _app, _cfg, names: captured.__setitem__("gitignore", list(names)),
+    )
+
+    # Switching to Apollo4 must regenerate glue from the Apollo4 lock, not
+    # leak the Apollo5-only nsx-pmu-armv8m from the Apollo510 lock.
+    sync_mod.regenerate_active_board_glue(tmp_path, "apollo4p_blue_kxr_evb")
+
+    assert captured["modules"] == ["nsx-core"]
+    assert captured["gitignore"] == ["nsx-core"]
+    assert "nsx-pmu-armv8m" not in captured["modules"]
+
+
+def test_regenerate_active_board_glue_is_noop_without_lock(tmp_path: Path, monkeypatch) -> None:
+    import neuralspotx.operations._sync as sync_mod
+
+    (tmp_path / "nsx.yml").write_text(
+        "schema_version: 1\nproject:\n  name: demo\ntarget:\n  board: apollo510_evb\n",
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(sync_mod, "read_lock", lambda _app, _board_key: None)
+
+    called = {"write": False}
+    monkeypatch.setattr(
+        sync_mod,
+        "_write_app_module_file",
+        lambda *a, **k: called.__setitem__("write", True),
+    )
+
+    # No lock yet -> the full sync path owns creation; regen must not write.
+    sync_mod.regenerate_active_board_glue(tmp_path, "apollo510_evb")
+    assert called["write"] is False

@@ -20,6 +20,25 @@ from .models import AppConfig, ModuleRegistryOverride, NsxProject, ProjectEntry
 from .subprocess_utils import run
 
 
+def _write_text_if_changed(path: Path, content: str) -> bool:
+    """Write *content* to *path* only when it differs from the current file.
+
+    Returns ``True`` when the file was (re)written. Avoiding a no-op rewrite
+    keeps the file mtime stable, which matters for CMake ``CONFIGURE_DEPENDS``
+    inputs (e.g. the generated ``modules.cmake``): retouching an unchanged
+    file would force a needless reconfigure on every incremental build.
+    """
+
+    try:
+        if path.read_text(encoding="utf-8") == content:
+            return False
+    except (OSError, UnicodeDecodeError):
+        pass
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+    return True
+
+
 def _load_registry() -> dict[str, Any]:
     registry_resource = resources.files("neuralspotx.data").joinpath("registry.lock.yaml")
     with resources.as_file(registry_resource) as registry_path:
@@ -378,7 +397,7 @@ def _write_app_module_file(
 
     content = "\n".join(lines) + "\n"
     (app_dir / "cmake" / "nsx").mkdir(parents=True, exist_ok=True)
-    (app_dir / "cmake" / "nsx" / "modules.cmake").write_text(content, encoding="utf-8")
+    _write_text_if_changed(app_dir / "cmake" / "nsx" / "modules.cmake", content)
 
 
 def _write_modules_gitignore(app_dir: Path, nsx_cfg: dict[str, Any]) -> None:
@@ -505,7 +524,7 @@ def _write_modules_gitignore_for_names(
             lines.append(f"# {name}/  (kept in git)")
     lines.append("")
     (app_dir / "modules").mkdir(parents=True, exist_ok=True)
-    (app_dir / "modules" / ".gitignore").write_text("\n".join(lines), encoding="utf-8")
+    _write_text_if_changed(app_dir / "modules" / ".gitignore", "\n".join(lines))
 
 
 def _write_modules_gitignore_for_module_names(
