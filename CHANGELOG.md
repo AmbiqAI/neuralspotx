@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.6.9](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.6.8...neuralspotx-v0.6.9) (2026-06-20)
+
+
+### Features
+
+* **cli:** DX improvements — stale-lock awareness, view capture, app discovery ([#144](https://github.com/AmbiqAI/neuralspotx/issues/144)) ([b10a4e9](https://github.com/AmbiqAI/neuralspotx/commit/b10a4e9f571581d06f9265710d0d484b826d9800))
+
 ## [0.6.8](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.6.7...neuralspotx-v0.6.8) (2026-06-19)
 
 
