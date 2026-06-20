@@ -51,7 +51,7 @@ def configure_app_impl(
         build_dir=build_dir,
     )
     warn_if_lock_stale(resolved_app_dir)
-    _ensure_app_modules(resolved_app_dir)
+    _ensure_app_modules(resolved_app_dir, resolved_board)
     _run_cmake_configure(
         resolved_app_dir,
         resolved_build_dir,
@@ -83,7 +83,7 @@ def build_app_impl(
     )
     warn_if_lock_stale(resolved_app_dir)
     if not (resolved_build_dir / "build.ninja").exists():
-        _ensure_app_modules(resolved_app_dir)
+        _ensure_app_modules(resolved_app_dir, resolved_board)
         _run_cmake_configure(
             resolved_app_dir, resolved_build_dir, resolved_board, toolchain=toolchain
         )
@@ -114,7 +114,7 @@ def flash_app_impl(
     )
     warn_if_lock_stale(resolved_app_dir)
     if probe_serial is not None or not (resolved_build_dir / "build.ninja").exists():
-        _ensure_app_modules(resolved_app_dir)
+        _ensure_app_modules(resolved_app_dir, resolved_board)
         _run_cmake_configure(
             resolved_app_dir,
             resolved_build_dir,
@@ -196,7 +196,7 @@ def view_app_impl(
     )
     warn_if_lock_stale(resolved_app_dir)
     if probe_serial is not None or not (resolved_build_dir / "build.ninja").exists():
-        _ensure_app_modules(resolved_app_dir)
+        _ensure_app_modules(resolved_app_dir, resolved_board)
         _run_cmake_configure(
             resolved_app_dir,
             resolved_build_dir,

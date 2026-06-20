@@ -826,6 +826,37 @@ def _default_build_dir(app_dir: Path, board: str) -> Path:
     return app_dir / "build" / board
 
 
+def _lock_board_key(nsx_cfg: dict[str, Any], board: str | None = None) -> str | None:
+    """Board key for the per-app lock file.
+
+    Single-target apps keep the legacy unsuffixed ``nsx.lock`` (returns
+    ``None``). Multi-target apps (those with an explicit ``targets:`` block)
+    use a per-board committed ``nsx.<board>.lock``, defaulting to the app's
+    default target when *board* is unspecified.
+    """
+
+    app_cfg = AppConfig.from_mapping(nsx_cfg)
+    if not app_cfg.is_multi_target():
+        return None
+    key = board or app_cfg.default_board()
+    return normalize_board(key) if key else None
+
+
+def _board_key_for_app(app_dir: Path, board: str | None = None) -> str | None:
+    """Lock board key for *app_dir*, tolerant of a missing manifest.
+
+    Read-only callers (``nsx outdated``, SBOM, lock-staleness) may run
+    against an app dir that has a lock but no readable ``nsx.yml``; in
+    that case fall back to the legacy unsuffixed ``nsx.lock``.
+    """
+
+    try:
+        nsx_cfg = _load_app_cfg(app_dir)
+    except NSXConfigError:
+        return None
+    return _lock_board_key(nsx_cfg, board)
+
+
 def _run_cmake_configure(
     app_dir: Path,
     build_dir: Path,
@@ -879,7 +910,7 @@ def _resolve_app_context(args: argparse.Namespace) -> tuple[Path, dict[str, Any]
     nsx_cfg = _load_app_cfg(app_dir)
     app_cfg = AppConfig.from_mapping(nsx_cfg)
     app_name = app_cfg.project_name
-    board = args.board or app_cfg.target.get("board")
+    board = args.board or app_cfg.default_board()
     if not isinstance(board, str) or not board:
         raise NSXConfigError("Unable to determine target board from args or nsx.yml")
     board = normalize_board(board)

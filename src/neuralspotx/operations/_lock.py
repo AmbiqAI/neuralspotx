@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import copy
 import os
 import subprocess
 from datetime import datetime, timezone
@@ -17,7 +18,7 @@ from .._errors import (
 from .._io import info, warn
 from ..constants import DEFAULT_TOOLCHAIN
 from ..file_lock import app_lock
-from ..models import OutdatedModule, OutdatedReport, OutdatedSkip
+from ..models import AppConfig, OutdatedModule, OutdatedReport, OutdatedSkip, ResolvedTarget
 from ..module_registry import (
     _local_module_names,
     _module_names_from_nsx,
@@ -42,10 +43,12 @@ from ..nsx_lock import (
     write_lock,
 )
 from ..project_config import (
+    _board_key_for_app,
     _copy_packaged_tree,
     _effective_registry,
     _load_app_cfg,
     _load_registry,
+    _lock_board_key,
     _nsx_tool_version,
     _registry_project_entry,
     _write_app_module_file,
@@ -123,7 +126,7 @@ def lock_freshness_warning(app_dir: Path) -> str | None:
     if threshold <= 0:
         return None
 
-    lock = read_lock(app_dir)
+    lock = read_lock(app_dir, _board_key_for_app(app_dir))
     if lock is None:
         return None
     moving = _moving_ref_modules(lock)
@@ -187,9 +190,31 @@ def _resolved_module_path(
     return _module_clone_dir(app_dir, entry.project, registry)
 
 
+def _apply_active_target(nsx_cfg: dict, target: ResolvedTarget) -> dict:
+    """Return a copy of *nsx_cfg* with *target* pinned as the active build.
+
+    For multi-target apps this selects which board's closure
+    :func:`expand_profile_seeds` seeds and which target the resulting
+    lock records, without mutating the on-disk manifest.
+    """
+
+    cfg = copy.deepcopy(nsx_cfg)
+    new_target = dict(cfg.get("target") or {})
+    new_target["board"] = target.board
+    if target.soc:
+        new_target["soc"] = target.soc
+    cfg["target"] = new_target
+    if target.profile:
+        cfg["profile"] = target.profile
+    if target.toolchain:
+        cfg["toolchain"] = target.toolchain
+    return cfg
+
+
 def _build_lock_for_app(
     app_dir: Path,
     *,
+    board: str | None = None,
     previous: NsxLock | None = None,
     write_side_effects: bool = True,
     use_locked_closure_on_metadata_error: bool = False,
@@ -237,6 +262,11 @@ def _build_lock_for_app(
     from ..module_registry import _is_packaged_module
 
     nsx_cfg = _load_app_cfg(app_dir)
+    app_cfg = AppConfig.from_mapping(nsx_cfg)
+    if app_cfg.is_multi_target():
+        # Pin the active board so the seeded closure and recorded target
+        # belong to the board being locked.
+        nsx_cfg = _apply_active_target(nsx_cfg, app_cfg.resolve_target(board))
     base_registry = _load_registry()
     # Lean manifests omit the resolved closure; expand it from the app's
     # starter profile in-memory so the resolver below sees an equivalent
@@ -667,24 +697,47 @@ def _build_lock_for_app(
     return lock
 
 
+def _lock_boards_for(app_dir: Path, board: str | None) -> list[str | None]:
+    """Boards to lock for *app_dir*, default board first.
+
+    Single-target apps (or any explicit *board*) lock a single entry.
+    A multi-target app with no explicit *board* locks every supported
+    board so each committed ``nsx.<board>.lock`` stays reproducible.
+    """
+
+    app_cfg = AppConfig.from_mapping(_load_app_cfg(app_dir))
+    if board is not None or not app_cfg.is_multi_target():
+        return [board]
+    boards = list(app_cfg.targets())
+    default = app_cfg.default_board()
+    if default in boards:
+        boards = [default] + [b for b in boards if b != default]
+    return boards or [None]
+
+
 def lock_app_impl(
     app_dir: Path,
     *,
+    board: str | None = None,
     update: bool = False,
     modules: list[str] | None = None,
     check: bool = False,
     quiet: bool = False,
 ) -> NsxLock:
-    """Resolve and write ``nsx.lock`` for *app_dir*.
+    """Resolve and write the lock file(s) for *app_dir*.
 
     Args:
+        board: Restrict locking to this board. For multi-target apps,
+            ``None`` locks every supported board (each to its own
+            ``nsx.<board>.lock``); single-target apps ignore this and
+            always write the legacy ``nsx.lock``.
         update: When True, re-resolve every module's constraint to its
             current upstream HEAD/tag (equivalent to ``nsx update``).
         modules: When given alongside ``update``, only re-resolve these.
         check: Read-only mode. Resolve as usual but, instead of writing,
-            compare against the on-disk ``nsx.lock`` and raise
+            compare against the on-disk lock and raise
             :class:`NSXError` when they would differ. Useful in CI to
-            assert that ``nsx.lock`` is up to date with ``nsx.yml``.
+            assert that the lock is up to date with ``nsx.yml``.
         quiet: Suppress the post-write "Wrote ... / modules: ..."
             summary print. Useful when ``nsx lock`` is invoked
             implicitly by another command (e.g. the lock-missing path
@@ -692,34 +745,46 @@ def lock_app_impl(
             already printed its own summary.
 
     Returns:
-        The resolved :class:`~neuralspotx.nsx_lock.NsxLock`. The
-        filesystem path to the (would-be) ``nsx.lock`` is available
-        on ``lock.path``.
+        The resolved :class:`~neuralspotx.nsx_lock.NsxLock` for the
+        default (or only) board. The filesystem path to the lock is
+        available on ``lock.path``.
     """
 
-    # ``--check`` is read-only (no writes to ``nsx.lock`` or build glue),
+    boards = _lock_boards_for(app_dir, board)
+
+    # ``--check`` is read-only (no writes to the lock or build glue),
     # so it does not need the per-app advisory lock and CI can verify
     # multiple apps in parallel without contention.
     if check:
-        return _lock_app_impl_unlocked(
-            app_dir, update=update, modules=modules, check=True, quiet=quiet
-        )
+        results = [
+            _lock_app_impl_unlocked(
+                app_dir, board=b, update=update, modules=modules, check=True, quiet=quiet
+            )
+            for b in boards
+        ]
+        return results[0]
     with app_lock(app_dir):
-        return _lock_app_impl_unlocked(
-            app_dir, update=update, modules=modules, check=False, quiet=quiet
-        )
+        results = [
+            _lock_app_impl_unlocked(
+                app_dir, board=b, update=update, modules=modules, check=False, quiet=quiet
+            )
+            for b in boards
+        ]
+    return results[0]
 
 
 def _lock_app_impl_unlocked(
     app_dir: Path,
     *,
+    board: str | None = None,
     update: bool = False,
     modules: list[str] | None = None,
     check: bool = False,
     quiet: bool = False,
 ) -> NsxLock:
+    board_key = _lock_board_key(_load_app_cfg(app_dir), board)
     try:
-        previous = read_lock(app_dir)
+        previous = read_lock(app_dir, board_key)
     except NSXLockError as exc:
         # Older / unsupported on-disk schema. Read-only paths
         # (``check=True``) just log; ``nsx lock`` regenerates from
@@ -757,11 +822,12 @@ def _lock_app_impl_unlocked(
 
     lock = _build_lock_for_app(
         app_dir,
+        board=board,
         previous=previous,
         write_side_effects=not check,
         use_locked_closure_on_metadata_error=bool(check and not update and on_disk_lock),
     )
-    lock_file = lock_path(app_dir)
+    lock_file = lock_path(app_dir, board_key)
 
     if check:
         diff = _diff_locks(on_disk_lock, lock)
@@ -780,7 +846,7 @@ def _lock_app_impl_unlocked(
         info("Run `nsx lock` to refresh.")
         raise NSXError(1)
 
-    path = write_lock(app_dir, lock)
+    path = write_lock(app_dir, lock, board_key)
     nsx_cfg = _load_app_cfg(app_dir)
     ordered_modules = list(lock.modules)
     _write_app_module_file(app_dir, nsx_cfg, module_names=ordered_modules)
@@ -854,7 +920,7 @@ def outdated_app_impl(app_dir: Path) -> OutdatedReport:
     table or JSON; this function performs no I/O on stdout.
     """
 
-    lock = read_lock(app_dir)
+    lock = read_lock(app_dir, _board_key_for_app(app_dir))
     if lock is None:
         raise NSXConfigError(f"{app_dir / 'nsx.lock'} not found. Run `nsx lock` first.")
 

@@ -390,6 +390,16 @@ class AppConfig:
             return self._targets_from_block(block)
         return self._targets_from_singular()
 
+    def is_multi_target(self) -> bool:
+        """True when the app declares an explicit ``targets:`` block.
+
+        Multi-target apps key their committed lock per board
+        (``nsx.<board>.lock``); single-target apps keep the legacy
+        unsuffixed ``nsx.lock``.
+        """
+
+        return self._explicit_targets_block() is not None
+
     def default_board(self) -> str | None:
         """Board name of the default build target, or ``None`` if undeclared."""
 

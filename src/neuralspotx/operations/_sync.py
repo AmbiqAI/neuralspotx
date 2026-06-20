@@ -14,9 +14,11 @@ from ..nsx_lock import (
     LockKind,
     hash_manifest,
     hash_tree,
+    lock_path,
     read_lock,
 )
 from ..project_config import (
+    _board_key_for_app,
     _copy_packaged_tree,
     _effective_registry,
     _load_app_cfg,
@@ -32,7 +34,7 @@ from ._lock import _resolved_module_path, lock_app_impl
 _log = get_logger(__name__)
 
 
-def _ensure_app_modules(app_dir: Path) -> None:
+def _ensure_app_modules(app_dir: Path, board: str | None = None) -> None:
     """Ensure all modules declared in nsx.yml are present on disk.
 
     This is called during ``nsx configure`` so that a freshly-cloned app
@@ -41,18 +43,19 @@ def _ensure_app_modules(app_dir: Path) -> None:
 
     The lock file is the single source of truth: ``sync_app_impl``
     handles both the lock-present and lock-missing cases. When the
-    lock is missing, it creates ``nsx.lock`` and then vendors modules
+    lock is missing, it creates the lock and then vendors modules
     according to the resolved lock; it does not rewrite the lock
     after vendoring (``content_hash`` is the upstream-artifact hash,
     so it is correct from the start under v3).
     """
 
-    sync_app_impl(app_dir)
+    sync_app_impl(app_dir, board=board)
 
 
 def sync_app_impl(
     app_dir: Path,
     *,
+    board: str | None = None,
     frozen: bool = False,
     force: bool = False,
 ) -> None:
@@ -78,12 +81,13 @@ def sync_app_impl(
     """
 
     with app_lock(app_dir):
-        _sync_app_impl_unlocked(app_dir, frozen=frozen, force=force)
+        _sync_app_impl_unlocked(app_dir, board=board, frozen=frozen, force=force)
 
 
 def _sync_app_impl_unlocked(
     app_dir: Path,
     *,
+    board: str | None = None,
     frozen: bool = False,
     force: bool = False,
 ) -> None:
@@ -93,11 +97,12 @@ def _sync_app_impl_unlocked(
         _vendor_packaged_module_into_app,
     )
 
-    lock = read_lock(app_dir)
+    board_key = _board_key_for_app(app_dir, board)
+    lock = read_lock(app_dir, board_key)
     if lock is None:
         if frozen:
             raise NSXConfigError(
-                f"{app_dir / 'nsx.lock'} not found. Run `nsx lock` first (or drop --frozen)."
+                f"{lock_path(app_dir, board_key)} not found. Run `nsx lock` first (or drop --frozen)."
             )
         # No lock yet — generate one. Unlike the v2 design, this is
         # safe to run on a fresh checkout: ``_build_lock_for_app``
@@ -105,9 +110,9 @@ def _sync_app_impl_unlocked(
         # the wheel resource for packaged, the source path for local),
         # so the recorded content_hash is correct without ``modules/``
         # being populated first.
-        _log.info("nsx.lock not found; generating from manifest.")
-        lock_app_impl(app_dir, quiet=True)
-        lock = read_lock(app_dir)
+        _log.info("lock not found; generating from manifest.")
+        lock_app_impl(app_dir, board=board, quiet=True)
+        lock = read_lock(app_dir, board_key)
         assert lock is not None  # noqa: S101 — invariant guaranteed by lock_app_impl
 
     nsx_cfg = _load_app_cfg(app_dir)
