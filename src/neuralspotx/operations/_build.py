@@ -2,8 +2,11 @@
 
 from __future__ import annotations
 
+import os
 import shutil
+import signal
 import subprocess
+import sys
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -20,6 +23,7 @@ from ..subprocess_utils import (
 )
 from . import _common
 from ._common import _resolve_build_context
+from ._lock import warn_if_lock_stale
 from ._sync import _ensure_app_modules
 
 
@@ -46,6 +50,7 @@ def configure_app_impl(
         board=board,
         build_dir=build_dir,
     )
+    warn_if_lock_stale(resolved_app_dir)
     _ensure_app_modules(resolved_app_dir)
     _run_cmake_configure(
         resolved_app_dir,
@@ -76,6 +81,7 @@ def build_app_impl(
         board=board,
         build_dir=build_dir,
     )
+    warn_if_lock_stale(resolved_app_dir)
     if not (resolved_build_dir / "build.ninja").exists():
         _ensure_app_modules(resolved_app_dir)
         _run_cmake_configure(
@@ -106,6 +112,7 @@ def flash_app_impl(
         board=board,
         build_dir=build_dir,
     )
+    warn_if_lock_stale(resolved_app_dir)
     if probe_serial is not None or not (resolved_build_dir / "build.ninja").exists():
         _ensure_app_modules(resolved_app_dir)
         _run_cmake_configure(
@@ -128,6 +135,36 @@ def flash_app_impl(
     return resolved_build_dir
 
 
+def _terminate_viewer(proc: "subprocess.Popen[object]") -> None:
+    """Tear down the SWO viewer (and its process group) if still running."""
+
+    if proc.poll() is not None:
+        return
+    try:
+        if os.name != "nt":
+            os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+        else:
+            proc.terminate()
+    except (ProcessLookupError, PermissionError, OSError):
+        return
+    try:
+        proc.wait(timeout=3)
+        return
+    except subprocess.TimeoutExpired:
+        pass
+    try:
+        if os.name != "nt":
+            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
+        else:
+            proc.kill()
+    except (ProcessLookupError, PermissionError, OSError):
+        pass
+    try:
+        proc.wait(timeout=2)
+    except subprocess.TimeoutExpired:
+        pass
+
+
 def view_app_impl(
     app_dir: Path,
     *,
@@ -137,11 +174,19 @@ def view_app_impl(
     probe_serial: str | None = None,
     reset_on_open: bool = True,
     reset_delay_ms: int = 400,
+    duration_s: float | None = None,
+    capture: Path | None = None,
 ) -> Path:
     """Launch the SEGGER SWO viewer for an app.
 
     By default, the viewer is attached first and then the target is reset once.
     This avoids a common race where SWO stays silent until the next reset.
+
+    When *duration_s* is set the viewer is terminated (process group and
+    all) after that many seconds, so the command always returns. When
+    *capture* is set the viewer's output is line-streamed to both stdout
+    and the given file (combined with *duration_s* this gives a bounded,
+    automation-friendly SWO capture).
     """
 
     resolved_app_dir, app_name, resolved_board, resolved_build_dir = _resolve_build_context(
@@ -149,6 +194,7 @@ def view_app_impl(
         board=board,
         build_dir=build_dir,
     )
+    warn_if_lock_stale(resolved_app_dir)
     if probe_serial is not None or not (resolved_build_dir / "build.ninja").exists():
         _ensure_app_modules(resolved_app_dir)
         _run_cmake_configure(
@@ -160,9 +206,31 @@ def view_app_impl(
         )
     target = f"{app_name}_view"
     view_cmd = extract_view_command(resolved_build_dir, target)
-    viewer_proc: subprocess.Popen[bytes] | None = None
+
+    capture_path = Path(capture).expanduser().resolve() if capture is not None else None
+    stream_output = capture_path is not None
+
+    popen_kwargs: dict[str, object] = {"cwd": str(resolved_build_dir)}
+    if os.name != "nt":
+        popen_kwargs["start_new_session"] = True
+    run_cmd = list(view_cmd)
+    if stream_output:
+        # Line-buffer the viewer so captured output is not block-buffered
+        # behind the pipe (the SEGGER CLI buffers heavily otherwise).
+        stdbuf = shutil.which("stdbuf")
+        if stdbuf is not None:
+            run_cmd = [stdbuf, "-oL", "-eL", *run_cmd]
+        popen_kwargs.update(
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            text=True,
+            bufsize=1,
+        )
+
+    viewer_proc: subprocess.Popen[object] | None = None
+    capture_file = None
     try:
-        viewer_proc = subprocess.Popen(view_cmd, cwd=str(resolved_build_dir))
+        viewer_proc = subprocess.Popen(run_cmd, **popen_kwargs)  # type: ignore[arg-type]
         if reset_on_open:
             if reset_delay_ms > 0:
                 time.sleep(reset_delay_ms / 1000.0)
@@ -181,15 +249,22 @@ def view_app_impl(
                 try:
                     result = run_capture(reset_cmd)
                 except subprocess.CalledProcessError as exc:
-                    if viewer_proc.poll() is None:
-                        viewer_proc.terminate()
-                        try:
-                            viewer_proc.wait(timeout=2)
-                        except subprocess.TimeoutExpired:
-                            viewer_proc.kill()
+                    _terminate_viewer(viewer_proc)
                     raise NSXError(format_subprocess_error(exc, context="Reset")) from None
                 print_captured_output(result)
-        viewer_proc.wait()
+
+        deadline = None if duration_s is None else time.monotonic() + duration_s
+        if stream_output:
+            capture_file = open(capture_path, "w", encoding="utf-8")  # noqa: SIM115
+            _stream_viewer(viewer_proc, capture_file, deadline)
+            _terminate_viewer(viewer_proc)
+        elif deadline is not None:
+            try:
+                viewer_proc.wait(timeout=duration_s)
+            except subprocess.TimeoutExpired:
+                _terminate_viewer(viewer_proc)
+        else:
+            viewer_proc.wait()
     except subprocess.CalledProcessError as exc:
         raise NSXError(format_subprocess_error(exc, context="View")) from None
     except KeyboardInterrupt:
@@ -197,18 +272,48 @@ def view_app_impl(
         # subprocesses can keep running detached and hold the SEGGER
         # debug interface, blocking subsequent ``nsx flash``/``view``
         # invocations until the user manually kills them.
-        if viewer_proc is not None and viewer_proc.poll() is None:
-            viewer_proc.terminate()
-            try:
-                viewer_proc.wait(timeout=2)
-            except subprocess.TimeoutExpired:
-                viewer_proc.kill()
-                try:
-                    viewer_proc.wait(timeout=2)
-                except subprocess.TimeoutExpired:
-                    pass
+        if viewer_proc is not None:
+            _terminate_viewer(viewer_proc)
         raise
+    finally:
+        if capture_file is not None:
+            capture_file.close()
     return resolved_build_dir
+
+
+def _stream_viewer(
+    proc: "subprocess.Popen[object]",
+    sink: "object",
+    deadline: float | None,
+) -> None:
+    """Pump viewer stdout to our stdout and *sink* until EOF or *deadline*."""
+
+    stream = proc.stdout
+    if stream is None:
+        return
+    use_select = os.name != "nt"
+    if use_select:
+        import select
+
+    while True:
+        if deadline is not None:
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+        else:
+            remaining = None
+        if use_select:
+            ready, _, _ = select.select([stream], [], [], remaining)
+            if not ready:
+                # select timed out -> deadline reached
+                break
+        line_text = stream.readline()
+        if not line_text:
+            break
+        sys.stdout.write(line_text)
+        sys.stdout.flush()
+        sink.write(line_text)  # type: ignore[attr-defined]
+        sink.flush()  # type: ignore[attr-defined]
 
 
 def clean_app_impl(

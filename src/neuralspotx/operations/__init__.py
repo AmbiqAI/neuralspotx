@@ -57,7 +57,12 @@ from ._build import (
 from ._cache import cache_info_impl, clean_cache_impl
 from ._common import OutdatedStatus, ProfileStatus, get_verbosity, set_verbosity, verbosity
 from ._doctor import doctor_impl
-from ._lock import lock_app_impl, outdated_app_impl
+from ._lock import (
+    lock_app_impl,
+    lock_freshness_warning,
+    outdated_app_impl,
+    warn_if_lock_stale,
+)
 from ._modules import (
     add_module_impl,
     register_module_impl,
@@ -87,7 +92,9 @@ __all__ = [
     "doctor_impl",
     # Lock / outdated
     "lock_app_impl",
+    "lock_freshness_warning",
     "outdated_app_impl",
+    "warn_if_lock_stale",
     # Sync / update
     "sync_app_impl",
     "update_app_impl",
