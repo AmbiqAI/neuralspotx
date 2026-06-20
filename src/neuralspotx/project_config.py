@@ -705,12 +705,32 @@ def find_app_root(start: Path | None = None) -> Path | None:
 def resolve_app_dir(explicit: str | Path | None) -> Path:
     """Return a resolved app directory from an explicit path or upward walk.
 
-    When *explicit* is given (and is not ``"."``), it is returned directly.
-    Otherwise, :func:`find_app_root` searches from the current directory.
+    Resolution order when *explicit* is given (and is not ``"."``):
+
+    1. If it points at an existing path, use it directly.
+    2. If it is a bare *name* (no path separators) that does not exist as
+       a path, try to discover a sibling app of that name under the
+       current directory or its ``examples/`` folder. This lets
+       ``nsx build hello_world`` work from a repository root that holds
+       many app subdirectories.
+    3. Otherwise return the path as given (downstream produces a clear
+       "nsx.yml not found" error).
+
+    When *explicit* is ``None`` or ``"."``, :func:`find_app_root` searches
+    upward from the current directory.
     """
 
     if explicit is not None and str(explicit) != ".":
-        return Path(explicit).expanduser().resolve()
+        candidate = Path(explicit).expanduser()
+        if candidate.exists():
+            return candidate.resolve()
+        name = str(explicit)
+        if os.sep not in name and (os.altsep is None or os.altsep not in name):
+            apps = discover_apps()
+            match = apps.get(name)
+            if match is not None:
+                return match
+        return candidate.resolve()
 
     found = find_app_root()
     if found is not None:
@@ -718,6 +738,25 @@ def resolve_app_dir(explicit: str | Path | None) -> Path:
     # Fall back to explicit value (usually ".") so downstream code
     # produces a clear "nsx.yml not found" error.
     return Path(explicit or ".").expanduser().resolve()
+
+
+def discover_apps(root: Path | None = None) -> dict[str, Path]:
+    """Map app name -> directory for ``nsx.yml`` found near *root*.
+
+    Searches the immediate children of *root* (default: the current
+    directory) and of ``root/examples``. The directory name is used as
+    the app key; on a name collision the first match wins.
+    """
+
+    base = (root or Path.cwd()).expanduser().resolve()
+    found: dict[str, Path] = {}
+    for search_root in (base, base / "examples"):
+        if not search_root.is_dir():
+            continue
+        for child in sorted(search_root.iterdir()):
+            if child.is_dir() and (child / "nsx.yml").exists():
+                found.setdefault(child.name, child.resolve())
+    return found
 
 
 def _require_app_config(app_dir: Path) -> None:

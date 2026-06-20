@@ -64,10 +64,17 @@ class AppViewRequest(AppActionRequest):
             the next reset.
         reset_delay_ms: Delay between attaching the viewer and issuing
             the reset, in milliseconds.
+        duration_s: When set, terminate the viewer after this many
+            seconds so the command always returns (instead of running
+            until interrupted).
+        capture: When set, line-stream the viewer's output to this file
+            in addition to stdout.
     """
 
     reset_on_open: bool = True
     reset_delay_ms: int = 400
+    duration_s: float | None = None
+    capture: PathLike | None = None
 
 
 @dataclass(slots=True)

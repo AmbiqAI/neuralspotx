@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import os
 import subprocess
+from datetime import datetime, timezone
 from pathlib import Path
 
 from .._errors import (
@@ -12,7 +14,7 @@ from .._errors import (
     NSXModuleError,
     NSXResolutionError,
 )
-from .._io import info
+from .._io import info, warn
 from ..constants import DEFAULT_TOOLCHAIN
 from ..file_lock import app_lock
 from ..models import OutdatedModule, OutdatedReport, OutdatedSkip
@@ -55,6 +57,94 @@ from ._common import OutdatedStatus, _log
 
 def _looks_like_full_sha(ref: str) -> bool:
     return len(ref) == 40 and all(ch in "0123456789abcdefABCDEF" for ch in ref)
+
+
+# Default age (days) past which a lock that tracks moving refs is flagged
+# stale by :func:`lock_freshness_warning`. Override via NSX_LOCK_STALE_DAYS
+# (set to 0 to disable the warning entirely).
+_DEFAULT_LOCK_STALE_DAYS = 14
+
+
+def _looks_like_sha(ref: str) -> bool:
+    """True for an abbreviated-or-full hex commit id (>= 7 chars)."""
+
+    return len(ref) >= 7 and all(ch in "0123456789abcdefABCDEF" for ch in ref)
+
+
+def _moving_ref_modules(lock: NsxLock) -> list[str]:
+    """Names of git modules whose constraint is a branch (a moving ref).
+
+    A constraint pinned to a tag or a raw commit SHA does not drift, so
+    those are excluded.
+    """
+
+    moving: list[str] = []
+    for name, module in lock.modules.items():
+        if module.kind != LockKind.GIT:
+            continue
+        if module.tag:
+            continue
+        if not module.constraint or _looks_like_sha(module.constraint):
+            continue
+        moving.append(name)
+    return moving
+
+
+def _lock_age_days(lock: NsxLock) -> float | None:
+    """Age of *lock* in days from its ``generated_at`` stamp, or None."""
+
+    if not lock.generated_at:
+        return None
+    try:
+        stamp = datetime.fromisoformat(lock.generated_at.replace("Z", "+00:00"))
+    except ValueError:
+        return None
+    if stamp.tzinfo is None:
+        stamp = stamp.replace(tzinfo=timezone.utc)
+    return (datetime.now(timezone.utc) - stamp).total_seconds() / 86400.0
+
+
+def lock_freshness_warning(app_dir: Path) -> str | None:
+    """Return a note when ``nsx.lock`` tracks moving refs and is old.
+
+    Network-free: derived purely from the lock's own ``generated_at``
+    timestamp and whether any git module tracks a branch (a moving ref)
+    rather than a tag or pinned SHA. Returns ``None`` when nothing looks
+    stale. The age threshold is ``NSX_LOCK_STALE_DAYS`` (default
+    ``14``); ``0`` disables the check.
+    """
+
+    raw = os.environ.get("NSX_LOCK_STALE_DAYS")
+    try:
+        threshold = float(raw) if raw is not None else float(_DEFAULT_LOCK_STALE_DAYS)
+    except ValueError:
+        threshold = float(_DEFAULT_LOCK_STALE_DAYS)
+    if threshold <= 0:
+        return None
+
+    lock = read_lock(app_dir)
+    if lock is None:
+        return None
+    moving = _moving_ref_modules(lock)
+    if not moving:
+        return None
+    age = _lock_age_days(lock)
+    if age is None or age < threshold:
+        return None
+
+    refs = ", ".join(sorted(moving))
+    return (
+        f"nsx.lock was generated {int(age)} days ago and tracks moving refs "
+        f"({refs}); run `nsx update` to pull the latest upstream changes."
+    )
+
+
+def warn_if_lock_stale(app_dir: Path) -> None:
+    """Emit a one-line warning when the app's lock looks stale."""
+
+    note = lock_freshness_warning(app_dir)
+    if note is not None:
+        warn(note)
 
 
 def _should_reuse_previous_git_resolution(

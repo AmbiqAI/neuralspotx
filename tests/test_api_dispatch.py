@@ -102,6 +102,8 @@ def test_configure_view_and_clean_dispatch(tmp_path: Path, monkeypatch: pytest.M
         probe_serial: str | None = None,
         reset_on_open: bool = True,
         reset_delay_ms: int = 400,
+        duration_s: float | None = None,
+        capture: Path | None = None,
     ) -> None:
         view_calls.append((app_dir, board, build_dir, toolchain, probe_serial))
 

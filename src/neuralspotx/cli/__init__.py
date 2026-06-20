@@ -52,6 +52,18 @@ from ._render import _command_graph, _render_outdated_report
 _C = CommandCategory
 _S = CommandScope
 
+
+def _selected_app_dir(args: argparse.Namespace) -> Path:
+    """Resolve the target app directory from the positional selector or --app-dir.
+
+    The optional positional ``app`` (a name or path) takes precedence over
+    ``--app-dir`` when supplied.
+    """
+
+    selector = getattr(args, "app", None) or getattr(args, "app_dir", None)
+    return resolve_app_dir(selector)
+
+
 _register_group_hint("", _C.ENTRYPOINT, _S.GLOBAL, "nsx doctor", "nsx create-app")
 _COMMAND_GRAPH_HINTS["new"] = CommandHint(
     _C.APP_CREATION,
@@ -90,6 +102,7 @@ _register_group_hint(
     "nsx board create <name> --from <evb>",
 )
 _register_group_hint("cache", _C.MAINTENANCE, _S.GLOBAL, "nsx cache info", "nsx cache clean")
+
 
 @command_hint(
     "commands",
@@ -173,10 +186,7 @@ def cmd_probes(args: argparse.Namespace) -> None:
     product_w = max(len(probe.product) for probe in probes)
     print(f"{'SERIAL':<{serial_w}}  {'PRODUCT':<{product_w}}  NICKNAME")
     for probe in probes:
-        print(
-            f"{probe.serial:<{serial_w}}  {probe.product:<{product_w}}  "
-            f"{probe.nickname or '-'}"
-        )
+        print(f"{probe.serial:<{serial_w}}  {probe.product:<{product_w}}  {probe.nickname or '-'}")
 
 
 @command_hint(
@@ -190,7 +200,7 @@ def cmd_probes(args: argparse.Namespace) -> None:
 )
 def cmd_configure(args: argparse.Namespace) -> None:
     api.configure_app(
-        resolve_app_dir(args.app_dir),
+        _selected_app_dir(args),
         board=args.board,
         build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
         toolchain=args.toolchain,
@@ -201,8 +211,11 @@ def cmd_configure(args: argparse.Namespace) -> None:
 
 @command_hint("build", _C.BUILD, _S.APP, "nsx flash", "nsx view", "nsx clean")
 def cmd_build(args: argparse.Namespace) -> None:
+    app_dir = _selected_app_dir(args)
+    if getattr(args, "update", False):
+        api.update_app(app_dir, timeout_s=getattr(args, "timeout", None))
     api.build_app(
-        resolve_app_dir(args.app_dir),
+        app_dir,
         board=args.board,
         build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
         toolchain=args.toolchain,
@@ -214,8 +227,11 @@ def cmd_build(args: argparse.Namespace) -> None:
 
 @command_hint("flash", _C.DEPLOY, _S.APP, "nsx view")
 def cmd_flash(args: argparse.Namespace) -> None:
+    app_dir = _selected_app_dir(args)
+    if getattr(args, "update", False):
+        api.update_app(app_dir, timeout_s=getattr(args, "timeout", None))
     api.flash_app(
-        resolve_app_dir(args.app_dir),
+        app_dir,
         board=args.board,
         build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
         toolchain=args.toolchain,
@@ -228,13 +244,17 @@ def cmd_flash(args: argparse.Namespace) -> None:
 @command_hint("view", _C.DEPLOY, _S.APP, "nsx build", "nsx flash")
 def cmd_view(args: argparse.Namespace) -> None:
     api.view_app(
-        resolve_app_dir(args.app_dir),
+        _selected_app_dir(args),
         board=args.board,
         build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
         toolchain=args.toolchain,
         probe_serial=getattr(args, "probe_serial", None),
         reset_on_open=not args.no_reset_on_open,
         reset_delay_ms=args.reset_delay_ms,
+        duration_s=getattr(args, "duration", None),
+        capture=Path(args.capture).expanduser().resolve()
+        if getattr(args, "capture", None)
+        else None,
         timeout_s=getattr(args, "timeout", None),
     )
 
@@ -242,7 +262,7 @@ def cmd_view(args: argparse.Namespace) -> None:
 @command_hint("clean", _C.BUILD, _S.APP, "nsx configure", "nsx build")
 def cmd_clean(args: argparse.Namespace) -> None:
     api.clean_app(
-        resolve_app_dir(args.app_dir),
+        _selected_app_dir(args),
         board=args.board,
         build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
         toolchain=args.toolchain,
@@ -476,6 +496,18 @@ def _build_parser() -> argparse.ArgumentParser:
             ),
         )
 
+    def _add_app_selector(p: argparse.ArgumentParser) -> None:
+        # Optional positional app selector. When given it overrides
+        # ``--app-dir`` and may be either a path or a bare app name that
+        # is discovered under ./ or ./examples — so ``nsx build hello_world``
+        # works from a repo root holding many app subdirectories.
+        p.add_argument(
+            "app",
+            nargs="?",
+            default=None,
+            help="App name or directory (overrides --app-dir; resolved under ./ and ./examples)",
+        )
+
     p_new = sub.add_parser("create-app", help="Create a new standalone NSX app project")
     p_new.add_argument("app_dir", help="App directory to create")
     p_new.add_argument("--board", default="apollo510_evb", help="Target board package suffix")
@@ -541,6 +573,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p_commands.set_defaults(func=cmd_commands)
 
     p_configure = sub.add_parser("configure", help="Configure a generated NSX app with CMake")
+    _add_app_selector(p_configure)
     p_configure.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
     p_configure.add_argument("--board", default=None, help="Override board from nsx.yml")
     p_configure.add_argument("--build-dir", default=None, help="Build directory override")
@@ -556,6 +589,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p_configure.set_defaults(func=cmd_configure)
 
     p_build = sub.add_parser("build", help="Build a generated NSX app")
+    _add_app_selector(p_build)
     p_build.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
     p_build.add_argument("--board", default=None, help="Override board from nsx.yml")
     p_build.add_argument("--build-dir", default=None, help="Build directory override")
@@ -564,10 +598,16 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     p_build.add_argument("--target", default=None, help="Optional explicit build target")
     p_build.add_argument("--jobs", type=int, default=8, help="Parallel build jobs")
+    p_build.add_argument(
+        "--update",
+        action="store_true",
+        help="Re-resolve module constraints to upstream tip and re-vendor before building",
+    )
     _add_timeout(p_build)
     p_build.set_defaults(func=cmd_build)
 
     p_flash = sub.add_parser("flash", help="Build and flash a generated NSX app")
+    _add_app_selector(p_flash)
     p_flash.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
     p_flash.add_argument("--board", default=None, help="Override board from nsx.yml")
     p_flash.add_argument("--build-dir", default=None, help="Build directory override")
@@ -580,10 +620,16 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Optional SEGGER J-Link USB serial number to use",
     )
     p_flash.add_argument("--jobs", type=int, default=8, help="Parallel build jobs")
+    p_flash.add_argument(
+        "--update",
+        action="store_true",
+        help="Re-resolve module constraints to upstream tip and re-vendor before flashing",
+    )
     _add_timeout(p_flash)
     p_flash.set_defaults(func=cmd_flash)
 
     p_view = sub.add_parser("view", help="Open the SEGGER SWO viewer for a generated NSX app")
+    _add_app_selector(p_view)
     p_view.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
     p_view.add_argument("--board", default=None, help="Override board from nsx.yml")
     p_view.add_argument("--build-dir", default=None, help="Build directory override")
@@ -606,10 +652,24 @@ def _build_parser() -> argparse.ArgumentParser:
         default=400,
         help="Milliseconds to wait after opening the SWO viewer before issuing reset",
     )
+    p_view.add_argument(
+        "--duration",
+        type=float,
+        default=None,
+        metavar="SECONDS",
+        help="Stop the viewer after SECONDS instead of running until interrupted",
+    )
+    p_view.add_argument(
+        "--capture",
+        default=None,
+        metavar="FILE",
+        help="Line-stream the SWO output to FILE in addition to stdout",
+    )
     _add_timeout(p_view)
     p_view.set_defaults(func=cmd_view)
 
     p_clean = sub.add_parser("clean", help="Clean a generated NSX app build directory")
+    _add_app_selector(p_clean)
     p_clean.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
     p_clean.add_argument("--board", default=None, help="Override board from nsx.yml")
     p_clean.add_argument("--build-dir", default=None, help="Build directory override")

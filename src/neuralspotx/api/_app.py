@@ -214,6 +214,8 @@ def view_app(
     probe_serial: str | None = None,
     reset_on_open: bool = True,
     reset_delay_ms: int = 400,
+    duration_s: float | None = None,
+    capture: PathLike | None = None,
     timeout_s: float | None = None,
     emit: Emitter | None = None,
 ) -> None:
@@ -230,6 +232,8 @@ def view_app(
             probe_serial=probe_serial,
             reset_on_open=reset_on_open,
             reset_delay_ms=reset_delay_ms,
+            duration_s=duration_s,
+            capture=capture,
             timeout_s=timeout_s,
         )
     )
@@ -242,6 +246,8 @@ def view_app(
             probe_serial=request.probe_serial,
             reset_on_open=request.reset_on_open,
             reset_delay_ms=request.reset_delay_ms,
+            duration_s=request.duration_s,
+            capture=Path(request.capture).expanduser().resolve() if request.capture else None,
         )
 
 
