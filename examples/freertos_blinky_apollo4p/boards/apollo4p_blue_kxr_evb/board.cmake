@@ -53,8 +53,6 @@ else()
 endif()
 
 set(NSX_SEGGER_DEVICE "AMA4B2KP-KXR")
-include("${NSX_CMAKE_DIR}/segger/socs/apollo4p.cmake")
-
 set(NSX_BOARD_TARGET nsx_board_apollo4p_blue_kxr_evb)
 set(NSX_BOARD_FLAGS_TARGET nsx_board_apollo4p_blue_kxr_evb_flags)
 set(NSX_SOC_TARGET_EXPORT_NAME "soc_hal_apollo4p")
