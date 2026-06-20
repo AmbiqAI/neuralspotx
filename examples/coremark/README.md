@@ -1,161 +1,105 @@
 # CoreMark
 
-[EEMBC CoreMark](https://www.eembc.org/coremark/) benchmark for
-Apollo510 EVB, optimized for both peak score and power measurement.
+[EEMBC CoreMark](https://www.eembc.org/coremark/) benchmark for Ambiq Apollo
+parts, packaged as a portable **nsx** application.
 
-The benchmark runs from **ITCM** (zero-wait-state SRAM) via a custom
-linker script.  After printing the score over SWO, the firmware enters
-an aggressive power-down sequence and loops CoreMark indefinitely from
-ITCM with NVM, caches, and all unused peripherals off — ready for
-power capture with a Joulescope or similar tool.
+The example runs the standard `PERFORMANCE_RUN` with `ITERATIONS=0`
+(auto-calibrate to ≥10 s), prints the score, and then spins. It uses the
+board-default linker script and the SoC's instruction cache — no custom
+memory placement or micro-optimization quirks — so the same source builds
+unmodified across Apollo5 and Apollo4 targets.
 
-## Quick Start
+> Energy/power measurement is **not** part of this example. See the separate
+> `power_benchmark` example for the Joulescope-based power workflow.
+
+It is a **multi-target** example: a single lean `nsx.yml` declares a
+`targets:` block, and each board commits its own `nsx.<board>.lock`.
+
+| Target | SoC | Core | Hardware |
+|--------|-----|------|----------|
+| `apollo510_evb` (default) | Apollo510 | Cortex-M55 | Apollo510 EVB |
+| `apollo510b_evb` | Apollo510B | Cortex-M55 | Apollo510B EVB |
+| `apollo4p_blue_kxr_evb` | Apollo4P | Cortex-M4 | Apollo4 Blue Plus KXR EVB |
+
+## Build & Run
 
 ```bash
+# Default board (apollo510_evb)
 nsx configure --app-dir .
-nsx build --app-dir .
-nsx flash --app-dir .
-nsx view --app-dir .          # opens SWO viewer, prints CoreMark score
+nsx build     --app-dir .
+nsx flash     --app-dir .      # requires JLink + EVB
+
+# Other targets
+nsx build     --app-dir . --board apollo510b_evb
+nsx build     --app-dir . --board apollo4p_blue_kxr_evb
 ```
+
+## Score Output (SEGGER RTT)
+
+The score is printed over **SEGGER RTT** channel 0, not SWO/ITM. RTT writes
+to an in-SRAM ring buffer that the J-Link drains over SWD via background
+memory reads — no peripheral pins and no sensitivity to clock/baud setup.
+On Cortex-M55 targets the port cleans the D-cache after each write so the
+host sees fresh bytes; Cortex-M4 targets have no core D-cache and skip it.
+
+Use any RTT viewer (e.g. `JLinkRTTViewer`) to read the output, which looks
+like:
+
+```
+--- CoreMark on Ambiq NSX ---
+2K performance run parameters for coremark.
+...
+CoreMark 1.0 : <score> / GCC ... / STACK
+--- CoreMark complete. ---
+```
+
+A minimal scripted capture helper is included:
+
+```bash
+python tools/rtt_capture.py --rtt-addr 0x<addr> --duration 25 --out cm.log
+```
+
+(`--rtt-addr` is the address of the `_SEGGER_RTT` control block, available
+from the linked `coremark` ELF via `nm`/`readelf`.)
+
+## How It Works
+
+1. **Init** (`portable_init`): `nsx_system_init()` brings up the SoC at
+   `NSX_PERF_HIGH` with the instruction/data caches enabled, sets up the
+   RTT control block, and starts a microsecond timer (`nsx-timer`).
+2. **Benchmark** (`core_main`): standard EEMBC CoreMark `PERFORMANCE_RUN`,
+   timed with `nsx_timer_us_read()`.
+3. **Report** (`portable_fini`): prints the completion banner and spins in
+   `__WFI()` so the score stays readable.
 
 ## Cleaning Up
 
-Nothing under `build/`, `build_*/`, `modules/`, or `.nsx.sync.lock` is
-source-controlled — it is all re-created by `nsx configure`/`nsx build`.
+Nothing under `build/`, `modules/`, or `.nsx.sync.lock` is source-controlled —
+it is all re-created by `nsx configure`/`nsx build`.
 
 ```bash
 nsx clean --app-dir .                 # ninja clean inside the active build dir
 nsx clean --app-dir . --full          # delete the active build directory
-nsx clean --app-dir . --full \
-    --toolchain armclang              # target a specific toolchain variant
-
-# Full reset before `git pull` (wipes every build*/ dir, the synced
-# modules/ tree, and .nsx.sync.lock):
-nsx clean --app-dir . --reset
-
-# Add --force to discard locally-edited files under modules/.
-nsx clean --app-dir . --reset --force
+nsx clean --app-dir . --reset         # full reset before `git pull`
+nsx clean --app-dir . --reset --force # also discard local edits under modules/
 ```
-
-After a `--reset`, the next `nsx configure --app-dir .` re-syncs
-modules from `nsx.lock` and reconfigures the build from scratch.
-
-## Build Options
-
-Pass CMake options via `-D` flags during `nsx configure`:
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `COREMARK_HP_MODE` | `OFF` | Run at HP 250 MHz instead of LP 96 MHz |
-| `COREMARK_SCORE_ONLY` | `OFF` | Print score and halt — skip the power measurement loop |
-| `USE_ARMCLANG_COREMARK` | `OFF` | Compile CoreMark hot-path with armclang `-Ofast` (requires Arm Compiler 6) |
-
-Examples:
-
-```bash
-# High-performance mode (250 MHz)
-nsx configure --app-dir . -- -DCOREMARK_HP_MODE=ON
-
-# Score only, no power loop
-nsx configure --app-dir . -- -DCOREMARK_SCORE_ONLY=ON
-
-# Mixed toolchain: armclang for CoreMark, GCC for everything else
-nsx configure --app-dir . -- -DUSE_ARMCLANG_COREMARK=ON
-```
-
-## How It Works
-
-1. **Init** (`portable_init`): Full SoC init via `nsx_system_init()`, selects
-   LP or HP clock mode, configures power-monitor GPIOs, starts microsecond
-   timer.
-
-2. **Benchmark** (`core_main`): Standard EEMBC CoreMark PERFORMANCE_RUN with
-   `ITERATIONS=0` (auto-calibrate to ≥10 s). Score printed over SWO.
-
-3. **Power measurement** (`portable_fini` → `itcm_power_loop`):
-   - Disables SWO/ITM
-   - Applies aggressive `ns_power_config` (all peripherals off, LP mode)
-   - Kills all device peripherals, stops all timers
-   - Reduces memory to 32K ITCM + 128K DTCM, single NVM bank, no SSRAM
-   - Tristates all GPIOs except the two Joulescope monitor pins
-   - Jumps to `itcm_power_loop()` (in `.itcm_text` section):
-     - Powers off NVM (MRAM)
-     - Disables I-cache and D-cache
-     - Sets GPIO phase = ACTIVE
-     - Runs `iterate()` forever from ITCM
-
-## Power Measurement with Joulescope
-
-### Hardware Setup
-
-1. Connect Joulescope JS220 (or JS110) in series with the Apollo510 EVB
-   power supply.
-2. Connect two GPIO fly-wires from the EVB to the Joulescope GPI header:
-   - **GPIO 29** → GPI bit 0 (IN0)
-   - **GPIO 30** → GPI bit 1 (IN1)
-
-These GPIOs signal the measurement phase using the
-`ns_set_power_monitor_state()` protocol:
-
-| GPI Value | Phase | Description |
-|-----------|-------|-------------|
-| `0b00` | IDLE/Sleep | System idle or deep-sleep |
-| `0b01` | ACTIVE | CoreMark compute running |
-| `0b11` | SIGNAL | Start/stop marker |
-
-### Capture Script
-
-A helper script is included in `tools/`:
-
-```bash
-pip install joulescope
-python tools/joulescope_capture.py
-```
-
-Options:
-
-```
---duration N     Capture for N seconds (0 = until Ctrl-C)
---io-voltage V   GPIO voltage level: 1.8V (default) or 3.3V
---reduction-freq Set statistics reduction frequency (default: "50 Hz")
-```
-
-The script watches GPIO transitions, accumulates per-phase power
-statistics, and prints a summary:
-
-```
-======================================================================
-CAPTURE SUMMARY
-======================================================================
-  ACTIVE      : I= <I_act> mA  V= <V> V  P= <P_act> mW  t=   30.0 s
-  SLEEP       : I= <I_slp> mA  V= <V> V  P= <P_slp> mW  t=   30.0 s
-
-  CoreMark/mW = CoreMark_score / <P_act> mW
-======================================================================
-```
-
-### Manual Measurement
-
-If not using the capture script, flash the board and wait for the SWO
-score output.  Once the firmware enters the power loop, the ACTIVE GPIO
-goes high and stays high — measure steady-state current with any tool.
 
 ## Project Layout
 
 ```
 coremark/
 ├── CMakeLists.txt          App build — CoreMark sources + NSX modules
-├── nsx.yml                 NSX project manifest (board, modules, toolchain)
-├── linker_script_itcm.ld   Custom LD: CoreMark hot-path in ITCM
-├── boards/                 Vendored board definition (apollo510_evb)
+├── nsx.yml                 Lean multi-target manifest (targets + requires)
+├── nsx.<board>.lock        Per-board resolved module locks
+├── boards/                 Vendored board definitions (one dir per target)
 ├── cmake/nsx/              NSX CMake support (toolchains, modules, helpers)
 ├── modules/                NSX module sources (app-local, gitignored)
 ├── src/
-│   ├── core_portme.c       Platform port (init, timer, power-down, GPIO)
+│   ├── core_portme.c       Portable platform port (init, timer, RTT output)
 │   ├── core_portme.h       Port configuration (types, seeds, timer)
 │   └── coremark/           Upstream EEMBC CoreMark (Apache-2.0)
 └── tools/
-    └── joulescope_capture.py  Automated Joulescope power capture
+    └── rtt_capture.py      Optional scripted RTT score capture (pylink)
 ```
 
 ## License

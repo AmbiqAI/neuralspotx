@@ -1,51 +1,21 @@
 schema_version: 1
 project:
   name: coremark
-target:
-  board: apollo510_evb
-  soc: apollo510
+targets:
+  default: apollo510_evb
+  supported:
+    - apollo510_evb
+    - apollo510b_evb
+    - apollo4p_blue_kxr_evb
 toolchain: arm-none-eabi-gcc
 channel: stable
-profile: apollo510_evb_minimal
-profile_status: active
-modules:
-  - name: nsx-cmsis-core
-    project: nsx-ambiq-sdk
-    revision: main
-  - name: nsx-ambiqsuite
-    project: nsx-ambiq-sdk
-    revision: main
-  - name: nsx-ambiq-hal
-    project: nsx-ambiq-sdk
-    revision: main
-  - name: nsx-ambiq-bsp
-    project: nsx-ambiq-sdk
-    revision: main
-  - name: nsx-soc-hal
-    project: nsx-ambiq-sdk
-    revision: main
-  - name: nsx-cmsis-startup
-    project: nsx-ambiq-sdk
-    revision: main
-  - name: nsx-board-apollo510-evb
-    project: neuralspotx
-  - name: nsx-core
-    project: nsx-ambiq-sdk
-    revision: main
+requires:
   - name: nsx-interrupt
-    project: nsx-ambiq-sdk
-    revision: main
-  - name: nsx-gpio
     project: nsx-ambiq-sdk
     revision: main
   - name: nsx-timer
     project: nsx-ambiq-sdk
     revision: main
-  - name: nsx-power
-    project: nsx-ambiq-sdk
-    revision: main
-  - name: nsx-tooling
-    project: neuralspotx
 features: {}
 module_registry:
   projects:
@@ -53,47 +23,11 @@ module_registry:
       url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
       revision: main
   modules:
-    nsx-ambiqsuite:
-      project: nsx-ambiq-sdk
-      revision: main
-      metadata: modules/nsx-ambiqsuite/nsx-module.yaml
-    nsx-ambiq-hal:
-      project: nsx-ambiq-sdk
-      revision: main
-      metadata: modules/nsx-ambiq-hal/nsx-module.yaml
-    nsx-ambiq-bsp:
-      project: nsx-ambiq-sdk
-      revision: main
-      metadata: modules/nsx-ambiq-bsp/nsx-module.yaml
-    nsx-cmsis-core:
-      project: nsx-ambiq-sdk
-      revision: main
-      metadata: modules/nsx-cmsis-core/nsx-module.yaml
-    nsx-cmsis-startup:
-      project: nsx-ambiq-sdk
-      revision: main
-      metadata: modules/nsx-cmsis-startup/nsx-module.yaml
-    nsx-soc-hal:
-      project: nsx-ambiq-sdk
-      revision: main
-      metadata: modules/nsx-soc-hal/nsx-module.yaml
-    nsx-core:
-      project: nsx-ambiq-sdk
-      revision: main
-      metadata: modules/nsx-core/nsx-module.yaml
     nsx-interrupt:
       project: nsx-ambiq-sdk
       revision: main
       metadata: modules/nsx-interrupt/nsx-module.yaml
-    nsx-gpio:
-      project: nsx-ambiq-sdk
-      revision: main
-      metadata: modules/nsx-gpio/nsx-module.yaml
     nsx-timer:
       project: nsx-ambiq-sdk
       revision: main
       metadata: modules/nsx-timer/nsx-module.yaml
-    nsx-power:
-      project: nsx-ambiq-sdk
-      revision: main
-      metadata: modules/nsx-power/nsx-module.yaml

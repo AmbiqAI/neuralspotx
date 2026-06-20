@@ -1,13 +1,12 @@
 /*
- * CoreMark platform port for Ambiq NSX
+ * CoreMark platform port for Ambiq NSX — portable score-only build.
  *
- * Timer     : ns_us_ticker_read() — microsecond resolution
- * Output    : am_util_stdio_printf (ITM/SWO)
- * Init      : nsx_system_init() — full SoC + debug + perf mode
+ * Timer  : nsx_timer microsecond counter
+ * Output : ee_printf -> SEGGER RTT channel 0 (read by J-Link over SWD)
+ * Init   : nsx_system_init() — SoC + cache + perf mode
  *
- * After results are printed, SWO is disabled and the benchmark
- * alternates between 30s compute (for active power) and 30s deep
- * sleep (for sleep power) so both can be measured on a Joulescope.
+ * Builds across Apollo5 (Cortex-M55) and Apollo4 (Cortex-M4) targets.
+ * Power/energy measurement lives in the separate power_benchmark example.
  *
  * SPDX-License-Identifier: Apache-2.0
  */
@@ -16,11 +15,7 @@
 #include "core_portme.h"
 
 #include "nsx_system.h"
-#include "nsx_power.h"
-#include "nsx_core.h"
 #include "nsx_timer.h"
-#include "nsx_gpio.h"
-#include "am_bsp.h"
 #include "am_mcu_apollo.h"
 #include "am_util.h"
 
@@ -28,115 +23,14 @@
 
 #include <stdarg.h>
 
-/* ── Power-monitor GPIO signalling (Joulescope phase markers) ──
- * Inlined here: the modern NSX stack dropped the ns_energy_monitor
- * helper. Apollo5B EVB uses GPIO 29/36. */
-#define NS_POWER_MONITOR_GPIO_0 29
-#define NS_POWER_MONITOR_GPIO_1 36
-#define NS_IDLE 0
-#define NS_DATA_COLLECTION 1
-
-static const nsx_gpio_config_t s_power_monitor_gpio_0 = {
-    .api = &nsx_gpio_V0_0_1,
-    .pin = NS_POWER_MONITOR_GPIO_0,
-    .mode = NSX_GPIO_MODE_OUTPUT,
-    .initial_level = NSX_GPIO_LEVEL_LOW,
-};
-
 static const nsx_system_config_t s_coremark_system_config = {
     .perf_mode        = NSX_PERF_HIGH,
     .enable_cache     = true,
     .enable_sram      = true,
     .debug            = { .transport = NSX_DEBUG_ITM },
     .skip_bsp_init    = false,
-    .spot_mgr_profile = true,
+    .spot_mgr_profile = false,
 };
-
-static const nsx_gpio_config_t s_power_monitor_gpio_1 = {
-    .api = &nsx_gpio_V0_0_1,
-    .pin = NS_POWER_MONITOR_GPIO_1,
-    .mode = NSX_GPIO_MODE_OUTPUT,
-    .initial_level = NSX_GPIO_LEVEL_LOW,
-};
-
-static bool g_power_monitor_enabled = false;
-
-static void
-ns_init_power_monitor_state(void)
-{
-    nsx_gpio_init(&s_power_monitor_gpio_0);
-    nsx_gpio_init(&s_power_monitor_gpio_1);
-    g_power_monitor_enabled = true;
-}
-
-static void
-ns_set_power_monitor_state(uint8_t state)
-{
-    if (g_power_monitor_enabled) {
-        nsx_gpio_write(NS_POWER_MONITOR_GPIO_0,
-                       (state & 0x01) ? NSX_GPIO_LEVEL_HIGH : NSX_GPIO_LEVEL_LOW);
-        nsx_gpio_write(NS_POWER_MONITOR_GPIO_1,
-                       ((state >> 1) & 0x01) ? NSX_GPIO_LEVEL_HIGH : NSX_GPIO_LEVEL_LOW);
-    }
-}
-
-/*
- * ITCM-resident trampoline: shuts off NVM (MRAM) and caches, then
- * enters the infinite CoreMark iterate() loop.  Once NVM is off,
- * NO code in MRAM can execute — everything must be in ITCM/DTCM.
- * iterate() only calls core_bench_list and crcu16, both in ITCM via
- * the linker script.
- */
-__attribute__((section(".itcm_text"), noinline, noreturn))
-static void
-itcm_power_loop(void *results)
-{
-    /* Power off NVM — we're running from ITCM, no MRAM access needed.
-     * portable_fini() already zeroed DEVPWREN, AUDSSPWREN, SSRAMPWREN,
-     * SSRAMRETCFG via HAL calls.  NVM must be the LAST peripheral turned
-     * off to avoid hardware interlocks that re-enable it. */
-    PWRCTRL->MEMPWREN_b.PWRENNVM  = 0;
-    PWRCTRL->MEMPWREN_b.PWRENNVM1 = 0;
-    __DSB();
-    __ISB();
-
-    /* Disable caches — ITCM/DTCM are zero-wait-state, caches waste power.
-     * Also required: without this, NVM power-down doesn't finalize. */
-    SCB->ICIALLU = 0;   /* Invalidate I-cache */
-    __DSB();
-    __ISB();
-    SCB->CCR &= ~SCB_CCR_IC_Msk;  /* Disable I-cache */
-    SCB->CCR &= ~SCB_CCR_DC_Msk;  /* Disable D-cache */
-    __DSB();
-    __ISB();
-
-    /* NOTE: GPIO signal intentionally NOT set here — we use the signal
-     * from portable_init()/portable_fini() to bracket the timed benchmark
-     * run.  The ITCM loop power can be measured separately if needed. */
-
-    /* Drain the NVM read pipeline.  After clearing PWRENNVM, the NVM
-     * controller waits for outstanding MRAM fetches to complete before
-     * committing to power-down.  If the compiler inlines all library
-     * calls (memset, etc.) into ITCM — as armclang -Ofast does — no
-     * MRAM bus transactions occur and NVM never powers off (~1.4 mA
-     * penalty).  A single volatile read from the MRAM address space
-     * forces one bus cycle that lets the NVM controller settle. */
-    {
-        volatile ee_u32 dummy = *(volatile ee_u32 *)0x00430000;
-        (void)dummy;
-    }
-
-    /* Brief settling delay (~1 ms) before signalling ACTIVE so the
-     * Joulescope phase marker is well clear of the NVM-off transient.
-     * Time-based rather than a magic-number busy-wait so the duration
-     * is reproducible across toolchains and optimisation levels. */
-    nsx_delay_us(1000);
-    am_hal_gpio_output_set(NS_POWER_MONITOR_GPIO_0);
-    am_hal_gpio_output_clear(NS_POWER_MONITOR_GPIO_1);
-    while (1) {
-        iterate(results);
-    }
-}
 
 /* ── Volatile seeds (SEED_VOLATILE) ────────────────────────── */
 #if VALIDATION_RUN
@@ -196,14 +90,6 @@ time_in_secs(CORE_TICKS ticks)
 /* ── Contexts ──────────────────────────────────────────────── */
 ee_u32 default_num_contexts = 1;
 
-/*
- * Stash the core_results pointer so portable_fini() can re-run
- * iterate() in a tight loop for power measurement.  portable_init
- * receives &results[0].port which sits at the end of core_results.
- */
-#include <stddef.h>
-static void *s_results_ptr = NULL;
-
 /* ── Platform init/fini ────────────────────────────────────── */
 void
 portable_init(core_portable *p, int *argc, char *argv[])
@@ -211,30 +97,14 @@ portable_init(core_portable *p, int *argc, char *argv[])
     (void)argc;
     (void)argv;
 
-    /* Recover core_results* from the embedded core_portable member */
-    s_results_ptr = (void *)((char *)p - offsetof(core_results, port));
-
     /* Initialize SEGGER RTT control block early so the J-Link host can
      * locate it as soon as the firmware boots.  NO_BLOCK_TRIM means writes
      * that overflow the 32 KB up-buffer are dropped instead of stalling. */
     SEGGER_RTT_ConfigUpBuffer(0, "CoreMark", NULL, 0,
                               SEGGER_RTT_MODE_NO_BLOCK_TRIM);
 
-    /* Full SoC init: caches, SWO debug output (starts in HP mode) */
+    /* Full SoC init: caches, perf mode, debug output */
     nsx_system_init(&s_coremark_system_config);
-
-#ifndef COREMARK_HP_MODE
-    /* Switch to LP 96 MHz for non-HP builds */
-    am_hal_pwrctrl_mcu_mode_select(AM_HAL_PWRCTRL_MCU_MODE_LOW_POWER);
-#endif
-
-    /* Configure power-monitor GPIOs for Joulescope phase detection */
-    ns_init_power_monitor_state();
-
-    /* Signal ACTIVE immediately — Joulescope will see the timed benchmark
-     * run as the active phase.  For GCC builds, itcm_power_loop() maintains
-     * this signal during the post-benchmark iterate loop. */
-    ns_set_power_monitor_state(NS_DATA_COLLECTION);
 
     /* Start the microsecond timer */
     nsx_timer_init(&s_timer_cfg);
@@ -257,110 +127,9 @@ portable_fini(core_portable *p)
 {
     p->portable_id = 0;
 
-    /* Signal SLEEP — benchmark timed run is complete */
-    ns_set_power_monitor_state(NS_IDLE);
-
     ee_printf("\n--- CoreMark complete. ---\n");
 
-#ifndef COREMARK_SCORE_ONLY
-#ifdef COREMARK_HP_MODE
-    ee_printf("--- Staying at HP 250 MHz for active power measurement. ---\n");
-#else
-    ee_printf("--- Switching to LP 96 MHz for active power measurement. ---\n");
-#endif
-
-    /* Brief delay to let SWO flush */
-    nsx_delay_us(200000);
-
-    /* Disable ITM/SWO — no more prints after this */
-    nsx_itm_printf_disable();
-
-    /* Aggressive power-down: everything off, LP mode, NO SpotManager */
-    static const nsx_power_config_t coremark_power = {
-        .api               = &nsx_power_V1_0_0,
-        .perf_mode         = NSX_POWER_PERF_LOW,
-        .need_audadc       = false,
-        .need_ssram        = false,
-        .need_crypto       = false,
-        .need_ble          = false,
-        .need_usb          = false,
-        .need_iom          = false,
-        .need_uart         = false,
-        .small_tcm         = true,
-        .need_tempco       = false,
-        .need_itm          = false,
-        .need_xtal         = false,
-        .spotmgr_collapse  = false,
-    };
-    nsx_power_configure(&coremark_power);
-
-    /* Override CPDLP to ELP retention (SDK5-equivalent).
-     * nsx_power_configure() sets ELP_ON; retention saves ~100 µW. */
-    am_hal_pwrctrl_pwrmodctl_cpdlp_t cpdlp = {
-        .eRlpConfig = AM_HAL_PWRCTRL_RLP_ON,
-        .eElpConfig = AM_HAL_PWRCTRL_ELP_RET,
-        .eClpConfig = AM_HAL_PWRCTRL_CLP_ON,
-    };
-    am_hal_pwrctrl_pwrmodctl_cpdlp_config(cpdlp);
-
-    /* Nuclear peripheral kill */
-    am_hal_pwrctrl_control(AM_HAL_PWRCTRL_CONTROL_DIS_PERIPHS_ALL, 0);
-    am_hal_pwrctrl_control(AM_HAL_PWRCTRL_CONTROL_XTAL_PWDN_DEEPSLEEP, 0);
-
-    /* Stop ALL timers */
-    for (uint32_t t = 0; t < 16; t++) {
-        am_hal_timer_stop(t);
-    }
-
-    /* Reduce memory: 32K ITCM + 128K DTCM, single NVM bank, SSRAM off */
-    am_hal_pwrctrl_mcu_memory_config_t McuMemCfg = {
-        .eROMMode              = AM_HAL_PWRCTRL_ROM_AUTO,
-        .eDTCMCfg              = AM_HAL_PWRCTRL_ITCM32K_DTCM128K,
-        .eRetainDTCM           = AM_HAL_PWRCTRL_MEMRETCFG_TCMPWDSLP_RETAIN,
-        .eNVMCfg               = AM_HAL_PWRCTRL_NVM0_ONLY,
-        .bKeepNVMOnInDeepSleep = false,
-    };
-    am_hal_pwrctrl_mcu_memory_config(&McuMemCfg);
-
-    am_hal_pwrctrl_sram_memcfg_t SRAMMemCfg = {
-        .eSRAMCfg        = AM_HAL_PWRCTRL_SRAM_NONE,
-        .eActiveWithMCU  = AM_HAL_PWRCTRL_SRAM_NONE,
-        .eActiveWithGFX  = AM_HAL_PWRCTRL_SRAM_NONE,
-        .eActiveWithDISP = AM_HAL_PWRCTRL_SRAM_NONE,
-        .eSRAMRetain     = AM_HAL_PWRCTRL_SRAM_NONE,
-    };
-    am_hal_pwrctrl_sram_config(&SRAMMemCfg);
-
-    /* MRAM low-power read mode (SDK5-equivalent) */
-    MCUCTRL->MRAMCRYPTOPWRCTRL_b.MRAM0LPREN    = 1;
-    MCUCTRL->MRAMCRYPTOPWRCTRL_b.MRAM0SLPEN    = 0;
-    MCUCTRL->MRAMCRYPTOPWRCTRL_b.MRAM0PWRCTRL  = 1;
-    MCUCTRL->MRAMCRYPTOPWRCTRL_b.CRYPTOCLKGATEN = 1;
-
-    /* Clear debug control */
-    MCUCTRL->DBGCTRL = 0;
-
-    /* Force target clock LAST */
-#ifdef COREMARK_HP_MODE
-    am_hal_pwrctrl_mcu_mode_select(AM_HAL_PWRCTRL_MCU_MODE_HIGH_PERFORMANCE);
-#else
-    am_hal_pwrctrl_mcu_mode_select(AM_HAL_PWRCTRL_MCU_MODE_LOW_POWER);
-#endif
-
-    /* Tristate all unused GPIOs */
-    for (uint32_t pin = 0; pin < AM_HAL_GPIO_MAX_PADS; pin++) {
-        if (pin == NS_POWER_MONITOR_GPIO_0 || pin == NS_POWER_MONITOR_GPIO_1)
-            continue;
-        am_hal_gpio_pinconfig(pin, am_hal_gpio_pincfg_disabled);
-    }
-
-    /* Jump to ITCM-resident loop: shuts off NVM + caches + remaining
-     * peripheral enables, then runs CoreMark iterate() forever from
-     * zero-wait-state SRAM.  No return. */
-    itcm_power_loop(s_results_ptr);
-#endif /* !COREMARK_SCORE_ONLY */
-
-    /* Spin so the score stays visible on SWO */
+    /* Spin so the score stays visible on the RTT channel */
     while (1) { __WFI(); }
 }
 
@@ -380,10 +149,13 @@ ee_printf(const char *fmt, ...)
 
     if (n > 0) {
         SEGGER_RTT_Write(0, buf, (unsigned)n);
-        /* J-Link reads the RTT control block + ring buffer over SWD, which
-         * bypasses the CPU D-cache.  Clean the cache so the J-Link host can
-         * see the latest WrOff and bytes. */
+#if defined(NSX_SOC_CORE_M55)
+        /* On Cortex-M55 (Apollo5) the J-Link reads the RTT control block +
+         * ring buffer over SWD, bypassing the CPU D-cache.  Clean the cache
+         * so the host sees the latest WrOff and bytes.  Cortex-M4 targets
+         * (Apollo4) have no core D-cache and need no flush. */
         SCB_CleanDCache();
+#endif
     }
     return n;
 }
