@@ -8,8 +8,9 @@ your toolchain, board connection, and SWO viewer are all working.
 
 It is also a **multi-target** example: a single lean `nsx.yml` declares a
 `targets:` block supporting both `apollo510_evb` (default) and
-`apollo510b_evb`. Each board resolves its own derived `<board>_minimal`
-profile and commits its own `nsx.<board>.lock`.
+`apollo4p_blue_kxr_evb`. Each board resolves its own derived
+`<board>_minimal` profile and commits its own `nsx.<board>.lock`, so this
+serves as the simplest cross-family proving ground (Apollo5 + Apollo4P).
 
 ## Build & Run
 
@@ -20,8 +21,8 @@ nsx build     --app-dir .
 nsx flash     --app-dir .      # requires JLink + EVB
 nsx view      --app-dir .      # opens SWO viewer
 
-# Sibling board
-nsx build     --app-dir . --board apollo510b_evb
+# Apollo4P Blue KXR EVB
+nsx build     --app-dir . --board apollo4p_blue_kxr_evb
 ```
 
 ## Expected Output
