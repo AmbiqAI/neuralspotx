@@ -227,8 +227,19 @@ def view_app_impl(
             bufsize=1,
         )
 
-    viewer_proc: subprocess.Popen[object] | None = None
+    # Open (and create the parent dir for) the capture file *before*
+    # spawning the viewer. Opening after the viewer is attached would
+    # leak the SEGGER process — and keep the J-Link held — if the path
+    # is unwritable or its directory does not exist.
     capture_file = None
+    if capture_path is not None:
+        try:
+            capture_path.parent.mkdir(parents=True, exist_ok=True)
+            capture_file = open(capture_path, "w", encoding="utf-8")  # noqa: SIM115
+        except OSError as exc:
+            raise NSXError(f"Cannot open capture file {capture_path}: {exc}") from exc
+
+    viewer_proc: subprocess.Popen[object] | None = None
     try:
         viewer_proc = subprocess.Popen(run_cmd, **popen_kwargs)  # type: ignore[arg-type]
         if reset_on_open:
@@ -255,7 +266,7 @@ def view_app_impl(
 
         deadline = None if duration_s is None else time.monotonic() + duration_s
         if stream_output:
-            capture_file = open(capture_path, "w", encoding="utf-8")  # noqa: SIM115
+            assert capture_file is not None  # noqa: S101 — opened above when streaming
             _stream_viewer(viewer_proc, capture_file, deadline)
             _terminate_viewer(viewer_proc)
         elif deadline is not None:
@@ -286,14 +297,32 @@ def _stream_viewer(
     sink: "object",
     deadline: float | None,
 ) -> None:
-    """Pump viewer stdout to our stdout and *sink* until EOF or *deadline*."""
+    """Pump viewer stdout to our stdout and *sink* until EOF or *deadline*.
+
+    A daemon reader thread feeds lines through a queue so the wall-clock
+    *deadline* is honoured on every platform — including Windows, where
+    pipes are not ``select``-able and a bare ``readline()`` would block
+    past the requested duration when the viewer is silent.
+    """
+
+    import queue
+    import threading
 
     stream = proc.stdout
     if stream is None:
         return
-    use_select = os.name != "nt"
-    if use_select:
-        import select
+
+    lines: "queue.Queue[str | None]" = queue.Queue()
+
+    def _reader() -> None:
+        try:
+            for raw in iter(stream.readline, ""):
+                lines.put(raw)
+        finally:
+            lines.put(None)  # EOF sentinel
+
+    reader = threading.Thread(target=_reader, daemon=True)
+    reader.start()
 
     while True:
         if deadline is not None:
@@ -302,17 +331,17 @@ def _stream_viewer(
                 break
         else:
             remaining = None
-        if use_select:
-            ready, _, _ = select.select([stream], [], [], remaining)
-            if not ready:
-                # select timed out -> deadline reached
-                break
-        line_text = stream.readline()
-        if not line_text:
+        try:
+            item = lines.get(timeout=remaining)
+        except queue.Empty:
+            # deadline reached with no further output
             break
-        sys.stdout.write(line_text)
+        if item is None:
+            # reader hit EOF (viewer exited)
+            break
+        sys.stdout.write(item)
         sys.stdout.flush()
-        sink.write(line_text)  # type: ignore[attr-defined]
+        sink.write(item)  # type: ignore[attr-defined]
         sink.flush()  # type: ignore[attr-defined]
 
 
