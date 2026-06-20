@@ -10,7 +10,7 @@ board:
   soc: apollo2
   registered: true
 soc_family: apollo2
-sdk_provider: ambiqsuite-r2
+sdk_provider: ambiqsuite
 cpu:
   core: cortex-m4
   float_abi: hard

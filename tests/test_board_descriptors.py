@@ -73,7 +73,7 @@ def test_load_board_returns_descriptor_with_cpu() -> None:
     desc = bd.load_board("apollo510_evb")
     assert desc is not None
     assert desc.soc == "apollo510"
-    assert desc.sdk_provider == "ambiqsuite-r5"
+    assert desc.sdk_provider == "ambiqsuite"
     assert desc.cpu.core == "cortex-m55"
     assert "arm-none-eabi-gcc" in desc.toolchains
 

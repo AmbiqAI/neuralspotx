@@ -5,9 +5,15 @@
 # auto-included cmake/nsx_soc_facts.cmake.
 nsx_load_soc_facts("apollo510b")
 
-if(NOT NSX_SDK_PROVIDER STREQUAL "ambiqsuite-r5")
+# nsx::soc_flags carries all SoC-owned compile definitions, derived from the
+# SoC facts loaded above. Named to match the SDK's own SoC descriptor flags
+# target. The board links it below rather than re-declaring SoC macros.
+set(NSX_SOC_FLAGS_TARGET nsx_soc_apollo510b_flags)
+nsx_soc_flags_target(${NSX_SOC_FLAGS_TARGET})
+
+if(NOT NSX_SDK_PROVIDER STREQUAL "ambiqsuite")
     message(FATAL_ERROR
-        "apollo510b_evb requires NSX_SDK_PROVIDER=ambiqsuite-r5, got '${NSX_SDK_PROVIDER}'."
+        "apollo510b_evb requires NSX_SDK_PROVIDER=ambiqsuite, got '${NSX_SDK_PROVIDER}'."
     )
 endif()
 
@@ -47,9 +53,6 @@ if(NOT DEFINED NSX_LINKER_SCRIPT)
         set(NSX_LINKER_SCRIPT "${_nsx_linker_script_default}")
     endif()
 endif()
-
-include("${NSX_CMAKE_DIR}/segger/socs/apollo5.cmake")
-
 set(NSX_BOARD_TARGET nsx_board_apollo510b_evb)
 set(NSX_BOARD_FLAGS_TARGET nsx_board_apollo510b_evb_flags)
 set(NSX_SOC_TARGET_EXPORT_NAME "soc_hal_apollo510b")
@@ -72,13 +75,7 @@ add_library(nsx::board_flags ALIAS ${NSX_BOARD_FLAGS_TARGET})
 
 target_compile_definitions(${NSX_BOARD_FLAGS_TARGET} INTERFACE
     apollo510b_evb
-    PART_apollo510b
-    AM_PART_APOLLO5B
-    AM_PART_APOLLO510
-    AM_PART_APOLLO510B
-    ARMCM55
     AM_PACKAGE_BGA
-    __FPU_PRESENT
     STACK_SIZE=4096
 )
 
@@ -88,6 +85,10 @@ target_compile_definitions(${NSX_BOARD_FLAGS_TARGET} INTERFACE
 
 nsx_apply_toolchain_flags(${NSX_BOARD_FLAGS_TARGET})
 
+# board_flags carries the SoC flags so that nsx::soc_hal (which links
+# nsx::board_flags) and every downstream consumer (core, FreeRTOS port) sees
+# the full SoC define set.
+target_link_libraries(${NSX_BOARD_FLAGS_TARGET} INTERFACE ${NSX_SOC_FLAGS_TARGET})
 target_link_libraries(${NSX_BOARD_TARGET} INTERFACE ${NSX_BOARD_FLAGS_TARGET})
 
 install(TARGETS

@@ -5,9 +5,15 @@
 # auto-included cmake/nsx_soc_facts.cmake.
 nsx_load_soc_facts("apollo2")
 
-if(NOT NSX_SDK_PROVIDER STREQUAL "ambiqsuite-r2")
+# nsx::soc_flags carries all SoC-owned compile definitions, derived from the
+# SoC facts loaded above. Named to match the SDK's own SoC descriptor flags
+# target. The board links it below rather than re-declaring SoC macros.
+set(NSX_SOC_FLAGS_TARGET nsx_soc_apollo2_flags)
+nsx_soc_flags_target(${NSX_SOC_FLAGS_TARGET})
+
+if(NOT NSX_SDK_PROVIDER STREQUAL "ambiqsuite")
     message(FATAL_ERROR
-        "apollo2_evb requires NSX_SDK_PROVIDER=ambiqsuite-r2, got '${NSX_SDK_PROVIDER}'."
+        "apollo2_evb requires NSX_SDK_PROVIDER=ambiqsuite, got '${NSX_SDK_PROVIDER}'."
     )
 endif()
 
@@ -33,8 +39,6 @@ else()
     set(NSX_SYSTEM_SOURCE "${NSX_AMBIQSUITE_ROOT}/CMSIS/AmbiqMicro/Source/system_apollo2.c")
     set(NSX_LINKER_SCRIPT "${NSX_CORE_DIR}/src/apollo2/gcc/linker_script.ld")
 endif()
-include("${NSX_CMAKE_DIR}/segger/socs/apollo2.cmake")
-
 set(NSX_BOARD_TARGET nsx_board_apollo2_evb)
 set(NSX_BOARD_FLAGS_TARGET nsx_board_apollo2_evb_flags)
 set(NSX_SOC_TARGET_EXPORT_NAME "soc_hal_apollo2")
@@ -57,11 +61,8 @@ add_library(nsx::board_flags ALIAS ${NSX_BOARD_FLAGS_TARGET})
 
 target_compile_definitions(${NSX_BOARD_FLAGS_TARGET} INTERFACE
     apollo2_evb
-    PART_apollo2
     PART_APOLLO2
-    AM_PART_APOLLO2
     AM_PACKAGE_BGA
-    __FPU_PRESENT
     STACK_SIZE=4096
 )
 
@@ -71,6 +72,10 @@ target_compile_definitions(${NSX_BOARD_FLAGS_TARGET} INTERFACE
 
 nsx_apply_toolchain_flags(${NSX_BOARD_FLAGS_TARGET})
 
+# board_flags carries the SoC flags so that nsx::soc_hal (which links
+# nsx::board_flags) and every downstream consumer (core, FreeRTOS port) sees
+# the full SoC define set.
+target_link_libraries(${NSX_BOARD_FLAGS_TARGET} INTERFACE ${NSX_SOC_FLAGS_TARGET})
 target_link_libraries(${NSX_BOARD_TARGET} INTERFACE ${NSX_BOARD_FLAGS_TARGET})
 
 install(TARGETS

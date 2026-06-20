@@ -10,7 +10,7 @@ board:
   soc: apollo4l
   registered: true
 soc_family: apollo4l
-sdk_provider: ambiqsuite-r4
+sdk_provider: ambiqsuite
 cpu:
   core: cortex-m4
   float_abi: hard

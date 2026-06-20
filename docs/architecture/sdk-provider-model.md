@@ -5,33 +5,26 @@
 SDK provider modules decouple NSX board and SoC modules from hardcoded SDK paths
 and make provider selection explicit across AmbiqSuite major lines.
 
-## Provider Families
+## Provider Family
 
-Current families:
+There is a single AmbiqSuite provider that mirrors the upstream monorepo
+(all SoCs side-by-side):
 
-1. `ambiqsuite-r3`
-2. `ambiqsuite-r4`
-3. `ambiqsuite-r5`
+1. `ambiqsuite`
 
-Provider modules:
+Provider module:
 
-1. `nsx-ambiqsuite-r3`
-2. `nsx-ambiqsuite-r4`
-3. `nsx-ambiqsuite-r5`
+1. `nsx-ambiqsuite`
 
 ## Provider Revisions
 
-Each provider family is sourced from the unified SDK monorepo, which vendors
-the AmbiqSuite drop, the HAL/BSP wrappers, and the shared NSX module set for
-every supported release line:
+The provider is sourced from the unified SDK monorepo, which vendors the
+AmbiqSuite drop, the HAL/BSP wrappers, and the shared NSX module set for
+every supported SoC:
 
-1. `ambiqsuite-r2` → `nsx-ambiq-sdk` (`main`)
-2. `ambiqsuite-r3` → `nsx-ambiq-sdk` (`main`)
-3. `ambiqsuite-r4` → `nsx-ambiq-sdk` (`main`)
-4. `ambiqsuite-r5` → `nsx-ambiq-sdk` (`main`)
-5. `ambiqsuite-r6` → `nsx-ambiq-sdk` (`main`)
+1. `ambiqsuite` → `nsx-ambiq-sdk` (`main`)
 
-The provider module (`nsx-ambiqsuite-r*`) and the SDK wrapper modules that the
+The provider module (`nsx-ambiqsuite`) and the SDK wrapper modules that the
 bundle vendors resolve to the unified `nsx-ambiq-sdk` project by default. The
 selected project and revision are persisted in generated app metadata.
 
@@ -41,7 +34,7 @@ Each provider module is represented in metadata as:
 
 1. `module.type = sdk_provider`
 2. `module.category = sdk_provider`
-3. `module.provider = ambiqsuite-r*`
+3. `module.provider = ambiqsuite`
 
 Board modules bind to providers using:
 
@@ -50,13 +43,14 @@ Board modules bind to providers using:
 
 ## Wrapper Modules
 
-Release-specific wrapper modules sit above the raw provider payload:
+Unified wrapper modules sit above the raw provider payload:
 
-1. `nsx-ambiq-hal-r3`, `nsx-ambiq-hal-r4`, `nsx-ambiq-hal-r5`
-2. `nsx-ambiq-bsp-r3`, `nsx-ambiq-bsp-r4`, `nsx-ambiq-bsp-r5`
+1. `nsx-ambiq-hal`
+2. `nsx-ambiq-bsp`
 
-These wrappers expose the stable NSX-facing build surfaces while the
-`nsx-ambiqsuite-r*` modules remain mostly raw imported SDK drops.
+These wrappers expose the stable NSX-facing build surfaces (gated per-SoC by
+capability, e.g. PMU on Apollo5) while the `nsx-ambiqsuite` module remains a
+mostly raw imported SDK drop.
 
 ## Root Resolution
 
@@ -69,7 +63,7 @@ Provider selection sets:
 
 Resolution order:
 
-1. vendored app-local SDK root under `app/modules/nsx-ambiqsuite-r*/sdk`
+1. vendored app-local SDK root under `app/modules/nsx-ambiqsuite/sdk`
 2. explicit override variables when provided
 
 ## Decomposition Policy

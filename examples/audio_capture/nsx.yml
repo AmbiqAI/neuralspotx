@@ -9,34 +9,34 @@ channel: stable
 profile: apollo510_evb_minimal
 profile_status: active
 modules:
-- name: nsx-cmsis-core
-  project: nsx-ambiq-sdk
-  revision: main
-- name: nsx-ambiqsuite-r5
-  project: nsx-ambiq-sdk
-  revision: main
-- name: nsx-ambiq-hal-r5
-  project: nsx-ambiq-sdk
-  revision: main
-- name: nsx-ambiq-bsp-r5
-  project: nsx-ambiq-sdk
-  revision: main
-- name: nsx-soc-hal
-  project: nsx-ambiq-sdk
-  revision: main
-- name: nsx-cmsis-startup
-  project: nsx-ambiq-sdk
-  revision: main
-- name: nsx-board-apollo510-evb
-  project: neuralspotx
-- name: nsx-core
-  project: nsx-ambiq-sdk
-  revision: main
-- name: nsx-audio
-  project: nsx-ambiq-sdk
-  revision: main
-- name: nsx-tooling
-  project: neuralspotx
+  - name: nsx-cmsis-core
+    project: nsx-ambiq-sdk
+    revision: main
+  - name: nsx-ambiqsuite
+    project: nsx-ambiq-sdk
+    revision: main
+  - name: nsx-ambiq-hal
+    project: nsx-ambiq-sdk
+    revision: main
+  - name: nsx-ambiq-bsp
+    project: nsx-ambiq-sdk
+    revision: main
+  - name: nsx-soc-hal
+    project: nsx-ambiq-sdk
+    revision: main
+  - name: nsx-cmsis-startup
+    project: nsx-ambiq-sdk
+    revision: main
+  - name: nsx-board-apollo510-evb
+    project: neuralspotx
+  - name: nsx-core
+    project: nsx-ambiq-sdk
+    revision: main
+  - name: nsx-audio
+    project: nsx-ambiq-sdk
+    revision: main
+  - name: nsx-tooling
+    project: neuralspotx
 features: {}
 module_registry:
   projects:
@@ -44,18 +44,18 @@ module_registry:
       url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
       revision: main
   modules:
-    nsx-ambiqsuite-r5:
+    nsx-ambiqsuite:
       project: nsx-ambiq-sdk
       revision: main
-      metadata: modules/nsx-ambiqsuite-r5/nsx-module.yaml
-    nsx-ambiq-hal-r5:
+      metadata: modules/nsx-ambiqsuite/nsx-module.yaml
+    nsx-ambiq-hal:
       project: nsx-ambiq-sdk
       revision: main
-      metadata: modules/nsx-ambiq-hal-r5/nsx-module.yaml
-    nsx-ambiq-bsp-r5:
+      metadata: modules/nsx-ambiq-hal/nsx-module.yaml
+    nsx-ambiq-bsp:
       project: nsx-ambiq-sdk
       revision: main
-      metadata: modules/nsx-ambiq-bsp-r5/nsx-module.yaml
+      metadata: modules/nsx-ambiq-bsp/nsx-module.yaml
     nsx-cmsis-core:
       project: nsx-ambiq-sdk
       revision: main

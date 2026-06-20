@@ -1,7 +1,7 @@
 schema_version: 1
 
 module:
-  name: nsx-board-atomiq110-fpga-turbo
+  name: nsx-board-apollo510-evb
   type: board
   version: "0.1.0"
 
@@ -11,28 +11,29 @@ support:
 
 build:
   cmake:
-    package: nsx_board_atomiq110_fpga_turbo
+    package: nsx_board_apollo510_evb
     targets:
-      - nsx::board_atomiq110_fpga_turbo
+      - nsx::board_apollo510_evb
 
 depends:
   required:
-    - nsx-ambiq-hal-r6
-    - nsx-ambiq-bsp-r6
+    - nsx-ambiq-hal
+    - nsx-ambiq-bsp
     - nsx-soc-hal
     - nsx-cmsis-startup
-    - nsx-ambiqsuite-r6
+    - nsx-ambiqsuite
   optional: []
 
 constraints:
-  required_sdk_provider: nsx-ambiqsuite-r6
+  required_sdk_provider: nsx-ambiqsuite
 
 compatibility:
   boards:
-    - atomiq110_fpga_turbo
+    - apollo510_evb
   socs:
-    - atomiq110
+    - apollo510
   toolchains:
     - arm-none-eabi-gcc
     - armclang
+
     - atfe

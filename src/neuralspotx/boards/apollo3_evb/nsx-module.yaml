@@ -17,15 +17,15 @@ build:
 
 depends:
   required:
-    - nsx-ambiq-hal-r3
-    - nsx-ambiq-bsp-r3
+    - nsx-ambiq-hal
+    - nsx-ambiq-bsp
     - nsx-soc-hal
     - nsx-cmsis-startup
-    - nsx-ambiqsuite-r3
+    - nsx-ambiqsuite
   optional: []
 
 constraints:
-  required_sdk_provider: nsx-ambiqsuite-r3
+  required_sdk_provider: nsx-ambiqsuite
 
 compatibility:
   boards:

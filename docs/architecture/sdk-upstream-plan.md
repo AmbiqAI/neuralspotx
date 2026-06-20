@@ -4,26 +4,27 @@ This document describes how the AmbiqSuite SDK is sourced and provisioned for
 NSX board and SoC modules.
 
 !!! info "Status: unified"
-    NSX originally planned one upstream repo per AmbiqSuite major line
-    (`nsx-ambiqsuite-r3`, `-r4`, `-r5`). That plan has been superseded: all
-    AmbiqSuite lines now resolve from a single **unified SDK repo**,
-    [`nsx-ambiq-sdk`](https://github.com/AmbiqAI/nsx-ambiq-sdk). The historical
-    per-major plan is summarized at the end for context.
+    NSX originally planned one upstream repo per AmbiqSuite major line. That
+    plan has been superseded: all AmbiqSuite SoCs now resolve from a single
+    **unified SDK repo**,
+    [`nsx-ambiq-sdk`](https://github.com/AmbiqAI/nsx-ambiq-sdk), through a
+    single provider module. The historical per-major plan is summarized at the
+    end for context.
 
 ## Current Model
 
 One repo, [`nsx-ambiq-sdk`](https://github.com/AmbiqAI/nsx-ambiq-sdk), vendors
 the AmbiqSuite drop, the HAL/BSP wrappers, and the shared NSX module set for
-every supported release line (r2 through r6). It tracks `main`.
+every supported SoC (Apollo2 through Apollo5). It tracks `main`.
 
-The release-specific modules NSX resolves are thin metadata views onto that one
-project:
+The provider and wrapper modules NSX resolves are thin metadata views onto that
+one project:
 
 | Provider / wrapper module | Project | Revision |
 |---|---|---|
-| `nsx-ambiqsuite-r2` … `-r6` | `nsx-ambiq-sdk` | `main` |
-| `nsx-ambiq-hal-r2` … `-r6` | `nsx-ambiq-sdk` | `main` |
-| `nsx-ambiq-bsp-r2` … `-r6` | `nsx-ambiq-sdk` | `main` |
+| `nsx-ambiqsuite` | `nsx-ambiq-sdk` | `main` |
+| `nsx-ambiq-hal` | `nsx-ambiq-sdk` | `main` |
+| `nsx-ambiq-bsp` | `nsx-ambiq-sdk` | `main` |
 
 Board profiles depend on the provider module for their SoC family, and NSX
 vendors the resolved SDK content into the generated app. See
@@ -50,9 +51,9 @@ HAL/BSP libraries that board requires.
 The original intent was one upstream repo per major line, with NSX board
 defaults pinned to SDK-aligned release tags (for example `r5.2.0`):
 
-1. `nsx-ambiqsuite-r3` — Apollo3 / Apollo3 Plus boards
-2. `nsx-ambiqsuite-r4` — Apollo4 Lite / Apollo4 Plus boards
-3. `nsx-ambiqsuite-r5` — Apollo510 / Apollo510B / Apollo510L / Apollo330P boards
+1. an Apollo3 / Apollo3 Plus provider
+2. an Apollo4 Lite / Apollo4 Plus provider
+3. an Apollo510 / Apollo510B / Apollo510L / Apollo330P provider
 
 The unified `nsx-ambiq-sdk` repo replaced this approach, removing the need for
 per-major repos and per-release tag pinning.

@@ -60,9 +60,9 @@ def _scaffold_custom_board(nsx_root: Path, name: str, parent: str) -> None:
 def _run_select(tmp_path: Path, *, board: str, nsx_root: Path) -> subprocess.CompletedProcess:
     """Invoke ``nsx_select_sdk_provider(board)`` via cmake script mode."""
     providers = _providers_cmake(tmp_path)
-    # A dummy AmbiqSuite root for each tier so the post-inference root
-    # existence check in nsx_select_sdk_provider passes regardless of the
-    # provider chosen.
+    # A dummy AmbiqSuite root so the post-inference root existence check in
+    # nsx_select_sdk_provider passes regardless of where the module is
+    # vendored.
     sdk_root = tmp_path / "sdk_root"
     sdk_root.mkdir(exist_ok=True)
     harness = tmp_path / "harness.cmake"
@@ -81,9 +81,7 @@ def _run_select(tmp_path: Path, *, board: str, nsx_root: Path) -> subprocess.Com
     return subprocess.run(
         [
             CMAKE,
-            f"-DNSX_AMBIQSUITE_R3_ROOT={sdk_root.as_posix()}",
-            f"-DNSX_AMBIQSUITE_R4_ROOT={sdk_root.as_posix()}",
-            f"-DNSX_AMBIQSUITE_R5_ROOT={sdk_root.as_posix()}",
+            f"-DNSX_AMBIQSUITE_ROOT_OVERRIDE={sdk_root.as_posix()}",
             "-P",
             str(harness),
         ],
@@ -99,7 +97,7 @@ def test_custom_board_inherits_parent_provider(tmp_path: Path) -> None:
     result = _run_select(tmp_path, board="my_apollo510", nsx_root=nsx_root)
 
     assert result.returncode == 0, result.stderr
-    assert "RESOLVED_PROVIDER=ambiqsuite-r5" in result.stdout + result.stderr
+    assert "RESOLVED_PROVIDER=ambiqsuite" in result.stdout + result.stderr
 
 
 def test_custom_board_inherits_r4_parent_provider(tmp_path: Path) -> None:
@@ -109,7 +107,7 @@ def test_custom_board_inherits_r4_parent_provider(tmp_path: Path) -> None:
     result = _run_select(tmp_path, board="my_apollo4p", nsx_root=nsx_root)
 
     assert result.returncode == 0, result.stderr
-    assert "RESOLVED_PROVIDER=ambiqsuite-r4" in result.stdout + result.stderr
+    assert "RESOLVED_PROVIDER=ambiqsuite" in result.stdout + result.stderr
 
 
 def test_registered_evb_still_resolves_directly(tmp_path: Path) -> None:
@@ -119,7 +117,7 @@ def test_registered_evb_still_resolves_directly(tmp_path: Path) -> None:
     result = _run_select(tmp_path, board="apollo510_evb", nsx_root=nsx_root)
 
     assert result.returncode == 0, result.stderr
-    assert "RESOLVED_PROVIDER=ambiqsuite-r5" in result.stdout + result.stderr
+    assert "RESOLVED_PROVIDER=ambiqsuite" in result.stdout + result.stderr
 
 
 def test_unknown_board_without_parent_still_errors(tmp_path: Path) -> None:
