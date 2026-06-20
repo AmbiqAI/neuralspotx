@@ -11,10 +11,6 @@ nsx_load_soc_facts("apollo330P")
 set(NSX_SOC_FLAGS_TARGET nsx_soc_apollo330P_flags)
 nsx_soc_flags_target(${NSX_SOC_FLAGS_TARGET})
 
-if(DEFINED NSX_SOC_PMU_TIER AND NSX_SOC_PMU_TIER STREQUAL "armv8m")
-    set(NSX_AMBIQ_HAL_HAS_PMU TRUE)
-endif()
-
 if(NOT NSX_SDK_PROVIDER STREQUAL "ambiqsuite")
     message(FATAL_ERROR
         "apollo330mP_evb requires NSX_SDK_PROVIDER=ambiqsuite, got '${NSX_SDK_PROVIDER}'."
