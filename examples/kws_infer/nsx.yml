@@ -1,41 +1,14 @@
 schema_version: 1
 project:
   name: kws_infer
-target:
-  board: apollo510_evb
-  soc: apollo510
+targets:
+  default: apollo510_evb
+  supported:
+    - apollo510_evb
 toolchain: arm-none-eabi-gcc
 channel: stable
-profile: apollo510_evb_minimal
-profile_status: active
-modules:
-  - name: nsx-cmsis-core
-    project: nsx-ambiq-sdk
-    revision: main
-  - name: nsx-ambiqsuite
-    project: nsx-ambiq-sdk
-    revision: main
-  - name: nsx-ambiq-hal
-    project: nsx-ambiq-sdk
-    revision: main
-  - name: nsx-ambiq-bsp
-    project: nsx-ambiq-sdk
-    revision: main
-  - name: nsx-soc-hal
-    project: nsx-ambiq-sdk
-    revision: main
-  - name: nsx-cmsis-startup
-    project: nsx-ambiq-sdk
-    revision: main
-  - name: nsx-board-apollo510-evb
-    project: neuralspotx
-  - name: nsx-core
-    project: nsx-ambiq-sdk
-    revision: main
+requires:
   - name: nsx-power
-    project: nsx-ambiq-sdk
-    revision: main
-  - name: nsx-perf
     project: nsx-ambiq-sdk
     revision: main
   - name: nsx-pmu-armv8m
@@ -44,48 +17,28 @@ modules:
   - name: nsx-helia-rt
     project: helia-rt
     revision: helia-rt-v1.16.0
-  - name: nsx-tooling
-    project: neuralspotx
 features: {}
 module_registry:
+  projects:
+    nsx-ambiq-sdk:
+      url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+      revision: main
+    nsx-pmu-armv8m:
+      url: https://github.com/AmbiqAI/nsx-pmu-armv8m.git
+      revision: main
+    helia-rt:
+      url: https://github.com/AmbiqAI/helia-rt.git
+      revision: helia-rt-v1.16.0
   modules:
-    nsx-ambiqsuite:
-      project: nsx-ambiq-sdk
-      revision: main
-      metadata: modules/nsx-ambiqsuite/nsx-module.yaml
-    nsx-ambiq-hal:
-      project: nsx-ambiq-sdk
-      revision: main
-      metadata: modules/nsx-ambiq-hal/nsx-module.yaml
-    nsx-ambiq-bsp:
-      project: nsx-ambiq-sdk
-      revision: main
-      metadata: modules/nsx-ambiq-bsp/nsx-module.yaml
-    nsx-cmsis-core:
-      project: nsx-ambiq-sdk
-      revision: main
-      metadata: modules/nsx-cmsis-core/nsx-module.yaml
-    nsx-cmsis-startup:
-      project: nsx-ambiq-sdk
-      revision: main
-      metadata: modules/nsx-cmsis-startup/nsx-module.yaml
-    nsx-soc-hal:
-      project: nsx-ambiq-sdk
-      revision: main
-      metadata: modules/nsx-soc-hal/nsx-module.yaml
-    nsx-core:
-      project: nsx-ambiq-sdk
-      revision: main
-      metadata: modules/nsx-core/nsx-module.yaml
     nsx-power:
       project: nsx-ambiq-sdk
       revision: main
       metadata: modules/nsx-power/nsx-module.yaml
-    nsx-perf:
-      project: nsx-ambiq-sdk
-      revision: main
-      metadata: modules/nsx-perf/nsx-module.yaml
     nsx-pmu-armv8m:
       project: nsx-pmu-armv8m
       revision: main
       metadata: modules/nsx-pmu-armv8m/nsx-module.yaml
+    nsx-helia-rt:
+      project: helia-rt
+      revision: helia-rt-v1.16.0
+      metadata: modules/helia-rt/nsx/nsx-module.yaml
