@@ -426,6 +426,14 @@ class AppConfig:
         if board is None:
             board = self.default_board()
         if board not in targets:
+            # Tolerate non-canonical board spellings (case / known alias):
+            # the build path resolves targets with a ``normalize_board``-d
+            # name while ``targets()`` is keyed by the raw manifest spelling.
+            from ..constants import normalize_board
+
+            norm = normalize_board(board)
+            board = next((b for b in targets if normalize_board(b) == norm), board)
+        if board not in targets:
             supported = ", ".join(sorted(targets)) or "(none)"
             raise NSXConfigError(
                 f"board '{board}' is not a supported target (supported: {supported})",

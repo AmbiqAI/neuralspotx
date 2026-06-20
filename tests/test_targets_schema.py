@@ -162,6 +162,7 @@ def test_loader_accepts_targets_block() -> None:
         {"supported": [123]},  # non-string list entry
         {"default": 5},  # non-string default
         {"supported": {"apollo510_evb": {"soc": 7}}},  # non-string override
+        {"default": "apollo4p_evb", "supported": ["apollo510_evb"]},  # default not supported
     ],
 )
 def test_loader_rejects_malformed_targets(targets: dict) -> None:
@@ -171,3 +172,14 @@ def test_loader_rejects_malformed_targets(targets: dict) -> None:
             "project": {"name": "demo"},
             "targets": targets,
         })
+
+
+def test_resolve_target_tolerates_noncanonical_board_spelling() -> None:
+    # The build path resolves with a normalize_board-d name; resolution must
+    # still match a target keyed by the raw (here differently-cased) spelling.
+    cfg = _cfg({
+        "schema_version": 1,
+        "project": {"name": "demo"},
+        "targets": {"supported": ["apollo510_evb"]},
+    })
+    assert cfg.resolve_target("APOLLO510_EVB").board == "apollo510_evb"

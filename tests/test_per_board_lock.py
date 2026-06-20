@@ -9,9 +9,10 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from neuralspotx.models import AppConfig
+from neuralspotx.models import AppConfig, ResolvedTarget
 from neuralspotx.nsx_lock import NsxLock, lock_path, read_lock, write_lock
 from neuralspotx.nsx_lock._constants import LOCK_SCHEMA_VERSION
+from neuralspotx.operations._lock import _apply_active_target, _lock_boards_for
 from neuralspotx.project_config import _board_key_for_app, _lock_board_key
 
 # --- lock_path ------------------------------------------------------------
@@ -121,3 +122,57 @@ def test_per_board_locks_are_independent_files(tmp_path: Path) -> None:
     assert read_lock(tmp_path, "apollo510b_evb") is not None
     # The legacy unsuffixed lock is absent for a multi-target app.
     assert read_lock(tmp_path) is None
+
+
+# --- lock orchestration: board set + active-target pinning ----------------
+
+
+def _write_multi_target_manifest(app_dir: Path) -> None:
+    (app_dir / "nsx.yml").write_text(
+        "schema_version: 1\n"
+        "project:\n  name: demo\n"
+        "targets:\n"
+        "  default: apollo510b_evb\n"
+        "  supported: [apollo510_evb, apollo510b_evb]\n",
+        encoding="utf-8",
+    )
+
+
+def test_lock_boards_for_single_target_is_legacy(tmp_path: Path) -> None:
+    (tmp_path / "nsx.yml").write_text(
+        "schema_version: 1\nproject:\n  name: demo\ntarget:\n  board: apollo510_evb\n",
+        encoding="utf-8",
+    )
+    # Single-target -> one entry, the legacy ``None`` board key.
+    assert _lock_boards_for(tmp_path, None) == [None]
+
+
+def test_lock_boards_for_multi_target_lists_all_default_first(tmp_path: Path) -> None:
+    _write_multi_target_manifest(tmp_path)
+    # No explicit board -> every supported board, default first.
+    assert _lock_boards_for(tmp_path, None) == ["apollo510b_evb", "apollo510_evb"]
+
+
+def test_lock_boards_for_explicit_board_is_singleton(tmp_path: Path) -> None:
+    _write_multi_target_manifest(tmp_path)
+    assert _lock_boards_for(tmp_path, "apollo510_evb") == ["apollo510_evb"]
+
+
+def test_apply_active_target_pins_board_without_mutating_input() -> None:
+    cfg = {"target": {"board": "apollo510_evb", "soc": "apollo510"}, "profile": "old"}
+    target = ResolvedTarget(
+        board="apollo510b_evb",
+        soc="apollo510b",
+        profile="apollo510b_evb_minimal",
+        toolchain="gcc",
+    )
+    out = _apply_active_target(cfg, target)
+    assert out["target"]["board"] == "apollo510b_evb"
+    assert out["target"]["soc"] == "apollo510b"
+    assert out["profile"] == "apollo510b_evb_minimal"
+    assert out["toolchain"] == "gcc"
+    # Original config is untouched (deep copy).
+    assert cfg["target"]["board"] == "apollo510_evb"
+    assert cfg["profile"] == "old"
+    assert "toolchain" not in cfg
+

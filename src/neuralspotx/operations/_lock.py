@@ -7,6 +7,7 @@ import os
 import subprocess
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 from .._errors import (
     NSXConfigError,
@@ -108,7 +109,7 @@ def _lock_age_days(lock: NsxLock) -> float | None:
     return (datetime.now(timezone.utc) - stamp).total_seconds() / 86400.0
 
 
-def lock_freshness_warning(app_dir: Path) -> str | None:
+def lock_freshness_warning(app_dir: Path, board: str | None = None) -> str | None:
     """Return a note when ``nsx.lock`` tracks moving refs and is old.
 
     Network-free: derived purely from the lock's own ``generated_at``
@@ -126,7 +127,7 @@ def lock_freshness_warning(app_dir: Path) -> str | None:
     if threshold <= 0:
         return None
 
-    lock = read_lock(app_dir, _board_key_for_app(app_dir))
+    lock = read_lock(app_dir, _board_key_for_app(app_dir, board))
     if lock is None:
         return None
     moving = _moving_ref_modules(lock)
@@ -143,10 +144,10 @@ def lock_freshness_warning(app_dir: Path) -> str | None:
     )
 
 
-def warn_if_lock_stale(app_dir: Path) -> None:
+def warn_if_lock_stale(app_dir: Path, board: str | None = None) -> None:
     """Emit a one-line warning when the app's lock looks stale."""
 
-    note = lock_freshness_warning(app_dir)
+    note = lock_freshness_warning(app_dir, board)
     if note is not None:
         warn(note)
 
@@ -190,7 +191,7 @@ def _resolved_module_path(
     return _module_clone_dir(app_dir, entry.project, registry)
 
 
-def _apply_active_target(nsx_cfg: dict, target: ResolvedTarget) -> dict:
+def _apply_active_target(nsx_cfg: dict[str, Any], target: ResolvedTarget) -> dict[str, Any]:
     """Return a copy of *nsx_cfg* with *target* pinned as the active build.
 
     For multi-target apps this selects which board's closure
@@ -849,6 +850,10 @@ def _lock_app_impl_unlocked(
     path = write_lock(app_dir, lock, board_key)
     nsx_cfg = _load_app_cfg(app_dir)
     ordered_modules = list(lock.modules)
+    # The CMake glue (modules.cmake, modules/.gitignore) is not board-keyed,
+    # so on a multi-target lock-all the last board in the loop wins here.
+    # That is benign: ``nsx sync``/build regenerates this glue for the
+    # board actually being built before CMake configure runs.
     _write_app_module_file(app_dir, nsx_cfg, module_names=ordered_modules)
     _write_modules_gitignore_for_module_names(app_dir, nsx_cfg, ordered_modules)
     # ``write_lock`` already stamps ``lock.path`` for us.

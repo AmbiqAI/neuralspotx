@@ -91,6 +91,7 @@ def _validate_targets(value: Any, *, origin: str = "nsx.yml") -> None:
     if isinstance(supported, list):
         for idx, item in enumerate(supported):
             _require_str(item, field=f"targets.supported[{idx}]", origin=origin)
+        supported_names = [s for s in supported if isinstance(s, str)]
     elif isinstance(supported, dict):
         for board, cfg in supported.items():
             _require_str(board, field="targets.supported (board key)", origin=origin)
@@ -102,11 +103,20 @@ def _validate_targets(value: Any, *, origin: str = "nsx.yml") -> None:
                     _require_str(
                         cfg_map[key], field=f"targets.supported.{board}.{key}", origin=origin
                     )
+        supported_names = [b for b in supported if isinstance(b, str)]
     else:
         raise NSXConfigError(
             f"{origin}: 'targets.supported' must be a list or a mapping, "
             f"got {type(supported).__name__}",
             field="targets.supported",
+        )
+
+    if isinstance(default, str) and default and default not in supported_names:
+        listed = ", ".join(supported_names) or "(none)"
+        raise NSXConfigError(
+            f"{origin}: 'targets.default' ({default!r}) must be one of "
+            f"targets.supported ({listed})",
+            field="targets.default",
         )
 
 
