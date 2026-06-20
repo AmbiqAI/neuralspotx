@@ -31,8 +31,8 @@ _NSX_YML_KNOWN_TOP_LEVEL: tuple[str, ...] = (
     "profile",
     "profile_status",
     "targets",
+    "requires",
 )
-
 
 def _require_mapping(
     value: Any, *, field: str, allow_none: bool = False, origin: str = "nsx.yml"
@@ -69,6 +69,38 @@ def _require_str(
     return value
 
 
+def _validate_requires(value: Any, *, field: str, origin: str = "nsx.yml") -> None:
+    """Validate a ``requires:`` list (top-level or per-target).
+
+    Each entry is a module name string or a mapping carrying at least a
+    ``name``. Structural-only: resolution and dedupe live in
+    :class:`AppConfig`.
+    """
+
+    if value is None:
+        return
+    if not isinstance(value, list):
+        raise NSXConfigError(
+            f"{origin}: '{field}' must be a list, got {type(value).__name__}",
+            field=field,
+        )
+    for idx, entry in enumerate(value):
+        item_field = f"{field}[{idx}]"
+        if isinstance(entry, str):
+            _require_str(entry, field=item_field, origin=origin)
+        elif isinstance(entry, dict):
+            _require_str(entry.get("name"), field=f"{item_field}.name", origin=origin)
+            for key in ("project", "revision"):
+                if entry.get(key) is not None:
+                    _require_str(entry[key], field=f"{item_field}.{key}", origin=origin)
+        else:
+            raise NSXConfigError(
+                f"{origin}: '{item_field}' must be a module name or a mapping, "
+                f"got {type(entry).__name__}",
+                field=item_field,
+            )
+
+
 def _validate_targets(value: Any, *, origin: str = "nsx.yml") -> None:
     """Validate the optional multi-target ``targets:`` block shape.
 
@@ -103,6 +135,11 @@ def _validate_targets(value: Any, *, origin: str = "nsx.yml") -> None:
                     _require_str(
                         cfg_map[key], field=f"targets.supported.{board}.{key}", origin=origin
                     )
+            _validate_requires(
+                cfg_map.get("requires"),
+                field=f"targets.supported.{board}.requires",
+                origin=origin,
+            )
         supported_names = [b for b in supported if isinstance(b, str)]
     else:
         raise NSXConfigError(
@@ -301,6 +338,15 @@ class NsxProject:
             )
 
         _validate_targets(data.get("targets"), origin=origin)
+
+        requires_value = data.get("requires")
+        _validate_requires(requires_value, field="requires", origin=origin)
+        if data.get("modules") is not None and requires_value:
+            raise NSXConfigError(
+                f"{origin}: 'modules' (authoritative closure) and 'requires' (additive "
+                "extras layered on the board profile) are mutually exclusive; remove one.",
+                field="requires",
+            )
 
         extra = {k: v for k, v in data.items() if k not in _NSX_YML_KNOWN_TOP_LEVEL}
 

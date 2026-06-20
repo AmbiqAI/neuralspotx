@@ -216,6 +216,13 @@ def _apply_active_target(nsx_cfg: dict[str, Any], target: ResolvedTarget) -> dic
         cfg["profile"] = target.profile
     if target.toolchain:
         cfg["toolchain"] = target.toolchain
+    # Replace any authored top-level ``requires`` with this target's complete
+    # set (global ``requires`` already merged with the target's own) so
+    # ``expand_profile_seeds`` layers exactly the right extras for this board.
+    if target.requires:
+        cfg["requires"] = [rm.to_mapping() for rm in target.requires]
+    else:
+        cfg.pop("requires", None)
     return cfg
 
 
@@ -868,6 +875,14 @@ def _lock_app_impl_unlocked(
 
     path = write_lock(app_dir, lock, board_key)
     nsx_cfg = _load_app_cfg(app_dir)
+    app_cfg = AppConfig.from_mapping(nsx_cfg)
+    if app_cfg.is_multi_target():
+        nsx_cfg = _apply_active_target(nsx_cfg, app_cfg.resolve_target(board))
+    # Lean manifests omit the resolved closure and ``module_registry``
+    # overrides; re-seed them (mirroring ``_build_lock_for_app``) so the CMake
+    # glue below resolves additive ``requires`` modules whose metadata lives in
+    # the board family catalog rather than the top-level registry map.
+    nsx_cfg = expand_profile_seeds(nsx_cfg, _load_registry())
     ordered_modules = list(lock.modules)
     # The CMake glue (modules.cmake, modules/.gitignore) is not board-keyed,
     # so on a multi-target lock-all the last board in the loop wins here.

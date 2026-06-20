@@ -81,6 +81,60 @@ def _profile_seed_blocks(
     return modules, module_registry, profile
 
 
+def _requires_records(
+    requires: list[Any],
+    registry: dict[str, Any],
+    *,
+    seeded_names: set[str],
+    module_overrides: dict[str, Any],
+) -> list[dict[str, str]]:
+    """Resolve additive ``requires`` entries into module records.
+
+    Entries already present in the profile seed (``seeded_names``) are
+    skipped so ``requires`` is purely additive. Resolution order per entry:
+    an explicit ``project`` pins it; otherwise the board family's
+    ``module_overrides`` catalog (every ``sdk_modules`` entry, with its
+    ``metadata`` path) is consulted; otherwise the top-level registry
+    ``modules`` map. An unknown module raises so typos fail fast.
+    """
+
+    records: list[dict[str, str]] = []
+    for entry in requires:
+        if isinstance(entry, str):
+            name, project, revision = entry, None, None
+        elif isinstance(entry, dict):
+            name = entry.get("name")
+            project = entry.get("project")
+            revision = entry.get("revision")
+        else:
+            raise NSXConfigError(
+                f"nsx.yml: 'requires' entries must be a module name or mapping, "
+                f"got {type(entry).__name__}"
+            )
+        if not isinstance(name, str) or not name:
+            raise NSXConfigError("nsx.yml: 'requires' entry missing a module name")
+        if name in seeded_names:
+            continue
+
+        if isinstance(project, str) and project:
+            overrides: dict[str, Any] | None = {
+                name: {"project": project, "revision": revision or ""}
+            }
+        elif name in module_overrides:
+            overrides = module_overrides
+        elif name in registry.get("modules", {}):
+            overrides = None
+        else:
+            raise NSXConfigError(
+                f"nsx.yml: 'requires' module '{name}' is not in the board's module "
+                "catalog or the registry. Check the spelling, or add an explicit "
+                "'project' (with a matching 'module_registry' entry)."
+            )
+        records.append(_module_record(name, registry, overrides))
+        seeded_names.add(name)
+    return records
+
+
 def expand_profile_seeds(
     nsx_cfg: dict[str, Any],
     registry: dict[str, Any],
@@ -94,16 +148,39 @@ def expand_profile_seeds(
     an explicitly empty ``modules: []``, e.g. ``--no-bootstrap``) is
     returned unchanged, and any explicitly-authored ``module_registry`` is
     preserved.
+
+    An additive ``requires:`` list layers app-specific modules on top of the
+    board profile (e.g. USB or timer modules). It is mutually exclusive with
+    an authoritative inlined ``modules:`` list.
     """
 
+    requires = nsx_cfg.get("requires") or []
     if "modules" in nsx_cfg:
+        if requires:
+            raise NSXConfigError(
+                "nsx.yml: 'modules' (authoritative closure) and 'requires' (additive "
+                "extras layered on the board profile) are mutually exclusive; remove one."
+            )
         return nsx_cfg
     target = nsx_cfg.get("target")
     board = target.get("board") if isinstance(target, dict) else None
     if not isinstance(board, str) or not board:
         return nsx_cfg
 
-    modules, module_registry, _profile = _profile_seed_blocks(registry, board)
+    modules, module_registry, profile = _profile_seed_blocks(registry, board)
+    if requires:
+        if not isinstance(requires, list):
+            raise NSXConfigError("nsx.yml: 'requires' must be a list")
+        seeded_names = {record["name"] for record in modules}
+        module_overrides = profile.get("module_overrides", {})
+        if not isinstance(module_overrides, dict):
+            module_overrides = {}
+        modules = modules + _requires_records(
+            requires,
+            registry,
+            seeded_names=seeded_names,
+            module_overrides=module_overrides,
+        )
     expanded = dict(nsx_cfg)
     expanded["modules"] = modules
     if not expanded.get("module_registry"):

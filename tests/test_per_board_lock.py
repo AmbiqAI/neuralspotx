@@ -186,3 +186,55 @@ def test_apply_active_target_derives_soc_from_board_descriptor() -> None:
     out = _apply_active_target(cfg, target)
     assert out["target"]["board"] == "apollo510b_evb"
     assert out["target"]["soc"] == "apollo510b"
+
+
+# --- additive `requires` merge -------------------------------------------
+
+
+def _multi_cfg_with_requires() -> dict:
+    return {
+        "schema_version": 1,
+        "project": {"name": "demo"},
+        "targets": {
+            "default": "apollo510_evb",
+            "supported": {
+                "apollo510_evb": {"requires": ["nsx-ambiq-usb"]},
+                "apollo510b_evb": {},
+            },
+        },
+        "requires": ["nsx-usb", "nsx-timer"],
+    }
+
+
+def test_resolve_target_merges_global_and_per_target_requires() -> None:
+    app = AppConfig.from_mapping(_multi_cfg_with_requires())
+
+    names_a = [r.name for r in app.resolve_target("apollo510_evb").requires]
+    names_b = [r.name for r in app.resolve_target("apollo510b_evb").requires]
+
+    # Global first (in order), then this board's per-target extras.
+    assert names_a == ["nsx-usb", "nsx-timer", "nsx-ambiq-usb"]
+    # The other board only gets the global set.
+    assert names_b == ["nsx-usb", "nsx-timer"]
+
+
+def test_apply_active_target_writes_merged_requires() -> None:
+    app = AppConfig.from_mapping(_multi_cfg_with_requires())
+    cfg = _multi_cfg_with_requires()
+
+    out = _apply_active_target(cfg, app.resolve_target("apollo510_evb"))
+
+    assert [r["name"] for r in out["requires"]] == ["nsx-usb", "nsx-timer", "nsx-ambiq-usb"]
+
+
+def test_apply_active_target_clears_requires_when_target_has_none() -> None:
+    cfg = _multi_cfg_with_requires()
+    # A board with no extras and no global set would clear the key; here we
+    # simulate by stripping the global list before resolving the bare board.
+    cfg_no_global = dict(cfg)
+    cfg_no_global.pop("requires")
+    app_no_global = AppConfig.from_mapping(cfg_no_global)
+
+    out = _apply_active_target(cfg_no_global, app_no_global.resolve_target("apollo510b_evb"))
+
+    assert "requires" not in out

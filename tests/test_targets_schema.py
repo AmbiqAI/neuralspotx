@@ -174,6 +174,52 @@ def test_loader_rejects_malformed_targets(targets: dict) -> None:
         })
 
 
+def test_loader_accepts_requires() -> None:
+    proj = NsxProject.from_mapping({
+        "schema_version": 1,
+        "project": {"name": "demo"},
+        "targets": {
+            "default": "apollo510_evb",
+            "supported": {
+                "apollo510_evb": {"requires": ["nsx-ambiq-usb"]},
+                "apollo510b_evb": {},
+            },
+        },
+        "requires": ["nsx-usb", {"name": "nsx-timer", "project": "p", "revision": "r"}],
+    })
+    assert proj.default_board == "apollo510_evb"
+
+
+@pytest.mark.parametrize(
+    "raw",
+    [
+        {"requires": "nsx-usb"},  # not a list
+        {"requires": [123]},  # non-string entry
+        {"requires": [{"project": "p"}]},  # mapping missing name
+        {"requires": [{"name": "nsx-usb", "project": 5}]},  # non-string project
+    ],
+)
+def test_loader_rejects_malformed_requires(raw: dict) -> None:
+    with pytest.raises(NSXConfigError):
+        NsxProject.from_mapping({
+            "schema_version": 1,
+            "project": {"name": "demo"},
+            "targets": {"supported": ["apollo510_evb"]},
+            **raw,
+        })
+
+
+def test_loader_rejects_modules_and_requires_together() -> None:
+    with pytest.raises(NSXConfigError, match="mutually exclusive"):
+        NsxProject.from_mapping({
+            "schema_version": 1,
+            "project": {"name": "demo"},
+            "target": {"board": "apollo510_evb"},
+            "modules": [{"name": "nsx-core"}],
+            "requires": ["nsx-usb"],
+        })
+
+
 def test_resolve_target_tolerates_noncanonical_board_spelling() -> None:
     # The build path resolves with a normalize_board-d name; resolution must
     # still match a target keyed by the raw (here differently-cased) spelling.
