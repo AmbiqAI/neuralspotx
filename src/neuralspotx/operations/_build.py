@@ -12,7 +12,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 from .._errors import NSXError
-from .._io import info
+from .._io import info, warn
 from ..project_config import _run_cmake_configure
 from ..subprocess_utils import (
     extract_view_command,
@@ -21,10 +21,11 @@ from ..subprocess_utils import (
     run,
     run_capture,
 )
+from ..tooling import find_processes_holding_probe
 from . import _common
 from ._common import _resolve_build_context
 from ._lock import warn_if_lock_stale
-from ._sync import _ensure_app_modules
+from ._sync import _ensure_app_modules, regenerate_active_board_glue
 
 
 def configure_app_impl(
@@ -50,8 +51,8 @@ def configure_app_impl(
         board=board,
         build_dir=build_dir,
     )
-    warn_if_lock_stale(resolved_app_dir)
-    _ensure_app_modules(resolved_app_dir)
+    warn_if_lock_stale(resolved_app_dir, resolved_board)
+    _ensure_app_modules(resolved_app_dir, resolved_board)
     _run_cmake_configure(
         resolved_app_dir,
         resolved_build_dir,
@@ -81,9 +82,10 @@ def build_app_impl(
         board=board,
         build_dir=build_dir,
     )
-    warn_if_lock_stale(resolved_app_dir)
+    warn_if_lock_stale(resolved_app_dir, resolved_board)
+    regenerate_active_board_glue(resolved_app_dir, resolved_board)
     if not (resolved_build_dir / "build.ninja").exists():
-        _ensure_app_modules(resolved_app_dir)
+        _ensure_app_modules(resolved_app_dir, resolved_board)
         _run_cmake_configure(
             resolved_app_dir, resolved_build_dir, resolved_board, toolchain=toolchain
         )
@@ -112,9 +114,10 @@ def flash_app_impl(
         board=board,
         build_dir=build_dir,
     )
-    warn_if_lock_stale(resolved_app_dir)
+    warn_if_lock_stale(resolved_app_dir, resolved_board)
+    regenerate_active_board_glue(resolved_app_dir, resolved_board)
     if probe_serial is not None or not (resolved_build_dir / "build.ninja").exists():
-        _ensure_app_modules(resolved_app_dir)
+        _ensure_app_modules(resolved_app_dir, resolved_board)
         _run_cmake_configure(
             resolved_app_dir,
             resolved_build_dir,
@@ -165,6 +168,37 @@ def _terminate_viewer(proc: "subprocess.Popen[object]") -> None:
         pass
 
 
+def _probe_serial_from_view_cmd(view_cmd: list[str]) -> str | None:
+    """Extract the ``-USB <serial>`` probe serial baked into the view command."""
+
+    for idx, tok in enumerate(view_cmd):
+        if tok == "-USB" and idx + 1 < len(view_cmd):
+            return view_cmd[idx + 1]
+    return None
+
+
+def _raise_if_viewer_exited(
+    proc: "subprocess.Popen[object]",
+    *,
+    phase: str,
+    cmd: list[str],
+) -> None:
+    """Fail fast when the viewer has already exited during startup/reset sequencing."""
+
+    exit_code = proc.poll()
+    if exit_code is None:
+        return
+    detail = (
+        " The probe may already be held by another SEGGER session or the viewer "
+        "failed before attach completed."
+    )
+    raise NSXError(
+        f"SWO viewer exited during {phase} with code {exit_code}."
+        f"{detail}\n"
+        f"Viewer command: {' '.join(cmd)}"
+    )
+
+
 def view_app_impl(
     app_dir: Path,
     *,
@@ -194,9 +228,10 @@ def view_app_impl(
         board=board,
         build_dir=build_dir,
     )
-    warn_if_lock_stale(resolved_app_dir)
+    warn_if_lock_stale(resolved_app_dir, resolved_board)
+    regenerate_active_board_glue(resolved_app_dir, resolved_board)
     if probe_serial is not None or not (resolved_build_dir / "build.ninja").exists():
-        _ensure_app_modules(resolved_app_dir)
+        _ensure_app_modules(resolved_app_dir, resolved_board)
         _run_cmake_configure(
             resolved_app_dir,
             resolved_build_dir,
@@ -206,6 +241,18 @@ def view_app_impl(
         )
     target = f"{app_name}_view"
     view_cmd = extract_view_command(resolved_build_dir, target)
+    info(f"Starting SWO viewer for {app_name} on {resolved_board}")
+
+    probe = probe_serial or _probe_serial_from_view_cmd(view_cmd)
+    if probe:
+        busy_pids = find_processes_holding_probe(probe)
+        if busy_pids:
+            pids = ", ".join(str(pid) for pid in busy_pids)
+            warn(
+                f"Probe {probe} is already in use by another SEGGER session "
+                f"(pid(s): {pids}). SWO attach may fail or show stale output; "
+                f"close the other session if the viewer stays silent."
+            )
 
     capture_path = Path(capture).expanduser().resolve() if capture is not None else None
     stream_output = capture_path is not None
@@ -242,9 +289,17 @@ def view_app_impl(
     viewer_proc: subprocess.Popen[object] | None = None
     try:
         viewer_proc = subprocess.Popen(run_cmd, **popen_kwargs)  # type: ignore[arg-type]
+        viewer_pid = getattr(viewer_proc, "pid", "unknown")
+        info(f"SWO viewer launched (pid={viewer_pid})")
         if reset_on_open:
             if reset_delay_ms > 0:
                 time.sleep(reset_delay_ms / 1000.0)
+            _raise_if_viewer_exited(
+                viewer_proc,
+                phase="startup before reset",
+                cmd=run_cmd,
+            )
+            info(f"Resetting target after viewer attach delay ({reset_delay_ms} ms)")
             reset_cmd = [
                 "cmake",
                 "--build",
@@ -263,6 +318,11 @@ def view_app_impl(
                     _terminate_viewer(viewer_proc)
                     raise NSXError(format_subprocess_error(exc, context="Reset")) from None
                 print_captured_output(result)
+            _raise_if_viewer_exited(
+                viewer_proc,
+                phase="reset handoff",
+                cmd=run_cmd,
+            )
 
         deadline = None if duration_s is None else time.monotonic() + duration_s
         if stream_output:

@@ -30,6 +30,8 @@ _NSX_YML_KNOWN_TOP_LEVEL: tuple[str, ...] = (
     "features",
     "profile",
     "profile_status",
+    "targets",
+    "requires",
 )
 
 
@@ -66,6 +68,94 @@ def _require_str(
     if not value and not allow_empty:
         raise NSXConfigError(f"{origin}: '{field}' must be a non-empty string", field=field)
     return value
+
+
+def _validate_requires(value: Any, *, field: str, origin: str = "nsx.yml") -> None:
+    """Validate a ``requires:`` list (top-level or per-target).
+
+    Each entry is a module name string or a mapping carrying at least a
+    ``name``. Structural-only: resolution and dedupe live in
+    :class:`AppConfig`.
+    """
+
+    if value is None:
+        return
+    if not isinstance(value, list):
+        raise NSXConfigError(
+            f"{origin}: '{field}' must be a list, got {type(value).__name__}",
+            field=field,
+        )
+    for idx, entry in enumerate(value):
+        item_field = f"{field}[{idx}]"
+        if isinstance(entry, str):
+            _require_str(entry, field=item_field, origin=origin)
+        elif isinstance(entry, dict):
+            _require_str(entry.get("name"), field=f"{item_field}.name", origin=origin)
+            for key in ("project", "revision"):
+                if entry.get(key) is not None:
+                    _require_str(entry[key], field=f"{item_field}.{key}", origin=origin)
+        else:
+            raise NSXConfigError(
+                f"{origin}: '{item_field}' must be a module name or a mapping, "
+                f"got {type(entry).__name__}",
+                field=item_field,
+            )
+
+
+def _validate_targets(value: Any, *, origin: str = "nsx.yml") -> None:
+    """Validate the optional multi-target ``targets:`` block shape.
+
+    The block carries an optional ``default`` board name and a ``supported``
+    list of board names (or a mapping of board name to an optional
+    ``{soc, profile, toolchain}`` override). Resolution semantics live in
+    :meth:`AppConfig.targets`; this only enforces structural shape so a typo
+    fails fast with a typed, field-scoped error.
+    """
+
+    if value is None:
+        return
+    block = _require_mapping(value, field="targets", origin=origin)
+    default = block.get("default")
+    if default is not None:
+        _require_str(default, field="targets.default", origin=origin)
+    supported = block.get("supported")
+    if supported is None:
+        return
+    if isinstance(supported, list):
+        for idx, item in enumerate(supported):
+            _require_str(item, field=f"targets.supported[{idx}]", origin=origin)
+        supported_names = [s for s in supported if isinstance(s, str)]
+    elif isinstance(supported, dict):
+        for board, cfg in supported.items():
+            _require_str(board, field="targets.supported (board key)", origin=origin)
+            if cfg is None:
+                continue
+            cfg_map = _require_mapping(cfg, field=f"targets.supported.{board}", origin=origin)
+            for key in ("soc", "profile", "toolchain"):
+                if cfg_map.get(key) is not None:
+                    _require_str(
+                        cfg_map[key], field=f"targets.supported.{board}.{key}", origin=origin
+                    )
+            _validate_requires(
+                cfg_map.get("requires"),
+                field=f"targets.supported.{board}.requires",
+                origin=origin,
+            )
+        supported_names = [b for b in supported if isinstance(b, str)]
+    else:
+        raise NSXConfigError(
+            f"{origin}: 'targets.supported' must be a list or a mapping, "
+            f"got {type(supported).__name__}",
+            field="targets.supported",
+        )
+
+    if isinstance(default, str) and default and default not in supported_names:
+        listed = ", ".join(supported_names) or "(none)"
+        raise NSXConfigError(
+            f"{origin}: 'targets.default' ({default!r}) must be one of "
+            f"targets.supported ({listed})",
+            field="targets.default",
+        )
 
 
 def _validate_modules_list(modules_data: Any, *, origin: str = "nsx.yml") -> tuple[AppModule, ...]:
@@ -248,6 +338,17 @@ class NsxProject:
                 field="profile_status",
             )
 
+        _validate_targets(data.get("targets"), origin=origin)
+
+        requires_value = data.get("requires")
+        _validate_requires(requires_value, field="requires", origin=origin)
+        if data.get("modules") is not None and requires_value:
+            raise NSXConfigError(
+                f"{origin}: 'modules' (authoritative closure) and 'requires' (additive "
+                "extras layered on the board profile) are mutually exclusive; remove one.",
+                field="requires",
+            )
+
         extra = {k: v for k, v in data.items() if k not in _NSX_YML_KNOWN_TOP_LEVEL}
 
         return cls(
@@ -300,6 +401,18 @@ class NsxProject:
     def board(self) -> str | None:
         board = self.target.get("board") if isinstance(self.target, dict) else None
         return board if isinstance(board, str) and board else None
+
+    @property
+    def supported_boards(self) -> list[str]:
+        """Board names of every declared build target (single- or multi-target)."""
+
+        return list(self.app_config().targets())
+
+    @property
+    def default_board(self) -> str | None:
+        """Board name of the default build target, or ``None`` if undeclared."""
+
+        return self.app_config().default_board()
 
     def app_config(self) -> AppConfig:
         """Return the legacy :class:`AppConfig` view over the same mapping."""

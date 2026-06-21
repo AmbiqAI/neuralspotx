@@ -12,7 +12,7 @@ board:
   name: apollo510dL_evb
   tier: evb
   soc: apollo510L
-  registered: false
+  registered: true
 soc_family: apollo510L
 sdk_provider: ambiqsuite
 cpu:

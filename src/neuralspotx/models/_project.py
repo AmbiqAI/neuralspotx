@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
 
@@ -240,6 +241,92 @@ class ModuleRegistryOverride:
         return merged
 
 
+def _starter_profile_default(board: str) -> str:
+    """Name of the derived starter profile for *board* (``<board>_minimal``)."""
+
+    return f"{board}_minimal"
+
+
+@dataclass(frozen=True)
+class RequiredModule:
+    """An additive ``requires:`` entry — a module layered on the board profile.
+
+    ``requires`` declares modules an app needs *on top of* its board's derived
+    ``<board>_minimal`` profile (e.g. USB or timer modules). Entries are
+    additive only: a bare ``name`` is resolved from the registry; an explicit
+    ``project`` / ``revision`` pins it (and must agree with any
+    ``module_registry`` override, per the alignment guard).
+    """
+
+    name: str
+    project: str | None = None
+    revision: str | None = None
+
+    @classmethod
+    def from_entry(cls, entry: Any, *, field: str, origin: str = "nsx.yml") -> RequiredModule:
+        if isinstance(entry, str):
+            if not entry:
+                raise NSXConfigError(f"{origin}: '{field}' must be a non-empty string", field=field)
+            return cls(name=entry)
+        if isinstance(entry, dict):
+            name = entry.get("name")
+            if not isinstance(name, str) or not name:
+                raise NSXConfigError(f"{origin}: '{field}.name' must be a string", field=field)
+            project = entry.get("project")
+            revision = entry.get("revision")
+            return cls(
+                name=name,
+                project=project if isinstance(project, str) and project else None,
+                revision=revision if isinstance(revision, str) and revision else None,
+            )
+        raise NSXConfigError(
+            f"{origin}: '{field}' must be a module name or a mapping, got {type(entry).__name__}",
+            field=field,
+        )
+
+    def to_mapping(self) -> dict[str, str]:
+        out: dict[str, str] = {"name": self.name}
+        if self.project:
+            out["project"] = self.project
+        if self.revision:
+            out["revision"] = self.revision
+        return out
+
+
+def _dedupe_requires(items: Iterable[RequiredModule]) -> tuple[RequiredModule, ...]:
+    """Dedupe ``requires`` entries by name, preserving first-seen order."""
+
+    seen: set[str] = set()
+    out: list[RequiredModule] = []
+    for item in items:
+        if item.name in seen:
+            continue
+        seen.add(item.name)
+        out.append(item)
+    return tuple(out)
+
+
+@dataclass(frozen=True)
+class ResolvedTarget:
+    """A fully-resolved build target derived from an app manifest.
+
+    Materialised either from an explicit ``targets:`` block or from the
+    legacy singular ``target:`` / ``profile:`` keys. ``profile`` defaults to
+    the board's derived starter profile (``<board>_minimal``); ``soc`` and
+    ``toolchain`` are ``None`` when the manifest leaves them implicit, to be
+    resolved from the board descriptor / global default downstream.
+    ``requires`` is the complete set of additive modules for this target
+    (global ``requires`` merged with the target's own), layered on the
+    board profile during resolution.
+    """
+
+    board: str
+    soc: str | None = None
+    profile: str | None = None
+    toolchain: str | None = None
+    requires: tuple[RequiredModule, ...] = ()
+
+
 @dataclass(frozen=True)
 class AppConfig:
     """Typed view of an app ``nsx.yml`` mapping."""
@@ -278,6 +365,176 @@ class AppConfig:
     def toolchain(self) -> str | None:
         toolchain = self.raw.get("toolchain")
         return toolchain if isinstance(toolchain, str) and toolchain else None
+
+    # --- Multi-target resolution --------------------------------------
+
+    def _explicit_targets_block(self) -> dict[str, Any] | None:
+        targets = self.raw.get("targets")
+        return targets if isinstance(targets, dict) else None
+
+    def _global_requires(self) -> tuple[RequiredModule, ...]:
+        """Top-level ``requires:`` entries, applied to every target."""
+
+        raw = self.raw.get("requires")
+        if raw is None:
+            return ()
+        if not isinstance(raw, list):
+            raise NSXConfigError("nsx.yml: 'requires' must be a list", field="requires")
+        return _dedupe_requires(
+            RequiredModule.from_entry(entry, field=f"requires[{idx}]")
+            for idx, entry in enumerate(raw)
+        )
+
+    def _targets_from_singular(self) -> dict[str, ResolvedTarget]:
+        target = self.target
+        board = target.get("board")
+        if not isinstance(board, str) or not board:
+            return {}
+        soc = target.get("soc")
+        profile = self.raw.get("profile")
+        return {
+            board: ResolvedTarget(
+                board=board,
+                soc=soc if isinstance(soc, str) and soc else None,
+                profile=(
+                    profile
+                    if isinstance(profile, str) and profile
+                    else _starter_profile_default(board)
+                ),
+                toolchain=self.toolchain,
+                requires=self._global_requires(),
+            )
+        }
+
+    def _targets_from_block(self, block: dict[str, Any]) -> dict[str, ResolvedTarget]:
+        supported = block.get("supported", [])
+        singular = self.target
+        singular_board = singular.get("board") if isinstance(singular, dict) else None
+        global_requires = self._global_requires()
+
+        entries: dict[str, dict[str, Any]] = {}
+        if isinstance(supported, list):
+            for item in supported:
+                if not isinstance(item, str) or not item:
+                    raise NSXConfigError(
+                        "nsx.yml: targets.supported list entries must be board-name strings",
+                        field="targets.supported",
+                    )
+                entries[item] = {}
+        elif isinstance(supported, dict):
+            for board, cfg in supported.items():
+                if not isinstance(board, str) or not board:
+                    raise NSXConfigError(
+                        "nsx.yml: targets.supported keys must be board names",
+                        field="targets.supported",
+                    )
+                entries[board] = cfg if isinstance(cfg, dict) else {}
+        else:
+            raise NSXConfigError(
+                "nsx.yml: targets.supported must be a list or a mapping",
+                field="targets.supported",
+            )
+
+        out: dict[str, ResolvedTarget] = {}
+        for board, cfg in entries.items():
+            soc = cfg.get("soc")
+            if not (isinstance(soc, str) and soc) and board == singular_board:
+                soc = singular.get("soc")
+            profile = cfg.get("profile")
+            toolchain = cfg.get("toolchain")
+            target_requires = cfg.get("requires")
+            if target_requires is None:
+                board_requires: tuple[RequiredModule, ...] = ()
+            elif isinstance(target_requires, list):
+                board_requires = tuple(
+                    RequiredModule.from_entry(
+                        entry, field=f"targets.supported.{board}.requires[{idx}]"
+                    )
+                    for idx, entry in enumerate(target_requires)
+                )
+            else:
+                raise NSXConfigError(
+                    f"nsx.yml: targets.supported.{board}.requires must be a list",
+                    field=f"targets.supported.{board}.requires",
+                )
+            out[board] = ResolvedTarget(
+                board=board,
+                soc=soc if isinstance(soc, str) and soc else None,
+                profile=(
+                    profile
+                    if isinstance(profile, str) and profile
+                    else _starter_profile_default(board)
+                ),
+                toolchain=(
+                    toolchain if isinstance(toolchain, str) and toolchain else self.toolchain
+                ),
+                requires=_dedupe_requires((*global_requires, *board_requires)),
+            )
+        return out
+
+    def targets(self) -> dict[str, ResolvedTarget]:
+        """Resolve every declared build target, keyed by board name.
+
+        Uses the explicit ``targets:`` block when present; otherwise derives
+        a single target from the legacy ``target:`` / ``profile:`` keys so
+        existing single-target manifests keep working unchanged.
+        """
+
+        block = self._explicit_targets_block()
+        if block is not None:
+            return self._targets_from_block(block)
+        return self._targets_from_singular()
+
+    def is_multi_target(self) -> bool:
+        """True when the app declares an explicit ``targets:`` block.
+
+        Multi-target apps key their committed lock per board
+        (``nsx.<board>.lock``); single-target apps keep the legacy
+        unsuffixed ``nsx.lock``.
+        """
+
+        return self._explicit_targets_block() is not None
+
+    def default_board(self) -> str | None:
+        """Board name of the default build target, or ``None`` if undeclared."""
+
+        block = self._explicit_targets_block()
+        if block is not None:
+            default = block.get("default")
+            if isinstance(default, str) and default:
+                return default
+            return next(iter(self.targets()), None)
+        board = self.target.get("board")
+        return board if isinstance(board, str) and board else None
+
+    def resolve_target(self, board: str | None = None) -> ResolvedTarget:
+        """Return the :class:`ResolvedTarget` for *board* (or the default).
+
+        Raises:
+            NSXConfigError: When the app declares no target, or *board* is
+                not among the supported targets.
+        """
+
+        targets = self.targets()
+        if not targets:
+            raise NSXConfigError("nsx.yml declares no build target", field="target")
+        if board is None:
+            board = self.default_board()
+        if board not in targets:
+            # Tolerate non-canonical board spellings (case / known alias):
+            # the build path resolves targets with a ``normalize_board``-d
+            # name while ``targets()`` is keyed by the raw manifest spelling.
+            from ..constants import normalize_board
+
+            norm = normalize_board(board)
+            board = next((b for b in targets if normalize_board(b) == norm), board)
+        if board not in targets:
+            supported = ", ".join(sorted(targets)) or "(none)"
+            raise NSXConfigError(
+                f"board '{board}' is not a supported target (supported: {supported})",
+                field="targets.supported",
+            )
+        return targets[board]
 
     def module_names(self) -> list[str]:
         return [module.name for module in self.modules]

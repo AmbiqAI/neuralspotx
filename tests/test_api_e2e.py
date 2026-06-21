@@ -820,6 +820,11 @@ def test_flash_and_view_reconfigure_when_probe_serial_is_supplied(
     monkeypatch.setattr(operations._build, "_run_cmake_configure", fake_configure)
     monkeypatch.setattr(operations._build, "run_capture", fake_run_capture)
     monkeypatch.setattr(operations._build, "extract_view_command", lambda *_args, **_kw: ["viewer"])
+    # Stub the probe scan so the test never shells out to ``ps`` (the
+    # cross-platform fallback in ``find_processes_holding_probe``). That
+    # call would otherwise use the globally-patched ``subprocess.Popen``
+    # below and fail on macOS/Windows, where ``/proc`` is unavailable.
+    monkeypatch.setattr(operations._build, "find_processes_holding_probe", lambda _serial: [])
 
     class _DoneProc:
         def wait(self) -> int:
@@ -837,3 +842,79 @@ def test_flash_and_view_reconfigure_when_probe_serial_is_supplied(
     assert run_calls == [
         ["cmake", "--build", str(build_dir), "--target", "hello_probe_flash", "-j", "8"],
     ]
+
+
+def test_view_fails_clearly_when_viewer_exits_before_reset(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    create_app(
+        AppCreateRequest(app_dir=tmp_path / "hello_view_fail", board="apollo510_evb", no_bootstrap=True)
+    )
+
+    app_dir = tmp_path / "hello_view_fail"
+    build_dir = app_dir / "build" / "apollo510_evb"
+    build_dir.mkdir(parents=True, exist_ok=True)
+    (build_dir / "build.ninja").write_text("# fake\n", encoding="utf-8")
+
+    reset_calls: list[list[str]] = []
+
+    def fake_run_capture(cmd: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+        del cwd
+        reset_calls.append(cmd)
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(operations._build, "run_capture", fake_run_capture)
+    monkeypatch.setattr(operations._build, "extract_view_command", lambda *_args, **_kw: ["viewer"])
+
+    class _ExitedProc:
+        pid = 1234
+
+        def poll(self) -> int:
+            return 9
+
+        def wait(self, timeout: float | None = None) -> int:
+            del timeout
+            return 9
+
+    monkeypatch.setattr(operations._build.subprocess, "Popen", lambda *args, **kwargs: _ExitedProc())
+
+    with pytest.raises(NSXError, match="SWO viewer exited during startup before reset"):
+        view_app(AppViewRequest(app_dir=app_dir, reset_delay_ms=0))
+
+    assert reset_calls == []
+
+
+def test_view_warns_when_probe_already_in_use(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    create_app(
+        AppCreateRequest(app_dir=tmp_path / "hello_view_busy", board="apollo510_evb", no_bootstrap=True)
+    )
+
+    app_dir = tmp_path / "hello_view_busy"
+    build_dir = app_dir / "build" / "apollo510_evb"
+    build_dir.mkdir(parents=True, exist_ok=True)
+    (build_dir / "build.ninja").write_text("# fake\n", encoding="utf-8")
+
+    monkeypatch.setattr(
+        operations._build,
+        "extract_view_command",
+        lambda *_args, **_kw: ["JLinkSWOViewer_CL", "-USB", "1160002204", "-itmport", "0"],
+    )
+    monkeypatch.setattr(operations._build, "find_processes_holding_probe", lambda _serial: [4242])
+
+    class _DoneProc:
+        pid = 1234
+
+        def wait(self, timeout: float | None = None) -> int:
+            del timeout
+            return 0
+
+    monkeypatch.setattr(operations._build.subprocess, "Popen", lambda *args, **kwargs: _DoneProc())
+
+    view_app(AppViewRequest(app_dir=app_dir, reset_on_open=False))
+
+    err = capsys.readouterr().err
+    assert "1160002204" in err
+    assert "already in use" in err
+    assert "4242" in err

@@ -20,6 +20,25 @@ from .models import AppConfig, ModuleRegistryOverride, NsxProject, ProjectEntry
 from .subprocess_utils import run
 
 
+def _write_text_if_changed(path: Path, content: str) -> bool:
+    """Write *content* to *path* only when it differs from the current file.
+
+    Returns ``True`` when the file was (re)written. Avoiding a no-op rewrite
+    keeps the file mtime stable, which matters for CMake ``CONFIGURE_DEPENDS``
+    inputs (e.g. the generated ``modules.cmake``): retouching an unchanged
+    file would force a needless reconfigure on every incremental build.
+    """
+
+    try:
+        if path.read_text(encoding="utf-8") == content:
+            return False
+    except (OSError, UnicodeDecodeError):
+        pass
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text(content, encoding="utf-8")
+    return True
+
+
 def _load_registry() -> dict[str, Any]:
     registry_resource = resources.files("neuralspotx.data").joinpath("registry.lock.yaml")
     with resources.as_file(registry_resource) as registry_path:
@@ -378,7 +397,7 @@ def _write_app_module_file(
 
     content = "\n".join(lines) + "\n"
     (app_dir / "cmake" / "nsx").mkdir(parents=True, exist_ok=True)
-    (app_dir / "cmake" / "nsx" / "modules.cmake").write_text(content, encoding="utf-8")
+    _write_text_if_changed(app_dir / "cmake" / "nsx" / "modules.cmake", content)
 
 
 def _write_modules_gitignore(app_dir: Path, nsx_cfg: dict[str, Any]) -> None:
@@ -505,7 +524,7 @@ def _write_modules_gitignore_for_names(
             lines.append(f"# {name}/  (kept in git)")
     lines.append("")
     (app_dir / "modules").mkdir(parents=True, exist_ok=True)
-    (app_dir / "modules" / ".gitignore").write_text("\n".join(lines), encoding="utf-8")
+    _write_text_if_changed(app_dir / "modules" / ".gitignore", "\n".join(lines))
 
 
 def _write_modules_gitignore_for_module_names(
@@ -826,6 +845,37 @@ def _default_build_dir(app_dir: Path, board: str) -> Path:
     return app_dir / "build" / board
 
 
+def _lock_board_key(nsx_cfg: dict[str, Any], board: str | None = None) -> str | None:
+    """Board key for the per-app lock file.
+
+    Single-target apps keep the legacy unsuffixed ``nsx.lock`` (returns
+    ``None``). Multi-target apps (those with an explicit ``targets:`` block)
+    use a per-board committed ``nsx.<board>.lock``, defaulting to the app's
+    default target when *board* is unspecified.
+    """
+
+    app_cfg = AppConfig.from_mapping(nsx_cfg)
+    if not app_cfg.is_multi_target():
+        return None
+    key = board or app_cfg.default_board()
+    return normalize_board(key) if key else None
+
+
+def _board_key_for_app(app_dir: Path, board: str | None = None) -> str | None:
+    """Lock board key for *app_dir*, tolerant of a missing manifest.
+
+    Read-only callers (``nsx outdated``, SBOM, lock-staleness) may run
+    against an app dir that has a lock but no readable ``nsx.yml``; in
+    that case fall back to the legacy unsuffixed ``nsx.lock``.
+    """
+
+    try:
+        nsx_cfg = _load_app_cfg(app_dir)
+    except NSXConfigError:
+        return None
+    return _lock_board_key(nsx_cfg, board)
+
+
 def _run_cmake_configure(
     app_dir: Path,
     build_dir: Path,
@@ -835,13 +885,20 @@ def _run_cmake_configure(
 ) -> None:
     from .constants import DEFAULT_TOOLCHAIN, EXPERIMENTAL_TOOLCHAINS, SUPPORTED_TOOLCHAINS
 
-    # Resolve toolchain: explicit arg > nsx.yml > default
+    # Resolve toolchain: explicit arg > per-board target toolchain
+    # (which itself falls back to the top-level ``toolchain:``) > default
     tc = toolchain
     if tc is None:
         cfg_path = app_dir / "nsx.yml"
         if cfg_path.exists():
             cfg = _read_yaml(cfg_path)
-            tc = cfg.get("toolchain")
+            try:
+                tc = AppConfig.from_mapping(cfg).resolve_target(board).toolchain
+            except NSXConfigError:
+                # Board not among declared targets (e.g. an explicit
+                # ``--board`` outside the manifest): fall back to the
+                # top-level toolchain key.
+                tc = cfg.get("toolchain")
     tc = tc or DEFAULT_TOOLCHAIN
 
     tc_file = SUPPORTED_TOOLCHAINS.get(tc)
@@ -879,7 +936,7 @@ def _resolve_app_context(args: argparse.Namespace) -> tuple[Path, dict[str, Any]
     nsx_cfg = _load_app_cfg(app_dir)
     app_cfg = AppConfig.from_mapping(nsx_cfg)
     app_name = app_cfg.project_name
-    board = args.board or app_cfg.target.get("board")
+    board = args.board or app_cfg.default_board()
     if not isinstance(board, str) or not board:
         raise NSXConfigError("Unable to determine target board from args or nsx.yml")
     board = normalize_board(board)

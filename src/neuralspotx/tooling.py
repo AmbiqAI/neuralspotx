@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import os
 import re
 import shutil
 import subprocess
 import sys
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -161,3 +163,82 @@ def list_jlink_probes() -> list[JLinkProbe]:
             )
         )
     return probes
+
+
+# Tokens that identify a local SEGGER J-Link process in a command line.
+_SEGGER_PROCESS_HINTS = ("jlink", "swoviewer")
+
+
+def _iter_process_cmdlines() -> Iterator[tuple[int, str]]:
+    """Yield ``(pid, cmdline)`` for local processes, best-effort and cheap.
+
+    Prefers reading ``/proc`` directly (no subprocess) on Linux. Falls back
+    to a single ``ps`` call on other POSIX systems. Never raises; yields
+    nothing when process information cannot be obtained (e.g. Windows).
+    """
+
+    proc_root = Path("/proc")
+    if proc_root.is_dir():
+        for entry in proc_root.iterdir():
+            if not entry.name.isdigit():
+                continue
+            try:
+                raw = (entry / "cmdline").read_bytes()
+            except OSError:
+                continue
+            if not raw:
+                continue
+            cmdline = raw.replace(b"\x00", b" ").decode("utf-8", "replace").strip()
+            if cmdline:
+                yield int(entry.name), cmdline
+        return
+
+    try:
+        result = subprocess.run(  # noqa: S603,S607 - fixed args, best-effort
+            ["ps", "-eo", "pid=,args="],
+            capture_output=True,
+            text=True,
+            timeout=5,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return
+    if result.returncode != 0:
+        return
+    for raw_line in result.stdout.splitlines():
+        stripped = raw_line.strip()
+        if not stripped:
+            continue
+        pid_str, _, args = stripped.partition(" ")
+        if not pid_str.isdigit():
+            continue
+        args = args.strip()
+        if args:
+            yield int(pid_str), args
+
+
+def find_processes_holding_probe(serial: str) -> list[int]:
+    """Return PIDs of local SEGGER processes already bound to *serial*.
+
+    This is a cheap, dependency-free, best-effort check used to warn before
+    launching the SWO viewer: a probe held by a stale ``JLinkExe`` /
+    ``JLinkSWOViewer`` session is the common cause of SWO attach failures and
+    stale output. Matching is high-confidence only — the serial must appear
+    verbatim in a SEGGER process command line — so it never produces false
+    positives for unrelated processes. The current process is excluded.
+    """
+
+    if not serial:
+        return []
+    needle = serial.lower()
+    me = os.getpid()
+    hits: list[int] = []
+    for pid, cmdline in _iter_process_cmdlines():
+        if pid == me:
+            continue
+        low = cmdline.lower()
+        if needle not in low:
+            continue
+        if not any(hint in low for hint in _SEGGER_PROCESS_HINTS):
+            continue
+        hits.append(pid)
+    return hits

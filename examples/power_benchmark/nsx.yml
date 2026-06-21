@@ -1,38 +1,21 @@
 schema_version: 1
 project:
   name: power_benchmark
-target:
-  board: apollo510_evb
-  soc: apollo510
+targets:
+  default: apollo510_evb
+  supported:
+    - apollo510_evb
+    - apollo510b_evb
 toolchain: arm-none-eabi-gcc
 channel: stable
-profile: apollo510_evb_minimal
-profile_status: active
-modules:
-  - name: nsx-cmsis-core
-    project: nsx-ambiq-sdk
-    revision: main
-  - name: nsx-ambiqsuite
-    project: nsx-ambiq-sdk
-    revision: main
-  - name: nsx-ambiq-hal
-    project: nsx-ambiq-sdk
-    revision: main
-  - name: nsx-ambiq-bsp
-    project: nsx-ambiq-sdk
-    revision: main
-  - name: nsx-soc-hal
-    project: nsx-ambiq-sdk
-    revision: main
-  - name: nsx-cmsis-startup
-    project: nsx-ambiq-sdk
-    revision: main
-  - name: nsx-board-apollo510-evb
-    project: neuralspotx
-  - name: nsx-core
-    project: nsx-ambiq-sdk
-    revision: main
-  - name: nsx-interrupt
+# Additive modules layered on every target's board profile. The lean
+# <board>_minimal profile already provides the SoC/board/core/startup stack
+# (nsx::board, nsx::runtime_core). The power benchmark additionally drives
+# GPIO phase markers, a hardware timer, and the nsx-power sequencing helpers,
+# so those are pulled in here. apollo510 and apollo510b share the same MCU
+# memory map, so a single ITCM linker script and overlay cover both targets.
+requires:
+  - name: nsx-power
     project: nsx-ambiq-sdk
     revision: main
   - name: nsx-gpio
@@ -41,11 +24,9 @@ modules:
   - name: nsx-timer
     project: nsx-ambiq-sdk
     revision: main
-  - name: nsx-power
+  - name: nsx-interrupt
     project: nsx-ambiq-sdk
     revision: main
-  - name: nsx-tooling
-    project: neuralspotx
 features: {}
 module_registry:
   projects:
@@ -53,38 +34,10 @@ module_registry:
       url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
       revision: main
   modules:
-    nsx-ambiqsuite:
+    nsx-power:
       project: nsx-ambiq-sdk
       revision: main
-      metadata: modules/nsx-ambiqsuite/nsx-module.yaml
-    nsx-ambiq-hal:
-      project: nsx-ambiq-sdk
-      revision: main
-      metadata: modules/nsx-ambiq-hal/nsx-module.yaml
-    nsx-ambiq-bsp:
-      project: nsx-ambiq-sdk
-      revision: main
-      metadata: modules/nsx-ambiq-bsp/nsx-module.yaml
-    nsx-cmsis-core:
-      project: nsx-ambiq-sdk
-      revision: main
-      metadata: modules/nsx-cmsis-core/nsx-module.yaml
-    nsx-cmsis-startup:
-      project: nsx-ambiq-sdk
-      revision: main
-      metadata: modules/nsx-cmsis-startup/nsx-module.yaml
-    nsx-soc-hal:
-      project: nsx-ambiq-sdk
-      revision: main
-      metadata: modules/nsx-soc-hal/nsx-module.yaml
-    nsx-core:
-      project: nsx-ambiq-sdk
-      revision: main
-      metadata: modules/nsx-core/nsx-module.yaml
-    nsx-interrupt:
-      project: nsx-ambiq-sdk
-      revision: main
-      metadata: modules/nsx-interrupt/nsx-module.yaml
+      metadata: modules/nsx-power/nsx-module.yaml
     nsx-gpio:
       project: nsx-ambiq-sdk
       revision: main
@@ -93,7 +46,7 @@ module_registry:
       project: nsx-ambiq-sdk
       revision: main
       metadata: modules/nsx-timer/nsx-module.yaml
-    nsx-power:
+    nsx-interrupt:
       project: nsx-ambiq-sdk
       revision: main
-      metadata: modules/nsx-power/nsx-module.yaml
+      metadata: modules/nsx-interrupt/nsx-module.yaml

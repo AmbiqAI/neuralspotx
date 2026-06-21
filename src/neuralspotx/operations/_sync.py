@@ -8,15 +8,18 @@ from .._errors import NSXConfigError, NSXIntegrityError, NSXModuleError
 from .._io import info
 from .._logging import get_logger
 from ..file_lock import app_lock
-from ..module_registry import _update_module_clone
+from ..models import AppConfig
+from ..module_registry import _update_module_clone, expand_profile_seeds
 from ..nsx_lock import (
     NSX_TOOLING_AUTOGEN_FILES,
     LockKind,
     hash_manifest,
     hash_tree,
+    lock_path,
     read_lock,
 )
 from ..project_config import (
+    _board_key_for_app,
     _copy_packaged_tree,
     _effective_registry,
     _load_app_cfg,
@@ -27,12 +30,12 @@ from ..project_config import (
     _write_modules_gitignore_for_module_names,
     validate_app_module_alignment,
 )
-from ._lock import _resolved_module_path, lock_app_impl
+from ._lock import _apply_active_target, _resolved_module_path, lock_app_impl
 
 _log = get_logger(__name__)
 
 
-def _ensure_app_modules(app_dir: Path) -> None:
+def _ensure_app_modules(app_dir: Path, board: str | None = None) -> None:
     """Ensure all modules declared in nsx.yml are present on disk.
 
     This is called during ``nsx configure`` so that a freshly-cloned app
@@ -41,18 +44,51 @@ def _ensure_app_modules(app_dir: Path) -> None:
 
     The lock file is the single source of truth: ``sync_app_impl``
     handles both the lock-present and lock-missing cases. When the
-    lock is missing, it creates ``nsx.lock`` and then vendors modules
+    lock is missing, it creates the lock and then vendors modules
     according to the resolved lock; it does not rewrite the lock
     after vendoring (``content_hash`` is the upstream-artifact hash,
     so it is correct from the start under v3).
     """
 
-    sync_app_impl(app_dir)
+    sync_app_impl(app_dir, board=board)
+
+
+def regenerate_active_board_glue(app_dir: Path, board: str | None = None) -> None:
+    """Refresh the active board's CMake glue without re-vendoring modules.
+
+    The generated glue (``cmake/nsx/modules.cmake`` + ``modules/.gitignore``)
+    lives at a board-agnostic path but its content is board-specific: the
+    ``NSX_APP_MODULES`` list differs per board. Because ``build`` / ``flash``
+    / ``view`` only run a full sync when ``build.ninja`` is missing,
+    alternating builds across boards would otherwise reconfigure against the
+    previously-synced board's stale module list (e.g. an Apollo5-only
+    ``nsx-pmu-armv8m`` leaking into an Apollo4 build).
+
+    This is a cheap, idempotent refresh: it reads the active board's lock for
+    the authoritative module set and rewrites the glue only when it actually
+    changed. It does not hash or re-vendor module trees. When no lock exists
+    yet it is a no-op — the full sync path will create one.
+    """
+
+    board_key = _board_key_for_app(app_dir, board)
+    lock = read_lock(app_dir, board_key)
+    if lock is None:
+        return
+    nsx_cfg = _load_app_cfg(app_dir)
+    app_cfg = AppConfig.from_mapping(nsx_cfg)
+    if app_cfg.is_multi_target():
+        nsx_cfg = _apply_active_target(nsx_cfg, app_cfg.resolve_target(board))
+    nsx_cfg = expand_profile_seeds(nsx_cfg, _load_registry())
+    ordered_modules = list(lock.modules)
+    _write_app_module_file(app_dir, nsx_cfg, module_names=ordered_modules)
+    _write_modules_gitignore_for_module_names(app_dir, nsx_cfg, ordered_modules)
+
 
 
 def sync_app_impl(
     app_dir: Path,
     *,
+    board: str | None = None,
     frozen: bool = False,
     force: bool = False,
 ) -> None:
@@ -78,12 +114,13 @@ def sync_app_impl(
     """
 
     with app_lock(app_dir):
-        _sync_app_impl_unlocked(app_dir, frozen=frozen, force=force)
+        _sync_app_impl_unlocked(app_dir, board=board, frozen=frozen, force=force)
 
 
 def _sync_app_impl_unlocked(
     app_dir: Path,
     *,
+    board: str | None = None,
     frozen: bool = False,
     force: bool = False,
 ) -> None:
@@ -93,11 +130,12 @@ def _sync_app_impl_unlocked(
         _vendor_packaged_module_into_app,
     )
 
-    lock = read_lock(app_dir)
+    board_key = _board_key_for_app(app_dir, board)
+    lock = read_lock(app_dir, board_key)
     if lock is None:
         if frozen:
             raise NSXConfigError(
-                f"{app_dir / 'nsx.lock'} not found. Run `nsx lock` first (or drop --frozen)."
+                f"{lock_path(app_dir, board_key)} not found. Run `nsx lock` first (or drop --frozen)."
             )
         # No lock yet — generate one. Unlike the v2 design, this is
         # safe to run on a fresh checkout: ``_build_lock_for_app``
@@ -105,13 +143,23 @@ def _sync_app_impl_unlocked(
         # the wheel resource for packaged, the source path for local),
         # so the recorded content_hash is correct without ``modules/``
         # being populated first.
-        _log.info("nsx.lock not found; generating from manifest.")
-        lock_app_impl(app_dir, quiet=True)
-        lock = read_lock(app_dir)
+        _log.info("lock not found; generating from manifest.")
+        lock_app_impl(app_dir, board=board, quiet=True)
+        lock = read_lock(app_dir, board_key)
         assert lock is not None  # noqa: S101 — invariant guaranteed by lock_app_impl
 
     nsx_cfg = _load_app_cfg(app_dir)
+    app_cfg = AppConfig.from_mapping(nsx_cfg)
+    if app_cfg.is_multi_target():
+        # Pin the active board so the seeded closure belongs to the board
+        # being synced.
+        nsx_cfg = _apply_active_target(nsx_cfg, app_cfg.resolve_target(board))
     base_registry = _load_registry()
+    # Lean manifests omit the resolved closure and ``module_registry``
+    # overrides; re-seed them (mirroring ``_build_lock_for_app``) so module
+    # resolution and the regenerated CMake glue below can find additive
+    # ``requires`` modules whose metadata lives in the board family catalog.
+    nsx_cfg = expand_profile_seeds(nsx_cfg, base_registry)
     registry = _effective_registry(base_registry, nsx_cfg, app_dir=app_dir)
     validate_app_module_alignment(nsx_cfg, registry)
 

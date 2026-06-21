@@ -22,7 +22,8 @@ from pathlib import Path
 from typing import Any, Final, Literal
 
 from .._errors import NSXConfigError
-from ..nsx_lock import LockKind, NsxLock, read_lock
+from ..nsx_lock import LockKind, NsxLock, lock_path, read_lock
+from ..project_config import _board_key_for_app
 
 SBOMFormat = Literal["spdx", "cyclonedx"]
 
@@ -53,9 +54,10 @@ def generate_sbom_impl(app_dir: Path, *, format: SBOMFormat = "spdx") -> str:
             field="format",
         )
 
-    lock = read_lock(app_dir)
+    board_key = _board_key_for_app(app_dir)
+    lock = read_lock(app_dir, board_key)
     if lock is None:
-        raise NSXConfigError(f"{app_dir / 'nsx.lock'} not found. Run `nsx lock` first.")
+        raise NSXConfigError(f"{lock_path(app_dir, board_key)} not found. Run `nsx lock` first.")
 
     if format == "spdx":
         doc = _build_spdx_document(app_dir, lock)
