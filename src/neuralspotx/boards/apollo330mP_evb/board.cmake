@@ -53,6 +53,12 @@ if(NOT DEFINED NSX_LINKER_SCRIPT)
         set(NSX_LINKER_SCRIPT "${_nsx_linker_script_default}")
     endif()
 endif()
+
+# Older installed J-Link packages know the Apollo330P / Apollo510L family under
+# the shared fallback device name below, even when the package-specific Apollo330
+# EVB part string is still unknown.
+set(NSX_SEGGER_DEVICE "Apollo330P_510L")
+
 set(NSX_BOARD_TARGET nsx_board_apollo330mP_evb)
 set(NSX_BOARD_FLAGS_TARGET nsx_board_apollo330mP_evb_flags)
 set(NSX_SOC_TARGET_EXPORT_NAME "soc_hal_apollo330P")

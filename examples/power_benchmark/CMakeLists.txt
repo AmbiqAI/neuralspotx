@@ -131,10 +131,10 @@ target_link_libraries(power_benchmark PRIVATE
 # the target's own options.  Remove it from the source (the flags target).
 # ---------------------------------------------------------------------------
 if(BENCHMARK_MODE STREQUAL "coremark_minmem" OR BENCHMARK_MODE STREQUAL "coremark_sdk5")
-    get_target_property(_tc_opts nsx_board_apollo510_evb_flags INTERFACE_COMPILE_OPTIONS)
+    get_target_property(_tc_opts nsx_board_${NSX_BOARD}_flags INTERFACE_COMPILE_OPTIONS)
     if(_tc_opts)
         list(REMOVE_ITEM _tc_opts "-ffast-math")
-        set_property(TARGET nsx_board_apollo510_evb_flags PROPERTY INTERFACE_COMPILE_OPTIONS ${_tc_opts})
+        set_property(TARGET nsx_board_${NSX_BOARD}_flags PROPERTY INTERFACE_COMPILE_OPTIONS ${_tc_opts})
     endif()
 endif()
 
@@ -148,10 +148,10 @@ if(NOT BENCHMARK_MODE STREQUAL "deepsleep" AND NOT BENCHMARK_MODE STREQUAL "core
         message(STATUS "Skipping ITCM linker-script override for armclang (not yet ported)")
     else()
         set(PB_LINKER_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/linker_script_itcm.ld")
-        get_target_property(_board_link_opts nsx_board_apollo510_evb_flags INTERFACE_LINK_OPTIONS)
+        get_target_property(_board_link_opts nsx_board_${NSX_BOARD}_flags INTERFACE_LINK_OPTIONS)
         list(FILTER _board_link_opts EXCLUDE REGEX "^-T")
         list(APPEND _board_link_opts "-T${PB_LINKER_SCRIPT}")
-        set_property(TARGET nsx_board_apollo510_evb_flags PROPERTY INTERFACE_LINK_OPTIONS ${_board_link_opts})
+        set_property(TARGET nsx_board_${NSX_BOARD}_flags PROPERTY INTERFACE_LINK_OPTIONS ${_board_link_opts})
     endif()
 endif()
 

@@ -5,6 +5,9 @@ targets:
   default: apollo510_evb
   supported:
     - apollo510_evb
+    - apollo510b_evb
+    - apollo330mP_evb
+    - apollo510dL_evb
 toolchain: arm-none-eabi-gcc
 channel: stable
 requires:

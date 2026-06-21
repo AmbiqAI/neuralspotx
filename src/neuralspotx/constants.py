@@ -28,6 +28,7 @@ _BOARD_ORDER: tuple[str, ...] = (
     "apollo510_evb",
     "apollo510b_evb",
     "apollo330mP_evb",
+    "apollo510dL_evb",
 )
 
 _DESCRIPTORS = load_board_descriptors()
