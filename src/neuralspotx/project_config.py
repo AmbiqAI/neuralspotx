@@ -885,13 +885,20 @@ def _run_cmake_configure(
 ) -> None:
     from .constants import DEFAULT_TOOLCHAIN, EXPERIMENTAL_TOOLCHAINS, SUPPORTED_TOOLCHAINS
 
-    # Resolve toolchain: explicit arg > nsx.yml > default
+    # Resolve toolchain: explicit arg > per-board target toolchain
+    # (which itself falls back to the top-level ``toolchain:``) > default
     tc = toolchain
     if tc is None:
         cfg_path = app_dir / "nsx.yml"
         if cfg_path.exists():
             cfg = _read_yaml(cfg_path)
-            tc = cfg.get("toolchain")
+            try:
+                tc = AppConfig.from_mapping(cfg).resolve_target(board).toolchain
+            except NSXConfigError:
+                # Board not among declared targets (e.g. an explicit
+                # ``--board`` outside the manifest): fall back to the
+                # top-level toolchain key.
+                tc = cfg.get("toolchain")
     tc = tc or DEFAULT_TOOLCHAIN
 
     tc_file = SUPPORTED_TOOLCHAINS.get(tc)

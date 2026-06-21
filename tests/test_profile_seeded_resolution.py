@@ -90,7 +90,15 @@ def test_authored_module_registry_is_preserved() -> None:
     expanded = expand_profile_seeds(lean, registry)
 
     assert expanded["modules"]  # closure still seeded
-    assert expanded["module_registry"] == {"projects": {"custom": {"url": "x"}}, "modules": {}}
+    # Authored overrides survive verbatim...
+    assert expanded["module_registry"]["projects"]["custom"] == {"url": "x"}
+    # ...and the profile seed is merged under them (not dropped), so every
+    # seeded closure module remains resolvable via the effective registry.
+    seed_modules = expanded["module_registry"]["modules"]
+    assert seed_modules, "profile seed registry must be merged into authored registry"
+    for record in expanded["modules"]:
+        if record["name"] in seed_modules:
+            assert "metadata" in seed_modules[record["name"]]
 
 
 def test_missing_board_is_a_no_op() -> None:
@@ -212,3 +220,67 @@ def test_requires_must_be_a_list() -> None:
     registry = _load_registry()
     with pytest.raises(NSXConfigError, match="'requires' must be a list"):
         expand_profile_seeds(_lean_with_requires({"nsx-usb": True}), registry)
+
+
+def test_authored_partial_registry_merges_profile_seed() -> None:
+    # A lean manifest may author a *partial* module_registry (e.g. just a
+    # custom project) while pulling a board-family catalog module via
+    # ``requires``. The profile seed registry must be merged under the
+    # authored one so the catalog module stays resolvable — not dropped.
+    registry = _load_registry()
+    lean = {
+        "schema_version": 1,
+        "project": {"name": "demo"},
+        "target": {"board": BOARD, "soc": SOC},
+        "profile": f"{BOARD}_minimal",
+        "requires": ["nsx-timer"],
+        "module_registry": {
+            "projects": {
+                "custom-proj": {"url": "https://example.com/custom.git", "revision": "main"}
+            },
+            "modules": {},
+        },
+    }
+    expanded = expand_profile_seeds(lean, registry)
+    mr = expanded["module_registry"]
+
+    # Authored entry preserved.
+    assert mr["projects"]["custom-proj"]["url"] == "https://example.com/custom.git"
+    # Profile seed merged in: the catalog module pulled via ``requires`` is now
+    # present in the effective registry so lock/sync can resolve it.
+    assert "nsx-timer" in mr["modules"]
+    # Seed project overrides are filled in alongside the authored project.
+    seed_only = expand_profile_seeds(
+        {
+            "schema_version": 1,
+            "project": {"name": "demo"},
+            "target": {"board": BOARD, "soc": SOC},
+            "profile": f"{BOARD}_minimal",
+            "requires": ["nsx-timer"],
+        },
+        registry,
+    )["module_registry"]
+    for name in seed_only["projects"]:
+        assert name in mr["projects"]
+
+
+def test_authored_registry_entry_wins_over_seed() -> None:
+    # When the authored registry overrides a field on a module that the seed
+    # also carries, the authored value wins while seed-only fields survive.
+    registry = _load_registry()
+    lean = {
+        "schema_version": 1,
+        "project": {"name": "demo"},
+        "target": {"board": BOARD, "soc": SOC},
+        "profile": f"{BOARD}_minimal",
+        "requires": ["nsx-timer"],
+        "module_registry": {
+            "projects": {},
+            "modules": {"nsx-timer": {"revision": "pinned-sha"}},
+        },
+    }
+    mr = expand_profile_seeds(lean, registry)["module_registry"]
+
+    assert mr["modules"]["nsx-timer"]["revision"] == "pinned-sha"
+    # Seed-provided metadata path is preserved through the per-entry merge.
+    assert "metadata" in mr["modules"]["nsx-timer"]

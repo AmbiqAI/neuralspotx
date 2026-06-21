@@ -229,3 +229,63 @@ def test_resolve_target_tolerates_noncanonical_board_spelling() -> None:
         "targets": {"supported": ["apollo510_evb"]},
     })
     assert cfg.resolve_target("APOLLO510_EVB").board == "apollo510_evb"
+
+
+def test_configure_uses_per_board_target_toolchain(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A per-board ``targets.supported.<board>.toolchain`` must drive the
+    # CMake toolchain file at configure time, not just the top-level default.
+    from neuralspotx import project_config
+    from neuralspotx.constants import SUPPORTED_TOOLCHAINS
+
+    (tmp_path / "nsx.yml").write_text(
+        "schema_version: 1\n"
+        "project:\n  name: demo\n"
+        "toolchain: arm-none-eabi-gcc\n"
+        "targets:\n"
+        "  default: apollo510_evb\n"
+        "  supported:\n"
+        "    apollo510_evb: {}\n"
+        "    apollo510b_evb: { toolchain: armclang }\n",
+        encoding="utf-8",
+    )
+
+    captured: dict[str, list[str]] = {}
+    monkeypatch.setattr(project_config, "run", lambda cmd: captured.setdefault("cmd", cmd))
+
+    project_config._run_cmake_configure(tmp_path, tmp_path / "build", "apollo510b_evb")
+    cmd = captured["cmd"]
+    tc_arg = next(a for a in cmd if a.startswith("-DCMAKE_TOOLCHAIN_FILE="))
+    assert SUPPORTED_TOOLCHAINS["armclang"] in tc_arg
+
+    captured.clear()
+    project_config._run_cmake_configure(tmp_path, tmp_path / "build", "apollo510_evb")
+    tc_arg = next(a for a in captured["cmd"] if a.startswith("-DCMAKE_TOOLCHAIN_FILE="))
+    assert SUPPORTED_TOOLCHAINS["arm-none-eabi-gcc"] in tc_arg
+
+
+def test_configure_falls_back_to_top_level_toolchain_for_unknown_board(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    # A board outside the declared targets falls back to the top-level
+    # toolchain rather than raising.
+    from neuralspotx import project_config
+    from neuralspotx.constants import SUPPORTED_TOOLCHAINS
+
+    (tmp_path / "nsx.yml").write_text(
+        "schema_version: 1\n"
+        "project:\n  name: demo\n"
+        "toolchain: armclang\n"
+        "targets:\n"
+        "  default: apollo510_evb\n"
+        "  supported:\n    apollo510_evb: {}\n",
+        encoding="utf-8",
+    )
+
+    captured: dict[str, list[str]] = {}
+    monkeypatch.setattr(project_config, "run", lambda cmd: captured.setdefault("cmd", cmd))
+
+    project_config._run_cmake_configure(tmp_path, tmp_path / "build", "apollo330mP_evb")
+    tc_arg = next(a for a in captured["cmd"] if a.startswith("-DCMAKE_TOOLCHAIN_FILE="))
+    assert SUPPORTED_TOOLCHAINS["armclang"] in tc_arg

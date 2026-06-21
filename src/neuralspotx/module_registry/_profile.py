@@ -183,9 +183,50 @@ def expand_profile_seeds(
         )
     expanded = dict(nsx_cfg)
     expanded["modules"] = modules
-    if not expanded.get("module_registry"):
+    authored = expanded.get("module_registry")
+    if not authored:
         expanded["module_registry"] = module_registry
+    else:
+        # Merge the profile seed *under* the authored registry so an app that
+        # authors a partial ``module_registry`` (e.g. only a custom project)
+        # but pulls a board-family catalog module via ``requires`` still has
+        # that module's override available to ``_effective_registry``. Authored
+        # entries win; the seed only fills gaps — mirroring how a fully-inlined
+        # manifest already carries the complete profile registry.
+        expanded["module_registry"] = _merge_seed_registry(authored, module_registry)
     return expanded
+
+
+def _merge_seed_registry(
+    authored: dict[str, Any],
+    seed: dict[str, Any],
+) -> dict[str, Any]:
+    """Overlay *authored* registry overrides on the profile *seed* registry.
+
+    The seed provides defaults (every profile project/module override);
+    authored entries take precedence, merged per-entry so an authored module
+    can override a single field (e.g. ``revision``) without dropping the
+    seed's ``metadata`` path.
+    """
+
+    merged: dict[str, Any] = {
+        "projects": copy.deepcopy(seed.get("projects", {})),
+        "modules": copy.deepcopy(seed.get("modules", {})),
+    }
+    for key in ("projects", "modules"):
+        authored_section = authored.get(key) if isinstance(authored, dict) else None
+        if not isinstance(authored_section, dict):
+            continue
+        section = merged[key]
+        for name, value in authored_section.items():
+            existing = section.get(name)
+            if isinstance(existing, dict) and isinstance(value, dict):
+                combined = dict(existing)
+                combined.update(value)
+                section[name] = combined
+            else:
+                section[name] = value
+    return merged
 
 
 def _generate_nsx_config(
