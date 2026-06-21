@@ -182,3 +182,76 @@ function(nsx_finalize_app app_target)
 
     nsx_add_segger_targets(${app_target})
 endfunction()
+
+
+# ---------------------------------------------------------------------------
+# Per-target source overlays
+# ---------------------------------------------------------------------------
+# Multi-target apps keep shared sources under src/ and place the small amount
+# of SoC-family-specific code under src/<soc_family>/ (e.g. src/apollo5/,
+# src/apollo330/). This helper compiles only the overlay matching the active
+# board's NSX_SOC_FAMILY into <app_target>, so application source stays free of
+# #ifdef soup. It is a no-op when the app ships no overlay directory for the
+# active family. Call after nsx_bootstrap_app() (which publishes
+# NSX_SOC_FAMILY) and after add_executable().
+function(nsx_target_soc_overlay app_target)
+    if(NOT TARGET ${app_target})
+        message(FATAL_ERROR "nsx_target_soc_overlay: target does not exist: ${app_target}")
+    endif()
+    if(NOT DEFINED NSX_SOC_FAMILY OR NSX_SOC_FAMILY STREQUAL "")
+        return()
+    endif()
+    set(_overlay_dir "${NSX_ROOT}/src/${NSX_SOC_FAMILY}")
+    if(NOT IS_DIRECTORY "${_overlay_dir}")
+        return()
+    endif()
+    file(GLOB _overlay_sources CONFIGURE_DEPENDS
+        "${_overlay_dir}/*.c"
+        "${_overlay_dir}/*.cc"
+        "${_overlay_dir}/*.cpp"
+        "${_overlay_dir}/*.S"
+    )
+    if(_overlay_sources)
+        target_sources(${app_target} PRIVATE ${_overlay_sources})
+        target_include_directories(${app_target} PRIVATE "${_overlay_dir}")
+        message(STATUS "nsx: ${app_target} += SoC overlay src/${NSX_SOC_FAMILY}")
+    endif()
+endfunction()
+
+
+# ---------------------------------------------------------------------------
+# Per-target linker-script overlay
+# ---------------------------------------------------------------------------
+# Swap the board's default ``-T`` linker script for an app-provided one on the
+# active board's flags target. Encapsulates the GCC/ATfE "filter the board
+# flags target's -T and append ours" pattern so apps don't hand-roll it (the
+# board flags target appends after the app's own options, so the override must
+# live on that interface target). armclang scatter overlays are not yet
+# supported: the helper warns and keeps the board default.
+function(nsx_target_linker_overlay app_target script_path)
+    if(NOT TARGET ${app_target})
+        message(FATAL_ERROR "nsx_target_linker_overlay: target does not exist: ${app_target}")
+    endif()
+    if(NOT EXISTS "${script_path}")
+        message(FATAL_ERROR "nsx_target_linker_overlay: linker script not found: ${script_path}")
+    endif()
+    if(NSX_TOOLCHAIN_FAMILY STREQUAL "armclang")
+        message(STATUS
+            "nsx: armclang scatter overlay not supported; "
+            "keeping board default linker script for ${app_target}")
+        return()
+    endif()
+    set(_flags_target "nsx_board_${NSX_BOARD}_flags")
+    if(NOT TARGET ${_flags_target})
+        message(FATAL_ERROR
+            "nsx_target_linker_overlay: board flags target missing: ${_flags_target}")
+    endif()
+    get_target_property(_link_opts ${_flags_target} INTERFACE_LINK_OPTIONS)
+    if(NOT _link_opts)
+        set(_link_opts "")
+    endif()
+    list(FILTER _link_opts EXCLUDE REGEX "^-T")
+    list(APPEND _link_opts "-T${script_path}")
+    set_property(TARGET ${_flags_target} PROPERTY INTERFACE_LINK_OPTIONS ${_link_opts})
+    message(STATUS "nsx: ${app_target} linker overlay -> ${script_path}")
+endfunction()

@@ -129,6 +129,7 @@ nav:
       - Design Decisions: architecture/design-decisions.md
       - Module Model: architecture/module-model.md
       - Metadata Model: architecture/metadata-model.md
+      - Multi-Target & Portability: architecture/multi-target-portability.md
       - SDK Provider Model: architecture/sdk-provider-model.md
       - Board Coverage: architecture/board-coverage.md
       - Toolchain Support: architecture/toolchain-support.md

@@ -143,16 +143,9 @@ endif()
 # coremark_nvm runs from NVM — use the default board linker script.
 # ---------------------------------------------------------------------------
 if(NOT BENCHMARK_MODE STREQUAL "deepsleep" AND NOT BENCHMARK_MODE STREQUAL "coremark_nvm" AND NOT BENCHMARK_MODE STREQUAL "coremark_minmem" AND NOT BENCHMARK_MODE STREQUAL "coremark_sdk5")
-    if(NSX_TOOLCHAIN_FAMILY STREQUAL "armclang")
-        # TODO: create an armclang scatter file for ITCM placement
-        message(STATUS "Skipping ITCM linker-script override for armclang (not yet ported)")
-    else()
-        set(PB_LINKER_SCRIPT "${CMAKE_CURRENT_LIST_DIR}/linker_script_itcm.ld")
-        get_target_property(_board_link_opts nsx_board_${NSX_BOARD}_flags INTERFACE_LINK_OPTIONS)
-        list(FILTER _board_link_opts EXCLUDE REGEX "^-T")
-        list(APPEND _board_link_opts "-T${PB_LINKER_SCRIPT}")
-        set_property(TARGET nsx_board_${NSX_BOARD}_flags PROPERTY INTERFACE_LINK_OPTIONS ${_board_link_opts})
-    endif()
+    # nsx_target_linker_overlay encapsulates the GCC/ATfE board-flags -T swap
+    # and warns (no-op) on armclang, where an ITCM scatter file is not yet ported.
+    nsx_target_linker_overlay(power_benchmark "${CMAKE_CURRENT_LIST_DIR}/linker_script_itcm.ld")
 endif()
 
 nsx_finalize_app(power_benchmark)
