@@ -18,8 +18,9 @@ def _compat_check_skipped() -> bool:
     """Whether ``NSX_SKIP_COMPAT_CHECK`` requests bypassing compat enforcement.
 
     Per-target compatibility is enforced here, in the closure resolver, so the
-    documented emergency bypass must be honored at this point (the validator is
-    the single enforcement site; nothing downstream re-checks).
+    documented emergency bypass must be honored at this point (the
+    ``is_compatible`` gate below is the single enforcement site; nothing
+    downstream re-checks).
     """
 
     return os.environ.get("NSX_SKIP_COMPAT_CHECK", "").strip().lower() in {
