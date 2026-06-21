@@ -19,8 +19,10 @@ from .._errors import (
 from .._io import info, warn
 from ..constants import DEFAULT_TOOLCHAIN
 from ..file_lock import app_lock
+from ..metadata import is_compatible
 from ..models import AppConfig, OutdatedModule, OutdatedReport, OutdatedSkip, ResolvedTarget
 from ..module_registry import (
+    _load_module_metadata,
     _local_module_names,
     _module_names_from_nsx,
     _resolve_module_closure,
@@ -226,6 +228,71 @@ def _apply_active_target(nsx_cfg: dict[str, Any], target: ResolvedTarget) -> dic
     return cfg
 
 
+def _compat_check_disabled() -> bool:
+    return os.environ.get("NSX_SKIP_COMPAT_CHECK", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
+
+
+def _validate_target_compatibility(
+    module_names: list[str],
+    registry: dict[str, Any],
+    *,
+    board: str | None,
+    soc: str | None,
+    toolchain: str,
+    app_dir: Path,
+) -> None:
+    """Fail fast when a resolved module is incompatible with the active target.
+
+    Intersects each resolved module's ``compatibility`` block (``boards`` /
+    ``socs`` / ``toolchains``, where ``"*"`` matches anything) against the
+    board being locked. Multi-target apps lock each ``targets.supported``
+    board independently, so this catches a board added to ``targets.supported``
+    that a required module does not actually support — before it becomes a
+    cryptic downstream build failure.
+
+    Modules whose metadata cannot be loaded (e.g. a read-only ``--check`` on a
+    clean checkout) are skipped, since compatibility can only be asserted when
+    the metadata is materialized. Set ``NSX_SKIP_COMPAT_CHECK=1`` to bypass.
+    """
+
+    if _compat_check_disabled() or not board or not soc:
+        return
+
+    incompatible: list[tuple[str, list[str]]] = []
+    for name in module_names:
+        try:
+            metadata = _load_module_metadata(name, registry, app_dir=app_dir)
+        except (NSXConfigError, NSXError, OSError, ValueError, KeyError):
+            continue
+        compat = metadata.get("compatibility")
+        if not isinstance(compat, dict):
+            continue
+        if is_compatible(metadata, board=board, soc=soc, toolchain=toolchain):
+            continue
+        reasons: list[str] = []
+        for axis, current in (("boards", board), ("socs", soc), ("toolchains", toolchain)):
+            values = compat.get(axis, [])
+            if isinstance(values, list) and "*" not in values and current not in values:
+                reasons.append(f"{axis[:-1]}={current!r} not in {sorted(values)}")
+        incompatible.append((name, reasons))
+
+    if incompatible:
+        detail = "\n".join(
+            f"  - {name}: {'; '.join(reasons)}" for name, reasons in incompatible
+        )
+        raise NSXConfigError(
+            f"Target '{board}' (soc={soc}, toolchain={toolchain}) is incompatible "
+            f"with required module(s):\n{detail}\n\n"
+            "Fix: remove the board from targets.supported, or extend the module's "
+            "nsx-module.yaml 'compatibility'. Set NSX_SKIP_COMPAT_CHECK=1 to bypass."
+        )
+
+
 def _build_lock_for_app(
     app_dir: Path,
     *,
@@ -319,6 +386,16 @@ def _build_lock_for_app(
                 "module sources available so nsx.lock can record the full "
                 "dependency closure."
             ) from exc
+
+    _target = nsx_cfg.get("target") or {}
+    _validate_target_compatibility(
+        module_names,
+        registry,
+        board=_target.get("board"),
+        soc=_target.get("soc"),
+        toolchain=str(nsx_cfg.get("toolchain") or DEFAULT_TOOLCHAIN),
+        app_dir=app_dir,
+    )
 
     if write_side_effects:
         # Regenerate the deterministic side-effects that ``nsx sync`` produces
