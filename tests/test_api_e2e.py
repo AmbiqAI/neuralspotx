@@ -820,6 +820,11 @@ def test_flash_and_view_reconfigure_when_probe_serial_is_supplied(
     monkeypatch.setattr(operations._build, "_run_cmake_configure", fake_configure)
     monkeypatch.setattr(operations._build, "run_capture", fake_run_capture)
     monkeypatch.setattr(operations._build, "extract_view_command", lambda *_args, **_kw: ["viewer"])
+    # Stub the probe scan so the test never shells out to ``ps`` (the
+    # cross-platform fallback in ``find_processes_holding_probe``). That
+    # call would otherwise use the globally-patched ``subprocess.Popen``
+    # below and fail on macOS/Windows, where ``/proc`` is unavailable.
+    monkeypatch.setattr(operations._build, "find_processes_holding_probe", lambda _serial: [])
 
     class _DoneProc:
         def wait(self) -> int:
