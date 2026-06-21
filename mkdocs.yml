@@ -136,6 +136,7 @@ nav:
   - Examples:
       - Overview: examples/index.md
       - hello_world: examples/hello_world.md
+      - freertos_blinky: examples/freertos_blinky.md
       - coremark: examples/coremark.md
       - power_benchmark: examples/power_benchmark.md
       - pmu_profiling: examples/pmu_profiling.md
