@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import copy
-from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
 
@@ -339,65 +338,6 @@ def _starter_profile_default(board: str) -> str:
 
 
 @dataclass(frozen=True)
-class RequiredModule:
-    """An additive ``requires:`` entry — a module layered on the board profile.
-
-    ``requires`` declares modules an app needs *on top of* its board's derived
-    ``<board>_minimal`` profile (e.g. USB or timer modules). Entries are
-    additive only: a bare ``name`` is resolved from the registry; an explicit
-    ``project`` / ``revision`` pins it (and must agree with any
-    ``module_registry`` override, per the alignment guard).
-    """
-
-    name: str
-    project: str | None = None
-    revision: str | None = None
-
-    @classmethod
-    def from_entry(cls, entry: Any, *, field: str, origin: str = "nsx.yml") -> RequiredModule:
-        if isinstance(entry, str):
-            if not entry:
-                raise NSXConfigError(f"{origin}: '{field}' must be a non-empty string", field=field)
-            return cls(name=entry)
-        if isinstance(entry, dict):
-            name = entry.get("name")
-            if not isinstance(name, str) or not name:
-                raise NSXConfigError(f"{origin}: '{field}.name' must be a string", field=field)
-            project = entry.get("project")
-            revision = entry.get("revision")
-            return cls(
-                name=name,
-                project=project if isinstance(project, str) and project else None,
-                revision=revision if isinstance(revision, str) and revision else None,
-            )
-        raise NSXConfigError(
-            f"{origin}: '{field}' must be a module name or a mapping, got {type(entry).__name__}",
-            field=field,
-        )
-
-    def to_mapping(self) -> dict[str, str]:
-        out: dict[str, str] = {"name": self.name}
-        if self.project:
-            out["project"] = self.project
-        if self.revision:
-            out["revision"] = self.revision
-        return out
-
-
-def _dedupe_requires(items: Iterable[RequiredModule]) -> tuple[RequiredModule, ...]:
-    """Dedupe ``requires`` entries by name, preserving first-seen order."""
-
-    seen: set[str] = set()
-    out: list[RequiredModule] = []
-    for item in items:
-        if item.name in seen:
-            continue
-        seen.add(item.name)
-        out.append(item)
-    return tuple(out)
-
-
-@dataclass(frozen=True)
 class ResolvedTarget:
     """A fully-resolved build target derived from an app manifest.
 
@@ -406,16 +346,12 @@ class ResolvedTarget:
     the board's derived starter profile (``<board>_minimal``); ``soc`` and
     ``toolchain`` are ``None`` when the manifest leaves them implicit, to be
     resolved from the board descriptor / global default downstream.
-    ``requires`` is the complete set of additive modules for this target
-    (global ``requires`` merged with the target's own), layered on the
-    board profile during resolution.
     """
 
     board: str
     soc: str | None = None
     profile: str | None = None
     toolchain: str | None = None
-    requires: tuple[RequiredModule, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -463,19 +399,6 @@ class AppConfig:
         targets = self.raw.get("targets")
         return targets if isinstance(targets, dict) else None
 
-    def _global_requires(self) -> tuple[RequiredModule, ...]:
-        """Top-level ``requires:`` entries, applied to every target."""
-
-        raw = self.raw.get("requires")
-        if raw is None:
-            return ()
-        if not isinstance(raw, list):
-            raise NSXConfigError("nsx.yml: 'requires' must be a list", field="requires")
-        return _dedupe_requires(
-            RequiredModule.from_entry(entry, field=f"requires[{idx}]")
-            for idx, entry in enumerate(raw)
-        )
-
     def _targets_from_singular(self) -> dict[str, ResolvedTarget]:
         target = self.target
         board = target.get("board")
@@ -493,7 +416,6 @@ class AppConfig:
                     else _starter_profile_default(board)
                 ),
                 toolchain=self.toolchain,
-                requires=self._global_requires(),
             )
         }
 
@@ -501,7 +423,6 @@ class AppConfig:
         supported = block.get("supported", [])
         singular = self.target
         singular_board = singular.get("board") if isinstance(singular, dict) else None
-        global_requires = self._global_requires()
 
         entries: dict[str, dict[str, Any]] = {}
         if isinstance(supported, list):
@@ -533,21 +454,6 @@ class AppConfig:
                 soc = singular.get("soc")
             profile = cfg.get("profile")
             toolchain = cfg.get("toolchain")
-            target_requires = cfg.get("requires")
-            if target_requires is None:
-                board_requires: tuple[RequiredModule, ...] = ()
-            elif isinstance(target_requires, list):
-                board_requires = tuple(
-                    RequiredModule.from_entry(
-                        entry, field=f"targets.supported.{board}.requires[{idx}]"
-                    )
-                    for idx, entry in enumerate(target_requires)
-                )
-            else:
-                raise NSXConfigError(
-                    f"nsx.yml: targets.supported.{board}.requires must be a list",
-                    field=f"targets.supported.{board}.requires",
-                )
             out[board] = ResolvedTarget(
                 board=board,
                 soc=soc if isinstance(soc, str) and soc else None,
@@ -559,7 +465,6 @@ class AppConfig:
                 toolchain=(
                     toolchain if isinstance(toolchain, str) and toolchain else self.toolchain
                 ),
-                requires=_dedupe_requires((*global_requires, *board_requires)),
             )
         return out
 
