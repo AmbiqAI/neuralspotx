@@ -155,10 +155,10 @@ def _sync_app_impl_unlocked(
         # being synced.
         nsx_cfg = _apply_active_target(nsx_cfg, app_cfg.resolve_target(board))
     base_registry = _load_registry()
-    # Lean manifests omit the resolved closure and ``module_registry``
-    # overrides; re-seed them (mirroring ``_build_lock_for_app``) so module
-    # resolution and the regenerated CMake glue below can find additive
-    # ``requires`` modules whose metadata lives in the board family catalog.
+    # ``modules:`` lists only the app's direct deps; re-seed the full closure
+    # and ``module_registry`` overrides (mirroring ``_build_lock_for_app``) so
+    # module resolution and the regenerated CMake glue below can find direct
+    # deps whose metadata lives in the board family catalog.
     nsx_cfg = expand_profile_seeds(nsx_cfg, base_registry)
     registry = _effective_registry(base_registry, nsx_cfg, app_dir=app_dir)
     validate_app_module_alignment(nsx_cfg, registry)

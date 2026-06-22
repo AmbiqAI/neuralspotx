@@ -81,41 +81,52 @@ def _profile_seed_blocks(
     return modules, module_registry, profile
 
 
-def _requires_records(
-    requires: list[Any],
+def _direct_dep_records(
+    direct: tuple[Any, ...],
     registry: dict[str, Any],
     *,
     seeded_names: set[str],
     module_overrides: dict[str, Any],
-) -> list[dict[str, str]]:
-    """Resolve additive ``requires`` entries into module records.
+) -> list[dict[str, Any]]:
+    """Resolve the app's direct ``modules:`` deps into closure records.
 
-    Entries already present in the profile seed (``seeded_names``) are
-    skipped so ``requires`` is purely additive. Resolution order per entry:
-    an explicit ``project`` pins it; otherwise the board family's
-    ``module_overrides`` catalog (every ``sdk_modules`` entry, with its
-    ``metadata`` path) is consulted; otherwise the top-level registry
-    ``modules`` map. An unknown module raises so typos fail fast.
+    Each entry is an :class:`~neuralspotx.models.AppModule`. Entries already
+    present in the profile seed (``seeded_names``) are skipped so the direct
+    list is purely additive on the board profile. Resolution by source kind:
+
+    * **registry** -- an explicit ``project`` pins it; otherwise the board
+      family's ``module_overrides`` catalog is consulted; otherwise the
+      top-level registry ``modules`` map. An unknown module raises so typos
+      fail fast.
+    * **path** / **vendored** -- opaque; the user entry's identifying flags
+      (``local`` / ``source.vendored``) are preserved verbatim so the
+      lock/sync layer treats them as in-tree sources.
+    * **git** -- not yet wired into resolution; raises a clear error.
     """
 
-    records: list[dict[str, str]] = []
-    for entry in requires:
-        if isinstance(entry, str):
-            name, project, revision = entry, None, None
-        elif isinstance(entry, dict):
-            name = entry.get("name")
-            project = entry.get("project")
-            revision = entry.get("revision")
-        else:
-            raise NSXConfigError(
-                f"nsx.yml: 'requires' entries must be a module name or mapping, "
-                f"got {type(entry).__name__}"
-            )
+    records: list[dict[str, Any]] = []
+    for module in direct:
+        name = module.name
         if not isinstance(name, str) or not name:
-            raise NSXConfigError("nsx.yml: 'requires' entry missing a module name")
+            raise NSXConfigError("nsx.yml: 'modules' entry missing a module name")
         if name in seeded_names:
             continue
 
+        kind = module.source_kind
+        if kind == "git":
+            raise NSXConfigError(
+                f"nsx.yml: module '{name}' uses a git source, which is not yet "
+                "supported by the resolver. Use a registry, path, or vendored "
+                "source for now."
+            )
+        if kind in ("path", "vendored"):
+            # Opaque in-tree source: keep the user entry's flags as-is.
+            records.append(_opaque_record(module))
+            seeded_names.add(name)
+            continue
+
+        project = module.project
+        revision = module.revision
         if isinstance(project, str) and project:
             overrides: dict[str, Any] | None = {
                 name: {"project": project, "revision": revision or ""}
@@ -126,61 +137,91 @@ def _requires_records(
             overrides = None
         else:
             raise NSXConfigError(
-                f"nsx.yml: 'requires' module '{name}' is not in the board's module "
-                "catalog or the registry. Check the spelling, or add an explicit "
-                "'project' (with a matching 'module_registry' entry)."
+                f"nsx.yml: module '{name}' is not in the board's module catalog "
+                "or the registry. Check the spelling, or add an explicit 'project' "
+                "(with a matching 'module_registry' entry)."
             )
         records.append(_module_record(name, registry, overrides))
         seeded_names.add(name)
     return records
 
 
+def _opaque_record(module: Any) -> dict[str, Any]:
+    """Closure record for an opaque (path/vendored) direct dependency.
+
+    Emits only the identifying fields the lock/sync layer reads
+    (``name`` + ``local`` / ``source.vendored``); the per-entry ``boards``
+    filter has already been applied upstream and is dropped here.
+    """
+
+    record: dict[str, Any] = {"name": module.name}
+    if module.is_local:
+        record["local"] = True
+    if module.is_vendored:
+        record["source"] = {"vendored": True}
+    return record
+
+
 def expand_profile_seeds(
     nsx_cfg: dict[str, Any],
     registry: dict[str, Any],
 ) -> dict[str, Any]:
-    """Seed ``modules``/``module_registry`` from the app's profile when absent.
+    """Resolve the app's closure from its board profile + direct ``modules:``.
 
-    Lean manifests omit the resolved module closure and registry overrides;
-    this rebuilds them in-memory from the app's starter profile (the same
-    derivation used at app creation) so the resolver sees an equivalent
-    fully-seeded config. A manifest that already declares ``modules`` (even
-    an explicitly empty ``modules: []``, e.g. ``--no-bootstrap``) is
-    returned unchanged, and any explicitly-authored ``module_registry`` is
-    preserved.
+    Schema v2 treats ``modules:`` as the app's *direct* dependencies, layered
+    additively on the board's starter profile (the implicit baseline). This
+    rebuilds the full module closure in-memory:
 
-    An additive ``requires:`` list layers app-specific modules on top of the
-    board profile (e.g. USB or timer modules). It is mutually exclusive with
-    an authoritative inlined ``modules:`` list.
+    * Seed every module from the board's starter profile (the same derivation
+      used at app creation), then layer the app's direct ``modules:`` deps on
+      top, skipping any already present in the seed.
+    * ``baseline: none`` opts out of profile seeding entirely, making the
+      direct ``modules:`` list the authoritative closure (an empty list yields
+      an empty closure — the bare-metal / ``--no-bootstrap`` case).
+
+    The active board is read from ``target.board`` (already pinned by
+    :func:`_apply_active_target` for multi-target apps), and each direct dep's
+    per-entry ``boards`` filter scopes it to the active board. Any authored
+    ``module_registry`` block is preserved (authored entries win; the profile
+    seed only fills gaps).
     """
 
-    requires = nsx_cfg.get("requires") or []
-    if "modules" in nsx_cfg:
-        if requires:
-            raise NSXConfigError(
-                "nsx.yml: 'modules' (authoritative closure) and 'requires' (additive "
-                "extras layered on the board profile) are mutually exclusive; remove one."
-            )
-        return nsx_cfg
+    from ..models import AppConfig
+
+    app = AppConfig.from_mapping(nsx_cfg)
     target = nsx_cfg.get("target")
     board = target.get("board") if isinstance(target, dict) else None
-    if not isinstance(board, str) or not board:
+    board = board if isinstance(board, str) and board else None
+
+    direct = app.direct_modules(board)
+
+    if app.baseline_disabled:
+        # Authoritative: the direct list is the whole closure, no profile seed.
+        seeded_names: set[str] = set()
+        modules = _direct_dep_records(
+            direct, registry, seeded_names=seeded_names, module_overrides={}
+        )
+        expanded = dict(nsx_cfg)
+        expanded["modules"] = modules
+        return expanded
+
+    if board is None:
+        # No board to seed from (edge/legacy manifest); leave untouched.
         return nsx_cfg
 
-    modules, module_registry, profile = _profile_seed_blocks(registry, board)
-    if requires:
-        if not isinstance(requires, list):
-            raise NSXConfigError("nsx.yml: 'requires' must be a list")
-        seeded_names = {record["name"] for record in modules}
-        module_overrides = profile.get("module_overrides", {})
-        if not isinstance(module_overrides, dict):
-            module_overrides = {}
-        modules = modules + _requires_records(
-            requires,
-            registry,
-            seeded_names=seeded_names,
-            module_overrides=module_overrides,
-        )
+    seed_modules, module_registry, profile = _profile_seed_blocks(registry, board)
+    seeded_names = {record["name"] for record in seed_modules}
+    module_overrides = profile.get("module_overrides", {})
+    if not isinstance(module_overrides, dict):
+        module_overrides = {}
+
+    modules = seed_modules + _direct_dep_records(
+        direct,
+        registry,
+        seeded_names=seeded_names,
+        module_overrides=module_overrides,
+    )
+
     expanded = dict(nsx_cfg)
     expanded["modules"] = modules
     authored = expanded.get("module_registry")
@@ -189,12 +230,13 @@ def expand_profile_seeds(
     else:
         # Merge the profile seed *under* the authored registry so an app that
         # authors a partial ``module_registry`` (e.g. only a custom project)
-        # but pulls a board-family catalog module via ``requires`` still has
+        # but pulls a board-family catalog module via a direct dep still has
         # that module's override available to ``_effective_registry``. Authored
         # entries win; the seed only fills gaps — mirroring how a fully-inlined
         # manifest already carries the complete profile registry.
         expanded["module_registry"] = _merge_seed_registry(authored, module_registry)
     return expanded
+
 
 
 def _merge_seed_registry(
@@ -242,7 +284,7 @@ def _generate_nsx_config(
     modules, module_registry, profile = _profile_seed_blocks(registry, board)
 
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "project": {"name": app_name},
         "target": {"board": board, "soc": soc},
         "toolchain": profile.get("toolchain", default_toolchain),
