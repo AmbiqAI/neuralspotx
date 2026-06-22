@@ -1,4 +1,4 @@
-schema_version: 1
+schema_version: 2
 project:
   name: audio_capture
 targets:
@@ -10,18 +10,6 @@ targets:
     - apollo510dL_evb
 toolchain: arm-none-eabi-gcc
 channel: stable
-requires:
-  - name: nsx-audio
-    project: nsx-ambiq-sdk
-    revision: main
+modules:
+  - nsx-audio
 features: {}
-module_registry:
-  projects:
-    nsx-ambiq-sdk:
-      url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
-      revision: main
-  modules:
-    nsx-audio:
-      project: nsx-ambiq-sdk
-      revision: main
-      metadata: modules/nsx-audio/nsx-module.yaml

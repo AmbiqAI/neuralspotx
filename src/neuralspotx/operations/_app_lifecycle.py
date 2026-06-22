@@ -46,6 +46,20 @@ from ._common import (
 )
 
 
+def _save_lean_app_manifest(app_dir: Path, nsx_cfg: dict) -> None:
+    """Persist a lean manifest: empty direct deps, no app-level registry.
+
+    The board profile is the implicit baseline, so a freshly created app
+    carries no ``modules`` and no ``module_registry`` block. The full
+    closure is materialized on disk during bootstrap and is recomputed from
+    the profile at lock time.
+    """
+    lean = dict(nsx_cfg)
+    lean["modules"] = []
+    lean.pop("module_registry", None)
+    _save_app_cfg(app_dir, lean)
+
+
 def create_app_impl(
     app_dir: Path,
     *,
@@ -146,8 +160,8 @@ def _create_app_body(
         nsx_major=current_nsx_major,
     )
     if no_bootstrap:
+        _save_lean_app_manifest(app_dir, nsx_cfg)
         nsx_cfg["modules"] = []
-        _save_app_cfg(app_dir, nsx_cfg)
         _write_app_module_file(app_dir, nsx_cfg)
         _write_modules_gitignore(app_dir, nsx_cfg)
         info(f"Created app '{app_name}' at: {app_dir}")
@@ -174,11 +188,13 @@ def _create_app_body(
         acquire_missing=True,
     )
     _update_nsx_cfg_modules(nsx_cfg, starter_modules, registry)
-    _save_app_cfg(app_dir, nsx_cfg)
+    # Materialize the CMake glue and starter modules from the full closure,
+    # but author a lean manifest: the board profile is the implicit baseline.
     _write_app_module_file(app_dir, nsx_cfg)
     # Acquire any transitive dependencies discovered during resolution.
     _acquire_modules_for_app(app_dir, starter_modules, registry)
     _write_modules_gitignore(app_dir, nsx_cfg)
+    _save_lean_app_manifest(app_dir, nsx_cfg)
     if nsx_cfg.get("profile_status") == ProfileStatus.SCAFFOLD:
         warn(
             f"NOTE: profile '{nsx_cfg.get('profile')}' is scaffold-only. "

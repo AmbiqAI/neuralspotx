@@ -180,9 +180,18 @@ class AppModule:
     def from_mapping(
         cls, index: int, data: dict[str, Any], *, origin: str = "nsx.yml"
     ) -> AppModule:
+        # Bare-string shorthand: ``- nsx-timer`` is sugar for ``- {name: nsx-timer}``
+        # (cargo's ``serde = "1"`` vs ``serde = { version = "1" }``).
+        if isinstance(data, str):
+            if not data:
+                raise NSXConfigError(
+                    f"{origin}: modules[{index}] must be a non-empty module name",
+                    field=f"modules[{index}]",
+                )
+            return cls(name=data)
         if not isinstance(data, dict):
             raise NSXConfigError(
-                f"{origin}: modules[{index}] must be a mapping",
+                f"{origin}: modules[{index}] must be a module name or a mapping",
                 field=f"modules[{index}]",
             )
         name = data.get("name")

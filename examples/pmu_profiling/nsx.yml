@@ -1,4 +1,4 @@
-schema_version: 1
+schema_version: 2
 project:
   name: pmu_profiling
 targets:
@@ -10,16 +10,11 @@ targets:
     - apollo510dL_evb
 toolchain: arm-none-eabi-gcc
 channel: stable
-requires:
-  - name: nsx-pmu-armv8m
-    project: nsx-pmu-armv8m
-    revision: main
+modules:
+  - nsx-pmu-armv8m
 features: {}
 module_registry:
   projects:
-    nsx-ambiq-sdk:
-      url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
-      revision: main
     nsx-pmu-armv8m:
       url: https://github.com/AmbiqAI/nsx-pmu-armv8m.git
       revision: main

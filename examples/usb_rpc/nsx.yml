@@ -1,4 +1,4 @@
-schema_version: 1
+schema_version: 2
 project:
   name: usb_rpc
 targets:
@@ -10,39 +10,16 @@ targets:
     - apollo510dL_evb
 toolchain: arm-none-eabi-gcc
 channel: stable
-requires:
-  - name: nsx-usb
-    project: nsx-ambiq-sdk
-    revision: main
-  - name: nsx-nanopb
-    project: nsx-nanopb
-    revision: v0.1.0
+modules:
+  - nsx-usb
+  - nsx-nanopb
 features: {}
 module_registry:
   projects:
-    nsx-ambiq-sdk:
-      url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
-      revision: main
     nsx-nanopb:
       url: https://github.com/AmbiqAI/nsx-nanopb.git
       revision: v0.1.0
   modules:
-    nsx-usb:
-      project: nsx-ambiq-sdk
-      revision: main
-      metadata: modules/nsx-usb/nsx-module.yaml
-    nsx-ambiq-usb:
-      project: nsx-ambiq-sdk
-      revision: main
-      metadata: modules/nsx-ambiq-usb/nsx-module.yaml
-    nsx-interrupt:
-      project: nsx-ambiq-sdk
-      revision: main
-      metadata: modules/nsx-interrupt/nsx-module.yaml
-    nsx-timer:
-      project: nsx-ambiq-sdk
-      revision: main
-      metadata: modules/nsx-timer/nsx-module.yaml
     nsx-nanopb:
       project: nsx-nanopb
       revision: v0.1.0

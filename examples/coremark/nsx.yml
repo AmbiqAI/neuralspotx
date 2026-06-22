@@ -1,4 +1,4 @@
-schema_version: 1
+schema_version: 2
 project:
   name: coremark
 targets:
@@ -11,25 +11,7 @@ targets:
     - apollo4p_blue_kxr_evb
 toolchain: arm-none-eabi-gcc
 channel: stable
-requires:
-  - name: nsx-interrupt
-    project: nsx-ambiq-sdk
-    revision: main
-  - name: nsx-timer
-    project: nsx-ambiq-sdk
-    revision: main
+modules:
+  - nsx-interrupt
+  - nsx-timer
 features: {}
-module_registry:
-  projects:
-    nsx-ambiq-sdk:
-      url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
-      revision: main
-  modules:
-    nsx-interrupt:
-      project: nsx-ambiq-sdk
-      revision: main
-      metadata: modules/nsx-interrupt/nsx-module.yaml
-    nsx-timer:
-      project: nsx-ambiq-sdk
-      revision: main
-      metadata: modules/nsx-timer/nsx-module.yaml

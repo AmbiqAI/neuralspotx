@@ -1,4 +1,4 @@
-schema_version: 1
+schema_version: 2
 project:
   name: usb_serial
 targets:
@@ -15,7 +15,7 @@ channel: stable
 # lean <board>_minimal profile, so the app pulls it in here. These layer on
 # top of whichever board profile the active target resolves to, so the same
 # manifest serves both apollo510_evb and apollo510b_evb.
-requires:
+modules:
   - nsx-ambiq-usb
   - nsx-usb
   - nsx-timer
