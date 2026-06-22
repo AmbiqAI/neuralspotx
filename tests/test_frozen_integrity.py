@@ -14,7 +14,7 @@ from neuralspotx.operations import lock_app_impl, sync_app_impl
 
 def _write_nsx_yml(app_dir: Path, modules: list[dict[str, Any]]) -> None:
     cfg = {
-        "schema_version": 1,
+        "schema_version": 2,
         "project": {"name": "testapp"},
         "target": {"board": "apollo510_evb", "soc": "apollo510"},
         "toolchain": "arm-none-eabi-gcc",

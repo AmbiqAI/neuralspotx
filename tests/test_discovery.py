@@ -124,7 +124,7 @@ class TestResolveModuleContext:
 
     def test_app_effective_with_app_dir(self, tmp_path: Path) -> None:
         nsx_cfg = {
-            "schema_version": 1,
+            "schema_version": 2,
             "project": {"name": "testapp"},
             "nsx_tool_version": "0.1.0",
             "target": {"board": "apollo510_evb", "soc": "apollo510"},
@@ -162,7 +162,7 @@ class TestResolveTargetContext:
 
     def test_merges_with_app_config(self, tmp_path: Path) -> None:
         nsx_cfg = {
-            "schema_version": 1,
+            "schema_version": 2,
             "project": {"name": "testapp"},
             "nsx_tool_version": "0.1.0",
             "target": {"board": "apollo510_evb", "soc": "apollo510"},

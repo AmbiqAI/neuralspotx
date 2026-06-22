@@ -68,10 +68,13 @@ def _write_nsx_yml(
     registry_overrides: dict[str, Any] | None = None,
 ) -> None:
     cfg: dict[str, Any] = {
-        "schema_version": 1,
+        "schema_version": 2,
         "project": {"name": "testapp"},
         "target": {"board": "apollo510_evb", "soc": "apollo510"},
         "toolchain": "arm-none-eabi-gcc",
+        # These lock tests assert the exact closure of the listed modules, so
+        # opt out of board-profile baseline seeding (modules: is authoritative).
+        "baseline": "none",
         "modules": modules or [],
     }
     if registry_overrides:

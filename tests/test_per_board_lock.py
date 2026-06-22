@@ -35,7 +35,7 @@ def test_lock_path_per_board_is_suffixed() -> None:
 
 def _multi_cfg() -> dict:
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "project": {"name": "demo"},
         "targets": {
             "default": "apollo510_evb",
@@ -46,7 +46,7 @@ def _multi_cfg() -> dict:
 
 def _single_cfg() -> dict:
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "project": {"name": "demo"},
         "target": {"board": "apollo510_evb"},
     }
@@ -84,7 +84,7 @@ def test_board_key_for_app_missing_manifest_falls_back_to_legacy(tmp_path: Path)
 
 def test_board_key_for_app_reads_multi_target_manifest(tmp_path: Path) -> None:
     (tmp_path / "nsx.yml").write_text(
-        "schema_version: 1\n"
+        "schema_version: 2\n"
         "project:\n  name: demo\n"
         "targets:\n"
         "  default: apollo510_evb\n"
@@ -129,7 +129,7 @@ def test_per_board_locks_are_independent_files(tmp_path: Path) -> None:
 
 def _write_multi_target_manifest(app_dir: Path) -> None:
     (app_dir / "nsx.yml").write_text(
-        "schema_version: 1\n"
+        "schema_version: 2\n"
         "project:\n  name: demo\n"
         "targets:\n"
         "  default: apollo510b_evb\n"
@@ -140,7 +140,7 @@ def _write_multi_target_manifest(app_dir: Path) -> None:
 
 def test_lock_boards_for_single_target_is_legacy(tmp_path: Path) -> None:
     (tmp_path / "nsx.yml").write_text(
-        "schema_version: 1\nproject:\n  name: demo\ntarget:\n  board: apollo510_evb\n",
+        "schema_version: 2\nproject:\n  name: demo\ntarget:\n  board: apollo510_evb\n",
         encoding="utf-8",
     )
     # Single-target -> one entry, the legacy ``None`` board key.
@@ -188,56 +188,13 @@ def test_apply_active_target_derives_soc_from_board_descriptor() -> None:
     assert out["target"]["soc"] == "apollo510b"
 
 
-# --- additive `requires` merge -------------------------------------------
-
-
-def _multi_cfg_with_requires() -> dict:
-    return {
-        "schema_version": 1,
-        "project": {"name": "demo"},
-        "targets": {
-            "default": "apollo510_evb",
-            "supported": {
-                "apollo510_evb": {"requires": ["nsx-ambiq-usb"]},
-                "apollo510b_evb": {},
-            },
-        },
-        "requires": ["nsx-usb", "nsx-timer"],
-    }
-
-
-def test_resolve_target_merges_global_and_per_target_requires() -> None:
-    app = AppConfig.from_mapping(_multi_cfg_with_requires())
-
-    names_a = [r.name for r in app.resolve_target("apollo510_evb").requires]
-    names_b = [r.name for r in app.resolve_target("apollo510b_evb").requires]
-
-    # Global first (in order), then this board's per-target extras.
-    assert names_a == ["nsx-usb", "nsx-timer", "nsx-ambiq-usb"]
-    # The other board only gets the global set.
-    assert names_b == ["nsx-usb", "nsx-timer"]
-
-
-def test_apply_active_target_writes_merged_requires() -> None:
-    app = AppConfig.from_mapping(_multi_cfg_with_requires())
-    cfg = _multi_cfg_with_requires()
-
-    out = _apply_active_target(cfg, app.resolve_target("apollo510_evb"))
-
-    assert [r["name"] for r in out["requires"]] == ["nsx-usb", "nsx-timer", "nsx-ambiq-usb"]
-
-
-def test_apply_active_target_clears_requires_when_target_has_none() -> None:
-    cfg = _multi_cfg_with_requires()
-    # A board with no extras and no global set would clear the key; here we
-    # simulate by stripping the global list before resolving the bare board.
-    cfg_no_global = dict(cfg)
-    cfg_no_global.pop("requires")
-    app_no_global = AppConfig.from_mapping(cfg_no_global)
-
-    out = _apply_active_target(cfg_no_global, app_no_global.resolve_target("apollo510b_evb"))
-
-    assert "requires" not in out
+# --- additive per-board module scoping -----------------------------------
+# The old additive ``requires:`` field (global + per-target merge) was removed
+# in schema v2. Per-board dependency scoping is now expressed with a ``boards:``
+# filter on a ``modules:`` entry and applied by ``expand_profile_seeds`` when a
+# board is pinned; that behavior is covered in test_profile_seeded_resolution.py.
+# ``_apply_active_target`` itself only pins the target and no longer rewrites
+# dependencies, so the former requires-merge tests no longer apply.
 
 
 # --- board-switch glue regeneration --------------------------------------
@@ -267,7 +224,7 @@ def test_regenerate_active_board_glue_uses_active_board_module_set(
     import neuralspotx.operations._sync as sync_mod
 
     (tmp_path / "nsx.yml").write_text(
-        "schema_version: 1\n"
+        "schema_version: 2\n"
         "project:\n  name: demo\n"
         "targets:\n"
         "  default: apollo510_evb\n"
@@ -313,7 +270,7 @@ def test_regenerate_active_board_glue_is_noop_without_lock(tmp_path: Path, monke
     import neuralspotx.operations._sync as sync_mod
 
     (tmp_path / "nsx.yml").write_text(
-        "schema_version: 1\nproject:\n  name: demo\ntarget:\n  board: apollo510_evb\n",
+        "schema_version: 2\nproject:\n  name: demo\ntarget:\n  board: apollo510_evb\n",
         encoding="utf-8",
     )
     monkeypatch.setattr(sync_mod, "read_lock", lambda _app, _board_key: None)

@@ -39,7 +39,7 @@ def test_lean_manifest_expands_to_inlined_closure() -> None:
     inlined = _inlined_cfg()
 
     lean = {
-        "schema_version": 1,
+        "schema_version": 2,
         "project": {"name": "demo"},
         "target": {"board": BOARD, "soc": SOC},
         "profile": f"{BOARD}_minimal",
@@ -51,37 +51,40 @@ def test_lean_manifest_expands_to_inlined_closure() -> None:
     assert _module_names_from_nsx(expanded) == _module_names_from_nsx(inlined)
 
 
-def test_inlined_manifest_passes_through_unchanged() -> None:
+def test_inlined_manifest_round_trips_to_equivalent_closure() -> None:
     registry = _load_registry()
     inlined = _inlined_cfg()
 
     expanded = expand_profile_seeds(inlined, registry)
 
-    # Already has a closure -> returned as-is (same object, no rebuild).
-    assert expanded is inlined
+    # Re-seeding an already-inlined manifest is idempotent: the rebuilt closure
+    # and registry are equivalent to the original.
+    assert _module_names_from_nsx(expanded) == _module_names_from_nsx(inlined)
+    assert expanded["modules"] == inlined["modules"]
+    assert expanded["module_registry"] == inlined["module_registry"]
 
 
-def test_explicit_empty_modules_passes_through_unchanged() -> None:
-    # `--no-bootstrap` writes an intentional `modules: []`; the key is
-    # present so it must NOT be re-seeded from the profile.
+def test_baseline_none_with_empty_modules_yields_empty_closure() -> None:
+    # `--no-bootstrap` opts out of the board baseline via `baseline: none`,
+    # making `modules:` authoritative; an empty list yields an empty closure.
     registry = _load_registry()
     cfg = {
-        "schema_version": 1,
+        "schema_version": 2,
         "project": {"name": "demo"},
         "target": {"board": BOARD, "soc": SOC},
         "profile": f"{BOARD}_minimal",
+        "baseline": "none",
         "modules": [],
     }
     expanded = expand_profile_seeds(cfg, registry)
 
-    assert expanded is cfg
     assert expanded["modules"] == []
 
 
 def test_authored_module_registry_is_preserved() -> None:
     registry = _load_registry()
     lean = {
-        "schema_version": 1,
+        "schema_version": 2,
         "project": {"name": "demo"},
         "target": {"board": BOARD, "soc": SOC},
         "profile": f"{BOARD}_minimal",
@@ -103,7 +106,7 @@ def test_authored_module_registry_is_preserved() -> None:
 
 def test_missing_board_is_a_no_op() -> None:
     registry = _load_registry()
-    lean = {"schema_version": 1, "project": {"name": "demo"}}
+    lean = {"schema_version": 2, "project": {"name": "demo"}}
 
     expanded = expand_profile_seeds(lean, registry)
 
@@ -116,7 +119,7 @@ def test_missing_board_is_a_no_op() -> None:
 def test_multiple_boards_seed_distinct_closures(board: str, soc: str) -> None:
     registry = _load_registry()
     lean = {
-        "schema_version": 1,
+        "schema_version": 2,
         "project": {"name": "demo"},
         "target": {"board": board, "soc": soc},
         "profile": f"{board}_minimal",
@@ -127,24 +130,26 @@ def test_multiple_boards_seed_distinct_closures(board: str, soc: str) -> None:
     assert any(n.startswith("nsx-board-") for n in names)
 
 
-# --- additive `requires` --------------------------------------------------
+# --- additive direct modules --------------------------------------------
+# Schema v2 layers the app's direct ``modules:`` deps on top of the board
+# profile baseline; the old additive ``requires:`` field was removed.
 
 
-def _lean_with_requires(requires: object) -> dict:
+def _lean_with_modules(modules: object) -> dict:
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "project": {"name": "demo"},
         "target": {"board": BOARD, "soc": SOC},
         "profile": f"{BOARD}_minimal",
-        "requires": requires,
+        "modules": modules,
     }
 
 
-def test_requires_appends_extras_after_profile_seed() -> None:
+def test_modules_append_extras_after_profile_seed() -> None:
     registry = _load_registry()
-    base = _module_names_from_nsx(expand_profile_seeds(_lean_with_requires([]), registry))
+    base = _module_names_from_nsx(expand_profile_seeds(_lean_with_modules([]), registry))
 
-    expanded = expand_profile_seeds(_lean_with_requires(["nsx-usb"]), registry)
+    expanded = expand_profile_seeds(_lean_with_modules(["nsx-usb"]), registry)
     names = _module_names_from_nsx(expanded)
 
     # Additive: every base module is retained and the extra is appended last.
@@ -152,12 +157,12 @@ def test_requires_appends_extras_after_profile_seed() -> None:
     assert names[-1] == "nsx-usb"
 
 
-def test_requires_resolves_family_catalog_module_metadata() -> None:
+def test_modules_resolve_family_catalog_module_metadata() -> None:
     # nsx-timer lives in the board family's ``sdk_modules`` catalog, not the
     # top-level registry ``modules`` map; it must still resolve with its
     # metadata path seeded into ``module_registry``.
     registry = _load_registry()
-    expanded = expand_profile_seeds(_lean_with_requires(["nsx-timer"]), registry)
+    expanded = expand_profile_seeds(_lean_with_modules(["nsx-timer"]), registry)
 
     assert "nsx-timer" in _module_names_from_nsx(expanded)
     timer = expanded["module_registry"]["modules"]["nsx-timer"]
@@ -165,12 +170,12 @@ def test_requires_resolves_family_catalog_module_metadata() -> None:
     assert timer["project"]
 
 
-def test_requires_duplicate_of_profile_module_is_a_no_op() -> None:
+def test_modules_duplicate_of_profile_module_is_a_no_op() -> None:
     registry = _load_registry()
-    base = _module_names_from_nsx(expand_profile_seeds(_lean_with_requires([]), registry))
+    base = _module_names_from_nsx(expand_profile_seeds(_lean_with_modules([]), registry))
     profile_module = base[0]
 
-    expanded = expand_profile_seeds(_lean_with_requires([profile_module]), registry)
+    expanded = expand_profile_seeds(_lean_with_modules([profile_module]), registry)
     names = _module_names_from_nsx(expanded)
 
     # Already seeded by the profile -> not duplicated.
@@ -178,10 +183,10 @@ def test_requires_duplicate_of_profile_module_is_a_no_op() -> None:
     assert names.count(profile_module) == 1
 
 
-def test_requires_dedupes_and_preserves_first_seen_order() -> None:
+def test_modules_dedupe_and_preserve_first_seen_order() -> None:
     registry = _load_registry()
     expanded = expand_profile_seeds(
-        _lean_with_requires(["nsx-usb", "nsx-timer", "nsx-usb"]), registry
+        _lean_with_modules(["nsx-usb", "nsx-timer", "nsx-usb"]), registry
     )
     names = _module_names_from_nsx(expanded)
 
@@ -189,10 +194,10 @@ def test_requires_dedupes_and_preserves_first_seen_order() -> None:
     assert names.index("nsx-usb") < names.index("nsx-timer")
 
 
-def test_requires_mapping_entry_pins_explicit_project() -> None:
+def test_modules_mapping_entry_pins_explicit_project() -> None:
     registry = _load_registry()
     expanded = expand_profile_seeds(
-        _lean_with_requires([{"name": "nsx-usb", "project": "custom-proj", "revision": "v9"}]),
+        _lean_with_modules([{"name": "nsx-usb", "project": "custom-proj", "revision": "v9"}]),
         registry,
     )
     record = next(m for m in expanded["modules"] if m["name"] == "nsx-usb")
@@ -201,39 +206,24 @@ def test_requires_mapping_entry_pins_explicit_project() -> None:
     assert record["revision"] == "v9"
 
 
-def test_requires_unknown_module_raises() -> None:
+def test_modules_unknown_module_raises() -> None:
     registry = _load_registry()
     with pytest.raises(NSXConfigError, match="not in the board's module catalog"):
-        expand_profile_seeds(_lean_with_requires(["nsx-does-not-exist"]), registry)
-
-
-def test_requires_with_inlined_modules_is_mutually_exclusive() -> None:
-    registry = _load_registry()
-    inlined = _inlined_cfg()
-    inlined["requires"] = ["nsx-usb"]
-
-    with pytest.raises(NSXConfigError, match="mutually exclusive"):
-        expand_profile_seeds(inlined, registry)
-
-
-def test_requires_must_be_a_list() -> None:
-    registry = _load_registry()
-    with pytest.raises(NSXConfigError, match="'requires' must be a list"):
-        expand_profile_seeds(_lean_with_requires({"nsx-usb": True}), registry)
+        expand_profile_seeds(_lean_with_modules(["nsx-does-not-exist"]), registry)
 
 
 def test_authored_partial_registry_merges_profile_seed() -> None:
     # A lean manifest may author a *partial* module_registry (e.g. just a
-    # custom project) while pulling a board-family catalog module via
-    # ``requires``. The profile seed registry must be merged under the
+    # custom project) while pulling a board-family catalog module via a direct
+    # ``modules:`` dep. The profile seed registry must be merged under the
     # authored one so the catalog module stays resolvable — not dropped.
     registry = _load_registry()
     lean = {
-        "schema_version": 1,
+        "schema_version": 2,
         "project": {"name": "demo"},
         "target": {"board": BOARD, "soc": SOC},
         "profile": f"{BOARD}_minimal",
-        "requires": ["nsx-timer"],
+        "modules": ["nsx-timer"],
         "module_registry": {
             "projects": {
                 "custom-proj": {"url": "https://example.com/custom.git", "revision": "main"}
@@ -246,17 +236,17 @@ def test_authored_partial_registry_merges_profile_seed() -> None:
 
     # Authored entry preserved.
     assert mr["projects"]["custom-proj"]["url"] == "https://example.com/custom.git"
-    # Profile seed merged in: the catalog module pulled via ``requires`` is now
+    # Profile seed merged in: the catalog module pulled via a direct dep is now
     # present in the effective registry so lock/sync can resolve it.
     assert "nsx-timer" in mr["modules"]
     # Seed project overrides are filled in alongside the authored project.
     seed_only = expand_profile_seeds(
         {
-            "schema_version": 1,
+            "schema_version": 2,
             "project": {"name": "demo"},
             "target": {"board": BOARD, "soc": SOC},
             "profile": f"{BOARD}_minimal",
-            "requires": ["nsx-timer"],
+            "modules": ["nsx-timer"],
         },
         registry,
     )["module_registry"]
@@ -267,20 +257,21 @@ def test_authored_partial_registry_merges_profile_seed() -> None:
 def test_authored_registry_entry_wins_over_seed() -> None:
     # When the authored registry overrides a field on a module that the seed
     # also carries, the authored value wins while seed-only fields survive.
+    # ``nsx-ambiq-bsp`` is part of the apollo510_evb baseline, so the per-entry
+    # merge in ``_merge_seed_registry`` applies.
     registry = _load_registry()
     lean = {
-        "schema_version": 1,
+        "schema_version": 2,
         "project": {"name": "demo"},
         "target": {"board": BOARD, "soc": SOC},
         "profile": f"{BOARD}_minimal",
-        "requires": ["nsx-timer"],
         "module_registry": {
             "projects": {},
-            "modules": {"nsx-timer": {"revision": "pinned-sha"}},
+            "modules": {"nsx-ambiq-bsp": {"revision": "pinned-sha"}},
         },
     }
     mr = expand_profile_seeds(lean, registry)["module_registry"]
 
-    assert mr["modules"]["nsx-timer"]["revision"] == "pinned-sha"
+    assert mr["modules"]["nsx-ambiq-bsp"]["revision"] == "pinned-sha"
     # Seed-provided metadata path is preserved through the per-entry merge.
-    assert "metadata" in mr["modules"]["nsx-timer"]
+    assert "metadata" in mr["modules"]["nsx-ambiq-bsp"]

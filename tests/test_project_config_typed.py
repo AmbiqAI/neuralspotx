@@ -24,7 +24,7 @@ from neuralspotx import NSXConfigError
 from neuralspotx.models import NsxProject
 
 _MIN_CFG: dict[str, object] = {
-    "schema_version": 1,
+    "schema_version": 2,
     "project": {"name": "testapp"},
     "target": {"board": "apollo510_evb", "soc": "apollo510"},
     "toolchain": "arm-none-eabi-gcc",
@@ -47,7 +47,7 @@ class TestLoadHappy:
     def test_minimum_manifest_parses(self, tmp_path: Path) -> None:
         path = _write(tmp_path, _MIN_CFG)
         project = NsxProject.from_yaml(path)
-        assert project.schema_version == 1
+        assert project.schema_version == 2
         assert project.project_name == "testapp"
         assert project.board == "apollo510_evb"
         assert project.toolchain == "arm-none-eabi-gcc"
@@ -111,7 +111,7 @@ _INVALID_SHAPES: list[tuple[str, dict[str, object] | object, str]] = [
     (
         "project-not-mapping",
         {
-            "schema_version": 1,
+            "schema_version": 2,
             "project": "testapp",
             "target": {},
             "modules": [],
@@ -121,7 +121,7 @@ _INVALID_SHAPES: list[tuple[str, dict[str, object] | object, str]] = [
     (
         "project-name-missing",
         {
-            "schema_version": 1,
+            "schema_version": 2,
             "project": {},
             "target": {},
             "modules": [],
@@ -131,7 +131,7 @@ _INVALID_SHAPES: list[tuple[str, dict[str, object] | object, str]] = [
     (
         "project-name-empty",
         {
-            "schema_version": 1,
+            "schema_version": 2,
             "project": {"name": ""},
             "target": {},
             "modules": [],
@@ -141,7 +141,7 @@ _INVALID_SHAPES: list[tuple[str, dict[str, object] | object, str]] = [
     (
         "target-not-mapping",
         {
-            "schema_version": 1,
+            "schema_version": 2,
             "project": {"name": "a"},
             "target": "apollo510_evb",
             "modules": [],
@@ -151,7 +151,7 @@ _INVALID_SHAPES: list[tuple[str, dict[str, object] | object, str]] = [
     (
         "target-board-wrong-type",
         {
-            "schema_version": 1,
+            "schema_version": 2,
             "project": {"name": "a"},
             "target": {"board": 42},
             "modules": [],
@@ -161,7 +161,7 @@ _INVALID_SHAPES: list[tuple[str, dict[str, object] | object, str]] = [
     (
         "toolchain-wrong-type",
         {
-            "schema_version": 1,
+            "schema_version": 2,
             "project": {"name": "a"},
             "target": {},
             "toolchain": ["gcc"],
@@ -172,7 +172,7 @@ _INVALID_SHAPES: list[tuple[str, dict[str, object] | object, str]] = [
     (
         "modules-not-list",
         {
-            "schema_version": 1,
+            "schema_version": 2,
             "project": {"name": "a"},
             "target": {},
             "modules": {"name": "m1"},
@@ -182,17 +182,17 @@ _INVALID_SHAPES: list[tuple[str, dict[str, object] | object, str]] = [
     (
         "module-entry-not-mapping",
         {
-            "schema_version": 1,
+            "schema_version": 2,
             "project": {"name": "a"},
             "target": {},
-            "modules": ["m1"],
+            "modules": [42],
         },
         "modules[0]",
     ),
     (
         "module-name-missing",
         {
-            "schema_version": 1,
+            "schema_version": 2,
             "project": {"name": "a"},
             "target": {},
             "modules": [{"project": "p"}],
@@ -202,7 +202,7 @@ _INVALID_SHAPES: list[tuple[str, dict[str, object] | object, str]] = [
     (
         "module-registry-not-mapping",
         {
-            "schema_version": 1,
+            "schema_version": 2,
             "project": {"name": "a"},
             "target": {},
             "modules": [],
@@ -213,7 +213,7 @@ _INVALID_SHAPES: list[tuple[str, dict[str, object] | object, str]] = [
     (
         "tooling-not-mapping",
         {
-            "schema_version": 1,
+            "schema_version": 2,
             "project": {"name": "a"},
             "target": {},
             "modules": [],
@@ -224,7 +224,7 @@ _INVALID_SHAPES: list[tuple[str, dict[str, object] | object, str]] = [
     (
         "profile-wrong-type",
         {
-            "schema_version": 1,
+            "schema_version": 2,
             "project": {"name": "a"},
             "target": {},
             "modules": [],
@@ -314,7 +314,7 @@ class TestRoundTrip:
         path = _write(tmp_path, _MIN_CFG)
         project = NsxProject.from_yaml(path)
         text = project.to_yaml(None)
-        assert "schema_version: 1" in text
+        assert "schema_version: 2" in text
         assert "project:" in text
 
 
