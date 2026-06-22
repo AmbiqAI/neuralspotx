@@ -282,7 +282,9 @@ jobs:
           fail=0
           for app in examples/*/; do
             [ -f "$app/nsx.yml" ] || continue
-            [ -f "$app/nsx.lock" ] || continue
+            # Multi-target apps commit per-board nsx.<board>.lock (no plain
+            # nsx.lock); accept either so they are not silently skipped.
+            compgen -G "${app}nsx*.lock" >/dev/null || continue
             echo "::group::$app"
             # `nsx sync` populates modules/ at the SHAs recorded in
             # nsx.lock (no constraint re-resolution needed since the
@@ -303,7 +305,7 @@ jobs:
         continue-on-error: true
         run: |
           for app in examples/*/; do
-            [ -f "$app/nsx.lock" ] || continue
+            compgen -G "${app}nsx*.lock" >/dev/null || continue
             echo "::group::outdated $app"
             uv run --group test nsx outdated --json --app-dir "$app" || true
             echo "::endgroup::"
@@ -345,7 +347,9 @@ jobs:
         run: |
           for app in examples/*/; do
             [ -f "$app/nsx.yml" ] || continue
-            [ -f "$app/nsx.lock" ] || continue
+            # Multi-target apps commit per-board nsx.<board>.lock (no plain
+            # nsx.lock); accept either so they are not silently skipped.
+            compgen -G "${app}nsx*.lock" >/dev/null || continue
             echo "::group::sync $app"
             uv run --group test nsx sync --app-dir "$app"
             echo "::endgroup::"

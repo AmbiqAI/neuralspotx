@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 from pathlib import Path
 from typing import Any
 
@@ -11,6 +12,23 @@ from ._metadata import _load_module_metadata, metadata_cache_scope
 from ._nsx_cfg import _local_module_names, _vendored_module_names
 from ._policy import _validate_board_module_dep_policy, _validate_sdk_provider_policy
 from ._vendoring import _acquire_modules_for_app
+
+
+def _compat_check_skipped() -> bool:
+    """Whether ``NSX_SKIP_COMPAT_CHECK`` requests bypassing compat enforcement.
+
+    Per-target compatibility is enforced here, in the closure resolver, so the
+    documented emergency bypass must be honored at this point (the
+    ``is_compatible`` gate below is the single enforcement site; nothing
+    downstream re-checks).
+    """
+
+    return os.environ.get("NSX_SKIP_COMPAT_CHECK", "").strip().lower() in {
+        "1",
+        "true",
+        "yes",
+        "on",
+    }
 
 
 def _resolve_module_closure(
@@ -88,15 +106,18 @@ def _resolve_module_closure_inner(
             raise NSXModuleError(
                 f"Module '{module_name}' is not NSX-eligible (support.ambiqsuite=false)"
             )
-        if not is_compatible(
+        if not _compat_check_skipped() and not is_compatible(
             module_meta,
             board=board,
             soc=soc,
             toolchain=toolchain,
         ):
             raise NSXModuleError(
-                f"Module '{module_name}' is incompatible with "
-                f"board={board}, soc={soc}, toolchain={toolchain}"
+                f"Module '{module_name}' is incompatible with target "
+                f"board={board}, soc={soc}, toolchain={toolchain}. "
+                "Remove the board from targets.supported, extend the module's "
+                "nsx-module.yaml 'compatibility', or set NSX_SKIP_COMPAT_CHECK=1 "
+                "to bypass."
             )
 
         for dep_name in module_meta["depends"]["required"]:
