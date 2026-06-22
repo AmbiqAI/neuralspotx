@@ -149,6 +149,9 @@ def add_module_impl(
         except Exception:
             manifest_path.write_text(original_text, encoding="utf-8")
             raise
+    else:
+        _write_app_module_file(app_dir, nsx_cfg)
+        _write_modules_gitignore(app_dir, nsx_cfg)
 
     registry = _effective_registry(_load_registry(), nsx_cfg, app_dir=app_dir)
     return [
