@@ -212,6 +212,8 @@ def test_module_change_dispatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch)
         *,
         local: bool = False,
         vendored: bool = False,
+        path: str | None = None,
+        boards: tuple[str, ...] = (),
         dry_run: bool = False,
     ) -> None:
         add_calls.append((app_dir, module, dry_run))

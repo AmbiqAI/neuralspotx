@@ -195,11 +195,24 @@ def expand_profile_seeds(
 
     direct = app.direct_modules(board)
 
+    # Modules registered into the app's own ``module_registry`` (e.g. a local
+    # project added via ``nsx module register``) map a bare ``modules:`` name to
+    # an explicit project. Surface those as overrides so a lean ``{name: ...}``
+    # direct dep still resolves without re-inlining the project on each entry.
+    authored_registry = nsx_cfg.get("module_registry")
+    app_module_overrides = (
+        authored_registry.get("modules", {})
+        if isinstance(authored_registry, dict)
+        else {}
+    )
+    if not isinstance(app_module_overrides, dict):
+        app_module_overrides = {}
+
     if app.baseline_disabled:
         # Authoritative: the direct list is the whole closure, no profile seed.
         seeded_names: set[str] = set()
         modules = _direct_dep_records(
-            direct, registry, seeded_names=seeded_names, module_overrides={}
+            direct, registry, seeded_names=seeded_names, module_overrides=app_module_overrides
         )
         expanded = dict(nsx_cfg)
         expanded["modules"] = modules
@@ -214,6 +227,8 @@ def expand_profile_seeds(
     module_overrides = profile.get("module_overrides", {})
     if not isinstance(module_overrides, dict):
         module_overrides = {}
+    # Authored app overrides win over the board-family catalog.
+    module_overrides = {**module_overrides, **app_module_overrides}
 
     modules = seed_modules + _direct_dep_records(
         direct,
