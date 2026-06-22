@@ -89,7 +89,8 @@ to keep non-matching results in the output for comparison or planning.
 ## `nsx module add`
 
 ```text
-nsx module add [--app-dir APP_DIR] [--local] [--vendored] [--dry-run] module
+nsx module add [--app-dir APP_DIR] [--local] [--vendored] [--path DIR]
+               [--board BOARD] [--dry-run] module
 ```
 
 Example:
@@ -103,6 +104,38 @@ For built-in modules, NSX uses the registry's default upstream repo and
 revision unless the app overrides that source.
 
 This is the standard way to install a supported first-class module into an app.
+The module is appended to the app's single `modules:` list (its direct
+dependencies); the resolved closure is recomputed into `nsx.<board>.lock`. See
+[Dependency Model](../architecture/dependency-model.md) for the model.
+
+### `--board`
+
+Scope the dependency to specific boards instead of all of
+`targets.supported`. Repeat the flag for multiple boards; each must be a
+subset of the app's supported targets.
+
+```bash
+nsx module add nsx-pdm --board apollo510_evb
+```
+
+This writes a `boards:` filter on the entry:
+
+```yaml
+- name: nsx-pdm
+  boards: [apollo510_evb]
+```
+
+### `--path`
+
+Add the module as a linked dependency sourced from an external directory.
+The on-disk copy under `modules/<name>/` is mirrored from that path on every
+`nsx sync`.
+
+```bash
+nsx module add my-driver --path ../../shared/my-driver
+```
+
+This writes a `source: { path: ... }` entry to `nsx.yml`.
 
 ### `--vendored`
 
