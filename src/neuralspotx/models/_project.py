@@ -93,10 +93,23 @@ class ModuleEntry:
 
 @dataclass(frozen=True)
 class ModuleSource:
-    """User-facing ``source`` declaration from an app module entry."""
+    """User-facing ``source`` declaration from an app module entry.
+
+    A dependency's *source* is where it comes from. Exactly one kind applies:
+
+    * **registry** (default) -- resolved from the module registry; the entry
+      carries no ``source`` block (an optional ``project`` / ``revision`` pin
+      lives on the :class:`AppModule` itself).
+    * **path** -- a local / editable checkout (``source: {path: ../foo}``).
+    * **vendored** -- committed in-tree, never touched by sync
+      (``source: {vendored: true}``).
+    * **git** -- a pinned git remote (``source: {git: <url>, rev: <ref>}``).
+    """
 
     path: str | None = None
     vendored: bool = False
+    git: str | None = None
+    rev: str | None = None
     extra: dict[str, Any] | None = None
 
     @classmethod
@@ -104,10 +117,18 @@ class ModuleSource:
         if not isinstance(data, dict):
             return cls()
         path = data.get("path")
-        extra = {k: copy.deepcopy(v) for k, v in data.items() if k not in {"path", "vendored"}}
+        git = data.get("git")
+        rev = data.get("rev")
+        extra = {
+            k: copy.deepcopy(v)
+            for k, v in data.items()
+            if k not in {"path", "vendored", "git", "rev"}
+        }
         return cls(
             path=path if isinstance(path, str) and path else None,
             vendored=data.get("vendored") is True,
+            git=git if isinstance(git, str) and git else None,
+            rev=rev if isinstance(rev, str) and rev else None,
             extra=extra or None,
         )
 
@@ -117,18 +138,42 @@ class ModuleSource:
             out["path"] = self.path
         if self.vendored:
             out["vendored"] = True
+        if self.git:
+            out["git"] = self.git
+        if self.rev:
+            out["rev"] = self.rev
         return out
+
+    @property
+    def kind(self) -> str:
+        """The single source kind: ``path`` | ``vendored`` | ``git`` | ``registry``."""
+
+        if self.path is not None:
+            return "path"
+        if self.vendored:
+            return "vendored"
+        if self.git is not None:
+            return "git"
+        return "registry"
 
 
 @dataclass(frozen=True)
 class AppModule:
-    """One module entry from an app ``nsx.yml`` manifest."""
+    """One dependency entry from an app ``nsx.yml`` ``modules:`` list.
+
+    A dependency is ``name`` + an optional **source** (where it comes from,
+    see :class:`ModuleSource`) + an optional **boards** filter (which targets
+    it applies to). An empty ``boards`` tuple means *all* supported targets;
+    a non-empty tuple scopes the dependency to those boards (validated as a
+    subset of ``targets.supported`` by the loader).
+    """
 
     name: str
     project: str | None = None
     revision: str | None = None
     local: bool = False
     source: ModuleSource = ModuleSource()
+    boards: tuple[str, ...] = ()
     extra: dict[str, Any] | None = None
 
     @classmethod
@@ -149,10 +194,21 @@ class AppModule:
         project = data.get("project")
         revision = data.get("revision")
         source_data = data.get("source")
+        boards_data = data.get("boards")
+        boards: tuple[str, ...] = ()
+        if boards_data is not None:
+            if not isinstance(boards_data, list) or not all(
+                isinstance(b, str) and b for b in boards_data
+            ):
+                raise NSXConfigError(
+                    f"{origin}: modules[{index}].boards must be a list of board-name strings",
+                    field=f"modules[{index}].boards",
+                )
+            boards = tuple(boards_data)
         extra = {
             k: copy.deepcopy(v)
             for k, v in data.items()
-            if k not in {"name", "project", "revision", "local", "source"}
+            if k not in {"name", "project", "revision", "local", "source", "boards"}
         }
         return cls(
             name=name,
@@ -162,6 +218,7 @@ class AppModule:
             source=ModuleSource.from_mapping(
                 source_data if isinstance(source_data, dict) else None
             ),
+            boards=boards,
             extra=extra or None,
         )
 
@@ -174,8 +231,31 @@ class AppModule:
         return self.source.vendored
 
     @property
+    def is_git(self) -> bool:
+        return self.source.git is not None
+
+    @property
     def is_opaque(self) -> bool:
         return self.is_local or self.is_vendored
+
+    @property
+    def source_kind(self) -> str:
+        """The dependency's source kind: ``path`` | ``vendored`` | ``git`` | ``registry``."""
+
+        if self.local and self.source.path is None:
+            return "path"
+        return self.source.kind
+
+    def applies_to(self, board: str | None) -> bool:
+        """True when this dependency applies to *board* (or to all targets).
+
+        An empty ``boards`` filter (or a ``None`` board) means the dependency
+        applies everywhere; otherwise it applies only to the listed boards.
+        """
+
+        if not self.boards or board is None:
+            return True
+        return board in self.boards
 
     def to_mapping(self) -> dict[str, Any]:
         out = copy.deepcopy(self.extra) if self.extra else {}
@@ -189,6 +269,8 @@ class AppModule:
         source = self.source.to_mapping()
         if source:
             out["source"] = source
+        if self.boards:
+            out["boards"] = list(self.boards)
         return out
 
 
@@ -547,3 +629,27 @@ class AppConfig:
 
     def opaque_modules(self) -> dict[str, AppModule]:
         return {module.name: module for module in self.modules if module.is_opaque}
+
+    # --- Unified dependency model (schema v2) -------------------------
+
+    @property
+    def baseline_disabled(self) -> bool:
+        """True when ``baseline: none`` opts out of board-profile seeding.
+
+        With the baseline disabled, the ``modules:`` list is the authoritative
+        closure for the app rather than additive extras layered on the board's
+        derived profile.
+        """
+
+        return str(self.raw.get("baseline") or "").strip().lower() == "none"
+
+    def direct_modules(self, board: str | None = None) -> tuple[AppModule, ...]:
+        """Declared direct dependencies that apply to *board*.
+
+        Filters the ``modules:`` list by each entry's ``boards`` scope: an
+        entry with no ``boards`` applies to every target; an entry with a
+        ``boards`` list applies only to those boards. A ``None`` board returns
+        every declared dependency (used where the active board is irrelevant).
+        """
+
+        return tuple(module for module in self.modules if module.applies_to(board))

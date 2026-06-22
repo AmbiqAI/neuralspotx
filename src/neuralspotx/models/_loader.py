@@ -31,8 +31,14 @@ _NSX_YML_KNOWN_TOP_LEVEL: tuple[str, ...] = (
     "profile",
     "profile_status",
     "targets",
-    "requires",
+    "baseline",
 )
+
+# The single nsx.yml schema version this build understands. Bumped to 2 for
+# the unified dependency model (one ``modules:`` list carrying per-entry
+# ``source`` + ``boards``; the old ``requires:`` field and authoritative-only
+# ``modules:`` semantics were removed — a deliberate pre-1.0 breaking change).
+SUPPORTED_SCHEMA_VERSION = 2
 
 
 def _require_mapping(
@@ -70,35 +76,121 @@ def _require_str(
     return value
 
 
-def _validate_requires(value: Any, *, field: str, origin: str = "nsx.yml") -> None:
-    """Validate a ``requires:`` list (top-level or per-target).
+def _reject_requires(value: Any, *, field: str, origin: str = "nsx.yml") -> None:
+    """Reject the removed ``requires:`` field with a migration hint.
 
-    Each entry is a module name string or a mapping carrying at least a
-    ``name``. Structural-only: resolution and dedupe live in
-    :class:`AppConfig`.
+    Schema v2 unifies dependencies under a single ``modules:`` list, where each
+    entry carries an optional per-entry ``boards:`` filter and ``source:``. The
+    old additive ``requires:`` field (top-level or per-target) is gone.
     """
 
     if value is None:
         return
-    if not isinstance(value, list):
+    raise NSXConfigError(
+        f"{origin}: '{field}' is no longer supported (schema v2). List dependencies "
+        "under 'modules:' instead — each entry is a name with an optional 'boards:' "
+        "filter and 'source:' (path / vendored / git).",
+        field=field,
+    )
+
+
+def _validate_baseline(value: Any, *, origin: str = "nsx.yml") -> None:
+    """Validate the optional ``baseline:`` opt-out.
+
+    The only accepted value is the string ``"none"``, which disables board
+    profile seeding so the ``modules:`` list is the authoritative closure.
+    Absence (the default) means the board profile baseline is layered in.
+    """
+
+    if value is None:
+        return
+    if value != "none":
         raise NSXConfigError(
-            f"{origin}: '{field}' must be a list, got {type(value).__name__}",
-            field=field,
+            f"{origin}: 'baseline' only supports the value 'none' (got {value!r})",
+            field="baseline",
         )
-    for idx, entry in enumerate(value):
-        item_field = f"{field}[{idx}]"
-        if isinstance(entry, str):
-            _require_str(entry, field=item_field, origin=origin)
-        elif isinstance(entry, dict):
-            _require_str(entry.get("name"), field=f"{item_field}.name", origin=origin)
-            for key in ("project", "revision"):
-                if entry.get(key) is not None:
-                    _require_str(entry[key], field=f"{item_field}.{key}", origin=origin)
-        else:
+
+
+def _validate_module_sources(
+    modules: tuple[AppModule, ...], *, origin: str = "nsx.yml"
+) -> None:
+    """Validate each ``modules[i].source`` declares at most one source kind.
+
+    A dependency's source is exactly one of ``path`` / ``vendored`` / ``git``
+    (or none, meaning registry-resolved). ``rev`` only makes sense with
+    ``git``. Conflicting combinations fail fast with the offending field path.
+    """
+
+    for idx, module in enumerate(modules):
+        src = module.source
+        declared = [
+            name
+            for name, present in (
+                ("path", src.path is not None),
+                ("vendored", src.vendored),
+                ("git", src.git is not None),
+            )
+            if present
+        ]
+        if len(declared) > 1:
             raise NSXConfigError(
-                f"{origin}: '{item_field}' must be a module name or a mapping, "
-                f"got {type(entry).__name__}",
-                field=item_field,
+                f"{origin}: modules[{idx}] ('{module.name}') source declares multiple "
+                f"kinds ({', '.join(declared)}); choose exactly one of path / vendored / git",
+                field=f"modules[{idx}].source",
+            )
+        if src.rev is not None and src.git is None:
+            raise NSXConfigError(
+                f"{origin}: modules[{idx}] ('{module.name}') source 'rev' requires 'git'",
+                field=f"modules[{idx}].source.rev",
+            )
+
+
+def _declared_board_names(data: dict[str, Any]) -> set[str]:
+    """Collect every board declared by the manifest's target(s).
+
+    Unions the multi-target ``targets.supported`` board names (list entries or
+    mapping keys) with the legacy singular ``target.board``. Used to validate
+    per-entry ``modules[i].boards`` filters against real targets.
+    """
+
+    names: set[str] = set()
+    targets = data.get("targets")
+    if isinstance(targets, dict):
+        supported = targets.get("supported")
+        if isinstance(supported, list):
+            names.update(b for b in supported if isinstance(b, str) and b)
+        elif isinstance(supported, dict):
+            names.update(b for b in supported if isinstance(b, str) and b)
+    target = data.get("target")
+    if isinstance(target, dict):
+        board = target.get("board")
+        if isinstance(board, str) and board:
+            names.add(board)
+    return names
+
+
+def _validate_module_boards_subset(
+    data: dict[str, Any], modules: tuple[AppModule, ...], *, origin: str = "nsx.yml"
+) -> None:
+    """Ensure each ``modules[i].boards`` filter references a declared target.
+
+    A per-entry ``boards`` list scopes a dependency to specific boards; every
+    listed board must be a declared target (``targets.supported`` or the legacy
+    ``target.board``) so a typo fails fast instead of silently never applying.
+    Skipped when the manifest declares no targets at all.
+    """
+
+    declared = _declared_board_names(data)
+    if not declared:
+        return
+    for idx, module in enumerate(modules):
+        unknown = [b for b in module.boards if b not in declared]
+        if unknown:
+            listed = ", ".join(sorted(declared))
+            raise NSXConfigError(
+                f"{origin}: modules[{idx}] ('{module.name}') boards "
+                f"{unknown} are not declared targets (supported: {listed})",
+                field=f"modules[{idx}].boards",
             )
 
 
@@ -136,7 +228,7 @@ def _validate_targets(value: Any, *, origin: str = "nsx.yml") -> None:
                     _require_str(
                         cfg_map[key], field=f"targets.supported.{board}.{key}", origin=origin
                     )
-            _validate_requires(
+            _reject_requires(
                 cfg_map.get("requires"),
                 field=f"targets.supported.{board}.requires",
                 origin=origin,
@@ -270,13 +362,14 @@ class NsxProject:
                 f"{origin}: expected a mapping at the root, got {type(data).__name__}"
             )
 
-        # schema_version: required at the top level, must equal the
-        # one supported version (1).  ``None`` and missing are both
-        # rejected explicitly so a typo (``shema_version``) doesn't
-        # silently default through.
+        # schema_version: required at the top level, must equal the one
+        # supported version (2).  ``None`` and missing are both rejected
+        # explicitly so a typo (``shema_version``) doesn't silently default
+        # through.
         if "schema_version" not in data:
             raise NSXConfigError(
-                f"{origin}: missing required 'schema_version' (this nsx supports v1)",
+                f"{origin}: missing required 'schema_version' "
+                f"(this nsx requires schema_version {SUPPORTED_SCHEMA_VERSION})",
                 field="schema_version",
             )
         sv_raw = data["schema_version"]
@@ -285,9 +378,12 @@ class NsxProject:
                 f"{origin}: 'schema_version' must be an integer, got {type(sv_raw).__name__}",
                 field="schema_version",
             )
-        if sv_raw != 1:
+        if sv_raw != SUPPORTED_SCHEMA_VERSION:
             raise NSXConfigError(
-                f"{origin}: unsupported schema_version={sv_raw} (this nsx supports v1)",
+                f"{origin}: unsupported schema_version={sv_raw} "
+                f"(this nsx requires schema_version {SUPPORTED_SCHEMA_VERSION}). "
+                "v2 unifies dependencies under a single 'modules:' list with "
+                "per-entry 'boards:' and 'source:'; the old 'requires:' field was removed.",
                 field="schema_version",
             )
 
@@ -340,14 +436,17 @@ class NsxProject:
 
         _validate_targets(data.get("targets"), origin=origin)
 
-        requires_value = data.get("requires")
-        _validate_requires(requires_value, field="requires", origin=origin)
-        if data.get("modules") is not None and requires_value:
-            raise NSXConfigError(
-                f"{origin}: 'modules' (authoritative closure) and 'requires' (additive "
-                "extras layered on the board profile) are mutually exclusive; remove one.",
-                field="requires",
-            )
+        _validate_baseline(data.get("baseline"), origin=origin)
+
+        # The additive ``requires:`` field was removed in schema v2 — reject it
+        # with a migration hint rather than silently ignoring it.
+        _reject_requires(data.get("requires"), field="requires", origin=origin)
+
+        # Per-entry ``boards:`` must reference a declared supported target.
+        _validate_module_boards_subset(data, modules, origin=origin)
+
+        # Per-entry ``source:`` must declare a single, coherent source kind.
+        _validate_module_sources(modules, origin=origin)
 
         extra = {k: v for k, v in data.items() if k not in _NSX_YML_KNOWN_TOP_LEVEL}
 
