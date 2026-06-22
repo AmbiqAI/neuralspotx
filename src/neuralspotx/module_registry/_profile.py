@@ -253,7 +253,6 @@ def expand_profile_seeds(
     return expanded
 
 
-
 def _merge_seed_registry(
     authored: dict[str, Any],
     seed: dict[str, Any],

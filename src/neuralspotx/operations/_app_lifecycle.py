@@ -46,17 +46,24 @@ from ._common import (
 )
 
 
-def _save_lean_app_manifest(app_dir: Path, nsx_cfg: dict) -> None:
+def _save_lean_app_manifest(app_dir: Path, nsx_cfg: dict, *, baseline_none: bool = False) -> None:
     """Persist a lean manifest: empty direct deps, no app-level registry.
 
     The board profile is the implicit baseline, so a freshly created app
     carries no ``modules`` and no ``module_registry`` block. The full
     closure is materialized on disk during bootstrap and is recomputed from
     the profile at lock time.
+
+    When *baseline_none* is set (the ``--no-bootstrap`` case), the manifest
+    also records ``baseline: none`` so the empty ``modules:`` list is the
+    authoritative closure and ``nsx lock`` does *not* re-seed the board
+    profile baseline.
     """
     lean = dict(nsx_cfg)
     lean["modules"] = []
     lean.pop("module_registry", None)
+    if baseline_none:
+        lean["baseline"] = "none"
     _save_app_cfg(app_dir, lean)
 
 
@@ -160,7 +167,7 @@ def _create_app_body(
         nsx_major=current_nsx_major,
     )
     if no_bootstrap:
-        _save_lean_app_manifest(app_dir, nsx_cfg)
+        _save_lean_app_manifest(app_dir, nsx_cfg, baseline_none=True)
         nsx_cfg["modules"] = []
         _write_app_module_file(app_dir, nsx_cfg)
         _write_modules_gitignore(app_dir, nsx_cfg)

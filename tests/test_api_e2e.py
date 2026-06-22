@@ -26,6 +26,7 @@ from neuralspotx import (
     create_app,
     flash_app,
     init_module,
+    lock_app,
     register_module,
     remove_module,
     update_modules,
@@ -716,6 +717,22 @@ def test_full_clean_removes_build_directory(tmp_path: Path) -> None:
     )
 
     assert not build_dir.exists()
+
+
+def test_no_bootstrap_app_locks_to_empty_closure(tmp_path: Path) -> None:
+    # `--no-bootstrap` opts out of the board profile baseline by writing
+    # `baseline: none`, so the app's `modules:` list is the authoritative
+    # closure. An empty list must therefore lock to an empty closure rather
+    # than re-seeding the board baseline.
+    app_dir = tmp_path / "hello_bare"
+    create_app(AppCreateRequest(app_dir=app_dir, board="apollo510_evb", no_bootstrap=True))
+
+    cfg = _load_yaml(app_dir / "nsx.yml")
+    assert cfg["modules"] == []
+    assert cfg["baseline"] == "none"
+
+    lock = lock_app(app_dir)
+    assert dict(lock.modules) == {}
 
 
 def test_local_module_round_trip_add_update_remove(tmp_path: Path) -> None:
