@@ -773,6 +773,46 @@ def test_local_module_round_trip_add_update_remove(tmp_path: Path) -> None:
     assert not (app_dir / "modules" / "local-demo").exists()
 
 
+def test_remove_module_drops_bare_string_entry(tmp_path: Path) -> None:
+    """`nsx module remove` must drop bare-string `modules:` entries, not only mappings.
+
+    With the `modules: [- local-demo]` shorthand the manifest entry is a plain
+    string, so a name-keyed mapping filter would silently leave it behind and the
+    dependency would resolve again on the next lock.
+    """
+    create_app(
+        AppCreateRequest(
+            app_dir=tmp_path / "hello_bare_remove", board="apollo510_evb", no_bootstrap=True
+        )
+    )
+
+    app_dir = tmp_path / "hello_bare_remove"
+    project_root = tmp_path / "local-projects" / "local-demo"
+    metadata_path = _write_local_module_project(project_root)
+
+    register_module(
+        ModuleRegisterRequest(
+            app_dir=app_dir,
+            module="local-demo",
+            metadata=metadata_path,
+            project="local-demo-proj",
+            project_local_path=project_root,
+        )
+    )
+    add_module(app_dir, "local-demo")
+
+    # Rewrite the mapping entry as the bare-string shorthand `- local-demo`.
+    cfg = _load_app_cfg(app_dir)
+    cfg["modules"] = ["local-demo"]
+    (app_dir / "nsx.yml").write_text(yaml.safe_dump(cfg, sort_keys=False), encoding="utf-8")
+
+    remove_module(app_dir, "local-demo")
+
+    cfg_after = _load_yaml(app_dir / "nsx.yml")
+    assert cfg_after["modules"] == []
+    assert not (app_dir / "modules" / "local-demo").exists()
+
+
 def test_build_app_uses_shared_impl_and_triggers_configure_when_needed(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:

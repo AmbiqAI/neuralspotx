@@ -14,7 +14,7 @@ from ..module_registry import (
     _acquire_modules_for_app,
     _remove_vendored_module_from_app,
 )
-from ..nsx_lock import read_lock
+from ..nsx_lock import read_lock, read_lock_file
 from ..project_config import (
     _board_key_for_app,
     _effective_registry,
@@ -200,7 +200,10 @@ def remove_module_impl(
     nsx_cfg["modules"] = [
         m
         for m in nsx_cfg.get("modules", [])
-        if not (isinstance(m, dict) and m.get("name") == module_name)
+        if not (
+            (isinstance(m, dict) and m.get("name") == module_name)
+            or (isinstance(m, str) and m == module_name)
+        )
     ]
     _save_app_cfg(app_dir, nsx_cfg)
 
@@ -219,13 +222,27 @@ def remove_module_impl(
     # for the rolled-back manifest. A ``--local`` / ``--vendored`` entry owns its
     # ``modules/<name>/`` directory outright; a registry-resolved module (including
     # one backed by a local-path project) is cleaned up via the registry helper.
-    if is_in_tree:
-        in_tree_dir = app_dir / "modules" / module_name
-        if in_tree_dir.is_dir():
-            shutil.rmtree(in_tree_dir)
-    else:
-        registry = _effective_registry(_load_registry(), nsx_cfg, app_dir=app_dir)
-        _remove_vendored_module_from_app(app_dir, module_name, registry)
+    #
+    # Dropping the direct dep does not guarantee the module left the closure: it
+    # may still be pulled by the board baseline or transitively by another direct
+    # dependency, in which case the relocked ``nsx.lock`` still records it. Deleting
+    # its directory then would leave ``modules/`` inconsistent with the lock, so we
+    # skip cleanup while any target section still requires the module.
+    still_required = False
+    lock_file = read_lock_file(app_dir)
+    if lock_file is not None:
+        still_required = any(
+            module_name in section.modules for section in lock_file.targets.values()
+        )
+
+    if not still_required:
+        if is_in_tree:
+            in_tree_dir = app_dir / "modules" / module_name
+            if in_tree_dir.is_dir():
+                shutil.rmtree(in_tree_dir)
+        else:
+            registry = _effective_registry(_load_registry(), nsx_cfg, app_dir=app_dir)
+            _remove_vendored_module_from_app(app_dir, module_name, registry)
 
     return [ModuleChange(name=module_name, before=None, after=None, action="removed")]
 
@@ -252,10 +269,20 @@ def update_modules_impl(
         else {}
     )
 
-    if module_name and before_lock is not None and module_name not in before:
-        raise NSXModuleError(
-            f"Module '{module_name}' is not in the app's resolved closure (nsx.lock)"
-        )
+    if module_name:
+        # A module may be scoped to a non-default board via ``modules[].boards``,
+        # so validate the name against every target section's closure rather than
+        # just the default board's lock; otherwise valid board-specific updates
+        # would be rejected before ``lock_app_impl`` can refresh all targets.
+        lock_file = read_lock_file(app_dir)
+        if lock_file is not None:
+            known = {
+                name for section in lock_file.targets.values() for name in section.modules
+            }
+            if module_name not in known:
+                raise NSXModuleError(
+                    f"Module '{module_name}' is not in the app's resolved closure (nsx.lock)"
+                )
 
     if dry_run:
         names = [module_name] if module_name else sorted(before)
