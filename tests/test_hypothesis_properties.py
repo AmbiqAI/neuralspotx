@@ -11,6 +11,7 @@ from hypothesis import strategies as st
 from neuralspotx._errors import NSXConfigError
 from neuralspotx.models._loader import NsxProject
 from neuralspotx.models._project import AppModule, ModuleRegistryOverride, ModuleSource
+from neuralspotx.nsx_lock._constants import LOCK_SCHEMA_VERSION
 from neuralspotx.nsx_lock._kinds import LockKind
 from neuralspotx.nsx_lock._models import NsxLock, ResolvedModule
 
@@ -152,7 +153,7 @@ class TestResolvedModuleRoundTrip:
 
 _nsx_lock_strategy = st.builds(
     NsxLock,
-    schema_version=st.just(3),
+    schema_version=st.just(LOCK_SCHEMA_VERSION),
     generated_at=_safe_text,
     nsx_tool_version=_optional_text,
     manifest_path=st.just("nsx.yml"),
@@ -212,7 +213,7 @@ def _minimal_nsx_mapping(
     board: str = "apollo510_evb",
 ) -> dict:
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "project": {"name": name},
         "target": {"board": board},
         "modules": [],
@@ -225,7 +226,7 @@ class TestNsxProjectSchemaRejection:
         proj = NsxProject.from_mapping(m)
         assert proj.project_name == "my_app"
 
-    @given(bad_version=st.integers().filter(lambda x: x != 1))
+    @given(bad_version=st.integers().filter(lambda x: x != 2))
     @settings(max_examples=50)
     def test_rejects_wrong_schema_version(self, bad_version: int) -> None:
         m = _minimal_nsx_mapping()
@@ -309,7 +310,7 @@ class TestNsxProjectSchemaRejection:
 
 _nsx_project_mapping_strategy = st.fixed_dictionaries(
     {
-        "schema_version": st.just(1),
+        "schema_version": st.just(2),
         "project": st.fixed_dictionaries({"name": _identifier}),
         "target": st.fixed_dictionaries(
             {"board": _identifier},
@@ -425,7 +426,7 @@ class TestModuleRegistryOverrideMerge:
 class TestAppModuleSchemaRejection:
     @given(
         bad_entry=st.one_of(
-            st.text(min_size=1, max_size=10),
+            st.just(""),
             st.integers(),
             st.lists(st.integers(), max_size=3),
             st.just(None),

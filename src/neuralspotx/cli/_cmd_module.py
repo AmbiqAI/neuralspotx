@@ -150,6 +150,8 @@ def cmd_module_add(args: argparse.Namespace) -> None:
         args.module,
         local=getattr(args, "local", False),
         vendored=getattr(args, "vendored", False),
+        path=getattr(args, "path", None),
+        boards=tuple(getattr(args, "board", None) or ()),
         dry_run=args.dry_run,
     )
     _render_module_changes(changes, requested=args.module, verb="add")

@@ -127,6 +127,7 @@ nav:
       - Overview: architecture/overview.md
       - App Generation Flow: architecture/app-generation-flow.md
       - Design Decisions: architecture/design-decisions.md
+      - Dependency Model: architecture/dependency-model.md
       - Module Model: architecture/module-model.md
       - Metadata Model: architecture/metadata-model.md
       - Multi-Target & Portability: architecture/multi-target-portability.md

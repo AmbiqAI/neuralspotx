@@ -109,8 +109,12 @@ Recommended interpretation:
 
 ## Source Modes for Modules
 
-NSX supports module sources in these forms:
+A module entry's `source:` field selects where its contents come from:
 
-1. curated source repos or local repo snapshots
-2. local filesystem path source (registered per app)
-3. vendored app-local copies after `nsx create-app` or `nsx module add`
+1. registry default (omitted `source:`) — git project or packaged copy
+2. `source: { path: <p> }` — linked local filesystem directory, mirrored on sync
+3. `source: { vendored: true }` — app-local copy committed in the app's git
+
+See [Dependency Model](dependency-model.md) for how `source:` fits the single
+`modules:` list, and [Lock & Sync](../user-guide/lock-and-sync.md) for the lock
+kind and sync behaviour of each.

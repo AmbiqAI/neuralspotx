@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import copy
-from collections.abc import Iterable
 from dataclasses import dataclass
 from typing import Any
 
@@ -93,10 +92,23 @@ class ModuleEntry:
 
 @dataclass(frozen=True)
 class ModuleSource:
-    """User-facing ``source`` declaration from an app module entry."""
+    """User-facing ``source`` declaration from an app module entry.
+
+    A dependency's *source* is where it comes from. Exactly one kind applies:
+
+    * **registry** (default) -- resolved from the module registry; the entry
+      carries no ``source`` block (an optional ``project`` / ``revision`` pin
+      lives on the :class:`AppModule` itself).
+    * **path** -- a local / editable checkout (``source: {path: ../foo}``).
+    * **vendored** -- committed in-tree, never touched by sync
+      (``source: {vendored: true}``).
+    * **git** -- a pinned git remote (``source: {git: <url>, rev: <ref>}``).
+    """
 
     path: str | None = None
     vendored: bool = False
+    git: str | None = None
+    rev: str | None = None
     extra: dict[str, Any] | None = None
 
     @classmethod
@@ -104,10 +116,18 @@ class ModuleSource:
         if not isinstance(data, dict):
             return cls()
         path = data.get("path")
-        extra = {k: copy.deepcopy(v) for k, v in data.items() if k not in {"path", "vendored"}}
+        git = data.get("git")
+        rev = data.get("rev")
+        extra = {
+            k: copy.deepcopy(v)
+            for k, v in data.items()
+            if k not in {"path", "vendored", "git", "rev"}
+        }
         return cls(
             path=path if isinstance(path, str) and path else None,
             vendored=data.get("vendored") is True,
+            git=git if isinstance(git, str) and git else None,
+            rev=rev if isinstance(rev, str) and rev else None,
             extra=extra or None,
         )
 
@@ -117,27 +137,60 @@ class ModuleSource:
             out["path"] = self.path
         if self.vendored:
             out["vendored"] = True
+        if self.git:
+            out["git"] = self.git
+        if self.rev:
+            out["rev"] = self.rev
         return out
+
+    @property
+    def kind(self) -> str:
+        """The single source kind: ``path`` | ``vendored`` | ``git`` | ``registry``."""
+
+        if self.path is not None:
+            return "path"
+        if self.vendored:
+            return "vendored"
+        if self.git is not None:
+            return "git"
+        return "registry"
 
 
 @dataclass(frozen=True)
 class AppModule:
-    """One module entry from an app ``nsx.yml`` manifest."""
+    """One dependency entry from an app ``nsx.yml`` ``modules:`` list.
+
+    A dependency is ``name`` + an optional **source** (where it comes from,
+    see :class:`ModuleSource`) + an optional **boards** filter (which targets
+    it applies to). An empty ``boards`` tuple means *all* supported targets;
+    a non-empty tuple scopes the dependency to those boards (validated as a
+    subset of ``targets.supported`` by the loader).
+    """
 
     name: str
     project: str | None = None
     revision: str | None = None
     local: bool = False
     source: ModuleSource = ModuleSource()
+    boards: tuple[str, ...] = ()
     extra: dict[str, Any] | None = None
 
     @classmethod
     def from_mapping(
         cls, index: int, data: dict[str, Any], *, origin: str = "nsx.yml"
     ) -> AppModule:
+        # Bare-string shorthand: ``- nsx-timer`` is sugar for ``- {name: nsx-timer}``
+        # (cargo's ``serde = "1"`` vs ``serde = { version = "1" }``).
+        if isinstance(data, str):
+            if not data:
+                raise NSXConfigError(
+                    f"{origin}: modules[{index}] must be a non-empty module name",
+                    field=f"modules[{index}]",
+                )
+            return cls(name=data)
         if not isinstance(data, dict):
             raise NSXConfigError(
-                f"{origin}: modules[{index}] must be a mapping",
+                f"{origin}: modules[{index}] must be a module name or a mapping",
                 field=f"modules[{index}]",
             )
         name = data.get("name")
@@ -149,10 +202,21 @@ class AppModule:
         project = data.get("project")
         revision = data.get("revision")
         source_data = data.get("source")
+        boards_data = data.get("boards")
+        boards: tuple[str, ...] = ()
+        if boards_data is not None:
+            if not isinstance(boards_data, list) or not all(
+                isinstance(b, str) and b for b in boards_data
+            ):
+                raise NSXConfigError(
+                    f"{origin}: modules[{index}].boards must be a list of board-name strings",
+                    field=f"modules[{index}].boards",
+                )
+            boards = tuple(boards_data)
         extra = {
             k: copy.deepcopy(v)
             for k, v in data.items()
-            if k not in {"name", "project", "revision", "local", "source"}
+            if k not in {"name", "project", "revision", "local", "source", "boards"}
         }
         return cls(
             name=name,
@@ -162,6 +226,7 @@ class AppModule:
             source=ModuleSource.from_mapping(
                 source_data if isinstance(source_data, dict) else None
             ),
+            boards=boards,
             extra=extra or None,
         )
 
@@ -174,8 +239,31 @@ class AppModule:
         return self.source.vendored
 
     @property
+    def is_git(self) -> bool:
+        return self.source.git is not None
+
+    @property
     def is_opaque(self) -> bool:
         return self.is_local or self.is_vendored
+
+    @property
+    def source_kind(self) -> str:
+        """The dependency's source kind: ``path`` | ``vendored`` | ``git`` | ``registry``."""
+
+        if self.local and self.source.path is None:
+            return "path"
+        return self.source.kind
+
+    def applies_to(self, board: str | None) -> bool:
+        """True when this dependency applies to *board* (or to all targets).
+
+        An empty ``boards`` filter (or a ``None`` board) means the dependency
+        applies everywhere; otherwise it applies only to the listed boards.
+        """
+
+        if not self.boards or board is None:
+            return True
+        return board in self.boards
 
     def to_mapping(self) -> dict[str, Any]:
         out = copy.deepcopy(self.extra) if self.extra else {}
@@ -189,6 +277,8 @@ class AppModule:
         source = self.source.to_mapping()
         if source:
             out["source"] = source
+        if self.boards:
+            out["boards"] = list(self.boards)
         return out
 
 
@@ -248,65 +338,6 @@ def _starter_profile_default(board: str) -> str:
 
 
 @dataclass(frozen=True)
-class RequiredModule:
-    """An additive ``requires:`` entry — a module layered on the board profile.
-
-    ``requires`` declares modules an app needs *on top of* its board's derived
-    ``<board>_minimal`` profile (e.g. USB or timer modules). Entries are
-    additive only: a bare ``name`` is resolved from the registry; an explicit
-    ``project`` / ``revision`` pins it (and must agree with any
-    ``module_registry`` override, per the alignment guard).
-    """
-
-    name: str
-    project: str | None = None
-    revision: str | None = None
-
-    @classmethod
-    def from_entry(cls, entry: Any, *, field: str, origin: str = "nsx.yml") -> RequiredModule:
-        if isinstance(entry, str):
-            if not entry:
-                raise NSXConfigError(f"{origin}: '{field}' must be a non-empty string", field=field)
-            return cls(name=entry)
-        if isinstance(entry, dict):
-            name = entry.get("name")
-            if not isinstance(name, str) or not name:
-                raise NSXConfigError(f"{origin}: '{field}.name' must be a string", field=field)
-            project = entry.get("project")
-            revision = entry.get("revision")
-            return cls(
-                name=name,
-                project=project if isinstance(project, str) and project else None,
-                revision=revision if isinstance(revision, str) and revision else None,
-            )
-        raise NSXConfigError(
-            f"{origin}: '{field}' must be a module name or a mapping, got {type(entry).__name__}",
-            field=field,
-        )
-
-    def to_mapping(self) -> dict[str, str]:
-        out: dict[str, str] = {"name": self.name}
-        if self.project:
-            out["project"] = self.project
-        if self.revision:
-            out["revision"] = self.revision
-        return out
-
-
-def _dedupe_requires(items: Iterable[RequiredModule]) -> tuple[RequiredModule, ...]:
-    """Dedupe ``requires`` entries by name, preserving first-seen order."""
-
-    seen: set[str] = set()
-    out: list[RequiredModule] = []
-    for item in items:
-        if item.name in seen:
-            continue
-        seen.add(item.name)
-        out.append(item)
-    return tuple(out)
-
-
-@dataclass(frozen=True)
 class ResolvedTarget:
     """A fully-resolved build target derived from an app manifest.
 
@@ -315,16 +346,12 @@ class ResolvedTarget:
     the board's derived starter profile (``<board>_minimal``); ``soc`` and
     ``toolchain`` are ``None`` when the manifest leaves them implicit, to be
     resolved from the board descriptor / global default downstream.
-    ``requires`` is the complete set of additive modules for this target
-    (global ``requires`` merged with the target's own), layered on the
-    board profile during resolution.
     """
 
     board: str
     soc: str | None = None
     profile: str | None = None
     toolchain: str | None = None
-    requires: tuple[RequiredModule, ...] = ()
 
 
 @dataclass(frozen=True)
@@ -372,19 +399,6 @@ class AppConfig:
         targets = self.raw.get("targets")
         return targets if isinstance(targets, dict) else None
 
-    def _global_requires(self) -> tuple[RequiredModule, ...]:
-        """Top-level ``requires:`` entries, applied to every target."""
-
-        raw = self.raw.get("requires")
-        if raw is None:
-            return ()
-        if not isinstance(raw, list):
-            raise NSXConfigError("nsx.yml: 'requires' must be a list", field="requires")
-        return _dedupe_requires(
-            RequiredModule.from_entry(entry, field=f"requires[{idx}]")
-            for idx, entry in enumerate(raw)
-        )
-
     def _targets_from_singular(self) -> dict[str, ResolvedTarget]:
         target = self.target
         board = target.get("board")
@@ -402,7 +416,6 @@ class AppConfig:
                     else _starter_profile_default(board)
                 ),
                 toolchain=self.toolchain,
-                requires=self._global_requires(),
             )
         }
 
@@ -410,7 +423,6 @@ class AppConfig:
         supported = block.get("supported", [])
         singular = self.target
         singular_board = singular.get("board") if isinstance(singular, dict) else None
-        global_requires = self._global_requires()
 
         entries: dict[str, dict[str, Any]] = {}
         if isinstance(supported, list):
@@ -442,21 +454,6 @@ class AppConfig:
                 soc = singular.get("soc")
             profile = cfg.get("profile")
             toolchain = cfg.get("toolchain")
-            target_requires = cfg.get("requires")
-            if target_requires is None:
-                board_requires: tuple[RequiredModule, ...] = ()
-            elif isinstance(target_requires, list):
-                board_requires = tuple(
-                    RequiredModule.from_entry(
-                        entry, field=f"targets.supported.{board}.requires[{idx}]"
-                    )
-                    for idx, entry in enumerate(target_requires)
-                )
-            else:
-                raise NSXConfigError(
-                    f"nsx.yml: targets.supported.{board}.requires must be a list",
-                    field=f"targets.supported.{board}.requires",
-                )
             out[board] = ResolvedTarget(
                 board=board,
                 soc=soc if isinstance(soc, str) and soc else None,
@@ -468,7 +465,6 @@ class AppConfig:
                 toolchain=(
                     toolchain if isinstance(toolchain, str) and toolchain else self.toolchain
                 ),
-                requires=_dedupe_requires((*global_requires, *board_requires)),
             )
         return out
 
@@ -488,9 +484,9 @@ class AppConfig:
     def is_multi_target(self) -> bool:
         """True when the app declares an explicit ``targets:`` block.
 
-        Multi-target apps key their committed lock per board
-        (``nsx.<board>.lock``); single-target apps keep the legacy
-        unsuffixed ``nsx.lock``.
+        All apps commit a single combined ``nsx.lock`` whose ``targets:``
+        map carries one section per board; this flag only reflects
+        whether the manifest used an explicit ``targets:`` block.
         """
 
         return self._explicit_targets_block() is not None
@@ -547,3 +543,27 @@ class AppConfig:
 
     def opaque_modules(self) -> dict[str, AppModule]:
         return {module.name: module for module in self.modules if module.is_opaque}
+
+    # --- Unified dependency model (schema v2) -------------------------
+
+    @property
+    def baseline_disabled(self) -> bool:
+        """True when ``baseline: none`` opts out of board-profile seeding.
+
+        With the baseline disabled, the ``modules:`` list is the authoritative
+        closure for the app rather than additive extras layered on the board's
+        derived profile.
+        """
+
+        return str(self.raw.get("baseline") or "").strip().lower() == "none"
+
+    def direct_modules(self, board: str | None = None) -> tuple[AppModule, ...]:
+        """Declared direct dependencies that apply to *board*.
+
+        Filters the ``modules:`` list by each entry's ``boards`` scope: an
+        entry with no ``boards`` applies to every target; an entry with a
+        ``boards`` list applies only to those boards. A ``None`` board returns
+        every declared dependency (used where the active board is irrelevant).
+        """
+
+        return tuple(module for module in self.modules if module.applies_to(board))

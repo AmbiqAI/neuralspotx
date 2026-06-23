@@ -282,9 +282,9 @@ jobs:
           fail=0
           for app in examples/*/; do
             [ -f "$app/nsx.yml" ] || continue
-            # Multi-target apps commit per-board nsx.<board>.lock (no plain
-            # nsx.lock); accept either so they are not silently skipped.
-            compgen -G "${app}nsx*.lock" >/dev/null || continue
+            # Every app commits a single combined nsx.lock (with a
+            # targets: map); skip apps that have not been locked yet.
+            [ -f "${app}nsx.lock" ] || continue
             echo "::group::$app"
             # `nsx sync` populates modules/ at the SHAs recorded in
             # nsx.lock (no constraint re-resolution needed since the
@@ -347,9 +347,9 @@ jobs:
         run: |
           for app in examples/*/; do
             [ -f "$app/nsx.yml" ] || continue
-            # Multi-target apps commit per-board nsx.<board>.lock (no plain
-            # nsx.lock); accept either so they are not silently skipped.
-            compgen -G "${app}nsx*.lock" >/dev/null || continue
+            # Every app commits a single combined nsx.lock (with a
+            # targets: map); skip apps that have not been locked yet.
+            [ -f "${app}nsx.lock" ] || continue
             echo "::group::sync $app"
             uv run --group test nsx sync --app-dir "$app"
             echo "::endgroup::"

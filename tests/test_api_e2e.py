@@ -26,6 +26,7 @@ from neuralspotx import (
     create_app,
     flash_app,
     init_module,
+    lock_app,
     register_module,
     remove_module,
     update_modules,
@@ -718,6 +719,22 @@ def test_full_clean_removes_build_directory(tmp_path: Path) -> None:
     assert not build_dir.exists()
 
 
+def test_no_bootstrap_app_locks_to_empty_closure(tmp_path: Path) -> None:
+    # `--no-bootstrap` opts out of the board profile baseline by writing
+    # `baseline: none`, so the app's `modules:` list is the authoritative
+    # closure. An empty list must therefore lock to an empty closure rather
+    # than re-seeding the board baseline.
+    app_dir = tmp_path / "hello_bare"
+    create_app(AppCreateRequest(app_dir=app_dir, board="apollo510_evb", no_bootstrap=True))
+
+    cfg = _load_yaml(app_dir / "nsx.yml")
+    assert cfg["modules"] == []
+    assert cfg["baseline"] == "none"
+
+    lock = lock_app(app_dir)
+    assert dict(lock.modules) == {}
+
+
 def test_local_module_round_trip_add_update_remove(tmp_path: Path) -> None:
     create_app(
         AppCreateRequest(
@@ -753,6 +770,46 @@ def test_local_module_round_trip_add_update_remove(tmp_path: Path) -> None:
     remove_module(app_dir, "local-demo")
     cfg = _load_yaml(app_dir / "nsx.yml")
     assert cfg["modules"] == []
+    assert not (app_dir / "modules" / "local-demo").exists()
+
+
+def test_remove_module_drops_bare_string_entry(tmp_path: Path) -> None:
+    """`nsx module remove` must drop bare-string `modules:` entries, not only mappings.
+
+    With the `modules: [- local-demo]` shorthand the manifest entry is a plain
+    string, so a name-keyed mapping filter would silently leave it behind and the
+    dependency would resolve again on the next lock.
+    """
+    create_app(
+        AppCreateRequest(
+            app_dir=tmp_path / "hello_bare_remove", board="apollo510_evb", no_bootstrap=True
+        )
+    )
+
+    app_dir = tmp_path / "hello_bare_remove"
+    project_root = tmp_path / "local-projects" / "local-demo"
+    metadata_path = _write_local_module_project(project_root)
+
+    register_module(
+        ModuleRegisterRequest(
+            app_dir=app_dir,
+            module="local-demo",
+            metadata=metadata_path,
+            project="local-demo-proj",
+            project_local_path=project_root,
+        )
+    )
+    add_module(app_dir, "local-demo")
+
+    # Rewrite the mapping entry as the bare-string shorthand `- local-demo`.
+    cfg = _load_app_cfg(app_dir)
+    cfg["modules"] = ["local-demo"]
+    (app_dir / "nsx.yml").write_text(yaml.safe_dump(cfg, sort_keys=False), encoding="utf-8")
+
+    remove_module(app_dir, "local-demo")
+
+    cfg_after = _load_yaml(app_dir / "nsx.yml")
+    assert cfg_after["modules"] == []
     assert not (app_dir / "modules" / "local-demo").exists()
 
 

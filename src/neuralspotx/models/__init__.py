@@ -27,7 +27,6 @@ from ._project import (
     ModuleRegistryOverride,
     ModuleSource,
     ProjectEntry,
-    RequiredModule,
     ResolvedTarget,
 )
 
@@ -49,7 +48,6 @@ __all__ = [
     "ModuleRegistryOverride",
     "ModuleSource",
     "NsxProject",
-    "RequiredModule",
     "OutdatedModule",
     "OutdatedReport",
     "OutdatedSkip",

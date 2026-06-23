@@ -19,15 +19,15 @@ targets:
     - apollo510_evb
     - apollo510b_evb
     - apollo330mP_evb
-requires:            # additive modules layered on every target's board profile
+modules:               # direct deps, additive on every target's board profile
   - nsx-timer
 ```
 
 - The resolved module closure is **not** inlined; it is expanded from each
   board's derived `<board>_minimal` profile at lock time (profile-seeded
-  resolution).
-- Each supported board commits its own `nsx.<board>.lock`, so every target
-  is independently reproducible.
+  resolution). See [Dependency Model](dependency-model.md) for the full model.
+- Each supported board has its own section in the combined `nsx.lock`, so
+  every target is independently reproducible.
 - `nsx build` uses `targets.default`; `nsx build --board <sibling>` selects
   another and builds into `build/<board>/`.
 

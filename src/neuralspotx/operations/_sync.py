@@ -135,7 +135,7 @@ def _sync_app_impl_unlocked(
     if lock is None:
         if frozen:
             raise NSXConfigError(
-                f"{lock_path(app_dir, board_key)} not found. Run `nsx lock` first (or drop --frozen)."
+                f"{lock_path(app_dir)} not found. Run `nsx lock` first (or drop --frozen)."
             )
         # No lock yet — generate one. Unlike the v2 design, this is
         # safe to run on a fresh checkout: ``_build_lock_for_app``
@@ -155,10 +155,10 @@ def _sync_app_impl_unlocked(
         # being synced.
         nsx_cfg = _apply_active_target(nsx_cfg, app_cfg.resolve_target(board))
     base_registry = _load_registry()
-    # Lean manifests omit the resolved closure and ``module_registry``
-    # overrides; re-seed them (mirroring ``_build_lock_for_app``) so module
-    # resolution and the regenerated CMake glue below can find additive
-    # ``requires`` modules whose metadata lives in the board family catalog.
+    # ``modules:`` lists only the app's direct deps; re-seed the full closure
+    # and ``module_registry`` overrides (mirroring ``_build_lock_for_app``) so
+    # module resolution and the regenerated CMake glue below can find direct
+    # deps whose metadata lives in the board family catalog.
     nsx_cfg = expand_profile_seeds(nsx_cfg, base_registry)
     registry = _effective_registry(base_registry, nsx_cfg, app_dir=app_dir)
     validate_app_module_alignment(nsx_cfg, registry)

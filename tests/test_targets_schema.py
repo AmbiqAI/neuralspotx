@@ -25,7 +25,7 @@ def _cfg(raw: dict) -> AppConfig:
 
 def test_singular_target_derives_one_resolved_target() -> None:
     cfg = _cfg({
-        "schema_version": 1,
+        "schema_version": 2,
         "project": {"name": "demo"},
         "target": {"board": "apollo510_evb", "soc": "apollo510"},
         "toolchain": "arm-none-eabi-gcc",
@@ -44,7 +44,7 @@ def test_singular_target_derives_one_resolved_target() -> None:
 
 def test_singular_target_honours_explicit_profile() -> None:
     cfg = _cfg({
-        "schema_version": 1,
+        "schema_version": 2,
         "project": {"name": "demo"},
         "target": {"board": "apollo510_evb"},
         "profile": "apollo510_evb_custom",
@@ -53,7 +53,7 @@ def test_singular_target_honours_explicit_profile() -> None:
 
 
 def test_no_target_resolves_empty() -> None:
-    cfg = _cfg({"schema_version": 1, "project": {"name": "demo"}})
+    cfg = _cfg({"schema_version": 2, "project": {"name": "demo"}})
     assert cfg.targets() == {}
     assert cfg.default_board() is None
     with pytest.raises(NSXConfigError):
@@ -65,7 +65,7 @@ def test_no_target_resolves_empty() -> None:
 
 def test_targets_supported_as_list_defaults_profiles() -> None:
     cfg = _cfg({
-        "schema_version": 1,
+        "schema_version": 2,
         "project": {"name": "demo"},
         "toolchain": "arm-none-eabi-gcc",
         "targets": {
@@ -86,7 +86,7 @@ def test_targets_supported_as_list_defaults_profiles() -> None:
 
 def test_targets_supported_as_mapping_with_overrides() -> None:
     cfg = _cfg({
-        "schema_version": 1,
+        "schema_version": 2,
         "project": {"name": "demo"},
         "toolchain": "arm-none-eabi-gcc",
         "targets": {
@@ -110,7 +110,7 @@ def test_targets_supported_as_mapping_with_overrides() -> None:
 
 def test_default_board_falls_back_to_first_supported() -> None:
     cfg = _cfg({
-        "schema_version": 1,
+        "schema_version": 2,
         "project": {"name": "demo"},
         "targets": {"supported": ["apollo510_evb", "apollo510b_evb"]},
     })
@@ -119,7 +119,7 @@ def test_default_board_falls_back_to_first_supported() -> None:
 
 def test_resolve_unsupported_board_raises() -> None:
     cfg = _cfg({
-        "schema_version": 1,
+        "schema_version": 2,
         "project": {"name": "demo"},
         "targets": {"supported": ["apollo510_evb"]},
     })
@@ -129,7 +129,7 @@ def test_resolve_unsupported_board_raises() -> None:
 
 def test_block_inherits_singular_soc_for_default_board() -> None:
     cfg = _cfg({
-        "schema_version": 1,
+        "schema_version": 2,
         "project": {"name": "demo"},
         "target": {"board": "apollo510_evb", "soc": "apollo510"},
         "targets": {"supported": ["apollo510_evb", "apollo510b_evb"]},
@@ -144,7 +144,7 @@ def test_block_inherits_singular_soc_for_default_board() -> None:
 
 def test_loader_accepts_targets_block() -> None:
     proj = NsxProject.from_mapping({
-        "schema_version": 1,
+        "schema_version": 2,
         "project": {"name": "demo"},
         "targets": {
             "default": "apollo510_evb",
@@ -168,63 +168,48 @@ def test_loader_accepts_targets_block() -> None:
 def test_loader_rejects_malformed_targets(targets: dict) -> None:
     with pytest.raises(NSXConfigError):
         NsxProject.from_mapping({
-            "schema_version": 1,
+            "schema_version": 2,
             "project": {"name": "demo"},
             "targets": targets,
         })
 
 
-def test_loader_accepts_requires() -> None:
-    proj = NsxProject.from_mapping({
-        "schema_version": 1,
-        "project": {"name": "demo"},
-        "targets": {
-            "default": "apollo510_evb",
-            "supported": {
-                "apollo510_evb": {"requires": ["nsx-ambiq-usb"]},
-                "apollo510b_evb": {},
-            },
-        },
-        "requires": ["nsx-usb", {"name": "nsx-timer", "project": "p", "revision": "r"}],
-    })
-    assert proj.default_board == "apollo510_evb"
-
-
-@pytest.mark.parametrize(
-    "raw",
-    [
-        {"requires": "nsx-usb"},  # not a list
-        {"requires": [123]},  # non-string entry
-        {"requires": [{"project": "p"}]},  # mapping missing name
-        {"requires": [{"name": "nsx-usb", "project": 5}]},  # non-string project
-    ],
-)
-def test_loader_rejects_malformed_requires(raw: dict) -> None:
-    with pytest.raises(NSXConfigError):
+def test_loader_rejects_top_level_requires() -> None:
+    # The additive ``requires:`` field was removed in schema v2; dependencies
+    # live under a single ``modules:`` list. The loader rejects it outright.
+    with pytest.raises(NSXConfigError, match="no longer supported") as exc_info:
         NsxProject.from_mapping({
-            "schema_version": 1,
-            "project": {"name": "demo"},
-            "targets": {"supported": ["apollo510_evb"]},
-            **raw,
-        })
-
-
-def test_loader_rejects_modules_and_requires_together() -> None:
-    with pytest.raises(NSXConfigError, match="mutually exclusive"):
-        NsxProject.from_mapping({
-            "schema_version": 1,
+            "schema_version": 2,
             "project": {"name": "demo"},
             "target": {"board": "apollo510_evb"},
-            "modules": [{"name": "nsx-core"}],
             "requires": ["nsx-usb"],
         })
+    assert exc_info.value.field == "requires"
+
+
+def test_loader_rejects_per_target_requires() -> None:
+    # A per-target ``requires:`` is equally rejected; per-board scoping is now
+    # expressed with a ``boards:`` filter on a ``modules:`` entry.
+    with pytest.raises(NSXConfigError, match="no longer supported") as exc_info:
+        NsxProject.from_mapping({
+            "schema_version": 2,
+            "project": {"name": "demo"},
+            "targets": {
+                "default": "apollo510_evb",
+                "supported": {
+                    "apollo510_evb": {"requires": ["nsx-ambiq-usb"]},
+                    "apollo510b_evb": {},
+                },
+            },
+        })
+    assert exc_info.value.field == "targets.supported.apollo510_evb.requires"
 
 
 def test_resolve_target_tolerates_noncanonical_board_spelling() -> None:
     # The build path resolves with a normalize_board-d name; resolution must
     # still match a target keyed by the raw (here differently-cased) spelling.
     cfg = _cfg({
-        "schema_version": 1,
+        "schema_version": 2,
         "project": {"name": "demo"},
         "targets": {"supported": ["apollo510_evb"]},
     })
@@ -240,7 +225,7 @@ def test_configure_uses_per_board_target_toolchain(
     from neuralspotx.constants import SUPPORTED_TOOLCHAINS
 
     (tmp_path / "nsx.yml").write_text(
-        "schema_version: 1\n"
+        "schema_version: 2\n"
         "project:\n  name: demo\n"
         "toolchain: arm-none-eabi-gcc\n"
         "targets:\n"
@@ -274,7 +259,7 @@ def test_configure_falls_back_to_top_level_toolchain_for_unknown_board(
     from neuralspotx.constants import SUPPORTED_TOOLCHAINS
 
     (tmp_path / "nsx.yml").write_text(
-        "schema_version: 1\n"
+        "schema_version: 2\n"
         "project:\n  name: demo\n"
         "toolchain: armclang\n"
         "targets:\n"

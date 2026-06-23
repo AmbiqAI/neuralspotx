@@ -186,6 +186,8 @@ class ModuleChangeRequest:
     dry_run: bool = False
     local: bool = False
     vendored: bool = False
+    path: str | None = None
+    boards: tuple[str, ...] = ()
 
 
 @dataclass(slots=True)

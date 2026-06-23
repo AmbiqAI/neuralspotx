@@ -1,4 +1,4 @@
-schema_version: 1
+schema_version: 2
 project:
   name: freertos_blinky
 targets:
@@ -11,10 +11,8 @@ targets:
     - apollo4p_blue_kxr_evb
 toolchain: arm-none-eabi-gcc
 channel: stable
-requires:
-  - name: nsx-freertos
-    project: nsx-ambiq-sdk
-    revision: main
+modules:
+  - nsx-freertos
 features: {}
 module_registry:
   projects:

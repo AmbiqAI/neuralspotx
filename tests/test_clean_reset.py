@@ -28,7 +28,8 @@ def test_reset_removes_build_dirs_modules_and_lock(tmp_path: Path) -> None:
     modules.mkdir()
     (modules / "nsx-core").mkdir()
     (modules / "nsx-core" / "CMakeLists.txt").write_text("# pinned\n")
-    lock = app / ".nsx.sync.lock"
+    lock = app / ".nsx" / "sync.lock"
+    lock.parent.mkdir(exist_ok=True)
     lock.write_text("")
     # Bring lock mtime forward so synced module files are not flagged dirty.
     os.utime(lock, None)
@@ -50,7 +51,8 @@ def test_reset_refuses_when_modules_dirty(tmp_path: Path) -> None:
     modules.mkdir(parents=True)
     pinned = modules / "CMakeLists.txt"
     pinned.write_text("# pinned\n")
-    lock = app / ".nsx.sync.lock"
+    lock = app / ".nsx" / "sync.lock"
+    lock.parent.mkdir(exist_ok=True)
     lock.write_text("")
     # Backdate the lock so the pinned file is "newer" => dirty.
     old = lock.stat().st_mtime - 60
@@ -69,7 +71,8 @@ def test_reset_force_overrides_dirty_check(tmp_path: Path) -> None:
     modules = app / "modules" / "nsx-core"
     modules.mkdir(parents=True)
     (modules / "CMakeLists.txt").write_text("# locally edited\n")
-    lock = app / ".nsx.sync.lock"
+    lock = app / ".nsx" / "sync.lock"
+    lock.parent.mkdir(exist_ok=True)
     lock.write_text("")
     old = lock.stat().st_mtime - 60
     os.utime(lock, (old, old))

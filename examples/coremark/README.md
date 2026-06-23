@@ -13,7 +13,8 @@ unmodified across Apollo5 and Apollo4 targets.
 > `power_benchmark` example for the Joulescope-based power workflow.
 
 It is a **multi-target** example: a single lean `nsx.yml` declares a
-`targets:` block, and each board commits its own `nsx.<board>.lock`.
+`targets:` block, and the resolved closure for every board is recorded in
+one combined `nsx.lock`.
 
 | Target | SoC | Core | Hardware |
 |--------|-----|------|----------|
@@ -74,7 +75,7 @@ from the linked `coremark` ELF via `nm`/`readelf`.)
 
 ## Cleaning Up
 
-Nothing under `build/`, `modules/`, or `.nsx.sync.lock` is source-controlled —
+Nothing under `build/`, `modules/`, or `.nsx/` is source-controlled —
 it is all re-created by `nsx configure`/`nsx build`.
 
 ```bash
@@ -90,7 +91,7 @@ nsx clean --app-dir . --reset --force # also discard local edits under modules/
 coremark/
 ├── CMakeLists.txt          App build — CoreMark sources + NSX modules
 ├── nsx.yml                 Lean multi-target manifest (targets + requires)
-├── nsx.<board>.lock        Per-board resolved module locks
+├── nsx.lock                Combined resolved module locks (targets: map)
 ├── boards/                 Vendored board definitions (one dir per target)
 ├── cmake/nsx/              NSX CMake support (toolchains, modules, helpers)
 ├── modules/                NSX module sources (app-local, gitignored)

@@ -3,24 +3,20 @@
 from __future__ import annotations
 
 import copy
+import shutil
 from pathlib import Path
+from typing import Any
 
 from .._errors import NSXConfigError, NSXModuleError, NSXResolutionError
-from ..constants import DEFAULT_TOOLCHAIN
 from ..metadata import registry_entry_for_module, validate_nsx_module_metadata
-from ..models import ModuleChange, ModuleEntry, ProjectEntry
+from ..models import AppConfig, ModuleChange, ModuleEntry, ProjectEntry
 from ..module_registry import (
     _acquire_modules_for_app,
-    _load_module_metadata,
-    _local_module_names,
-    _module_dependents,
-    _module_names_from_nsx,
     _remove_vendored_module_from_app,
-    _resolve_module_closure,
-    _update_module_clone,
-    _update_nsx_cfg_modules,
 )
+from ..nsx_lock import read_lock, read_lock_file
 from ..project_config import (
+    _board_key_for_app,
     _effective_registry,
     _load_app_cfg,
     _load_registry,
@@ -28,12 +24,23 @@ from ..project_config import (
     _read_yaml,
     _registry_project_entry,
     _save_app_cfg,
-    _unique_preserving_order,
     _write_app_module_file,
     _write_modules_gitignore,
 )
 from ._common import _scaffold_vendored_module
 from ._lock import lock_app_impl
+
+
+def _app_has_lock(app_dir: Path) -> bool:
+    """True when the app already has a lock file on disk.
+
+    Every app commits a single combined ``nsx.lock`` (with a ``targets:``
+    map). ``add`` / ``remove`` only refresh the lock when one already
+    exists so a manifest edit on an unlocked app stays offline until the
+    user runs ``nsx lock``.
+    """
+
+    return (app_dir / "nsx.lock").exists() or any(app_dir.glob("nsx.*.lock"))
 
 
 def _safe_registry_revision(name: str, registry: dict) -> str | None:
@@ -56,108 +63,104 @@ def add_module_impl(
     *,
     local: bool = False,
     vendored: bool = False,
+    path: str | None = None,
+    boards: tuple[str, ...] = (),
     dry_run: bool = False,
 ) -> list[ModuleChange]:
-    """Enable a module for an app and clone/copy the resolved closure.
+    """Add a direct dependency to an app's ``modules:`` list.
 
-    Args:
-        local: Mark as ``local: true`` in nsx.yml. Module lives inside
-            the app tree (``modules/<name>/``), is mirrored from an
-            external path, and is gitignored.
-        vendored: Mark with ``source: { vendored: true }`` in nsx.yml.
-            Module lives inside the app tree (``modules/<name>/``), is
-            committed in the app's git, and is never touched by ``nsx
-            sync``. A minimal ``nsx-module.yaml`` and ``CMakeLists.txt``
-            are scaffolded if absent.
+    The ``modules:`` list holds only an app's *direct* dependencies; the full
+    closure is recomputed from the board profile + these direct deps at lock
+    time. This appends a single entry and (when the app is already locked)
+    refreshes the lock so the new dependency is resolved and materialized.
+
+    Source kinds (mutually exclusive):
+        local: ``local: true`` -- a bare in-tree module under
+            ``modules/<name>/`` that is gitignored and bypasses the registry.
+        vendored: ``source: { vendored: true }`` -- committed in-tree under
+            ``modules/<name>/`` and never touched by ``nsx sync``. A minimal
+            ``nsx-module.yaml`` / ``CMakeLists.txt`` is scaffolded if absent.
+        path: ``source: { path: <p> }`` -- an external linked checkout.
+        (none): resolved from the module registry.
+
+    boards: optional per-entry filter scoping the dependency to those boards
+        (a subset of the app's supported targets); empty means all targets.
     """
 
-    if local and vendored:
-        raise NSXConfigError("--local and --vendored are mutually exclusive")
+    selected = [
+        flag
+        for flag, on in (("--local", local), ("--vendored", vendored), ("--path", bool(path)))
+        if on
+    ]
+    if len(selected) > 1:
+        raise NSXConfigError(f"{' and '.join(selected)} are mutually exclusive")
 
     nsx_cfg = _load_app_cfg(app_dir)
+    app_cfg = AppConfig.from_mapping(nsx_cfg)
+    declared = {module.name for module in app_cfg.modules}
+    if module_name in declared:
+        raise NSXModuleError(
+            f"Module '{module_name}' is already a direct dependency in nsx.yml"
+        )
+
+    if boards:
+        supported = set(app_cfg.targets())
+        unknown = sorted(b for b in boards if b not in supported)
+        if supported and unknown:
+            listed = ", ".join(sorted(supported))
+            raise NSXConfigError(
+                f"--board {', '.join(unknown)} not in the app's supported targets "
+                f"({listed})"
+            )
+
+    entry: dict[str, Any] = {"name": module_name}
+    if local:
+        entry["local"] = True
+    elif vendored:
+        entry["source"] = {"vendored": True}
+    elif path:
+        entry["source"] = {"path": path}
+    if boards:
+        entry["boards"] = list(boards)
+
+    if dry_run:
+        return [
+            ModuleChange(name=module_name, before=None, after=None, action="added", dry_run=True)
+        ]
 
     if vendored:
-        existing = _module_names_from_nsx(nsx_cfg)
-        if module_name in existing:
-            raise NSXModuleError(f"Module '{module_name}' is already enabled in nsx.yml")
-        if dry_run:
-            return [
-                ModuleChange(
-                    name=module_name, before=None, after=None, action="added", dry_run=True
-                )
-            ]
         target_dir = app_dir / "modules" / module_name
         target_dir.mkdir(parents=True, exist_ok=True)
         _scaffold_vendored_module(target_dir, module_name)
-        modules_list = nsx_cfg.setdefault("modules", [])
-        modules_list.append({"name": module_name, "source": {"vendored": True}})
-        _save_app_cfg(app_dir, nsx_cfg)
-        _write_app_module_file(app_dir, nsx_cfg)
-        _write_modules_gitignore(app_dir, nsx_cfg)
-        # Refresh the lock so the new module's content_hash is recorded.
-        if (app_dir / "nsx.lock").exists():
-            lock_app_impl(app_dir)
-        return [ModuleChange(name=module_name, before=None, after=None, action="added")]
 
-    if local:
-        # Local modules bypass registry resolution entirely.
-        existing = _module_names_from_nsx(nsx_cfg)
-        if module_name in existing:
-            raise NSXModuleError(f"Module '{module_name}' is already enabled in nsx.yml")
-        if dry_run:
-            return [
-                ModuleChange(
-                    name=module_name, before=None, after=None, action="added", dry_run=True
-                )
-            ]
-        modules_list = nsx_cfg.setdefault("modules", [])
-        modules_list.append({"name": module_name, "local": True})
-        _save_app_cfg(app_dir, nsx_cfg)
+    manifest_path = app_dir / "nsx.yml"
+    original_text = manifest_path.read_text(encoding="utf-8")
+    nsx_cfg.setdefault("modules", []).append(entry)
+    _save_app_cfg(app_dir, nsx_cfg)
+
+    # Refresh the lock(s) so the new direct dep is resolved into the closure,
+    # materialized, and reflected in the CMake glue. Only do this when the app
+    # is already locked, so editing an unlocked manifest stays offline; the
+    # user runs ``nsx lock`` to materialize. On any resolution failure (e.g. a
+    # mistyped registry module), roll the manifest back so the add is atomic.
+    if _app_has_lock(app_dir):
+        try:
+            lock_app_impl(app_dir, quiet=True)
+        except Exception:
+            manifest_path.write_text(original_text, encoding="utf-8")
+            raise
+    else:
         _write_app_module_file(app_dir, nsx_cfg)
         _write_modules_gitignore(app_dir, nsx_cfg)
-        return [ModuleChange(name=module_name, before=None, after=None, action="added")]
 
     registry = _effective_registry(_load_registry(), nsx_cfg, app_dir=app_dir)
-
-    enabled = _module_names_from_nsx(nsx_cfg)
-    desired_modules = _unique_preserving_order(enabled + [module_name])
-    new_modules = _resolve_module_closure(
-        desired_modules,
-        app_dir=app_dir,
-        nsx_cfg=nsx_cfg,
-        registry=registry,
-        default_toolchain=DEFAULT_TOOLCHAIN,
-        acquire_missing=not dry_run,
-    )
-    enabled_set = set(enabled)
-    added = [n for n in new_modules if n not in enabled_set]
-    if dry_run:
-        return [
-            ModuleChange(
-                name=name,
-                before=None,
-                after=_safe_registry_revision(name, registry),
-                action="added",
-                dry_run=True,
-            )
-            for name in added
-        ]
-
-    local_names = _local_module_names(nsx_cfg)
-    _update_nsx_cfg_modules(nsx_cfg, new_modules, registry)
-    _save_app_cfg(app_dir, nsx_cfg)
-    _write_app_module_file(app_dir, nsx_cfg)
-    _acquire_modules_for_app(app_dir, new_modules, registry, local_modules=local_names)
-    _write_modules_gitignore(app_dir, nsx_cfg)
-
     return [
         ModuleChange(
-            name=name,
+            name=module_name,
             before=None,
-            after=_safe_registry_revision(name, registry),
+            after=_safe_registry_revision(module_name, registry),
             action="added",
         )
-        for name in added
     ]
 
 
@@ -167,111 +170,81 @@ def remove_module_impl(
     *,
     dry_run: bool = False,
 ) -> list[ModuleChange]:
-    """Remove a module and any no-longer-needed dependents from an app."""
+    """Remove a direct dependency from an app's ``modules:`` list.
+
+    Only *direct* dependencies can be removed. The closure is recomputed at
+    lock time, so dropping a direct dep also drops any transitive modules it
+    alone pulled in. Board-baseline modules (provided by the board profile,
+    not listed in ``modules:``) cannot be removed individually.
+    """
 
     nsx_cfg = _load_app_cfg(app_dir)
-    registry = _effective_registry(_load_registry(), nsx_cfg, app_dir=app_dir)
-    enabled = _module_names_from_nsx(nsx_cfg)
-    if module_name not in enabled:
-        raise NSXModuleError(f"Module '{module_name}' is not enabled in nsx.yml")
-
-    local_names = _local_module_names(nsx_cfg)
-
-    # Local modules are simply removed from nsx.yml — their on-disk
-    # directory is left untouched since it is source-controlled.
-    if module_name in local_names:
-        if dry_run:
-            return [
-                ModuleChange(
-                    name=module_name, before=None, after=None, action="removed", dry_run=True
-                )
-            ]
-        nsx_cfg["modules"] = [
-            m
-            for m in nsx_cfg.get("modules", [])
-            if not (isinstance(m, dict) and m.get("name") == module_name)
-        ]
-        _save_app_cfg(app_dir, nsx_cfg)
-        _write_app_module_file(app_dir, nsx_cfg)
-        _write_modules_gitignore(app_dir, nsx_cfg)
-        return [ModuleChange(name=module_name, before=None, after=None, action="removed")]
-
-    profile_name = nsx_cfg.get("profile")
-    protected: set[str] = set()
-    if isinstance(profile_name, str):
-        profile = registry.get("starter_profiles", {}).get(profile_name, {})
-        if isinstance(profile, dict):
-            base_mods = profile.get("modules", [])
-            if isinstance(base_mods, list):
-                protected = {m for m in base_mods if isinstance(m, str)}
-
-    current = set(enabled)
-    remove_set = {module_name}
-    dependents = _module_dependents(enabled, registry, app_dir=app_dir, local_modules=local_names)
-
-    blockers = sorted(name for name in dependents.get(module_name, set()) if name in current)
-    if blockers:
+    app_cfg = AppConfig.from_mapping(nsx_cfg)
+    declared = {module.name: module for module in app_cfg.modules}
+    if module_name not in declared:
         raise NSXModuleError(
-            f"Cannot remove '{module_name}'; required by enabled module(s): {', '.join(blockers)}"
+            f"Module '{module_name}' is not a direct dependency in nsx.yml. "
+            "Modules provided by the board baseline cannot be removed individually."
         )
 
-    changed = True
-    while changed:
-        changed = False
-        remaining = current - remove_set
-        dependents = _module_dependents(
-            sorted(remaining), registry, app_dir=app_dir, local_modules=local_names
-        )
-        for mod in list(remaining):
-            if mod in protected:
-                continue
-            if mod in local_names:
-                continue
-            if dependents.get(mod):
-                continue
-            metadata = _load_module_metadata(mod, registry, app_dir=app_dir)
-            if metadata["module"]["type"] == "soc":
-                continue
-            remove_set.add(mod)
-            changed = True
+    module = declared[module_name]
+    is_in_tree = module.is_local or module.is_vendored
 
-    desired_modules = [name for name in enabled if name not in remove_set]
-    new_modules = _resolve_module_closure(
-        desired_modules,
-        app_dir=app_dir,
-        nsx_cfg=nsx_cfg,
-        registry=registry,
-        default_toolchain=DEFAULT_TOOLCHAIN,
-    )
-    removed_sorted = sorted(remove_set)
     if dry_run:
         return [
-            ModuleChange(
-                name=name,
-                before=_safe_registry_revision(name, registry),
-                after=None,
-                action="removed",
-                dry_run=True,
-            )
-            for name in removed_sorted
+            ModuleChange(name=module_name, before=None, after=None, action="removed", dry_run=True)
         ]
 
-    _update_nsx_cfg_modules(nsx_cfg, new_modules, registry)
-    _save_app_cfg(app_dir, nsx_cfg)
-    _write_app_module_file(app_dir, nsx_cfg)
-    _write_modules_gitignore(app_dir, nsx_cfg)
-    for removed_name in removed_sorted:
-        _remove_vendored_module_from_app(app_dir, removed_name, registry)
-
-    return [
-        ModuleChange(
-            name=name,
-            before=_safe_registry_revision(name, registry),
-            after=None,
-            action="removed",
+    manifest_path = app_dir / "nsx.yml"
+    original_text = manifest_path.read_text(encoding="utf-8")
+    nsx_cfg["modules"] = [
+        m
+        for m in nsx_cfg.get("modules", [])
+        if not (
+            (isinstance(m, dict) and m.get("name") == module_name)
+            or (isinstance(m, str) and m == module_name)
         )
-        for name in removed_sorted
     ]
+    _save_app_cfg(app_dir, nsx_cfg)
+
+    if _app_has_lock(app_dir):
+        try:
+            lock_app_impl(app_dir, quiet=True)
+        except Exception:
+            manifest_path.write_text(original_text, encoding="utf-8")
+            raise
+    else:
+        _write_app_module_file(app_dir, nsx_cfg)
+        _write_modules_gitignore(app_dir, nsx_cfg)
+
+    # In-tree directories are removed only after the manifest (and any lock) no
+    # longer references the module, so a failed relock leaves the files intact
+    # for the rolled-back manifest. A ``--local`` / ``--vendored`` entry owns its
+    # ``modules/<name>/`` directory outright; a registry-resolved module (including
+    # one backed by a local-path project) is cleaned up via the registry helper.
+    #
+    # Dropping the direct dep does not guarantee the module left the closure: it
+    # may still be pulled by the board baseline or transitively by another direct
+    # dependency, in which case the relocked ``nsx.lock`` still records it. Deleting
+    # its directory then would leave ``modules/`` inconsistent with the lock, so we
+    # skip cleanup while any target section still requires the module.
+    still_required = False
+    lock_file = read_lock_file(app_dir)
+    if lock_file is not None:
+        still_required = any(
+            module_name in section.modules for section in lock_file.targets.values()
+        )
+
+    if not still_required:
+        if is_in_tree:
+            in_tree_dir = app_dir / "modules" / module_name
+            if in_tree_dir.is_dir():
+                shutil.rmtree(in_tree_dir)
+        else:
+            registry = _effective_registry(_load_registry(), nsx_cfg, app_dir=app_dir)
+            _remove_vendored_module_from_app(app_dir, module_name, registry)
+
+    return [ModuleChange(name=module_name, before=None, after=None, action="removed")]
 
 
 def update_modules_impl(
@@ -280,58 +253,62 @@ def update_modules_impl(
     module_name: str | None = None,
     dry_run: bool = False,
 ) -> list[ModuleChange]:
-    """Refresh enabled modules to the current registry revisions."""
+    """Re-resolve the app's lock to current upstream revisions.
 
-    nsx_cfg = _load_app_cfg(app_dir)
-    registry = _effective_registry(_load_registry(), nsx_cfg, app_dir=app_dir)
+    In schema v2 the ``modules:`` list records only direct deps and does not
+    pin registry revisions (the lock does), so ``update`` re-resolves and
+    rewrites the lock rather than editing ``nsx.yml``. With a module name it
+    updates just that module's lock entry; otherwise it updates every module.
+    """
 
-    local_names = _local_module_names(nsx_cfg)
-    current_modules = _module_names_from_nsx(nsx_cfg)
-    current = set(current_modules)
-    if module_name:
-        if module_name not in current:
-            raise NSXModuleError(f"Module '{module_name}' is not enabled in nsx.yml")
-        if module_name in local_names:
-            raise NSXModuleError(
-                f"Module '{module_name}' is a local module and cannot be updated from registry"
-            )
-        to_update = {module_name}
-    else:
-        to_update = current - local_names
-
-    # Capture the recorded revision of each module before resolving the
-    # new closure so ``ModuleChange.before`` reflects the on-disk state.
-    before_revisions: dict[str, str | None] = {}
-    for entry in nsx_cfg.get("modules", []) or []:
-        if isinstance(entry, dict) and entry.get("name") in to_update:
-            rev = entry.get("revision")
-            before_revisions[entry["name"]] = rev if isinstance(rev, str) else None
-
-    resolved_modules = _resolve_module_closure(
-        current_modules,
-        app_dir=app_dir,
-        nsx_cfg=nsx_cfg,
-        registry=registry,
-        default_toolchain=DEFAULT_TOOLCHAIN,
+    board_key = _board_key_for_app(app_dir)
+    before_lock = read_lock(app_dir, board_key)
+    before = (
+        {name: entry.commit for name, entry in before_lock.modules.items()}
+        if before_lock is not None
+        else {}
     )
 
-    def _change(name: str, *, dry: bool) -> ModuleChange:
-        before = before_revisions.get(name)
-        after = _safe_registry_revision(name, registry)
-        action = "updated" if before != after else "noop"
-        return ModuleChange(name=name, before=before, after=after, action=action, dry_run=dry)
+    if module_name:
+        # A module may be scoped to a non-default board via ``modules[].boards``,
+        # so validate the name against every target section's closure rather than
+        # just the default board's lock; otherwise valid board-specific updates
+        # would be rejected before ``lock_app_impl`` can refresh all targets.
+        lock_file = read_lock_file(app_dir)
+        if lock_file is not None:
+            known = {
+                name for section in lock_file.targets.values() for name in section.modules
+            }
+            if module_name not in known:
+                raise NSXModuleError(
+                    f"Module '{module_name}' is not in the app's resolved closure (nsx.lock)"
+                )
 
     if dry_run:
-        return [_change(name, dry=True) for name in sorted(to_update)]
+        names = [module_name] if module_name else sorted(before)
+        return [
+            ModuleChange(
+                name=name, before=before.get(name), after=before.get(name), action="noop", dry_run=True
+            )
+            for name in names
+        ]
 
-    _update_nsx_cfg_modules(nsx_cfg, resolved_modules, registry)
-    _save_app_cfg(app_dir, nsx_cfg)
-    _write_app_module_file(app_dir, nsx_cfg)
-    for name in resolved_modules:
-        if name in to_update:
-            _update_module_clone(app_dir, name, registry)
+    after_lock = lock_app_impl(
+        app_dir,
+        update=True,
+        modules=[module_name] if module_name else None,
+        quiet=True,
+    )
+    after = {name: entry.commit for name, entry in after_lock.modules.items()}
 
-    return [_change(name, dry=False) for name in sorted(to_update)]
+    names = [module_name] if module_name else sorted(set(before) | set(after))
+    changes: list[ModuleChange] = []
+    for name in names:
+        before_rev = before.get(name)
+        after_rev = after.get(name)
+        action = "updated" if before_rev != after_rev else "noop"
+        changes.append(ModuleChange(name=name, before=before_rev, after=after_rev, action=action))
+    return changes
 
 
 def register_module_impl(

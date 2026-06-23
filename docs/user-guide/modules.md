@@ -4,6 +4,12 @@ A module is a reusable unit of firmware — an SDK provider, a HAL or BSP
 wrapper, a peripheral driver, a profiler, and so on. Each app declares the
 modules it needs in `nsx.yml`, and NSX assembles them into the app's build.
 
+Dependencies live in one place: the app's `modules:` list. Each entry is a
+**direct** dependency; the board's profile supplies the implicit baseline and
+the fully resolved closure is generated into `nsx.lock`. If you have
+used Cargo, uv, or npm this will feel familiar — see
+[Dependency Model](../architecture/dependency-model.md) for the complete model.
+
 Whatever a module's origin, NSX always **vendors** it: the module's source is
 copied into the app's `modules/` directory so the app builds from a
 self-contained tree with no hidden external references.
@@ -82,6 +88,15 @@ flowchart TD
 ```
 
 This is the normal path for installing a supported built-in module into an app.
+The module is appended to the app's `modules:` list as a bare name (`- nsx-uart`),
+which is shorthand for `- {name: nsx-uart}`.
+
+To scope a module to only some of the app's supported targets, pass `--board`
+(repeatable); the entry then carries a `boards:` filter:
+
+```bash
+nsx module add nsx-pdm --board apollo510_evb
+```
 
 ## Remove a Module
 

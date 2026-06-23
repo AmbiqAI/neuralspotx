@@ -418,14 +418,15 @@ def clean_app_impl(
     """Clean or fully remove an app build directory.
 
     With *reset*, also remove the synced ``modules/`` tree and the
-    ``.nsx.sync.lock`` file inside *app_dir*, restoring the app to a
-    pristine "freshly cloned" state. *board*, *build_dir*, and
-    *toolchain* are ignored in reset mode; every ``build/`` and
-    ``build_*/`` directory directly under *app_dir* is removed.
+    untracked ``.nsx/`` folder (advisory lock) inside *app_dir*,
+    restoring the app to a pristine "freshly cloned" state. *board*,
+    *build_dir*, and *toolchain* are ignored in reset mode; every
+    ``build/`` and ``build_*/`` directory directly under *app_dir* is
+    removed.
 
     Reset refuses to proceed if it would discard local edits under
     ``modules/`` (any tracked file with mtime newer than
-    ``.nsx.sync.lock``). Pass *force* to override.
+    ``.nsx/sync.lock``). Pass *force* to override.
     """
 
     if reset:
@@ -451,7 +452,7 @@ def clean_app_impl(
 
 
 def _reset_app(app_dir: Path, *, force: bool) -> Path:
-    """Wipe build dirs + modules/ + .nsx.sync.lock under *app_dir*."""
+    """Wipe build dirs + modules/ + .nsx/ under *app_dir*."""
 
     resolved_app_dir = app_dir.expanduser().resolve()
     if not (resolved_app_dir / "nsx.yml").exists():
@@ -461,7 +462,8 @@ def _reset_app(app_dir: Path, *, force: bool) -> Path:
         )
 
     modules_dir = resolved_app_dir / "modules"
-    sync_lock = resolved_app_dir / ".nsx.sync.lock"
+    nsx_dir = resolved_app_dir / ".nsx"
+    sync_lock = nsx_dir / "sync.lock"
 
     if not force and modules_dir.is_dir():
         dirty = _find_locally_modified_modules(modules_dir, sync_lock)
@@ -486,9 +488,9 @@ def _reset_app(app_dir: Path, *, force: bool) -> Path:
     if modules_dir.is_dir():
         shutil.rmtree(modules_dir)
         info(f"Removed modules directory: {modules_dir}")
-    if sync_lock.exists():
-        sync_lock.unlink()
-        info(f"Removed sync lock: {sync_lock}")
+    if nsx_dir.is_dir():
+        shutil.rmtree(nsx_dir)
+        info(f"Removed .nsx directory: {nsx_dir}")
 
     return resolved_app_dir
 

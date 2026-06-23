@@ -26,6 +26,8 @@ def add_module(
     dry_run: bool = False,
     local: bool = False,
     vendored: bool = False,
+    path: str | None = None,
+    boards: tuple[str, ...] = (),
 ) -> list[ModuleChange]:
     """Add a module to an app."""
 
@@ -38,6 +40,8 @@ def add_module(
             dry_run=dry_run,
             local=local,
             vendored=vendored,
+            path=path,
+            boards=boards,
         )
     )
     if not request.module:
@@ -47,6 +51,8 @@ def add_module(
         request.module,
         local=request.local,
         vendored=request.vendored,
+        path=request.path,
+        boards=request.boards,
         dry_run=request.dry_run,
     )
 

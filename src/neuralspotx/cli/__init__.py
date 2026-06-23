@@ -686,7 +686,7 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help=(
             "Reset the app to a freshly-cloned state: remove all build*/ directories, "
-            "the synced modules/ tree, and .nsx.sync.lock. Use this before `git pull` "
+            "the synced modules/ tree, and the .nsx/ folder. Use this before `git pull` "
             "to force `nsx configure` to re-sync from scratch."
         ),
     )
@@ -880,10 +880,13 @@ def _build_parser() -> argparse.ArgumentParser:
 
     p_mod_add = mod_sub.add_parser(
         "add",
-        help="Enable a registry module for an app",
-        description="Enable a module for an app and vendor its resolved dependency closure.",
+        help="Add a direct dependency to an app",
+        description=(
+            "Add a module to an app's direct dependencies (modules:). The full "
+            "closure is recomputed from the board profile + direct deps at lock time."
+        ),
     )
-    p_mod_add.add_argument("module", help="Module name to enable")
+    p_mod_add.add_argument("module", help="Module name to add")
     p_mod_add.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
     p_mod_add.add_argument(
         "--local",
@@ -897,6 +900,17 @@ def _build_parser() -> argparse.ArgumentParser:
             "Scaffold a vendored module under modules/<name>/ "
             "(committed in this app's git; never touched by `nsx sync`)"
         ),
+    )
+    p_mod_add.add_argument(
+        "--path",
+        metavar="DIR",
+        help="Use an external linked checkout at DIR (source: { path: DIR })",
+    )
+    p_mod_add.add_argument(
+        "--board",
+        action="append",
+        metavar="BOARD",
+        help="Scope the dependency to BOARD (repeatable; subset of supported targets)",
     )
     p_mod_add.add_argument("--dry-run", action="store_true", help="Show changes without writing")
     p_mod_add.set_defaults(func=cmd_module_add)
@@ -1172,9 +1186,12 @@ def _build_parser() -> argparse.ArgumentParser:
     p_add_alias = sub.add_parser(
         "add",
         help="Alias for `nsx module add`",
-        description="Enable a module for an app and vendor its resolved dependency closure.",
+        description=(
+            "Add a module to an app's direct dependencies (modules:). The full "
+            "closure is recomputed from the board profile + direct deps at lock time."
+        ),
     )
-    p_add_alias.add_argument("module", help="Module name to enable")
+    p_add_alias.add_argument("module", help="Module name to add")
     p_add_alias.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
     p_add_alias.add_argument(
         "--local",
@@ -1188,6 +1205,17 @@ def _build_parser() -> argparse.ArgumentParser:
             "Scaffold a vendored module under modules/<name>/ "
             "(committed in this app's git; never touched by `nsx sync`)"
         ),
+    )
+    p_add_alias.add_argument(
+        "--path",
+        metavar="DIR",
+        help="Use an external linked checkout at DIR (source: { path: DIR })",
+    )
+    p_add_alias.add_argument(
+        "--board",
+        action="append",
+        metavar="BOARD",
+        help="Scope the dependency to BOARD (repeatable; subset of supported targets)",
     )
     p_add_alias.add_argument("--dry-run", action="store_true", help="Show changes without writing")
     p_add_alias.set_defaults(func=cmd_module_add)

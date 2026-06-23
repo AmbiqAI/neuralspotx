@@ -37,7 +37,9 @@ from ..nsx_lock import (
     hash_manifest,
     hash_tree,
     lock_path,
+    prune_lock_targets,
     read_lock,
+    read_lock_file,
     resolve_commit,
     resolve_ref,
     utcnow_iso,
@@ -216,13 +218,9 @@ def _apply_active_target(nsx_cfg: dict[str, Any], target: ResolvedTarget) -> dic
         cfg["profile"] = target.profile
     if target.toolchain:
         cfg["toolchain"] = target.toolchain
-    # Replace any authored top-level ``requires`` with this target's complete
-    # set (global ``requires`` already merged with the target's own) so
-    # ``expand_profile_seeds`` layers exactly the right extras for this board.
-    if target.requires:
-        cfg["requires"] = [rm.to_mapping() for rm in target.requires]
-    else:
-        cfg.pop("requires", None)
+    # The board is now pinned; ``expand_profile_seeds`` reads ``target.board``
+    # and scopes each direct ``modules:`` entry to it via its per-entry
+    # ``boards`` filter, so no further per-target dependency rewrite is needed.
     return cfg
 
 
@@ -709,25 +707,69 @@ def _build_lock_for_app(
             commit=commit,
         )
 
+    _preserve_unchanged_timestamps(previous, lock)
     return lock
 
 
-def _lock_boards_for(app_dir: Path, board: str | None) -> list[str | None]:
+def _same_resolution(a: ResolvedModule, b: ResolvedModule) -> bool:
+    """True when two lock entries resolve identically (ignoring ``acquired_at``)."""
+
+    return (
+        a.project == b.project
+        and a.kind == b.kind
+        and a.constraint == b.constraint
+        and a.vendored_at == b.vendored_at
+        and a.content_hash == b.content_hash
+        and (a.url or "") == (b.url or "")
+        and (a.tag or "") == (b.tag or "")
+        and (a.commit or "") == (b.commit or "")
+        and (a.tool_version or "") == (b.tool_version or "")
+    )
+
+
+def _preserve_unchanged_timestamps(previous: NsxLock | None, fresh: NsxLock) -> None:
+    """Carry forward timestamps from *previous* for unchanged entries.
+
+    A re-lock that resolves to the same closure must not rewrite
+    ``acquired_at`` / ``generated_at``: those timestamp-only diffs are
+    pure git noise. Each module entry whose resolution is byte-for-byte
+    unchanged keeps its previous ``acquired_at``; if the whole document
+    is resolution-identical, the top-level ``generated_at`` is preserved
+    too so a no-op ``nsx lock`` yields an identical file.
+    """
+
+    if previous is None:
+        return
+    all_unchanged = set(previous.modules) == set(fresh.modules)
+    for name, entry in fresh.modules.items():
+        prev = previous.modules.get(name)
+        if prev is not None and _same_resolution(prev, entry):
+            entry.acquired_at = prev.acquired_at
+        else:
+            all_unchanged = False
+    if all_unchanged and previous.manifest_hash == fresh.manifest_hash:
+        fresh.generated_at = previous.generated_at
+
+
+def _lock_boards_for(app_dir: Path, board: str | None) -> list[str]:
     """Boards to lock for *app_dir*, default board first.
 
-    Single-target apps (or any explicit *board*) lock a single entry.
-    A multi-target app with no explicit *board* locks every supported
-    board so each committed ``nsx.<board>.lock`` stays reproducible.
+    An explicit *board* locks just that board. A multi-target app with
+    no explicit *board* locks every supported board (default first); a
+    single-target app locks its one default board. Every board becomes
+    a section of the single combined ``nsx.lock``.
     """
 
     app_cfg = AppConfig.from_mapping(_load_app_cfg(app_dir))
-    if board is not None or not app_cfg.is_multi_target():
+    if board is not None:
         return [board]
-    boards = list(app_cfg.targets())
-    default = app_cfg.default_board()
-    if default in boards:
-        boards = [default] + [b for b in boards if b != default]
-    return boards or [None]
+    if app_cfg.is_multi_target():
+        boards = list(app_cfg.targets())
+        default = app_cfg.default_board()
+        if default in boards:
+            boards = [default] + [b for b in boards if b != default]
+        return boards or [app_cfg.default_board()]
+    return [app_cfg.default_board()]
 
 
 def lock_app_impl(
@@ -739,13 +781,12 @@ def lock_app_impl(
     check: bool = False,
     quiet: bool = False,
 ) -> NsxLock:
-    """Resolve and write the lock file(s) for *app_dir*.
+    """Resolve and write the lock file for *app_dir*.
 
     Args:
-        board: Restrict locking to this board. For multi-target apps,
-            ``None`` locks every supported board (each to its own
-            ``nsx.<board>.lock``); single-target apps ignore this and
-            always write the legacy ``nsx.lock``.
+        board: Restrict locking to this board. ``None`` locks every
+            supported board. All boards are written as sections of the
+            single combined ``nsx.lock`` (``targets:`` map).
         update: When True, re-resolve every module's constraint to its
             current upstream HEAD/tag (equivalent to ``nsx update``).
         modules: When given alongside ``update``, only re-resolve these.
@@ -797,6 +838,15 @@ def lock_app_impl(
                     if name not in union:
                         union.append(name)
             _write_modules_gitignore_for_module_names(app_dir, _load_app_cfg(app_dir), union)
+        if board is None:
+            # Full lock: drop any orphaned target section left behind by a
+            # board that was removed from ``targets:`` in nsx.yml.
+            nsx_cfg = _load_app_cfg(app_dir)
+            keep = {
+                k for b in boards if (k := _lock_board_key(nsx_cfg, b)) is not None
+            }
+            if keep:
+                prune_lock_targets(app_dir, keep)
     return results[0]
 
 
@@ -854,7 +904,7 @@ def _lock_app_impl_unlocked(
         write_side_effects=not check,
         use_locked_closure_on_metadata_error=bool(check and not update and on_disk_lock),
     )
-    lock_file = lock_path(app_dir, board_key)
+    lock_file = lock_path(app_dir)
 
     if check:
         diff = _diff_locks(on_disk_lock, lock)
@@ -878,10 +928,10 @@ def _lock_app_impl_unlocked(
     app_cfg = AppConfig.from_mapping(nsx_cfg)
     if app_cfg.is_multi_target():
         nsx_cfg = _apply_active_target(nsx_cfg, app_cfg.resolve_target(board))
-    # Lean manifests omit the resolved closure and ``module_registry``
-    # overrides; re-seed them (mirroring ``_build_lock_for_app``) so the CMake
-    # glue below resolves additive ``requires`` modules whose metadata lives in
-    # the board family catalog rather than the top-level registry map.
+    # ``modules:`` lists only the app's direct deps; re-seed the full closure
+    # and ``module_registry`` overrides (mirroring ``_build_lock_for_app``) so
+    # the CMake glue below resolves direct deps whose metadata lives in the
+    # board family catalog rather than the top-level registry map.
     nsx_cfg = expand_profile_seeds(nsx_cfg, _load_registry())
     ordered_modules = list(lock.modules)
     # The CMake glue (modules.cmake, modules/.gitignore) is not board-keyed,
@@ -961,7 +1011,12 @@ def outdated_app_impl(app_dir: Path) -> OutdatedReport:
 
     lock = read_lock(app_dir, _board_key_for_app(app_dir))
     if lock is None:
-        raise NSXConfigError(f"{app_dir / 'nsx.lock'} not found. Run `nsx lock` first.")
+        if read_lock_file(app_dir) is None:
+            raise NSXConfigError(f"{app_dir / 'nsx.lock'} not found. Run `nsx lock` first.")
+        raise NSXConfigError(
+            f"Could not select a target section from {app_dir / 'nsx.lock'} "
+            "(unreadable nsx.yml or ambiguous board). Run `nsx lock` to refresh."
+        )
 
     # Parallel prefetch of upstream commits --------------------------------
     # ``resolve_commit`` is one ``git ls-remote`` per call; for an app

@@ -34,7 +34,7 @@ class TestWriteLockAtomic:
             nsx_tool_version="0.0.0",
             manifest_path="nsx.yml",
             manifest_hash="sha256:" + "0" * 64,
-            target={"toolchain": "gcc"},
+            target={"board": "apollo510_evb", "toolchain": "gcc"},
             modules={
                 "fake": ResolvedModule(
                     project="fake",

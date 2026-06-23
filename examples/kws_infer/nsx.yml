@@ -1,4 +1,4 @@
-schema_version: 1
+schema_version: 2
 project:
   name: kws_infer
 targets:
@@ -9,22 +9,13 @@ targets:
     - apollo330mP_evb
 toolchain: arm-none-eabi-gcc
 channel: stable
-requires:
-  - name: nsx-power
-    project: nsx-ambiq-sdk
-    revision: main
-  - name: nsx-pmu-armv8m
-    project: nsx-pmu-armv8m
-    revision: main
-  - name: nsx-helia-rt
-    project: helia-rt
-    revision: helia-rt-v1.16.0
+modules:
+  - nsx-power
+  - nsx-pmu-armv8m
+  - nsx-helia-rt
 features: {}
 module_registry:
   projects:
-    nsx-ambiq-sdk:
-      url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
-      revision: main
     nsx-pmu-armv8m:
       url: https://github.com/AmbiqAI/nsx-pmu-armv8m.git
       revision: main
@@ -32,10 +23,6 @@ module_registry:
       url: https://github.com/AmbiqAI/helia-rt.git
       revision: helia-rt-v1.16.0
   modules:
-    nsx-power:
-      project: nsx-ambiq-sdk
-      revision: main
-      metadata: modules/nsx-power/nsx-module.yaml
     nsx-pmu-armv8m:
       project: nsx-pmu-armv8m
       revision: main
