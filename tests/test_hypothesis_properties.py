@@ -11,8 +11,8 @@ from hypothesis import strategies as st
 from neuralspotx._errors import NSXConfigError
 from neuralspotx.models._loader import NsxProject
 from neuralspotx.models._project import AppModule, ModuleRegistryOverride, ModuleSource
-from neuralspotx.nsx_lock._kinds import LockKind
 from neuralspotx.nsx_lock._constants import LOCK_SCHEMA_VERSION
+from neuralspotx.nsx_lock._kinds import LockKind
 from neuralspotx.nsx_lock._models import NsxLock, ResolvedModule
 
 # ---------------------------------------------------------------------------
