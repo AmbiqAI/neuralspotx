@@ -135,7 +135,7 @@ def _sync_app_impl_unlocked(
     if lock is None:
         if frozen:
             raise NSXConfigError(
-                f"{lock_path(app_dir, board_key)} not found. Run `nsx lock` first (or drop --frozen)."
+                f"{lock_path(app_dir)} not found. Run `nsx lock` first (or drop --frozen)."
             )
         # No lock yet — generate one. Unlike the v2 design, this is
         # safe to run on a fresh checkout: ``_build_lock_for_app``

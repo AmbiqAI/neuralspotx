@@ -105,7 +105,7 @@ revision unless the app overrides that source.
 
 This is the standard way to install a supported first-class module into an app.
 The module is appended to the app's single `modules:` list (its direct
-dependencies); the resolved closure is recomputed into `nsx.<board>.lock`. See
+dependencies); the resolved closure is recomputed into `nsx.lock`. See
 [Dependency Model](../architecture/dependency-model.md) for the model.
 
 ### `--board`

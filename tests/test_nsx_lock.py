@@ -197,6 +197,19 @@ class TestVendoredKind:
         # No mutations -> --check should not raise.
         lock_app_impl(app, check=True)
 
+    def test_relock_is_byte_identical_when_unchanged(self, app: Path) -> None:
+        # A no-op `nsx lock` must not rewrite timestamps (acquired_at /
+        # generated_at): re-locking an unchanged closure yields an
+        # identical file, so it produces no git diff churn.
+        _make_vendored(app, "my-vend")
+        _write_nsx_yml(app, [{"name": "my-vend", "source": {"vendored": True}}])
+        lock_app_impl(app)
+
+        before = (app / "nsx.lock").read_text(encoding="utf-8")
+        lock_app_impl(app)
+        after = (app / "nsx.lock").read_text(encoding="utf-8")
+        assert after == before
+
     def test_check_detects_content_drift(self, app: Path) -> None:
         _make_vendored(app, "my-vend")
         _write_nsx_yml(app, [{"name": "my-vend", "source": {"vendored": True}}])

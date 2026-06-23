@@ -57,7 +57,7 @@ def generate_sbom_impl(app_dir: Path, *, format: SBOMFormat = "spdx") -> str:
     board_key = _board_key_for_app(app_dir)
     lock = read_lock(app_dir, board_key)
     if lock is None:
-        raise NSXConfigError(f"{lock_path(app_dir, board_key)} not found. Run `nsx lock` first.")
+        raise NSXConfigError(f"{lock_path(app_dir)} not found. Run `nsx lock` first.")
 
     if format == "spdx":
         doc = _build_spdx_document(app_dir, lock)

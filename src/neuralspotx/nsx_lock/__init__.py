@@ -5,30 +5,36 @@ git commit and content hash of every vendored module so that builds are
 reproducible and `nsx sync` can deterministically restore the modules/
 tree.
 
-Schema (YAML, v3):
+Schema (YAML, v4):
 
-    schema_version: 3
-    generated_at: <ISO 8601 UTC>
-    nsx_tool: { version: <pkg version> }
-    manifest: { path: nsx.yml, hash: sha256:<hex> }
-    target: { board, soc, toolchain }
-    modules:
-      <module-name>:
-        project: <project-key>
-        kind: git | packaged | local | vendored | unresolved
-        constraint: <revision string from nsx.yml>
-        resolved:
-          # git only:
-          url: <repo url>
-          tag: <tag name>           # set when constraint resolved through a tag
-          commit: <40-char SHA>     # ALWAYS the underlying commit SHA, not
-                                    # the annotated-tag-object SHA
-          # all kinds:
-          vendored_at: <relpath under app dir>
-          content_hash: sha256:<hex>
-          acquired_at: <ISO 8601 UTC>
-          # packaged only:
-          tool_version: <neuralspotx pkg version>
+    schema_version: 4
+    targets:
+      <board>:                      # one resolution section per board
+        generated_at: <ISO 8601 UTC>
+        nsx_tool: { version: <pkg version> }
+        manifest: { path: nsx.yml, hash: sha256:<hex> }
+        target: { board, soc, toolchain }
+        modules:
+          <module-name>:
+            project: <project-key>
+            kind: git | packaged | local | vendored | unresolved
+            constraint: <revision string from nsx.yml>
+            resolved:
+              # git only:
+              url: <repo url>
+              tag: <tag name>           # set when constraint resolved through a tag
+              commit: <40-char SHA>     # ALWAYS the underlying commit SHA, not
+                                        # the annotated-tag-object SHA
+              # all kinds:
+              vendored_at: <relpath under app dir>
+              content_hash: sha256:<hex>
+              acquired_at: <ISO 8601 UTC>
+              # packaged only:
+              tool_version: <neuralspotx pkg version>
+
+Every app — single- or multi-target — keeps exactly one ``nsx.lock``
+whose ``targets`` map holds a resolution section per board, so the app
+root has one manifest (``nsx.yml``) and one lock (``nsx.lock``).
 
 ``content_hash`` semantics (v3, cargo/uv-style — hashes the *upstream
 artifact*, never the on-disk vendored tree):
@@ -56,6 +62,16 @@ This decoupling means ``nsx lock`` can produce real hashes on a fresh
 checkout (no ``modules/`` populated yet) and ``nsx sync`` never needs
 to modify the lock to keep it in sync with reality — the lock is
 written exactly once per actual change to the upstream resolution.
+
+v4 changes vs v3:
+  * Single combined lock file. Previously single-target apps wrote a
+    flat ``nsx.lock`` and multi-target apps wrote one
+    ``nsx.<board>.lock`` per board; v4 collapses both into one
+    ``nsx.lock`` with a ``targets: { <board>: <section> }`` map.
+    ``schema_version`` is recorded once at the document root.
+  * ``acquired_at`` / ``generated_at`` are preserved across re-locks
+    when the resolution is unchanged, so a no-op ``nsx lock`` produces
+    a byte-identical file (no timestamp-only diff churn).
 
 v3 changes vs v2:
   * ``content_hash`` is now the upstream-artifact hash, not the
@@ -114,9 +130,15 @@ from ._hashing import (
     hash_git_artifact,
     hash_tree,
 )
-from ._io import lock_path, read_lock, write_lock
+from ._io import (
+    lock_path,
+    prune_lock_targets,
+    read_lock,
+    read_lock_file,
+    write_lock,
+)
 from ._kinds import LOCK_KINDS, LockKind
-from ._models import NsxLock, ResolvedModule
+from ._models import LockFile, NsxLock, ResolvedModule
 from ._resolution import (
     ResolutionError,
     _looks_like_full_sha,
@@ -160,6 +182,7 @@ __all__ = [
     "LOCK_FILENAME",
     "LOCK_KINDS",
     "LOCK_SCHEMA_VERSION",
+    "LockFile",
     "LockKind",
     "NSX_TOOLING_AUTOGEN_FILES",
     "NsxLock",
@@ -170,7 +193,9 @@ __all__ = [
     "hash_manifest",
     "hash_tree",
     "lock_path",
+    "prune_lock_targets",
     "read_lock",
+    "read_lock_file",
     "resolve_commit",
     "resolve_ref",
     "utcnow_iso",

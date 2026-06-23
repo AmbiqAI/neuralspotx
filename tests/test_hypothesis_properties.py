@@ -12,6 +12,7 @@ from neuralspotx._errors import NSXConfigError
 from neuralspotx.models._loader import NsxProject
 from neuralspotx.models._project import AppModule, ModuleRegistryOverride, ModuleSource
 from neuralspotx.nsx_lock._kinds import LockKind
+from neuralspotx.nsx_lock._constants import LOCK_SCHEMA_VERSION
 from neuralspotx.nsx_lock._models import NsxLock, ResolvedModule
 
 # ---------------------------------------------------------------------------
@@ -152,7 +153,7 @@ class TestResolvedModuleRoundTrip:
 
 _nsx_lock_strategy = st.builds(
     NsxLock,
-    schema_version=st.just(3),
+    schema_version=st.just(LOCK_SCHEMA_VERSION),
     generated_at=_safe_text,
     nsx_tool_version=_optional_text,
     manifest_path=st.just("nsx.yml"),

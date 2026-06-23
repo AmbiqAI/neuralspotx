@@ -89,14 +89,14 @@ filter (for example `socs:`) can be added without a schema change.
 
 `nsx.yml` records **direct** dependencies. The fully resolved closure — every
 transitive module, its exact commit, and a content hash — lives only in
-`nsx.<board>.lock`. Each supported board gets its own lock, so every target is
-independently reproducible.
+`nsx.lock`. Each supported board gets its own section in that combined lock,
+so every target is independently reproducible.
 
 ```mermaid
 flowchart LR
     Y["nsx.yml<br/>modules: (direct)"] --> R["nsx lock<br/>profile seed + resolve"]
     P["board profile<br/>(implicit baseline)"] --> R
-    R --> L["nsx.&lt;board&gt;.lock<br/>full closure + hashes"]
+    R --> L["nsx.lock<br/>targets: full closure + hashes"]
 ```
 
 `nsx module add` / `remove` edit the single `modules:` list and refresh the
@@ -112,7 +112,7 @@ affected lock(s); the closure is never authored by hand.
 | Vendored / committed copy       | vendored dir                            | vendored dir           | committed `node_modules`| `source: { vendored: true }` |
 | Target-conditional dependency   | `[target.'cfg(...)'.dependencies]`      | environment markers    | (none built-in)         | `boards: [...]`              |
 | Implicit baseline ("std")       | `std`                                   | stdlib                 | runtime                 | board profile                |
-| Generated closure / lock        | `Cargo.lock`                            | `uv.lock`              | `package-lock.json`     | `nsx.<board>.lock`           |
+| Generated closure / lock        | `Cargo.lock`                            | `uv.lock`              | `package-lock.json`     | `nsx.lock`                   |
 
 ## Roadmap
 

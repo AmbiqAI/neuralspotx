@@ -98,6 +98,22 @@ class NsxLock:
             "modules": {name: entry.to_yaml_dict() for name, entry in self.modules.items()},
         }
 
+    def to_section_dict(self) -> dict[str, Any]:
+        """Serialise as a per-board section of a combined :class:`LockFile`.
+
+        Identical to :meth:`to_yaml_dict` minus ``schema_version`` — the
+        schema version is hoisted to the combined document root so it is
+        recorded once, not once per target.
+        """
+
+        return {
+            "generated_at": self.generated_at,
+            "nsx_tool": {"version": self.nsx_tool_version},
+            "manifest": {"path": self.manifest_path, "hash": self.manifest_hash},
+            "target": self.target,
+            "modules": {name: entry.to_yaml_dict() for name, entry in self.modules.items()},
+        }
+
     @classmethod
     def from_yaml_dict(cls, data: dict[str, Any]) -> "NsxLock":
         if not isinstance(data, dict):
@@ -123,3 +139,74 @@ class NsxLock:
             target=dict(data.get("target") or {}),
             modules=modules,
         )
+
+    @classmethod
+    def from_section_dict(cls, data: dict[str, Any]) -> "NsxLock":
+        """Parse a per-board section of a combined :class:`LockFile`.
+
+        The section carries no ``schema_version`` of its own (it is
+        validated once at the document root); the returned object is
+        stamped with the current :data:`LOCK_SCHEMA_VERSION`.
+        """
+
+        if not isinstance(data, dict):
+            raise ValueError("nsx.lock target section must be a mapping")
+        nsx_tool = data.get("nsx_tool") or {}
+        manifest = data.get("manifest") or {}
+        modules_raw = data.get("modules") or {}
+        modules: dict[str, ResolvedModule] = {}
+        for name, entry in modules_raw.items():
+            modules[name] = ResolvedModule.from_yaml_dict(name, entry)
+        return cls(
+            schema_version=LOCK_SCHEMA_VERSION,
+            generated_at=str(data.get("generated_at", "")),
+            nsx_tool_version=nsx_tool.get("version"),
+            manifest_path=str(manifest.get("path", "nsx.yml")),
+            manifest_hash=str(manifest.get("hash", "")),
+            target=dict(data.get("target") or {}),
+            modules=modules,
+        )
+
+
+@dataclass
+class LockFile:
+    """Top-level ``nsx.lock`` document — one per app, keyed by board.
+
+    Every app (single- or multi-target) stores its committed lock in a
+    single ``nsx.lock`` whose ``targets`` map holds one resolution
+    section per board. This keeps the app root to exactly one manifest
+    (``nsx.yml``) and one lock (``nsx.lock``) regardless of how many
+    boards the app supports.
+    """
+
+    schema_version: int = LOCK_SCHEMA_VERSION
+    targets: dict[str, NsxLock] = field(default_factory=dict)
+    # Filesystem path to ``nsx.lock`` on disk. Excluded from equality,
+    # repr and YAML so it cannot leak back into the on-disk document.
+    path: Path | None = field(default=None, compare=False, repr=False)
+
+    def to_yaml_dict(self) -> dict[str, Any]:
+        return {
+            "schema_version": self.schema_version,
+            "targets": {
+                board: lock.to_section_dict() for board, lock in self.targets.items()
+            },
+        }
+
+    @classmethod
+    def from_yaml_dict(cls, data: dict[str, Any]) -> "LockFile":
+        if not isinstance(data, dict):
+            raise ValueError("nsx.lock root must be a mapping")
+        version = int(data.get("schema_version", LOCK_SCHEMA_VERSION))
+        if version != LOCK_SCHEMA_VERSION:
+            raise NSXLockError(
+                f"nsx.lock has schema_version {version}; this nsx requires "
+                f"v{LOCK_SCHEMA_VERSION}. Run `nsx lock` to regenerate."
+            )
+        targets_raw = data.get("targets") or {}
+        if not isinstance(targets_raw, dict):
+            raise ValueError("nsx.lock 'targets' must be a mapping")
+        targets: dict[str, NsxLock] = {}
+        for board, section in targets_raw.items():
+            targets[str(board)] = NsxLock.from_section_dict(section)
+        return cls(schema_version=version, targets=targets)

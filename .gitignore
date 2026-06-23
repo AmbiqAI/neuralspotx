@@ -23,5 +23,5 @@ examples/*/boards/*/board.yaml
 # so it is not tracked either; hand-written cmake/presets/ stays tracked.
 examples/*/cmake/.gitignore
 
-# NSX per-app advisory lock (created by nsx sync/lock/update)
-**/.nsx.sync.lock
+# NSX per-app untracked state (advisory lock, etc.; created by nsx sync/lock/update)
+**/.nsx/

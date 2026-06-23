@@ -686,7 +686,7 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help=(
             "Reset the app to a freshly-cloned state: remove all build*/ directories, "
-            "the synced modules/ tree, and .nsx.sync.lock. Use this before `git pull` "
+            "the synced modules/ tree, and the .nsx/ folder. Use this before `git pull` "
             "to force `nsx configure` to re-sync from scratch."
         ),
     )

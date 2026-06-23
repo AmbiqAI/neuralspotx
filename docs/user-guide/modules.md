@@ -6,7 +6,7 @@ modules it needs in `nsx.yml`, and NSX assembles them into the app's build.
 
 Dependencies live in one place: the app's `modules:` list. Each entry is a
 **direct** dependency; the board's profile supplies the implicit baseline and
-the fully resolved closure is generated into `nsx.<board>.lock`. If you have
+the fully resolved closure is generated into `nsx.lock`. If you have
 used Cargo, uv, or npm this will feel familiar — see
 [Dependency Model](../architecture/dependency-model.md) for the complete model.
 

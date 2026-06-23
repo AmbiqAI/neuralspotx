@@ -9,7 +9,7 @@ your toolchain, board connection, and SWO viewer are all working.
 It is also a **multi-target** example: a single lean `nsx.yml` declares a
 `targets:` block supporting both `apollo510_evb` (default) and
 `apollo4p_blue_kxr_evb`. Each board resolves its own derived
-`<board>_minimal` profile and commits its own `nsx.<board>.lock`, so this
+`<board>_minimal` profile; both are recorded in one combined `nsx.lock`, so this
 serves as the simplest cross-family proving ground (Apollo5 + Apollo4P).
 
 ## Build & Run

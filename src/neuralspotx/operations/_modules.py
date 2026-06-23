@@ -32,12 +32,12 @@ from ._lock import lock_app_impl
 
 
 def _app_has_lock(app_dir: Path) -> bool:
-    """True when the app already has at least one lock file on disk.
+    """True when the app already has a lock file on disk.
 
-    Single-target apps use ``nsx.lock``; multi-target apps use one
-    ``nsx.<board>.lock`` per supported board. ``add`` / ``remove`` only
-    refresh the lock when one already exists so a manifest edit on an
-    unlocked app stays offline until the user runs ``nsx lock``.
+    Every app commits a single combined ``nsx.lock`` (with a ``targets:``
+    map). ``add`` / ``remove`` only refresh the lock when one already
+    exists so a manifest edit on an unlocked app stays offline until the
+    user runs ``nsx lock``.
     """
 
     return (app_dir / "nsx.lock").exists() or any(app_dir.glob("nsx.*.lock"))

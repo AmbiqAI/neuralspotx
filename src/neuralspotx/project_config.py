@@ -846,17 +846,15 @@ def _default_build_dir(app_dir: Path, board: str) -> Path:
 
 
 def _lock_board_key(nsx_cfg: dict[str, Any], board: str | None = None) -> str | None:
-    """Board key for the per-app lock file.
+    """Board key for this app's section of the combined ``nsx.lock``.
 
-    Single-target apps keep the legacy unsuffixed ``nsx.lock`` (returns
-    ``None``). Multi-target apps (those with an explicit ``targets:`` block)
-    use a per-board committed ``nsx.<board>.lock``, defaulting to the app's
-    default target when *board* is unspecified.
+    Every app keys its committed lock per board inside one ``nsx.lock``.
+    Returns the normalized board name for *board* (or the app's default
+    target when *board* is unspecified), or ``None`` only when the
+    manifest declares no resolvable board.
     """
 
     app_cfg = AppConfig.from_mapping(nsx_cfg)
-    if not app_cfg.is_multi_target():
-        return None
     key = board or app_cfg.default_board()
     return normalize_board(key) if key else None
 
@@ -866,7 +864,8 @@ def _board_key_for_app(app_dir: Path, board: str | None = None) -> str | None:
 
     Read-only callers (``nsx outdated``, SBOM, lock-staleness) may run
     against an app dir that has a lock but no readable ``nsx.yml``; in
-    that case fall back to the legacy unsuffixed ``nsx.lock``.
+    that case fall back to ``None`` so the lock reader resolves the sole
+    target section if the lock has exactly one.
     """
 
     try:

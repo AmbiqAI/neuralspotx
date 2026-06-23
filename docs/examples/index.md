@@ -4,7 +4,7 @@ Nine ready-to-build example apps live in the
 [`examples/`](https://github.com/AmbiqAI/neuralspotx/tree/main/examples)
 directory of the `neuralspotx` repo. Each one is a self-contained NSX
 app — the same shape that `nsx create-app` produces — with its own
-`nsx.yml` manifest and per-board `nsx.<board>.lock` receipts.
+`nsx.yml` manifest and a combined `nsx.lock` receipt.
 
 Most examples are **multi-target**: a single lean `nsx.yml` declares a
 `targets:` block, so the same app builds across sibling boards (e.g.

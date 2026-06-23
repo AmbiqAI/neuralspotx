@@ -14,9 +14,10 @@ Semantics
   unexpected error, NSX raises :class:`AppLockUnavailableError`
   rather than silently proceeding without synchronisation.
 * Per-app: callers pass the app directory. The lockfile lives at
-  ``<app_dir>/.nsx.sync.lock`` (matched in the example app
-  ``.gitignore``). The file is created on demand and left in place
-  after release; only its lock state is significant.
+  ``<app_dir>/.nsx/sync.lock`` (the whole ``.nsx/`` folder is
+  gitignored in the example app ``.gitignore``). The file is created
+  on demand and left in place after release; only its lock state is
+  significant.
 """
 
 from __future__ import annotations
@@ -30,13 +31,13 @@ from pathlib import Path
 
 from ._errors import NSXLockError
 
-LOCK_FILENAME = ".nsx.sync.lock"
+LOCK_FILENAME = ".nsx/sync.lock"
 
 
 def app_lock_path(app_dir: Path) -> Path:
     """Return the per-app lockfile path used by :func:`app_lock`."""
 
-    return app_dir / LOCK_FILENAME
+    return app_dir / ".nsx" / "sync.lock"
 
 
 @contextlib.contextmanager

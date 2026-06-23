@@ -484,9 +484,9 @@ class AppConfig:
     def is_multi_target(self) -> bool:
         """True when the app declares an explicit ``targets:`` block.
 
-        Multi-target apps key their committed lock per board
-        (``nsx.<board>.lock``); single-target apps keep the legacy
-        unsuffixed ``nsx.lock``.
+        All apps commit a single combined ``nsx.lock`` whose ``targets:``
+        map carries one section per board; this flag only reflects
+        whether the manifest used an explicit ``targets:`` block.
         """
 
         return self._explicit_targets_block() is not None
