@@ -113,6 +113,11 @@ def write_lock(app_dir: Path, lock: NsxLock, board: str | None = None) -> Path:
     a single board is re-locked. When *board* is ``None`` the board key
     is taken from ``lock.target['board']``. A stale / unreadable
     on-disk lock (e.g. an older schema) is discarded and rebuilt.
+
+    The read-modify-write is not atomic across the read and the write, so
+    callers writing multiple boards of the same app concurrently must hold
+    the per-app advisory lock (``app_lock(app_dir)``) around the writes;
+    ``lock_app_impl`` already does this for its whole board loop.
     """
 
     if board is None:

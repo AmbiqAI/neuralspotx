@@ -39,6 +39,7 @@ from ..nsx_lock import (
     lock_path,
     prune_lock_targets,
     read_lock,
+    read_lock_file,
     resolve_commit,
     resolve_ref,
     utcnow_iso,
@@ -739,15 +740,18 @@ def _preserve_unchanged_timestamps(previous: NsxLock | None, fresh: NsxLock) -> 
 
     if previous is None:
         return
+    all_unchanged = set(previous.modules) == set(fresh.modules)
     for name, entry in fresh.modules.items():
         prev = previous.modules.get(name)
         if prev is not None and _same_resolution(prev, entry):
             entry.acquired_at = prev.acquired_at
-    if not _diff_locks(previous, fresh):
+        else:
+            all_unchanged = False
+    if all_unchanged and previous.manifest_hash == fresh.manifest_hash:
         fresh.generated_at = previous.generated_at
 
 
-def _lock_boards_for(app_dir: Path, board: str | None) -> list[str | None]:
+def _lock_boards_for(app_dir: Path, board: str | None) -> list[str]:
     """Boards to lock for *app_dir*, default board first.
 
     An explicit *board* locks just that board. A multi-target app with
@@ -1007,7 +1011,12 @@ def outdated_app_impl(app_dir: Path) -> OutdatedReport:
 
     lock = read_lock(app_dir, _board_key_for_app(app_dir))
     if lock is None:
-        raise NSXConfigError(f"{app_dir / 'nsx.lock'} not found. Run `nsx lock` first.")
+        if read_lock_file(app_dir) is None:
+            raise NSXConfigError(f"{app_dir / 'nsx.lock'} not found. Run `nsx lock` first.")
+        raise NSXConfigError(
+            f"Could not select a target section from {app_dir / 'nsx.lock'} "
+            "(unreadable nsx.yml or ambiguous board). Run `nsx lock` to refresh."
+        )
 
     # Parallel prefetch of upstream commits --------------------------------
     # ``resolve_commit`` is one ``git ls-remote`` per call; for an app
