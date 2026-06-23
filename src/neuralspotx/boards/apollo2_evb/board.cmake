@@ -1,44 +1,22 @@
-# SoC facts (NSX_SOC_* + NSX_CPU/NSX_FPU/NSX_FLOAT_ABI/NSX_ABI_FLAGS) come from
-# the nsx-ambiq-sdk single source of truth so they cannot drift from the SDK's
-# own SoC descriptor. This also publishes the RTOS port facts the optional
-# nsx-freertos module consumes. nsx_load_soc_facts() is provided by the SDK's
-# auto-included cmake/nsx_soc_facts.cmake.
-nsx_load_soc_facts("apollo2")
-
-# nsx::soc_flags carries all SoC-owned compile definitions, derived from the
-# SoC facts loaded above. Named to match the SDK's own SoC descriptor flags
-# target. The board links it below rather than re-declaring SoC macros.
-set(NSX_SOC_FLAGS_TARGET nsx_soc_apollo2_flags)
-nsx_soc_flags_target(${NSX_SOC_FLAGS_TARGET})
-
-if(NOT NSX_SDK_PROVIDER STREQUAL "ambiqsuite")
-    message(FATAL_ERROR
-        "apollo2_evb requires NSX_SDK_PROVIDER=ambiqsuite, got '${NSX_SDK_PROVIDER}'."
-    )
-endif()
-
-set(NSX_AMBIQ_BOARD_NAME "apollo2_evb")
-set(NSX_AMBIQ_PART_NAME "apollo2")
-set(NSX_AMBIQ_BSP_LIB_SUBDIR "apollo2_evb")
-set(NSX_AMBIQ_BSP_DIR "${NSX_AMBIQSUITE_ROOT}/boards/${NSX_AMBIQ_BOARD_NAME}/bsp")
-set(NSX_AMBIQ_MCU_DIR "${NSX_AMBIQSUITE_ROOT}/mcu/${NSX_AMBIQ_PART_NAME}")
-set(NSX_AMBIQ_HAL_DIR "${NSX_AMBIQ_MCU_DIR}/hal")
-set(NSX_AMBIQ_HAL_MCU_DIR "${NSX_AMBIQ_HAL_DIR}/mcu")
+# apollo2_evb board aggregator (issue #154a).
+#
+# Stable include entry point (nsx_app_bootstrap.cmake includes
+# "${NSX_ROOT}/boards/${NSX_BOARD}/board.cmake"). Wires the role
+# fragments in declaration order, then creates the board interface
+# targets. Per-role wiring lives in sibling fragments so individual
+# roles can be swapped without rewriting the whole board:
+#   soc.cmake    - SoC fact load + nsx::soc_flags
+#   bsp.cmake    - SDK provider precondition + AmbiqSuite BSP/MCU/HAL locations
+#   memory.cmake - startup/system sources + linker-script selection
+#   debug.cmake  - debug-probe / SEGGER device facts
+include("${CMAKE_CURRENT_LIST_DIR}/soc.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/bsp.cmake")
 
 include("${NSX_CMAKE_DIR}/nsx_toolchain_flags.cmake")
 
-nsx_module_dir_for_name(_nsx_core_module_dir "nsx-core")
-set(NSX_CORE_DIR "${NSX_ROOT}/${_nsx_core_module_dir}")
+include("${CMAKE_CURRENT_LIST_DIR}/memory.cmake")
+include("${CMAKE_CURRENT_LIST_DIR}/debug.cmake")
 
-if(NSX_TOOLCHAIN_FAMILY STREQUAL "armclang")
-    set(NSX_STARTUP_SOURCE "${NSX_CORE_DIR}/src/apollo2/armclang/startup_keil6.s")
-    set(NSX_SYSTEM_SOURCE "${NSX_AMBIQSUITE_ROOT}/CMSIS/AmbiqMicro/Source/system_apollo2.c")
-    set(NSX_LINKER_SCRIPT "${NSX_CORE_DIR}/src/apollo2/armclang/linker_script.sct")
-else()
-    set(NSX_STARTUP_SOURCE "${NSX_CORE_DIR}/src/apollo2/gcc/startup_gcc.c")
-    set(NSX_SYSTEM_SOURCE "${NSX_AMBIQSUITE_ROOT}/CMSIS/AmbiqMicro/Source/system_apollo2.c")
-    set(NSX_LINKER_SCRIPT "${NSX_CORE_DIR}/src/apollo2/gcc/linker_script.ld")
-endif()
 set(NSX_BOARD_TARGET nsx_board_apollo2_evb)
 set(NSX_BOARD_FLAGS_TARGET nsx_board_apollo2_evb_flags)
 set(NSX_SOC_TARGET_EXPORT_NAME "soc_hal_apollo2")
