@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.7.0](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.6.9...neuralspotx-v0.7.0) (2026-06-24)
+
+
+### ⚠ BREAKING CHANGES
+
+* `module add/remove` edit only the direct-dep list; the lock is the sole source of the resolved closure.
+
+### Features
+
+* **boards:** consume nsx::bsp seam and restore button capability facts ([#154](https://github.com/AmbiqAI/neuralspotx/issues/154)a.2) ([#156](https://github.com/AmbiqAI/neuralspotx/issues/156)) ([7d388d2](https://github.com/AmbiqAI/neuralspotx/commit/7d388d22aa88b0398c63bc52983f515d56ce795a))
+* harmonize dependency model (one modules list: source + targets) ([#151](https://github.com/AmbiqAI/neuralspotx/issues/151)) ([3d8e5bc](https://github.com/AmbiqAI/neuralspotx/commit/3d8e5bcf7e4ec6c92b4e6d7965fb7d11067e4455))
+* multi-target follow-ups ([#135](https://github.com/AmbiqAI/neuralspotx/issues/135) steps 3-5) ([#150](https://github.com/AmbiqAI/neuralspotx/issues/150)) ([dc93945](https://github.com/AmbiqAI/neuralspotx/commit/dc93945f095de6a3adb57ffb76b2c150d20fe6be))
+* **resolve:** lean manifests + multi-target support ([#135](https://github.com/AmbiqAI/neuralspotx/issues/135) steps 1-2) ([#147](https://github.com/AmbiqAI/neuralspotx/issues/147)) ([b2d841d](https://github.com/AmbiqAI/neuralspotx/commit/b2d841de6ce199cd745d0e50ee481bef15d1fd45))
+
 ## [0.6.9](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.6.8...neuralspotx-v0.6.9) (2026-06-20)
 
 
