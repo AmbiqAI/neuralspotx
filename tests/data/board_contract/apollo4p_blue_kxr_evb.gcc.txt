@@ -1,0 +1,48 @@
+## CALLS
+nsx_load_soc_facts: apollo4p
+nsx_soc_flags_target: nsx_soc_apollo4p_flags
+nsx_module_dir_for_name: _nsx_core_module_dir;nsx-core
+nsx_assert_file_exists: /stub/app/modules/nsx-core/src/apollo4p/gcc/linker_script.ld
+nsx_assert_file_exists: /stub/app/modules/nsx-core/src/apollo4p/gcc/startup_gcc.c
+nsx_assert_file_exists: /stub/ambiqsuite/CMSIS/AmbiqMicro/Source/system_apollo4p.c
+add_library: nsx_board_apollo4p_blue_kxr_evb;INTERFACE
+add_library: nsx_board_apollo4p_blue_kxr_evb_flags;INTERFACE
+set_target_properties: nsx_board_apollo4p_blue_kxr_evb;PROPERTIES;EXPORT_NAME;board_apollo4p_blue_kxr_evb
+set_target_properties: nsx_board_apollo4p_blue_kxr_evb_flags;PROPERTIES;EXPORT_NAME;board_flags_apollo4p_blue_kxr_evb
+add_library: nsx::board;ALIAS;nsx_board_apollo4p_blue_kxr_evb
+add_library: nsx::board_apollo4p_blue_kxr_evb;ALIAS;nsx_board_apollo4p_blue_kxr_evb
+add_library: nsx::board_flags;ALIAS;nsx_board_apollo4p_blue_kxr_evb_flags
+target_compile_definitions: nsx_board_apollo4p_blue_kxr_evb_flags;INTERFACE;apollo4p_blue_kxr_evb;AM_PACKAGE_BGA;STACK_SIZE=4096
+nsx_apply_toolchain_flags: nsx_board_apollo4p_blue_kxr_evb_flags
+target_link_libraries: nsx_board_apollo4p_blue_kxr_evb_flags;INTERFACE;nsx_soc_apollo4p_flags
+target_link_libraries: nsx_board_apollo4p_blue_kxr_evb;INTERFACE;nsx_board_apollo4p_blue_kxr_evb_flags
+install: TARGETS;nsx_board_apollo4p_blue_kxr_evb;nsx_board_apollo4p_blue_kxr_evb_flags;EXPORT;nsxTargets
+## VARS
+NSX_ABI_FLAGS=stub-abi-flags
+NSX_AMBIQSUITE_ROOT=/stub/ambiqsuite
+NSX_AMBIQ_BOARD_NAME=apollo4p_blue_kxr_evb
+NSX_AMBIQ_BSP_DIR=/stub/ambiqsuite/boards/apollo4p_blue_kxr_evb/bsp
+NSX_AMBIQ_BSP_LIB_SUBDIR=apollo4p_blue_kxr_evb
+NSX_AMBIQ_HAL_DIR=/stub/ambiqsuite/mcu/apollo4p/hal
+NSX_AMBIQ_HAL_MCU_DIR=/stub/ambiqsuite/mcu/apollo4p/hal/mcu
+NSX_AMBIQ_MCU_DIR=/stub/ambiqsuite/mcu/apollo4p
+NSX_AMBIQ_PART_NAME=apollo4p
+NSX_BOARD_FLAGS_TARGET=nsx_board_apollo4p_blue_kxr_evb_flags
+NSX_BOARD_FLAGS_TARGET_EXPORT_NAME=board_flags_apollo4p_blue_kxr_evb
+NSX_BOARD_TARGET=nsx_board_apollo4p_blue_kxr_evb
+NSX_BOARD_TARGET_EXPORT_NAME=board_apollo4p_blue_kxr_evb
+NSX_CORE_DIR=/stub/app/modules/nsx-core
+NSX_CPU=stub-cpu
+NSX_FLOAT_ABI=stub-float-abi
+NSX_FPU=stub-fpu
+NSX_LINKER_SCRIPT=/stub/app/modules/nsx-core/src/apollo4p/gcc/linker_script.ld
+NSX_ROOT=/stub/app
+NSX_SDK_PROVIDER=ambiqsuite
+NSX_SEGGER_DEVICE=AMA4B2KP-KXR
+NSX_SOC_FLAGS_TARGET=nsx_soc_apollo4p_flags
+NSX_SOC_NAME=apollo4p
+NSX_SOC_TARGET_EXPORT_NAME=soc_hal_apollo4p
+NSX_STARTUP_SOURCE=/stub/app/modules/nsx-core/src/apollo4p/gcc/startup_gcc.c
+NSX_STARTUP_TARGET_EXPORT_NAME=startup_apollo4p
+NSX_SYSTEM_SOURCE=/stub/ambiqsuite/CMSIS/AmbiqMicro/Source/system_apollo4p.c
+NSX_TOOLCHAIN_FAMILY=gcc

@@ -1,0 +1,48 @@
+## CALLS
+nsx_load_soc_facts: apollo510
+nsx_soc_flags_target: nsx_soc_apollo510_flags
+nsx_module_dir_for_name: _nsx_core_module_dir;nsx-core
+nsx_select_linker_script: DEFAULT;/stub/app/modules/nsx-core/src/apollo510/armclang/linker_script_sbl.sct;ITCM;/stub/app/modules/nsx-core/src/apollo510/armclang/linker_script_itcm_sbl.sct
+nsx_assert_file_exists: /stub/app/modules/nsx-core/src/apollo510/armclang/linker_script_sbl.sct
+nsx_assert_file_exists: /stub/app/modules/nsx-core/src/apollo510/armclang/startup_keil6.c
+nsx_assert_file_exists: /stub/ambiqsuite/CMSIS/AmbiqMicro/Source/system_apollo510.c
+add_library: nsx_board_apollo510_evb;INTERFACE
+add_library: nsx_board_apollo510_evb_flags;INTERFACE
+set_target_properties: nsx_board_apollo510_evb;PROPERTIES;EXPORT_NAME;board_apollo510_evb
+set_target_properties: nsx_board_apollo510_evb_flags;PROPERTIES;EXPORT_NAME;board_flags_apollo510_evb
+add_library: nsx::board;ALIAS;nsx_board_apollo510_evb
+add_library: nsx::board_apollo510_evb;ALIAS;nsx_board_apollo510_evb
+add_library: nsx::board_flags;ALIAS;nsx_board_apollo510_evb_flags
+target_compile_definitions: nsx_board_apollo510_evb_flags;INTERFACE;apollo510_evb;AM_PACKAGE_BGA;STACK_SIZE=4096
+nsx_apply_toolchain_flags: nsx_board_apollo510_evb_flags
+target_link_libraries: nsx_board_apollo510_evb_flags;INTERFACE;nsx_soc_apollo510_flags
+target_link_libraries: nsx_board_apollo510_evb;INTERFACE;nsx_board_apollo510_evb_flags
+install: TARGETS;nsx_board_apollo510_evb;nsx_board_apollo510_evb_flags;EXPORT;nsxTargets
+## VARS
+NSX_ABI_FLAGS=stub-abi-flags
+NSX_AMBIQSUITE_ROOT=/stub/ambiqsuite
+NSX_AMBIQ_BOARD_NAME=apollo510_evb
+NSX_AMBIQ_BSP_DIR=/stub/ambiqsuite/boards/apollo510_evb/bsp
+NSX_AMBIQ_BSP_LIB_SUBDIR=apollo510_evb
+NSX_AMBIQ_HAL_DIR=/stub/ambiqsuite/mcu/apollo510/hal
+NSX_AMBIQ_HAL_MCU_DIR=/stub/ambiqsuite/mcu/apollo510/hal/mcu
+NSX_AMBIQ_MCU_DIR=/stub/ambiqsuite/mcu/apollo510
+NSX_AMBIQ_PART_NAME=apollo510
+NSX_BOARD_FLAGS_TARGET=nsx_board_apollo510_evb_flags
+NSX_BOARD_FLAGS_TARGET_EXPORT_NAME=board_flags_apollo510_evb
+NSX_BOARD_TARGET=nsx_board_apollo510_evb
+NSX_BOARD_TARGET_EXPORT_NAME=board_apollo510_evb
+NSX_CORE_DIR=/stub/app/modules/nsx-core
+NSX_CPU=stub-cpu
+NSX_FLOAT_ABI=stub-float-abi
+NSX_FPU=stub-fpu
+NSX_LINKER_SCRIPT=/stub/app/modules/nsx-core/src/apollo510/armclang/linker_script_sbl.sct
+NSX_ROOT=/stub/app
+NSX_SDK_PROVIDER=ambiqsuite
+NSX_SOC_FLAGS_TARGET=nsx_soc_apollo510_flags
+NSX_SOC_NAME=apollo510
+NSX_SOC_TARGET_EXPORT_NAME=soc_hal_apollo510
+NSX_STARTUP_SOURCE=/stub/app/modules/nsx-core/src/apollo510/armclang/startup_keil6.c
+NSX_STARTUP_TARGET_EXPORT_NAME=startup_apollo510
+NSX_SYSTEM_SOURCE=/stub/ambiqsuite/CMSIS/AmbiqMicro/Source/system_apollo510.c
+NSX_TOOLCHAIN_FAMILY=armclang
