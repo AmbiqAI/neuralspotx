@@ -97,10 +97,35 @@ function(nsx_bootstrap_app)
         message(FATAL_ERROR "SDK provider target was not selected.")
     endif()
 
+    # --- nsx::bsp role contract handshake (issue #154a.2) ------------------
+    # The BSP producer (an SDK provider module such as nsx-ambiq-bsp) publishes
+    # the provider-neutral nsx::bsp role and a contract version into the cache
+    # during its add_subdirectory() above. When that seam is present we verify
+    # it is compatible and wire the board target to it explicitly. Older SDK
+    # snapshots predate the seam; there the board still gets BSP support
+    # transitively through nsx_soc_hal, so we degrade gracefully rather than
+    # forcing every pinned example to re-lock in lock step.
+    set(NSX_BSP_CONTRACT_VERSION_REQUIRED 1)
+    set(_nsx_bsp_link "")
+    if(TARGET nsx::bsp)
+        if(NOT DEFINED NSX_BSP_CONTRACT_VERSION)
+            message(FATAL_ERROR
+                "nsx::bsp exists but NSX_BSP_CONTRACT_VERSION was not published.")
+        endif()
+        if(NOT NSX_BSP_CONTRACT_VERSION EQUAL NSX_BSP_CONTRACT_VERSION_REQUIRED)
+            message(FATAL_ERROR
+                "nsx::bsp contract version mismatch: board requires "
+                "${NSX_BSP_CONTRACT_VERSION_REQUIRED}, provider supplies "
+                "${NSX_BSP_CONTRACT_VERSION}.")
+        endif()
+        set(_nsx_bsp_link nsx::bsp)
+    endif()
+
     target_link_libraries(${NSX_BOARD_TARGET} INTERFACE
         ${NSX_SELECTED_SDK_TARGET}
         nsx_soc_hal
         nsx_startup
+        ${_nsx_bsp_link}
     )
 endfunction()
 

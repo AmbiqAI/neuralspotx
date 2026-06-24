@@ -1,10 +1,19 @@
-"""Byte-identical board.cmake contract guard (issue #154a, Phase 1).
+"""Board ``board.cmake`` contract guard (issue #154a / #154a.2).
 
-The packaged ``boards/<board>/board.cmake`` files are being refactored from
+The packaged ``boards/<board>/board.cmake`` files were refactored from
 monoliths into role fragments (``soc`` / ``bsp`` / ``memory`` / ``debug``)
-behind a thin aggregator. That refactor must be **purely structural**: the
-CMake state a board produces — the ordered sequence of target operations plus
-every ``NSX_*`` variable it sets — has to stay identical.
+behind a thin aggregator. Phase 1 (#154a) required that refactor to be
+**purely structural**: the CMake state a board produces — the ordered sequence
+of target operations plus every ``NSX_*`` variable it sets — had to stay
+identical to the original monolith.
+
+Phase 2 (#154a.2) introduces the cross-repo ``nsx::bsp`` role seam. As part of
+it the ``bsp`` fragment now declares board-layer capability facts (e.g.
+``NSX_BOARD_HAS_BUTTONS`` / ``NSX_BOARD_BUTTON_COUNT`` /
+``NSX_BOARD_BUTTON_PINS``) that the BSP producer module consumes. Those facts
+are board-produced ``NSX_*`` state, so they are part of the captured contract;
+the producer-side ``NSX_BSP_*`` handshake lives in the SDK module and is not
+visible to this fragment-level harness.
 
 These tests pin that contract. For every registered board and each toolchain
 family, the packaged ``board.cmake`` is included in ``cmake -P`` script mode

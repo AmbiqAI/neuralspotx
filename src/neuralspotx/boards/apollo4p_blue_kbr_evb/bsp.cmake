@@ -12,3 +12,11 @@ set(NSX_AMBIQ_BSP_LIB_SUBDIR "apollo4p_blue_kbr_evb")
 set(NSX_AMBIQ_MCU_DIR "${NSX_AMBIQSUITE_ROOT}/mcu/${NSX_AMBIQ_PART_NAME}")
 set(NSX_AMBIQ_HAL_DIR "${NSX_AMBIQ_MCU_DIR}/hal")
 set(NSX_AMBIQ_HAL_MCU_DIR "${NSX_AMBIQ_HAL_DIR}/mcu")
+
+# BSP capability facts: buttons (consumed by nsx-ambiq-bsp -> nsx::bsp).
+set(NSX_BOARD_HAS_BUTTONS TRUE)
+set(NSX_BOARD_BUTTON_COUNT 2)
+set(NSX_BOARD_BUTTON_PINS
+    AM_BSP_GPIO_BUTTON0
+    AM_BSP_GPIO_BUTTON1
+)
