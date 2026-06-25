@@ -7,8 +7,11 @@ applied consistently.
 
 from __future__ import annotations
 
+import os
+import random
 import subprocess
 import sys
+import time
 from pathlib import Path
 
 
@@ -145,6 +148,220 @@ def _validate_git_url(url: str) -> None:
         )
 
 
+# ---------------------------------------------------------------------------
+# Transient-failure retry for git *network* operations
+# ---------------------------------------------------------------------------
+#
+# ``git ls-remote`` / ``git fetch`` / ``git clone`` reach out over the
+# network and occasionally fail for reasons unrelated to the request: a
+# DNS hiccup, a dropped TLS handshake, a GitHub 5xx/429, a reset
+# connection. These are exactly the "random, transient" failures that
+# make ``nsx lock`` flaky on busy networks and in CI. The helpers below
+# wrap each network invocation in a bounded exponential-backoff retry
+# that only re-attempts when the captured error text matches a known
+# transient signature, so deterministic failures (bad URL, unknown ref,
+# auth, or the expected "unadvertised object" rejection that drives the
+# shallow-fetch fallback) still fail fast.
+
+# Substrings (compared case-insensitively against captured stderr/output)
+# that mark a git failure as a transient transport error worth retrying.
+# Curated to avoid matching deterministic failures.
+_TRANSIENT_GIT_ERROR_PATTERNS: tuple[str, ...] = (
+    "could not resolve host",
+    "couldn't resolve host",
+    "temporary failure in name resolution",
+    "connection timed out",
+    "connection reset",
+    "connection refused",
+    "operation timed out",
+    "timed out",
+    "early eof",
+    "rpc failed",
+    "remote end hung up",
+    "unable to access",
+    "failed to connect",
+    "transfer closed",
+    "unexpected disconnect",
+    "gnutls",
+    "ssl connect error",
+    "ssl_error",
+    "tls handshake",
+    "internal server error",
+    "service unavailable",
+    "bad gateway",
+    "gateway time-out",
+    "gateway timeout",
+    "too many requests",
+    "returned error: 408",
+    "returned error: 429",
+    "returned error: 500",
+    "returned error: 502",
+    "returned error: 503",
+    "returned error: 504",
+)
+
+
+# Indirection so tests can disable real sleeping between retries.
+_sleep = time.sleep
+
+
+def _env_int(name: str, default: int, *, minimum: int, maximum: int) -> int:
+    raw = os.environ.get(name)
+    if raw is None or raw.strip() == "":
+        return default
+    try:
+        value = int(raw)
+    except ValueError:
+        return default
+    return max(minimum, min(maximum, value))
+
+
+def _env_float(name: str, default: float, *, minimum: float) -> float:
+    raw = os.environ.get(name)
+    if raw is None or raw.strip() == "":
+        return default
+    try:
+        value = float(raw)
+    except ValueError:
+        return default
+    return max(minimum, value)
+
+
+def _git_retry_config() -> tuple[int, float, float]:
+    """Return ``(attempts, base_delay, max_delay)`` from the environment.
+
+    ``NSX_GIT_RETRIES`` (default 3, clamped to 1-10) is the *total*
+    number of attempts; set it to ``1`` to disable retries.
+    ``NSX_GIT_RETRY_BASE_DELAY`` (default 0.5s) is the first backoff
+    delay; subsequent delays grow exponentially with added jitter.
+    ``NSX_GIT_RETRY_MAX_DELAY`` (default 8s) caps each backoff so a high
+    retry count — or a lockfile that resolves many repos — cannot stack
+    up into multi-minute stalls.
+    """
+
+    attempts = _env_int("NSX_GIT_RETRIES", 3, minimum=1, maximum=10)
+    base = _env_float("NSX_GIT_RETRY_BASE_DELAY", 0.5, minimum=0.0)
+    max_delay = _env_float("NSX_GIT_RETRY_MAX_DELAY", 8.0, minimum=0.0)
+    return attempts, base, max_delay
+
+
+def _git_error_text(exc: BaseException) -> str:
+    parts: list[str] = []
+    for attr in ("stderr", "output"):
+        val = getattr(exc, attr, None)
+        if isinstance(val, bytes):
+            val = val.decode("utf-8", "replace")
+        if val:
+            parts.append(str(val))
+    return " ".join(parts).lower()
+
+
+def _is_transient_git_error(exc: BaseException) -> bool:
+    """Return True when *exc* looks like a retryable transport failure."""
+
+    if isinstance(exc, subprocess.TimeoutExpired):
+        return True
+    text = _git_error_text(exc)
+    if not text:
+        # No diagnostic text was captured. We can't positively classify
+        # the failure, but a silent git network op is far more likely to
+        # be a transient blip (killed connection, abrupt disconnect) than
+        # a deterministic error — those almost always print a ``fatal:``
+        # line. Permanent, deterministic problems (bad URL/protocol) are
+        # rejected up front by _validate_git_url as NSXGitError, which
+        # this retry path never catches. So retry on empty output.
+        return True
+    return any(pat in text for pat in _TRANSIENT_GIT_ERROR_PATTERNS)
+
+
+def _git_network_retry(operation, *, label, before_retry=None):  # type: ignore[no-untyped-def]
+    """Run *operation* (a no-arg callable), retrying transient failures.
+
+    *operation* performs a single git network invocation and must raise
+    :class:`subprocess.CalledProcessError` /
+    :class:`subprocess.TimeoutExpired` on failure (carrying ``stderr`` /
+    ``output`` so the failure can be classified). Non-transient failures
+    and the final attempt re-raise unchanged. *before_retry*, when given,
+    is invoked after the backoff sleep and before the next attempt (used
+    to clear a partially-populated clone directory).
+    """
+
+    attempts, base, max_delay = _git_retry_config()
+    for attempt in range(1, attempts + 1):
+        try:
+            return operation()
+        except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
+            if attempt >= attempts or not _is_transient_git_error(exc):
+                raise
+            # Exponential backoff, capped at ``max_delay`` so many repos
+            # (or a high NSX_GIT_RETRIES) can't stack into long stalls,
+            # plus jitter to avoid a synchronised retry stampede when the
+            # parallel prefetch fans out across remotes. The final ``min``
+            # keeps the jittered value within the cap.
+            backoff = min(base * (2 ** (attempt - 1)), max_delay)
+            delay = min(max_delay, backoff + random.uniform(0.0, base))
+            print(
+                f"nsx: transient git error during {label} "
+                f"(attempt {attempt}/{attempts}), retrying in {delay:.1f}s…",
+                file=sys.stderr,
+            )
+            _sleep(delay)
+            if before_retry is not None:
+                before_retry()
+    raise AssertionError("unreachable")  # pragma: no cover
+
+
+def _on_rm_error(_func, _path, _exc_info):  # noqa: ANN001
+    # git pack/index files can be read-only on Windows; clear the write
+    # bit and retry the original failing op (which may be ``os.unlink``
+    # for files or ``os.rmdir`` for directories) so rmtree can finish in
+    # both cases. On Python 3.12+ rmtree may call fd-based syscalls (e.g.
+    # ``os.open(path, flags)``) that require multiple positional args; in
+    # that case ``_func(_path)`` raises TypeError, which we swallow.
+    import stat
+
+    try:
+        os.chmod(_path, stat.S_IWRITE)
+    except OSError:
+        pass
+    try:
+        _func(_path)
+    except (OSError, TypeError):
+        pass
+
+
+def _robust_rmtree(path: Path) -> None:
+    import shutil
+
+    if not path.exists():
+        return
+    # ``onerror=`` is deprecated in 3.12 and removed in 3.14. The callback
+    # ignores the third arg's shape so it works for both APIs.
+    if sys.version_info >= (3, 12):
+        shutil.rmtree(path, onexc=_on_rm_error)
+    else:
+        shutil.rmtree(path, onerror=_on_rm_error)
+
+
+def _run_net(cmd, cwd=None):  # type: ignore[no-untyped-def]
+    """Run a streaming git network command, capturing its output so a
+    transient failure can be classified while still echoing live output.
+
+    The streamed lines are buffered and, on failure, attached to the
+    :class:`subprocess.CalledProcessError` (which carries no ``stderr``
+    when the subprocess inherits the parent's stdio) so
+    :func:`_is_transient_git_error` can inspect them.
+    """
+
+    captured: list[str] = []
+    try:
+        _run(cmd, cwd=cwd, on_line=captured.append)
+    except subprocess.CalledProcessError as exc:
+        if not getattr(exc, "stderr", None):
+            exc.stderr = "\n".join(captured)
+        raise
+
+
 def git_clone(url: str, dest: Path, *, revision: str | None = None, depth: int = 1) -> None:
     """Clone a git repo into *dest*, optionally checking out a specific revision."""
 
@@ -155,7 +372,11 @@ def git_clone(url: str, dest: Path, *, revision: str | None = None, depth: int =
     if depth:
         cmd += ["--depth", str(depth)]
     cmd += [url, str(dest)]
-    _run(cmd)
+    _git_network_retry(
+        lambda: _run_net(cmd),
+        label="git clone",
+        before_retry=lambda: _robust_rmtree(dest),
+    )
 
 
 def git_clone_at_commit(url: str, dest: Path, commit: str) -> None:
@@ -171,38 +392,6 @@ def git_clone_at_commit(url: str, dest: Path, commit: str) -> None:
     ``uploadpack.allowReachableSHA1InWant``). Falls back to a full
     clone + checkout when the server rejects the targeted fetch.
     """
-
-    import os
-    import stat
-
-    def _on_rm_error(_func, _path, _exc_info):  # noqa: ANN001
-        # git pack/index files can be read-only on Windows; clear the
-        # write bit and retry the original failing op (which may be
-        # ``os.unlink`` for files or ``os.rmdir`` for directories) so
-        # rmtree can finish in both cases. On Python 3.12+ rmtree may
-        # call fd-based syscalls (e.g. ``os.open(path, flags)``) that
-        # require multiple positional args; in that case ``_func(_path)``
-        # raises TypeError, which we swallow.
-        try:
-            os.chmod(_path, stat.S_IWRITE)
-        except OSError:
-            pass
-        try:
-            _func(_path)
-        except (OSError, TypeError):
-            pass
-
-    def _robust_rmtree(path: Path) -> None:
-        import shutil
-
-        if not path.exists():
-            return
-        # ``onerror=`` is deprecated in 3.12 and removed in 3.14. The
-        # callback ignores the third arg's shape so it works for both APIs.
-        if sys.version_info >= (3, 12):
-            shutil.rmtree(path, onexc=_on_rm_error)
-        else:
-            shutil.rmtree(path, onerror=_on_rm_error)
 
     # Match ``git clone`` semantics: fail-fast on stale state. If
     # ``dest`` already exists we remove it up front so neither
@@ -223,18 +412,21 @@ def git_clone_at_commit(url: str, dest: Path, commit: str) -> None:
             ["git", *GIT_PROTOCOL_ALLOWLIST_FLAGS, "remote", "add", "origin", url],
             cwd=dest,
         )
-        _run(
-            [
-                "git",
-                *GIT_PROTOCOL_ALLOWLIST_FLAGS,
-                "fetch",
-                "--depth",
-                "1",
-                "--quiet",
-                "origin",
-                commit,
-            ],
-            cwd=dest,
+        _git_network_retry(
+            lambda: _run_net(
+                [
+                    "git",
+                    *GIT_PROTOCOL_ALLOWLIST_FLAGS,
+                    "fetch",
+                    "--depth",
+                    "1",
+                    "--quiet",
+                    "origin",
+                    commit,
+                ],
+                cwd=dest,
+            ),
+            label="git fetch",
         )
         _run(
             ["git", *GIT_PROTOCOL_ALLOWLIST_FLAGS, "checkout", "--detach", "--quiet", "FETCH_HEAD"],
@@ -250,7 +442,11 @@ def git_clone_at_commit(url: str, dest: Path, commit: str) -> None:
             raise NSXResolutionError(
                 f"git_clone_at_commit: failed to remove stale partial clone at {dest}"
             )
-        _run(["git", *GIT_PROTOCOL_ALLOWLIST_FLAGS, "clone", url, str(dest)])
+        _git_network_retry(
+            lambda: _run_net(["git", *GIT_PROTOCOL_ALLOWLIST_FLAGS, "clone", url, str(dest)]),
+            label="git clone",
+            before_retry=lambda: _robust_rmtree(dest),
+        )
         _run(["git", *GIT_PROTOCOL_ALLOWLIST_FLAGS, "checkout", "--detach", commit], cwd=dest)
 
 
@@ -290,4 +486,4 @@ def git_ls_remote(url: str, *refs: str) -> subprocess.CompletedProcess[str]:
 
     _validate_git_url(url)
     cmd = ["git", *GIT_PROTOCOL_ALLOWLIST_FLAGS, "ls-remote", url, *refs]
-    return _run_capture(cmd)
+    return _git_network_retry(lambda: _run_capture(cmd), label="git ls-remote")
