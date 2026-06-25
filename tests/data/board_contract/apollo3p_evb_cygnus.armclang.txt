@@ -24,7 +24,6 @@ NSX_AMBIQ_BOARD_NAME=apollo3p_evb_cygnus
 NSX_AMBIQ_BSP_DIR=/stub/ambiqsuite/boards/apollo3p_evb_cygnus/bsp
 NSX_AMBIQ_BSP_LIB_SUBDIR=apollo3p_evb_cygnus
 NSX_AMBIQ_HAL_DIR=/stub/ambiqsuite/mcu/apollo3p/hal
-NSX_AMBIQ_HAL_MCU_DIR=/stub/ambiqsuite/mcu/apollo3p/hal/mcu
 NSX_AMBIQ_MCU_DIR=/stub/ambiqsuite/mcu/apollo3p
 NSX_AMBIQ_PART_NAME=apollo3p
 NSX_BOARD_BUTTON_COUNT=3
