@@ -174,7 +174,8 @@ _TRANSIENT_GIT_ERROR_PATTERNS: tuple[str, ...] = (
     "connection reset",
     "connection refused",
     "operation timed out",
-    "timed out",
+    "gateway time-out",
+    "gateway timeout",
     "early eof",
     "rpc failed",
     "remote end hung up",
@@ -189,8 +190,6 @@ _TRANSIENT_GIT_ERROR_PATTERNS: tuple[str, ...] = (
     "internal server error",
     "service unavailable",
     "bad gateway",
-    "gateway time-out",
-    "gateway timeout",
     "too many requests",
     "returned error: 408",
     "returned error: 429",
@@ -198,6 +197,28 @@ _TRANSIENT_GIT_ERROR_PATTERNS: tuple[str, ...] = (
     "returned error: 502",
     "returned error: 503",
     "returned error: 504",
+)
+
+
+# Substrings that mark a failure as *permanent* (deterministic) and never
+# worth retrying, checked ahead of the transient patterns above. Some
+# transient signatures are broad on purpose (e.g. ``unable to access`` —
+# the curl prefix that also wraps genuinely transient DNS/connection
+# errors), so this deny-list takes precedence to keep an authentication
+# or HTTP 4xx failure (which carries that same prefix) failing fast.
+_PERMANENT_GIT_ERROR_PATTERNS: tuple[str, ...] = (
+    "authentication failed",
+    "invalid username or password",
+    "repository not found",
+    "could not read from remote repository",
+    "permission denied",
+    "access denied",
+    "denied to",
+    "returned error: 400",
+    "returned error: 401",
+    "returned error: 403",
+    "returned error: 404",
+    "returned error: 451",
 )
 
 
@@ -334,6 +355,11 @@ def _is_transient_git_error(exc: BaseException) -> bool:
         # rejected up front by _validate_git_url as NSXGitError, which
         # this retry path never catches. So retry on empty output.
         return True
+    # A permanent signature wins even when a broad transient pattern (e.g.
+    # ``unable to access``) would otherwise match, so auth / HTTP 4xx
+    # failures fail fast instead of burning the full retry budget.
+    if any(pat in text for pat in _PERMANENT_GIT_ERROR_PATTERNS):
+        return False
     return any(pat in text for pat in _TRANSIENT_GIT_ERROR_PATTERNS)
 
 

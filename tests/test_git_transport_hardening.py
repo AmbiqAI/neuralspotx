@@ -217,6 +217,12 @@ class TestTransientErrorClassification:
             "fatal: couldn't find remote ref refs/heads/nope",
             "fatal: remote error: upload-pack: not our ref deadbeef",
             "Server does not allow request for unadvertised object deadbeef",
+            # Permanent HTTP statuses must win over the broad
+            # ``unable to access`` transient prefix that carries them.
+            "fatal: unable to access 'https://x/': The requested URL returned error: 403",
+            "fatal: unable to access 'https://x/': The requested URL returned error: 404",
+            "fatal: unable to access 'https://x/': The requested URL returned error: 401",
+            "remote: Permission to o/r.git denied to user.\nfatal: unable to access 'https://x/'",
         ],
     )
     def test_deterministic_stderr_is_not_retryable(self, stderr: str) -> None:
