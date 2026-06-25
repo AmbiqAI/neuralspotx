@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import enum
 
-from .board_descriptors import load_board_descriptors
+from .board_descriptors import BoardDescriptorError, load_board_descriptors
 
 # Canonical ordering of *registered* boards. This is the single place that
 # governs which boards appear in the legacy ``DEFAULT_SOC_FOR_BOARD`` /
@@ -31,30 +31,58 @@ _BOARD_ORDER: tuple[str, ...] = (
     "apollo510dL_evb",
 )
 
-_DESCRIPTORS = load_board_descriptors()
+# Load the packaged board descriptors. A malformed descriptor must NOT make
+# this module (and therefore the whole package, including ``nsx doctor``)
+# unimportable, so any load error is captured here and surfaced through
+# :func:`validate_board_registry` instead of being raised at import time.
+try:
+    _DESCRIPTORS = load_board_descriptors()
+    _DESCRIPTOR_LOAD_ERROR: str | None = None
+except BoardDescriptorError as exc:  # pragma: no cover — exercised via doctor
+    _DESCRIPTORS = {}
+    _DESCRIPTOR_LOAD_ERROR = str(exc)
 
-# Guard: every name in the canonical order must ship a registered descriptor,
-# and every registered descriptor must be listed in the canonical order.
-_missing_descriptor = [b for b in _BOARD_ORDER if b not in _DESCRIPTORS]
-if _missing_descriptor:
-    raise RuntimeError(
-        f"_BOARD_ORDER references boards without a board.yaml descriptor: "
-        f"{_missing_descriptor}"
-    )
-_unordered_registered = sorted(
-    name
-    for name, desc in _DESCRIPTORS.items()
-    if desc.registered and name not in _BOARD_ORDER
-)
-if _unordered_registered:
-    raise RuntimeError(
-        f"registered board descriptors missing from _BOARD_ORDER: "
-        f"{_unordered_registered}"
-    )
 
-# Authoritative mapping from canonical board name to default SoC, derived
-# from the board descriptors in the canonical order above.
-DEFAULT_SOC_FOR_BOARD = {b: _DESCRIPTORS[b].soc for b in _BOARD_ORDER}
+def validate_board_registry() -> list[str]:
+    """Return board-registry problems, or an empty list if healthy.
+
+    Centralizes the consistency checks that previously ran at import time
+    and raised :class:`RuntimeError`. Callers such as ``nsx doctor`` invoke
+    this and report problems gracefully instead of the whole package failing
+    to import on a malformed or drifted descriptor set. The conditions are:
+
+    * the packaged ``board.yaml`` descriptors loaded without error;
+    * every name in ``_BOARD_ORDER`` ships a registered descriptor;
+    * every registered descriptor is listed in ``_BOARD_ORDER``.
+    """
+
+    problems: list[str] = []
+    if _DESCRIPTOR_LOAD_ERROR is not None:
+        problems.append(f"failed to load board descriptors: {_DESCRIPTOR_LOAD_ERROR}")
+    missing = [b for b in _BOARD_ORDER if b not in _DESCRIPTORS]
+    if missing:
+        problems.append(
+            f"_BOARD_ORDER references boards without a board.yaml descriptor: {missing}"
+        )
+    unordered = sorted(
+        name
+        for name, desc in _DESCRIPTORS.items()
+        if desc.registered and name not in _BOARD_ORDER
+    )
+    if unordered:
+        problems.append(
+            f"registered board descriptors missing from _BOARD_ORDER: {unordered}"
+        )
+    return problems
+
+
+# Authoritative mapping from canonical board name to default SoC, derived from
+# the board descriptors in the canonical order above. Built defensively (any
+# board lacking a descriptor is skipped) so a drifted/broken registry is
+# reported by :func:`validate_board_registry` rather than crashing import.
+DEFAULT_SOC_FOR_BOARD = {
+    b: _DESCRIPTORS[b].soc for b in _BOARD_ORDER if b in _DESCRIPTORS
+}
 
 # Canonical (case-correct) board identifiers.  Most are already lowercase, but
 # ``apollo330mP_evb`` carries a load-bearing capital ``P`` (filesystem dir,
@@ -112,7 +140,7 @@ def normalize_soc(value: str | None) -> str | None:
 # ``tests/test_board_table_drift.py``.
 
 BOARD_SDK_PROVIDER: dict[str, str] = {
-    b: _DESCRIPTORS[b].sdk_provider for b in _BOARD_ORDER
+    b: _DESCRIPTORS[b].sdk_provider for b in _BOARD_ORDER if b in _DESCRIPTORS
 }
 
 

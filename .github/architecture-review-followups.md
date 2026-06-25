@@ -15,12 +15,16 @@ Legend: **Sev** = severity (High / Med / Low), **Risk** = change risk.
 
 ## Foundation
 
-- [ ] **1 (R1) — Defer constants' import-time validation.** `constants.py` runs
+- [x] **1 (R1) — Defer constants' import-time validation.** `constants.py` runs
   `load_board_descriptors()` and can `raise RuntimeError` at import, making the
   whole package (incl. `nsx doctor`) unimportable on a malformed descriptor.
   Move validation behind a callable so doctor can report gracefully. Do this
   first so later descriptor edits can't brick the package mid-series.
   _Sev: High · Risk: Low._
+  - Done: `constants.validate_board_registry()` now centralizes the checks
+    (descriptor load + both `_BOARD_ORDER` drift directions); import captures a
+    `BoardDescriptorError` instead of raising, and the derived tables build
+    defensively. `nsx doctor` surfaces problems via a new "Board registry" check.
 
 ## Board descriptor as single source of truth
 

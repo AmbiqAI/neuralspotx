@@ -93,6 +93,29 @@ def doctor_impl() -> DoctorReport:
     from ..subprocess_utils import GIT_PROTOCOL_ALLOWLIST_FLAGS
 
     r.note("  git protocol allow-list: " + " ".join(GIT_PROTOCOL_ALLOWLIST_FLAGS))
+
+    # Package self-check: the board registry (board.yaml descriptors and the
+    # canonical _BOARD_ORDER they derive) is validated here rather than at
+    # import time, so a malformed/drifted descriptor is reported instead of
+    # making the whole package unimportable.
+    from ..constants import validate_board_registry
+
+    board_problems = validate_board_registry()
+    r.check(
+        "Board registry",
+        not board_problems,
+        detail=(
+            "; ".join(board_problems)
+            if board_problems
+            else "packaged board descriptors are consistent"
+        ),
+        hint=(
+            "Packaged board.yaml descriptors are inconsistent — this is a "
+            "neuralspotx packaging bug; please report it."
+            if board_problems
+            else None
+        ),
+    )
     r.check(
         "arm-none-eabi-gcc",
         tool_path("arm-none-eabi-gcc") is not None,
