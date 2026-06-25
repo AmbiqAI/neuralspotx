@@ -14,6 +14,58 @@ from ._verbosity import _VERBOSITY, _effective_timeout
 from ._winjob import _ProcessContainer
 
 
+def _split_emitted_lines(
+    pending: bytes, *, at_eof: bool
+) -> tuple[list[tuple[str, str]], bytes]:
+    """Split streamed *pending* bytes into ``(text, terminator)`` segments.
+
+    Breaks on ``\\n``, ``\\r``, and ``\\r\\n`` (each treated as a single
+    line terminator) so carriage-return progress updates (``git``/``ninja``
+    redraw a single line with a bare ``\\r``) surface as soon as they
+    arrive rather than buffering until the next newline. ``text`` has the
+    terminator stripped (for the ``on_line`` callback); ``terminator`` is
+    the literal sequence so the caller can re-emit it faithfully and keep
+    in-place progress rendering. A trailing bare ``\\r`` at the very end is
+    held back (it may be the first half of a ``\\r\\n``) unless *at_eof*.
+    Returns the segments plus the still-unconsumed remainder.
+    """
+
+    segments: list[tuple[str, str]] = []
+    n = len(pending)
+    i = 0
+    start = 0
+    while i < n:
+        b = pending[i]
+        if b == 0x0A:  # \n
+            segments.append((pending[start:i].decode("utf-8", "replace"), "\n"))
+            i += 1
+            start = i
+        elif b == 0x0D:  # \r
+            if i + 1 < n:
+                if pending[i + 1] == 0x0A:  # \r\n
+                    segments.append((pending[start:i].decode("utf-8", "replace"), "\r\n"))
+                    i += 2
+                else:
+                    segments.append((pending[start:i].decode("utf-8", "replace"), "\r"))
+                    i += 1
+                start = i
+            elif at_eof:
+                segments.append((pending[start:i].decode("utf-8", "replace"), "\r"))
+                i += 1
+                start = i
+            else:
+                # Trailing bare \r that might be the first half of a
+                # \r\n straddling the next read; hold it until more bytes.
+                break
+        else:
+            i += 1
+    remainder = pending[start:]
+    if at_eof and remainder:
+        segments.append((remainder.decode("utf-8", "replace"), ""))
+        remainder = b""
+    return segments, remainder
+
+
 def run(
     cmd: list[str],
     cwd: Path | None = None,
@@ -38,13 +90,14 @@ def run(
     """
     effective = _effective_timeout(timeout)
     if on_line is not None:
+        # Binary pipe: we read raw bytes (``os.read`` on POSIX, ``readline``
+        # on Windows) and decode ourselves so we can split on \r as well as
+        # \n and re-emit the original terminator for in-place progress.
         proc = subprocess.Popen(
             cmd,
             cwd=str(cwd) if cwd else None,
-            text=True,
             stdout=subprocess.PIPE,
             stderr=subprocess.STDOUT,
-            bufsize=1,
             start_new_session=(os.name != "nt"),
         )
     else:
@@ -58,37 +111,17 @@ def run(
     try:
         try:
             if on_line is not None and proc.stdout is not None:
-                # Stream lines through the callback while still enforcing
-                # the wall-clock timeout. We use ``select`` (POSIX) or a
-                # blocking readline with a deadline check (Windows) so a
-                # subprocess that stops producing newlines cannot escape
-                # the budget.
+                # Stream output through the callback while still enforcing
+                # the wall-clock timeout. On POSIX we ``select`` on the raw
+                # fd and read chunks so a subprocess that stops producing
+                # output (even mid-line) cannot escape the budget, and we
+                # split on \r as well as \n so live progress redraws render
+                # in place. Windows falls back to a blocking readline with a
+                # per-iteration deadline check.
                 deadline = None if effective is None else time.monotonic() + effective
                 stream = proc.stdout
-                use_select = os.name != "nt"
-                while True:
-                    if deadline is not None:
-                        remaining = deadline - time.monotonic()
-                        if remaining <= 0:
-                            container.terminate(proc)
-                            raise subprocess.TimeoutExpired(cmd, effective)
-                    else:
-                        remaining = None
-                    if use_select:
-                        ready, _, _ = select.select(
-                            [stream],
-                            [],
-                            [],
-                            remaining if remaining is not None else None,
-                        )
-                        if not ready:
-                            # select timed out -> deadline reached
-                            container.terminate(proc)
-                            raise subprocess.TimeoutExpired(cmd, effective)
-                    raw = stream.readline()
-                    if not raw:
-                        break
-                    text_line = raw.rstrip("\n")
+
+                def _emit(text_line: str, terminator: str) -> None:
                     try:
                         on_line(text_line)
                     except BaseException:
@@ -98,7 +131,47 @@ def run(
                         # (Windows).
                         container.terminate(proc)
                         raise
-                    sys.stdout.write(raw)
+                    sys.stdout.write(text_line + terminator)
+                    if not terminator.endswith("\n"):
+                        # A bare \r (or no terminator) won't flush a
+                        # line-buffered stdout, so force it for live progress.
+                        sys.stdout.flush()
+
+                if os.name != "nt":
+                    fd = stream.fileno()
+                    pending = b""
+                    while True:
+                        if deadline is not None:
+                            remaining = deadline - time.monotonic()
+                            if remaining <= 0:
+                                container.terminate(proc)
+                                raise subprocess.TimeoutExpired(cmd, effective)
+                        else:
+                            remaining = None
+                        ready, _, _ = select.select([fd], [], [], remaining)
+                        if not ready:
+                            # select timed out -> deadline reached
+                            container.terminate(proc)
+                            raise subprocess.TimeoutExpired(cmd, effective)
+                        chunk = os.read(fd, 65536)
+                        at_eof = not chunk
+                        pending += chunk
+                        segments, pending = _split_emitted_lines(pending, at_eof=at_eof)
+                        for text_line, terminator in segments:
+                            _emit(text_line, terminator)
+                        if at_eof:
+                            break
+                else:  # pragma: no cover - exercised on Windows CI
+                    while True:
+                        if deadline is not None:
+                            remaining = deadline - time.monotonic()
+                            if remaining <= 0:
+                                container.terminate(proc)
+                                raise subprocess.TimeoutExpired(cmd, effective)
+                        raw = stream.readline()
+                        if not raw:
+                            break
+                        _emit(raw.rstrip(b"\r\n").decode("utf-8", "replace"), "\n")
                 wait_timeout = None if deadline is None else max(0.0, deadline - time.monotonic())
                 rc = proc.wait(timeout=wait_timeout)
             else:

@@ -7,12 +7,15 @@ applied consistently.
 
 from __future__ import annotations
 
+import logging
 import os
 import random
 import subprocess
 import sys
 import time
 from pathlib import Path
+
+_log = logging.getLogger(__name__)
 
 
 def _run(cmd, **kwargs):  # type: ignore[no-untyped-def]
@@ -389,10 +392,12 @@ def _git_network_retry(operation, *, label, before_retry=None):  # type: ignore[
             # keeps the jittered value within the cap.
             backoff = min(base * (2 ** (attempt - 1)), max_delay)
             delay = min(max_delay, backoff + random.uniform(0.0, base))
-            print(
-                f"nsx: transient git error during {label} "
-                f"(attempt {attempt}/{attempts}), retrying in {delay:.1f}s…",
-                file=sys.stderr,
+            _log.warning(
+                "transient git error during %s (attempt %d/%d), retrying in %.1fs",
+                label,
+                attempt,
+                attempts,
+                delay,
             )
             _sleep(delay)
             if before_retry is not None:
