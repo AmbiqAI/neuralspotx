@@ -80,7 +80,10 @@ class TestStreamingRun:
         )
         assert lines == ["0", "1", "2"]
         out, _ = capfd.readouterr()
-        assert out == "0\n1\n2\n"
+        if os.name != "nt":
+            # Windows translates \n -> \r\n at the fd level; the portable
+            # guarantee is the per-line on_line split asserted above.
+            assert out == "0\n1\n2\n"
 
     def test_carriage_return_progress_preserved(
         self, capfd: pytest.CaptureFixture[str]
