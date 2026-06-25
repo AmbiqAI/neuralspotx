@@ -8,6 +8,7 @@ even when a process emits partial output and then hangs without a newline.
 
 from __future__ import annotations
 
+import os
 import subprocess
 import sys
 
@@ -95,8 +96,11 @@ class TestStreamingRun:
         )
         assert lines == ["10%", "20%", "30%"]
         out, _ = capfd.readouterr()
-        # The bare \r terminators are preserved so a terminal redraws in place.
-        assert out == "10%\r20%\r30%\n"
+        if os.name != "nt":
+            # The bare \r terminators are preserved so a terminal redraws in
+            # place. (Windows translates \n at the fd level, so the exact
+            # byte stream isn't portable; the on_line split above is.)
+            assert out == "10%\r20%\r30%\n"
 
     def test_timeout_with_no_output(self) -> None:
         with pytest.raises(subprocess.TimeoutExpired):

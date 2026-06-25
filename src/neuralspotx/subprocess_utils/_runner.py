@@ -162,6 +162,11 @@ def run(
                         if at_eof:
                             break
                 else:  # pragma: no cover - exercised on Windows CI
+                    # Windows pipes don't support ``select``; fall back to a
+                    # blocking readline (which only breaks on \n) but still
+                    # run each line through the splitter so \r progress within
+                    # a completed line is emitted segment-by-segment.
+                    pending = b""
                     while True:
                         if deadline is not None:
                             remaining = deadline - time.monotonic()
@@ -169,9 +174,13 @@ def run(
                                 container.terminate(proc)
                                 raise subprocess.TimeoutExpired(cmd, effective)
                         raw = stream.readline()
-                        if not raw:
+                        at_eof = not raw
+                        pending += raw
+                        segments, pending = _split_emitted_lines(pending, at_eof=at_eof)
+                        for text_line, terminator in segments:
+                            _emit(text_line, terminator)
+                        if at_eof:
                             break
-                        _emit(raw.rstrip(b"\r\n").decode("utf-8", "replace"), "\n")
                 wait_timeout = None if deadline is None else max(0.0, deadline - time.monotonic())
                 rc = proc.wait(timeout=wait_timeout)
             else:
