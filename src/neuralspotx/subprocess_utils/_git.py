@@ -245,6 +245,69 @@ def _git_retry_config() -> tuple[int, float, float]:
     return attempts, base, max_delay
 
 
+def _git_lowspeed_flags() -> tuple[str, ...]:
+    """``-c`` flags that abort a *stalled* HTTP(S) transfer.
+
+    ``http.lowSpeedLimit`` (bytes/sec) + ``http.lowSpeedTime`` (seconds)
+    tell git to abort when throughput stays below the limit for the
+    given window. Unlike a blunt wall-clock deadline this never kills a
+    slow-but-progressing clone (e.g. a large SDK over a thin link) — it
+    only fires once the transfer has effectively stalled, surfacing as a
+    ``transfer closed`` / ``RPC failed`` error that the retry layer
+    classifies as transient. Tunable via ``NSX_GIT_LOW_SPEED_LIMIT`` /
+    ``NSX_GIT_LOW_SPEED_TIME``; set either to 0 to disable. Ignored by
+    git for non-HTTP transports.
+    """
+
+    limit = _env_int("NSX_GIT_LOW_SPEED_LIMIT", 1000, minimum=0, maximum=1_000_000_000)
+    secs = _env_int("NSX_GIT_LOW_SPEED_TIME", 60, minimum=0, maximum=86_400)
+    if limit <= 0 or secs <= 0:
+        return ()
+    return (
+        "-c",
+        f"http.lowSpeedLimit={limit}",
+        "-c",
+        f"http.lowSpeedTime={secs}",
+    )
+
+
+def _git_net_flags() -> tuple[str, ...]:
+    """Hardening + stall-abort ``-c`` flags for git *network* commands."""
+
+    return (*GIT_PROTOCOL_ALLOWLIST_FLAGS, *_git_lowspeed_flags())
+
+
+def _git_default_timeout() -> float | None:
+    """Generous per-attempt wall-clock backstop for a hung git network op.
+
+    The low-speed guard (:func:`_git_lowspeed_flags`) catches a stalled
+    *transfer*, but not a hang during DNS/connect/TLS, nor an SSH remote
+    where the HTTP low-speed config does not apply. ``NSX_GIT_TIMEOUT``
+    (default 600s / 10 min) bounds those so a half-open connection can't
+    wedge ``nsx lock`` forever; once it fires the resulting
+    ``TimeoutExpired`` is retried like any other transient failure.
+    Deliberately generous — a large SDK over a slow link can take many
+    minutes — and tunable; set to 0 to disable. An explicit ``--timeout``
+    / ``timeout_budget`` always takes precedence.
+    """
+
+    return _env_float("NSX_GIT_TIMEOUT", 600.0, minimum=0.0) or None
+
+
+def _net_timeout() -> float | None:
+    """Resolve the wall-clock timeout for a single git network attempt.
+
+    An explicit ambient budget (the user's ``--timeout``) always wins;
+    otherwise fall back to the generous :func:`_git_default_timeout`
+    backstop.
+    """
+
+    from ._verbosity import _effective_timeout
+
+    ambient = _effective_timeout(None)
+    return ambient if ambient is not None else _git_default_timeout()
+
+
 def _git_error_text(exc: BaseException) -> str:
     parts: list[str] = []
     for attr in ("stderr", "output"):
@@ -355,7 +418,7 @@ def _run_net(cmd, cwd=None):  # type: ignore[no-untyped-def]
 
     captured: list[str] = []
     try:
-        _run(cmd, cwd=cwd, on_line=captured.append)
+        _run(cmd, cwd=cwd, on_line=captured.append, timeout=_net_timeout())
     except subprocess.CalledProcessError as exc:
         if not getattr(exc, "stderr", None):
             exc.stderr = "\n".join(captured)
@@ -366,7 +429,7 @@ def git_clone(url: str, dest: Path, *, revision: str | None = None, depth: int =
     """Clone a git repo into *dest*, optionally checking out a specific revision."""
 
     _validate_git_url(url)
-    cmd = ["git", *GIT_PROTOCOL_ALLOWLIST_FLAGS, "clone", "--single-branch"]
+    cmd = ["git", *_git_net_flags(), "clone", "--single-branch"]
     if revision:
         cmd += ["--branch", revision]
     if depth:
@@ -416,7 +479,7 @@ def git_clone_at_commit(url: str, dest: Path, commit: str) -> None:
             lambda: _run_net(
                 [
                     "git",
-                    *GIT_PROTOCOL_ALLOWLIST_FLAGS,
+                    *_git_net_flags(),
                     "fetch",
                     "--depth",
                     "1",
@@ -443,7 +506,7 @@ def git_clone_at_commit(url: str, dest: Path, commit: str) -> None:
                 f"git_clone_at_commit: failed to remove stale partial clone at {dest}"
             )
         _git_network_retry(
-            lambda: _run_net(["git", *GIT_PROTOCOL_ALLOWLIST_FLAGS, "clone", url, str(dest)]),
+            lambda: _run_net(["git", *_git_net_flags(), "clone", url, str(dest)]),
             label="git clone",
             before_retry=lambda: _robust_rmtree(dest),
         )
@@ -485,5 +548,7 @@ def git_ls_remote(url: str, *refs: str) -> subprocess.CompletedProcess[str]:
     """
 
     _validate_git_url(url)
-    cmd = ["git", *GIT_PROTOCOL_ALLOWLIST_FLAGS, "ls-remote", url, *refs]
-    return _git_network_retry(lambda: _run_capture(cmd), label="git ls-remote")
+    cmd = ["git", *_git_net_flags(), "ls-remote", url, *refs]
+    return _git_network_retry(
+        lambda: _run_capture(cmd, timeout=_net_timeout()), label="git ls-remote"
+    )

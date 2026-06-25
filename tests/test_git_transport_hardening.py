@@ -391,3 +391,140 @@ class TestNetworkRetry:
 
         git_clone("https://example.com/foo.git", dest, revision="main")
         assert calls["n"] == 2
+
+
+class TestLowSpeedGuard:
+    """git network commands must carry the stalled-transfer abort flags."""
+
+    def test_lowspeed_flags_default(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from neuralspotx.subprocess_utils import _git
+
+        monkeypatch.delenv("NSX_GIT_LOW_SPEED_LIMIT", raising=False)
+        monkeypatch.delenv("NSX_GIT_LOW_SPEED_TIME", raising=False)
+
+        flags = _git._git_lowspeed_flags()
+        joined = " ".join(flags)
+        assert "http.lowSpeedLimit=1000" in joined
+        assert "http.lowSpeedTime=60" in joined
+
+    def test_lowspeed_flags_tunable(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from neuralspotx.subprocess_utils import _git
+
+        monkeypatch.setenv("NSX_GIT_LOW_SPEED_LIMIT", "2048")
+        monkeypatch.setenv("NSX_GIT_LOW_SPEED_TIME", "30")
+
+        joined = " ".join(_git._git_lowspeed_flags())
+        assert "http.lowSpeedLimit=2048" in joined
+        assert "http.lowSpeedTime=30" in joined
+
+    @pytest.mark.parametrize("var", ["NSX_GIT_LOW_SPEED_LIMIT", "NSX_GIT_LOW_SPEED_TIME"])
+    def test_lowspeed_disabled_when_zero(
+        self, monkeypatch: pytest.MonkeyPatch, var: str
+    ) -> None:
+        from neuralspotx.subprocess_utils import _git
+
+        monkeypatch.setenv(var, "0")
+        assert _git._git_lowspeed_flags() == ()
+
+    def test_ls_remote_includes_lowspeed_flags(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        invocations: list[list[str]] = []
+
+        class _FakeResult:
+            stdout = ""
+
+        def fake_run_capture(cmd, *args, **kwargs):  # type: ignore[no-untyped-def]
+            invocations.append(list(cmd))
+            return _FakeResult()
+
+        monkeypatch.setattr(subprocess_utils, "run_capture", fake_run_capture)
+
+        git_ls_remote("https://example.com/foo.git", "main")
+
+        cmd = invocations[0]
+        # Hardening flags must still be present alongside the guard.
+        for flag in GIT_PROTOCOL_ALLOWLIST_FLAGS:
+            assert flag in cmd
+        joined = " ".join(cmd)
+        assert "http.lowSpeedLimit=" in joined
+        assert "http.lowSpeedTime=" in joined
+
+    def test_clone_includes_lowspeed_flags(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        invocations: list[list[str]] = []
+
+        def fake_run(cmd, *args, **kwargs):  # type: ignore[no-untyped-def]
+            invocations.append(list(cmd))
+
+        monkeypatch.setattr(subprocess_utils, "run", fake_run)
+
+        git_clone("https://example.com/foo.git", tmp_path / "x", revision="main")
+
+        joined = " ".join(invocations[0])
+        assert "http.lowSpeedLimit=" in joined
+        assert "http.lowSpeedTime=" in joined
+
+
+class TestNetworkTimeout:
+    """A generous default wall-clock timeout backstops hung git network ops."""
+
+    def test_default_timeout_applied(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from neuralspotx.subprocess_utils import _git
+
+        monkeypatch.delenv("NSX_GIT_TIMEOUT", raising=False)
+        assert _git._git_default_timeout() == 600.0
+
+    def test_default_timeout_tunable(self, monkeypatch: pytest.MonkeyPatch) -> None:
+        from neuralspotx.subprocess_utils import _git
+
+        monkeypatch.setenv("NSX_GIT_TIMEOUT", "1200")
+        assert _git._git_default_timeout() == 1200.0
+
+    def test_default_timeout_disabled_when_zero(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from neuralspotx.subprocess_utils import _git
+
+        monkeypatch.setenv("NSX_GIT_TIMEOUT", "0")
+        assert _git._git_default_timeout() is None
+
+    def test_ls_remote_passes_default_timeout(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        monkeypatch.delenv("NSX_GIT_TIMEOUT", raising=False)
+        seen: dict[str, object] = {}
+
+        class _FakeResult:
+            stdout = ""
+
+        def fake_run_capture(cmd, *args, timeout=None, **kwargs):  # type: ignore[no-untyped-def]
+            seen["timeout"] = timeout
+            return _FakeResult()
+
+        monkeypatch.setattr(subprocess_utils, "run_capture", fake_run_capture)
+
+        git_ls_remote("https://example.com/foo.git", "main")
+        assert seen["timeout"] == 600.0
+
+    def test_explicit_budget_overrides_default(
+        self, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from neuralspotx.subprocess_utils._verbosity import timeout_budget
+
+        monkeypatch.delenv("NSX_GIT_TIMEOUT", raising=False)
+        seen: dict[str, object] = {}
+
+        class _FakeResult:
+            stdout = ""
+
+        def fake_run_capture(cmd, *args, timeout=None, **kwargs):  # type: ignore[no-untyped-def]
+            seen["timeout"] = timeout
+            return _FakeResult()
+
+        monkeypatch.setattr(subprocess_utils, "run_capture", fake_run_capture)
+
+        with timeout_budget(42.0):
+            git_ls_remote("https://example.com/foo.git", "main")
+        assert seen["timeout"] == 42.0
