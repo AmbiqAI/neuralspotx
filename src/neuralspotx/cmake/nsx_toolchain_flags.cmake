@@ -39,6 +39,12 @@ function(nsx_apply_toolchain_flags flags_target)
         # --------------------------------------------------------
         target_compile_options(${flags_target} INTERFACE
             ${_arch_flags}
+            # CMake's ARMClang-ASM rule (CMAKE_ASM_COMPILE_OBJECT) does not inject
+            # the --target triple that ARMClang-C/CXX add automatically, so the
+            # Cortex-M4 ``.s`` startup files (apollo3p/apollo3/apollo4l) fail with
+            # "armclang: fatal error: no target architecture given". Add it for
+            # the ASM language only; C/C++ already receive --target from CMake.
+            $<$<COMPILE_LANGUAGE:ASM>:--target=arm-arm-none-eabi>
             -fshort-enums
             # -fshort-wchar: AmbiqSuite .lib prebuilts use 16-bit wchar_t
             # (Tag_ABI_PCS_wchar_t=2). Must match to avoid L6242E link errors.

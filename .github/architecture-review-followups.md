@@ -81,10 +81,23 @@ Legend: **Sev** = severity (High / Med / Low), **Risk** = change risk.
     `board.yaml`" refactor is deferred, and the custom-board role-override path
     (custom boards supplying their own BSP/role modules instead of wholesale
     delegating to the parent EVB) is tracked separately as #154b.
-- [ ] **6 (B6) — Validate SoC inventory symmetry.** `atomiq110` SoC facts exist
+- [x] **6 (B6) — Validate SoC inventory symmetry.** `atomiq110` SoC facts exist
   with no NSX board; naming diverges (`apollo510L` vs `apollo510dL_evb`). Add a
   fast Python-level check that every board's `soc` resolves to an existing SDK
   facts file instead of failing late at CMake configure. _Sev: Med · Risk: Low._
+  - Done: added `test_soc_inventory_symmetry` to
+    `tests/test_board_cpu_facts_contract.py` (skip-if-absent). It checks both
+    directions of the board↔SoC-facts inventory, matching by `soc` so name
+    divergences like `apollo510dL_evb` → `apollo510L` are handled. **board →
+    facts** is a hard requirement (a missing facts file is caught in Python/CI
+    instead of failing late inside `nsx_load_soc_facts("…")` at CMake configure).
+    **facts → board** is allow-listed via `ALLOWED_SOCS_WITHOUT_BOARD`
+    (currently `{atomiq110}` — AT110 is FPGA bring-up / in development with no
+    production EVB yet), so a new boardless SoC introduced by an SDK update is
+    surfaced for review rather than silently accumulating. A configure-time
+    runtime guard was considered but deferred: doctor has no SDK context and
+    locating the vendored facts dir pre-CMake needs more module-resolution
+    plumbing than this Low-risk item warrants.
 
 ## Board-name & provider hardening
 

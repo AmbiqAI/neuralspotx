@@ -96,3 +96,45 @@ def test_board_cpu_matches_sdk_soc_facts() -> None:
     assert not mismatches, "board.yaml cpu drifted from SDK SoC facts:\n" + "\n".join(
         mismatches
     )
+
+
+# SoCs that legitimately ship SDK facts without a matching NSX board. These are
+# in-development parts (no production EVB yet). ``atomiq110`` / AT110 is bring-up
+# on an FPGA only. Extend this set (with justification) when the SDK adds a new
+# SoC ahead of its board, or remove an entry once a board lands for it.
+ALLOWED_SOCS_WITHOUT_BOARD = frozenset({"atomiq110"})
+
+
+def test_soc_inventory_symmetry() -> None:
+    """B6: keep the board↔SoC-facts inventory symmetric.
+
+    Two directions:
+
+    * **board → facts (hard):** every board's ``soc`` must resolve to an SDK
+      facts file. This is the fast Python-level guard the arch review asked
+      for — a missing facts file is caught here instead of failing late inside
+      ``nsx_load_soc_facts("<soc>")`` at CMake configure time.
+    * **facts → board (allow-listed):** any SoC facts file *without* a matching
+      board must be an explicitly allow-listed in-development part, so new
+      asymmetry introduced by an SDK update is surfaced for review rather than
+      silently accumulating.
+
+    Matching is by ``soc`` (not board name), so name divergences like
+    ``apollo510dL_evb`` → ``apollo510L`` are handled correctly.
+    """
+    assert _FACTS_DIR is not None  # narrowed by the module-level skip guard
+    board_socs = {desc.soc for desc in bd.load_board_descriptors().values()}
+    facts_socs = {p.stem for p in _FACTS_DIR.glob("*.cmake")}
+
+    boards_without_facts = sorted(board_socs - facts_socs)
+    assert not boards_without_facts, (
+        "boards target SoCs with no SDK facts file (would fail late at CMake "
+        "configure in nsx_load_soc_facts):\n  " + "\n  ".join(boards_without_facts)
+    )
+
+    facts_without_boards = sorted(facts_socs - board_socs - ALLOWED_SOCS_WITHOUT_BOARD)
+    assert not facts_without_boards, (
+        "SDK SoC facts exist with no NSX board and are not allow-listed — add a "
+        "board.yaml or extend ALLOWED_SOCS_WITHOUT_BOARD:\n  "
+        + "\n  ".join(facts_without_boards)
+    )
