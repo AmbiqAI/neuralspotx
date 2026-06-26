@@ -188,10 +188,24 @@ Legend: **Sev** = severity (High / Med / Low), **Risk** = change risk.
     re-exported from `neuralspotx.api` and the top-level package and documented
     in `docs/reference/public-api.md`. Board creation is now programmatic and
     flows through the standard api → operations stack like every other command.
-- [ ] **13 (L2) — Separate dependency computation from acquisition.**
+- [x] **13 (L2) — Separate dependency computation from acquisition.**
   `_resolve_module_closure` triggers side-effectful `_acquire_modules_for_app`
   mid-DFS (`module_registry/_closure.py` ~L98). Split for testability and
   dry-run correctness. _Sev: Med · Risk: Med._
+  - Reviewed & intentionally kept the flag-gated design (documented in place).
+    The acquire/compute interleaving is *intrinsic*: a module's dependencies
+    live inside its own `nsx-module.yaml`, so the graph can only be discovered
+    incrementally (fetch → parse → expand); a literal "compute the full closure,
+    then acquire" is impossible without repeated resolve passes (more side-effect
+    surface, not less). A clean injected-acquirer split was also rejected because
+    the `local`/`vendored` module-name sets are computed *once* in the resolver
+    and serve both traversal-skipping and acquisition — pulling acquisition out
+    would duplicate that computation in callers (a single-source-of-truth
+    regression) for marginal gain. The existing `acquire_missing` flag is the
+    right-sized seam; added an explanatory comment at the acquisition site so the
+    intrinsic coupling is self-documenting. Dry-run/read-only resolution already
+    works via `acquire_missing=False` with the locked-closure fallback in
+    `operations/_lock.py`.
 - [ ] **14 (L3) — Decompose the `_sync_app_impl_unlocked` god function**
   (`operations/_sync.py` ~L125, 200+ lines branching over module kinds).
   _Sev: Low · Risk: Med._

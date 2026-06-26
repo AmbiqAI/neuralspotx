@@ -91,6 +91,12 @@ def _resolve_module_closure_inner(
             raise NSXModuleError(f"Dependency cycle detected at module '{module_name}'")
         visiting.add(module_name)
 
+        # Acquisition is interleaved with traversal by necessity: a module's
+        # dependencies live inside its own nsx-module.yaml, so the graph is
+        # discovered incrementally (fetch -> parse -> expand). We cannot compute
+        # the full closure up front and acquire afterwards. The local/vendored
+        # sets computed once above are reused here so traversal-skipping and
+        # acquisition share a single source of truth for what is app-owned.
         if acquire_missing and app_dir is not None:
             _acquire_modules_for_app(
                 app_dir,
