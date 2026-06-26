@@ -28,12 +28,16 @@ Legend: **Sev** = severity (High / Med / Low), **Risk** = change risk.
 
 ## Board descriptor as single source of truth
 
-- [ ] **2 (B2) — Reconcile CPU facts to one owner.** `board.yaml.cpu`
+- [x] **2 (B2) — Reconcile CPU facts to one owner.** `board.yaml.cpu`
   (core/float_abi/abi) duplicates the SDK's `facts/<skew>.cmake`
   (`NSX_CPU`/`NSX_FLOAT_ABI`/`NSX_ABI_FLAGS`), which calls itself the "single
   source of truth." Drop `cpu` from `board.yaml` and read from SoC facts, or add
   a cross-repo contract test. Remove the stale "mirrors board.cmake" docstring on
   `BoardCpu`. _Sev: High · Risk: Low._
+  - Done: `cpu` is consumed only by `nsx board info` display, so it stays as the
+    descriptor-facing copy; added skip-if-absent cross-repo contract test
+    `tests/test_board_cpu_facts_contract.py` guarding it against the SDK SoC
+    facts, and corrected the `BoardCpu` docstring to name the real source.
 - [ ] **3 (B3) — Audit `soc_family`.** It equals `soc` for all 15 boards today, so
   it carries no discriminating information. Either collapse it or make it mirror
   the SDK's `NSX_SOC_SERIES` grouping (e.g. apollo3 series grouping

@@ -30,7 +30,14 @@ SCHEMA_VERSION = 1
 
 @dataclass(frozen=True)
 class BoardCpu:
-    """CPU / ABI facts for a board (mirrors ``board.cmake``)."""
+    """CPU / ABI facts for a board.
+
+    These mirror the build-time single source of truth in the
+    ``nsx-ambiq-sdk`` module (``cmake/socs/facts/<soc>.cmake``:
+    ``NSX_CPU`` / ``NSX_FLOAT_ABI`` / ``NSX_ABI_FLAGS``). This descriptor
+    copy is used for ``nsx board info`` display; the cross-repo
+    ``tests/test_board_cpu_facts_contract.py`` guards the two from drifting.
+    """
 
     core: str
     float_abi: str
