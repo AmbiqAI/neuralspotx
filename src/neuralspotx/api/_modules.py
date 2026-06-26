@@ -187,18 +187,7 @@ def init_module(
             force=force,
         )
     )
-    return operations.init_module_impl(
-        Path(request.module_dir).expanduser().resolve(),
-        module_name=request.module_name,
-        module_type=request.module_type,
-        summary=request.summary,
-        version=request.version,
-        dependencies=request.dependencies,
-        boards=request.boards,
-        socs=request.socs,
-        toolchains=request.toolchains,
-        force=request.force,
-    )
+    return operations.init_module_impl(request)
 
 
 def validate_module_metadata(

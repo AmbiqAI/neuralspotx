@@ -144,9 +144,16 @@ Legend: **Sev** = severity (High / Med / Low), **Risk** = change risk.
     an API-dispatch regression test pinning that `create_app()` without an
     explicit board passes the canonical default through unchanged, so these
     three call sites cannot silently drift again.
-- [ ] **10 (L4) — Fold `init_module_impl`'s 11 args into a request dataclass**
+- [x] **10 (L4) — Fold `init_module_impl`'s 11 args into a request dataclass**
   (`operations/_app_lifecycle.py` ~L225); the codebase already uses request
   dataclasses elsewhere. _Sev: Low · Risk: Low._
+  - Done: moved the existing `ModuleInitRequest` DTO down into the neutral
+    `models` layer (re-exported from `api` so the public import paths are
+    unchanged) and made `init_module_impl` accept that single request object.
+    Operations now consumes the request without importing the `api` layer and
+    without re-declaring the field list, so there is no new drift hazard between
+    a public DTO and an internal copy. Updated the dispatch and typed-exception
+    tests to construct/inspect the request directly.
 - [ ] **11 (L6) — Replace ad-hoc dicts with dataclasses** where AGENTS.md asks for
   typed models: registry metadata `dict[str, Any]`
   (`module_registry/_metadata.py` ~L141) with nested `["support"]["ambiqsuite"]`

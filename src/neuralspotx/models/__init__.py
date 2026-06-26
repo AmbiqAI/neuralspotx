@@ -29,6 +29,7 @@ from ._project import (
     ProjectEntry,
     ResolvedTarget,
 )
+from ._requests import ModuleInitRequest
 
 __all__ = [
     "AppConfig",
@@ -45,6 +46,7 @@ __all__ = [
     "DoctorReport",
     "ModuleChange",
     "ModuleEntry",
+    "ModuleInitRequest",
     "ModuleRegistryOverride",
     "ModuleSource",
     "NsxProject",

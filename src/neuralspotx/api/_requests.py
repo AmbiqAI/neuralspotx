@@ -7,6 +7,11 @@ from pathlib import Path
 
 from ..constants import DEFAULT_BOARD
 
+# ``ModuleInitRequest`` lives in the neutral ``models`` layer so the operations
+# impl can consume it without importing ``api``. Re-exported here to preserve the
+# public ``neuralspotx.api.ModuleInitRequest`` import path.
+from ..models import ModuleInitRequest as ModuleInitRequest
+
 PathLike = str | Path
 
 
@@ -215,19 +220,3 @@ class ModuleRegisterRequest:
     project_local_path: PathLike | None = None
     override: bool = False
     dry_run: bool = False
-
-
-@dataclass(slots=True)
-class ModuleInitRequest:
-    """Request parameters for creating a custom-module skeleton."""
-
-    module_dir: PathLike
-    module_name: str | None = None
-    module_type: str = "runtime"
-    summary: str | None = None
-    version: str = "0.1.0"
-    dependencies: list[str] | None = None
-    boards: list[str] | None = None
-    socs: list[str] | None = None
-    toolchains: list[str] | None = None
-    force: bool = False

@@ -347,46 +347,10 @@ def test_module_register_dispatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
 
 
 def test_module_init_dispatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    calls: list[
-        tuple[
-            Path,
-            str | None,
-            str,
-            str | None,
-            str,
-            list[str] | None,
-            list[str] | None,
-            list[str] | None,
-            list[str] | None,
-            bool,
-        ]
-    ] = []
+    calls: list[ModuleInitRequest] = []
 
-    def fake_init(
-        module_dir: Path,
-        *,
-        module_name: str | None = None,
-        module_type: str = "runtime",
-        summary: str | None = None,
-        version: str = "0.1.0",
-        dependencies: list[str] | None = None,
-        boards: list[str] | None = None,
-        socs: list[str] | None = None,
-        toolchains: list[str] | None = None,
-        force: bool = False,
-    ) -> None:
-        calls.append((
-            module_dir,
-            module_name,
-            module_type,
-            summary,
-            version,
-            dependencies,
-            boards,
-            socs,
-            toolchains,
-            force,
-        ))
+    def fake_init(request: ModuleInitRequest) -> None:
+        calls.append(request)
 
     monkeypatch.setattr(operations, "init_module_impl", fake_init)
 
@@ -406,20 +370,18 @@ def test_module_init_dispatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -
         )
     )
 
-    assert calls == [
-        (
-            module_dir.resolve(),
-            "my-module",
-            "backend_specific",
-            "Generated test module",
-            "0.2.0",
-            ["nsx-core", "nsx-i2c"],
-            ["*"],
-            ["apollo510"],
-            ["arm-none-eabi-gcc"],
-            True,
-        )
-    ]
+    assert len(calls) == 1
+    request = calls[0]
+    assert request.module_dir == module_dir
+    assert request.module_name == "my-module"
+    assert request.module_type == "backend_specific"
+    assert request.summary == "Generated test module"
+    assert request.version == "0.2.0"
+    assert request.dependencies == ["nsx-core", "nsx-i2c"]
+    assert request.boards == ["*"]
+    assert request.socs == ["apollo510"]
+    assert request.toolchains == ["arm-none-eabi-gcc"]
+    assert request.force is True
 
 
 def test_module_api_validates_required_fields(tmp_path: Path) -> None:
