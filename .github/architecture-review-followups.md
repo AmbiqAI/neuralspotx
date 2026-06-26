@@ -61,7 +61,7 @@ Legend: **Sev** = severity (High / Med / Low), **Risk** = change risk.
     behavior change. Promoting to descriptor fields was deemed unnecessary while
     the values stay uniform; revisit if a board needs a different package/stack.
   _Sev: Low · Risk: Low._
-- [ ] **5 (B1) — Collapse board/SoC identity duplication.** The SoC string + part
+- [x] **5 (B1) — Collapse board/SoC identity duplication.** The SoC string + part
   macros are restated across `board.yaml`, `soc.cmake`, `board.cmake`,
   `memory.cmake`, and `bsp.cmake` for every board, and each `board.yaml` carries
   a "Keep in sync with board.cmake" note. Make `board.yaml` the single
@@ -69,6 +69,18 @@ Legend: **Sev** = severity (High / Med / Low), **Risk** = change risk.
   step — add a drift test asserting `board.yaml.soc` matches the
   `nsx_load_soc_facts("…")` argument and that the SDK SoC-facts file exists.
   _Sev: High · Risk: Med (start with the test)._
+  - Done (first step): added `tests/test_board_soc_identity_drift.py` asserting,
+    for every board, that `board.yaml`'s `soc` equals the `soc.cmake`
+    `nsx_load_soc_facts("…")` argument. The companion "SDK facts file exists"
+    check is already covered by `tests/test_board_cpu_facts_contract.py` (B2).
+    Deliberately did **not** assert `bsp.cmake`'s `NSX_AMBIQ_PART_NAME`: that is
+    a board/BSP-owned fact that can legitimately differ from the SoC (e.g.
+    `apollo510b_evb` loads `apollo510b` SoC facts but uses the `apollo510`
+    MCU/BSP dir) — keeping the SoC and BSP layers distinct per design.
+    The fuller "thread a single `NSX_SOC` / generate fragments from
+    `board.yaml`" refactor is deferred, and the custom-board role-override path
+    (custom boards supplying their own BSP/role modules instead of wholesale
+    delegating to the parent EVB) is tracked separately as #154b.
 - [ ] **6 (B6) — Validate SoC inventory symmetry.** `atomiq110` SoC facts exist
   with no NSX board; naming diverges (`apollo510L` vs `apollo510dL_evb`). Add a
   fast Python-level check that every board's `soc` resolves to an existing SDK
