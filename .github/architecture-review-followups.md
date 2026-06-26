@@ -219,8 +219,14 @@ Legend: **Sev** = severity (High / Med / Low), **Risk** = change risk.
 
 ## Cleanup & docs
 
-- [ ] **15 (R2) — Consolidate duplicated cache-root logic** between
+- [x] **15 (R2) — Consolidate duplicated cache-root logic** between
   `module_cache.py` and `nsx_lock`. _Sev: Low · Risk: Low._
+  Done: the `NSX_CACHE_DIR`/`XDG_CACHE_HOME`/`~/.cache` resolution was duplicated
+  in *three* places (`module_cache._nsx_cache_root`, `nsx_lock._hashing.
+  _git_artifact_hash_cache_path`, `_resolve_cache._cache_path`). Extracted a
+  stdlib-only leaf `_cache_paths.nsx_cache_root()` (no intra-package imports, so
+  no cycle risk) as the single source of truth; all three call sites now derive
+  their per-cache file paths from it. Behavior-preserving.
 - [ ] **16 (R4) — Audit raw-OSError/ValueError leakage** past the `NSXError` CLI
   mediator (e.g. `shutil` copytree/rmtree, `from_mapping` parsing) against the
   "friendly failure" rule. _Sev: Med · Risk: Low._
