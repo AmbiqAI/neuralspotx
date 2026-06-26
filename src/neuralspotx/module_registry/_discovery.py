@@ -41,6 +41,7 @@ def _module_discovery_record(
         )
         return DiscoveryRecord(**core, metadata_error=error_msg)
 
+    raw = metadata.raw
     kwargs: dict[str, Any] = {}
     for key in (
         "summary",
@@ -51,20 +52,20 @@ def _module_discovery_record(
         "example_refs",
         "composition_hints",
     ):
-        if key in metadata:
-            kwargs[key] = copy.deepcopy(metadata[key])
+        if key in raw:
+            kwargs[key] = copy.deepcopy(raw[key])
     for key in ("provides", "constraints", "integrations"):
-        if key in metadata:
-            kwargs[key] = copy.deepcopy(metadata[key])
+        if key in raw:
+            kwargs[key] = copy.deepcopy(raw[key])
 
     return DiscoveryRecord(
         **core,
         metadata_available=True,
-        module=copy.deepcopy(metadata["module"]),
-        support=copy.deepcopy(metadata["support"]),
-        build=copy.deepcopy(metadata["build"]),
-        depends=copy.deepcopy(metadata["depends"]),
-        compatibility=copy.deepcopy(metadata["compatibility"]),
+        module=copy.deepcopy(raw["module"]),
+        support=copy.deepcopy(raw["support"]),
+        build=copy.deepcopy(raw["build"]),
+        depends=copy.deepcopy(raw["depends"]),
+        compatibility=copy.deepcopy(raw["compatibility"]),
         **kwargs,
     )
 

@@ -19,6 +19,7 @@ from ._command import (
 )
 from ._discovery import DiscoveryRecord, SearchMatch, SearchResult
 from ._loader import NsxProject
+from ._module_metadata import ModuleMetadata
 from ._outdated import OutdatedModule, OutdatedReport, OutdatedSkip
 from ._project import (
     AppConfig,
@@ -47,6 +48,7 @@ __all__ = [
     "ModuleChange",
     "ModuleEntry",
     "ModuleInitRequest",
+    "ModuleMetadata",
     "ModuleRegistryOverride",
     "ModuleSource",
     "NsxProject",

@@ -6,6 +6,7 @@ from neuralspotx.models import (
     CommandHint,
     CommandScope,
     DiscoveryRecord,
+    ModuleMetadata,
     ModuleRegistryOverride,
     SearchMatch,
     SearchResult,
@@ -27,6 +28,60 @@ def test_app_config_classifies_module_sources() -> None:
     assert cfg.local_module_names() == {"local-demo"}
     assert cfg.vendored_module_names() == {"custom-aot"}
     assert set(cfg.opaque_modules()) == {"local-demo", "custom-aot"}
+
+
+def _module_metadata_raw() -> dict:
+    return {
+        "schema_version": 1,
+        "module": {"name": "nsx-uart", "type": "runtime", "version": "1.2.3"},
+        "support": {"ambiqsuite": True, "zephyr": False},
+        "build": {"cmake": {"package": "nsx_uart", "targets": ["nsx-uart"]}},
+        "depends": {"required": ["nsx-core"], "optional": ["nsx-dma"]},
+        "compatibility": {
+            "boards": ["apollo510_evb"],
+            "socs": ["apollo510"],
+            "toolchains": ["gcc"],
+        },
+        # Open-ended, agent-facing payload that must survive untyped.
+        "capabilities": ["uart-tx", "uart-rx"],
+        "agent_keywords": ["serial"],
+        "constraints": {"required_sdk_provider": "ambiqsuite"},
+    }
+
+
+def test_module_metadata_typed_structural_accessors() -> None:
+    meta = ModuleMetadata.from_raw(_module_metadata_raw())
+
+    assert meta.name == "nsx-uart"
+    assert meta.module_type == "runtime"
+    assert meta.version == "1.2.3"
+    assert meta.supports_ambiqsuite is True
+    assert meta.required_deps == ["nsx-core"]
+    assert meta.optional_deps == ["nsx-dma"]
+    assert meta.compatibility["boards"] == ["apollo510_evb"]
+    assert meta.required_sdk_provider == "ambiqsuite"
+
+
+def test_module_metadata_preserves_open_ended_payload_in_raw() -> None:
+    raw = _module_metadata_raw()
+    meta = ModuleMetadata.from_raw(raw)
+
+    # Semantic/discovery fields are intentionally not typed; they stay in raw
+    # so newly authored keys keep flowing through unchanged.
+    assert meta.raw is raw
+    assert meta.raw["capabilities"] == ["uart-tx", "uart-rx"]
+    assert meta.raw["agent_keywords"] == ["serial"]
+
+
+def test_module_metadata_required_sdk_provider_absent_or_malformed() -> None:
+    assert ModuleMetadata.from_raw({}).required_sdk_provider is None
+    assert ModuleMetadata.from_raw({"constraints": []}).required_sdk_provider is None
+    assert (
+        ModuleMetadata.from_raw(
+            {"constraints": {"required_sdk_provider": 3}}
+        ).required_sdk_provider
+        is None
+    )
 
 
 def test_module_registry_override_merges_valid_entries_only() -> None:

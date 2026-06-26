@@ -154,10 +154,28 @@ Legend: **Sev** = severity (High / Med / Low), **Risk** = change risk.
     without re-declaring the field list, so there is no new drift hazard between
     a public DTO and an internal copy. Updated the dispatch and typed-exception
     tests to construct/inspect the request directly.
-- [ ] **11 (L6) — Replace ad-hoc dicts with dataclasses** where AGENTS.md asks for
+- [x] **11 (L6) — Replace ad-hoc dicts with dataclasses** where AGENTS.md asks for
   typed models: registry metadata `dict[str, Any]`
   (`module_registry/_metadata.py` ~L141) with nested `["support"]["ambiqsuite"]`
   indexing; `AppConfig.raw` (`models/_project.py` ~L365). _Sev: Med · Risk: Med._
+  - Done (registry metadata): introduced a `ModuleMetadata` facade
+    (`models/_module_metadata.py`) that wraps the *already-validated* metadata
+    mapping and exposes the load-bearing structural fields as typed properties
+    (`module_type`, `supports_ambiqsuite`, `required_deps`, `compatibility`,
+    `required_sdk_provider`). `_load_module_metadata` now returns it, so the
+    closure resolver, dependency policies, and reverse-dependency walk stop
+    hand-indexing `meta["support"]["ambiqsuite"]` / `meta["depends"]["required"]`.
+    The open-ended discovery/semantic payload (`capabilities`, `agent_keywords`,
+    `constraints`, ...) deliberately stays in `.raw` so newly authored keys keep
+    flowing through unchanged — typing the structure without freezing the
+    extensible parts.
+  - Reviewed & intentionally deferred (`AppConfig.raw`): `AppConfig` is already a
+    frozen dataclass whose `raw.get(...)` access is fully encapsulated behind
+    typed properties (no caller indexes `.raw`), and `.raw` is the source of
+    truth for `nsx.yml` round-trip serialization. `nsx.yml` is user-authored and
+    forward-compatible, so replacing `.raw` with nested dataclasses would risk
+    dropping unknown keys on save and freeze a deliberately-open schema — a net
+    loss of flexibility. Left as-is by design.
 - [ ] **12 (L1) — Move `board create` out of the CLI.** Logic lives in
   `cli/_cmd_board.py` (~L80) instead of `operations/`/`api/`; it's the one
   command that bypasses the stack. Push it down so the API can offer programmatic
