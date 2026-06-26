@@ -101,11 +101,19 @@ Legend: **Sev** = severity (High / Med / Low), **Risk** = change risk.
 
 ## Board-name & provider hardening
 
-- [ ] **7 (B4) — Harden mixed-case load-bearing identifiers.** `apollo510dL_evb`
+    - [x] **7 (B4) — Harden mixed-case load-bearing identifiers.** `apollo510dL_evb`
   → `apollo510L`, `apollo330mP_evb` → `apollo330P`. Case quirks thread through
   dirs, CMake target names, and package names while only input boundaries are
   lowercased. Normalize internal string-equality or document the invariant.
   _Sev: Med · Risk: Med._
+      - Done: documented the authoritative case invariant in
+        `src/neuralspotx/constants.py`: board / SoC names have a single canonical
+        internal spelling, case-insensitivity is confined to input boundaries, and
+        lowercasing is also a downstream join key (`_BOARD_LOOKUP`, `_board_lc`,
+        `nsx-board-…` module names). Added a registry guard that reports canonical
+        board/SoC names which would collide under case-folding, plus tests that pin
+        uniqueness under case-folding and verify `validate_board_registry()` flags
+        an injected collision instead of silently dispatching to the wrong board.
 - [ ] **8 (B5) — Decide on the single-valued SDK-provider abstraction.**
   `SDKProvider` has one member; `nsx_board_table.cmake` is a 15-branch dispatch
   that always returns `"ambiqsuite"`; module gate requires

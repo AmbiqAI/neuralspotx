@@ -3,8 +3,12 @@
 from __future__ import annotations
 
 import enum
+from typing import TYPE_CHECKING
 
 from .board_descriptors import BoardDescriptorError, load_board_descriptors
+
+if TYPE_CHECKING:
+    from collections.abc import Iterable
 
 # Canonical ordering of *registered* boards. This is the single place that
 # governs which boards appear in the legacy ``DEFAULT_SOC_FOR_BOARD`` /
@@ -53,7 +57,14 @@ def validate_board_registry() -> list[str]:
 
     * the packaged ``board.yaml`` descriptors loaded without error;
     * every name in ``_BOARD_ORDER`` ships a registered descriptor;
-    * every registered descriptor is listed in ``_BOARD_ORDER``.
+    * every registered descriptor is listed in ``_BOARD_ORDER``;
+    * no two canonical board / SoC names collide under case-folding (see the
+      case invariant documented above ``BOARDS``). This is the one place where
+      the load-bearing case of identifiers like ``apollo330mP_evb`` /
+      ``apollo330P`` cannot be normalized away: lowercasing is used both for
+      input-boundary matching (``_BOARD_LOOKUP``) and as a downstream join key
+      (the ``_board_lc`` CMake selector, ``nsx-board-…`` module names), so a
+      casefold collision would silently dispatch to the wrong board.
     """
 
     problems: list[str] = []
@@ -73,7 +84,38 @@ def validate_board_registry() -> list[str]:
         problems.append(
             f"registered board descriptors missing from _BOARD_ORDER: {unordered}"
         )
+    problems.extend(_casefold_collisions("board", _BOARD_ORDER))
+    problems.extend(
+        _casefold_collisions(
+            "SoC",
+            dict.fromkeys(
+                _DESCRIPTORS[b].soc for b in _BOARD_ORDER if b in _DESCRIPTORS
+            ),
+        )
+    )
     return problems
+
+
+def _casefold_collisions(kind: str, names: "Iterable[str]") -> list[str]:
+    """Return a problem string per set of *names* that collapse under casefold.
+
+    Canonical board / SoC identifiers carry load-bearing case (e.g.
+    ``apollo330mP_evb``) yet are matched case-insensitively at input boundaries
+    and lowercased to form downstream join keys. Two distinct names sharing a
+    casefold therefore alias to a single lookup slot and silently dispatch to
+    whichever one was inserted last. Folding to lowercase mirrors
+    :data:`_BOARD_LOOKUP` / :data:`_SOC_LOOKUP` and the CMake ``_board_lc``
+    selector.
+    """
+
+    buckets: dict[str, list[str]] = {}
+    for name in names:
+        buckets.setdefault(name.lower(), []).append(name)
+    return [
+        f"{kind} names collide under case-folding ({lowered!r}): {sorted(group)}"
+        for lowered, group in buckets.items()
+        if len(group) > 1
+    ]
 
 
 # Authoritative mapping from canonical board name to default SoC, derived from
@@ -88,6 +130,20 @@ DEFAULT_SOC_FOR_BOARD = {
 # ``apollo330mP_evb`` carries a load-bearing capital ``P`` (filesystem dir,
 # CMake target name, package name in nsx-modules).  Inputs from the CLI / API
 # / nsx.yml are normalized to these via :func:`normalize_board`.
+#
+# Case invariant (the contract behind every board/SoC string in NSX):
+#   1. The canonical spelling here is the *single* internal form. The directory
+#      under ``boards/`` (enforced by ``load_board_descriptors``) and the CMake
+#      target alias use this exact case.
+#   2. Case-insensitivity is confined to *input boundaries* — ``normalize_board``
+#      / ``normalize_soc`` fold user input back to the canonical spelling before
+#      it flows anywhere else, so internal code never needs case-insensitive
+#      string-equality.
+#   3. Lowercasing is *also* used as a downstream join key (``_BOARD_LOOKUP``,
+#      the ``_board_lc`` CMake selector, ``nsx-board-…`` module names). For that
+#      to be lossless the canonical names must be unique under case-folding —
+#      ``validate_board_registry`` guards this so a future collision is reported
+#      rather than silently dispatching to the wrong board.
 BOARDS: tuple[str, ...] = tuple(DEFAULT_SOC_FOR_BOARD.keys())
 
 # Canonical SoC identifiers (load-bearing case for ``apollo330P``).

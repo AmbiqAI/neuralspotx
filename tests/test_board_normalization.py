@@ -105,3 +105,46 @@ def test_cmake_provider_list_matches_python_board_map() -> None:
         f"  in CMake only: {sorted(cmake_boards - py_boards)}\n"
         f"  in Python only: {sorted(py_boards - cmake_boards)}"
     )
+
+
+# ---------------------------------------------------------------------------
+# Case-folding collision guard (the one place case can't be normalized away)
+# ---------------------------------------------------------------------------
+#
+# Canonical names carry load-bearing case (``apollo330mP_evb``) yet are
+# lowercased both at input boundaries (``_BOARD_LOOKUP``) and to build
+# downstream join keys (the ``_board_lc`` CMake selector, ``nsx-board-…``
+# module names).  Two distinct canonical names sharing a casefold would alias
+# to one slot and silently dispatch to whichever was inserted last, so the
+# canonical spellings must stay unique under ``str.lower``.
+
+
+def _casefold_duplicates(names) -> dict[str, list[str]]:
+    buckets: dict[str, list[str]] = {}
+    for name in names:
+        buckets.setdefault(name.lower(), []).append(name)
+    return {low: group for low, group in buckets.items() if len(group) > 1}
+
+
+def test_board_names_unique_under_casefold() -> None:
+    dupes = _casefold_duplicates(BOARDS)
+    assert not dupes, f"board names collide under case-folding: {dupes}"
+
+
+def test_soc_names_unique_under_casefold() -> None:
+    dupes = _casefold_duplicates(SOCS)
+    assert not dupes, f"SoC names collide under case-folding: {dupes}"
+
+
+def test_validate_board_registry_reports_casefold_collision(monkeypatch) -> None:
+    # Injecting a casefold-colliding board makes the registry validator flag it
+    # rather than letting it silently overwrite a lookup slot.
+    import neuralspotx.constants as constants
+
+    collider = "Apollo510_EVB"  # casefold-equal to canonical "apollo510_evb"
+    assert collider.lower() in {b.lower() for b in constants._BOARD_ORDER}
+    monkeypatch.setattr(
+        constants, "_BOARD_ORDER", (*constants._BOARD_ORDER, collider)
+    )
+    problems = constants.validate_board_registry()
+    assert any("collide under case-folding" in p for p in problems), problems
