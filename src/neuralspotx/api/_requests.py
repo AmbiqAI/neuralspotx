@@ -35,6 +35,23 @@ class AppCreateRequest:
 
 
 @dataclass(slots=True)
+class BoardCreateRequest:
+    """Request parameters for scaffolding a custom board.
+
+    Attributes:
+        name: New custom board identifier (becomes ``boards/<name>/``).
+        from_board: Parent EVB whose SoC/provider/CPU facts are inherited.
+        app_dir: App root under which ``boards/<name>/`` is written.
+        force: Overwrite an existing ``boards/<name>/`` directory.
+    """
+
+    name: str
+    from_board: str
+    app_dir: PathLike = "."
+    force: bool = False
+
+
+@dataclass(slots=True)
 class AppActionRequest:
     """Base request for app-scoped actions.
 

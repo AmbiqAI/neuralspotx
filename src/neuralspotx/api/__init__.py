@@ -23,6 +23,7 @@ from ._app import (
     flash_app,
     view_app,
 )
+from ._board import create_board
 from ._cache import cache_info, clean_cache
 from ._lock import lock_app, outdated_app, sync_app, update_app
 from ._modules import (
@@ -50,6 +51,7 @@ from ._requests import (
     AppSyncRequest,
     AppUpdateRequest,
     AppViewRequest,
+    BoardCreateRequest,
     ModuleChangeRequest,
     ModuleInitRequest,
     ModuleRegisterRequest,
@@ -69,6 +71,7 @@ __all__ = [
     "AppSyncRequest",
     "AppUpdateRequest",
     "AppViewRequest",
+    "BoardCreateRequest",
     "ModuleChangeRequest",
     "ModuleInitRequest",
     "ModuleRegisterRequest",
@@ -85,6 +88,7 @@ __all__ = [
     "clean_cache",
     "configure_app",
     "create_app",
+    "create_board",
     "describe_module",
     "doctor",
     "find_app_root",

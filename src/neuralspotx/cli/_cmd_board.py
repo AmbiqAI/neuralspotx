@@ -11,10 +11,10 @@ from __future__ import annotations
 import argparse
 import json
 
+from .. import api
 from .. import board_descriptors as bd
 from .._errors import NSXConfigError
 from ..models import CommandCategory, CommandScope
-from ..project_config import resolve_app_dir
 from ._hints import command_hint
 
 _C = CommandCategory
@@ -97,35 +97,20 @@ def cmd_board_show(args: argparse.Namespace) -> None:
     "nsx configure",
 )
 def cmd_board_create(args: argparse.Namespace) -> None:
-    parent = bd.load_board(args.from_board)
-    if parent is None:
-        raise NSXConfigError(
-            f"unknown parent board '{args.from_board}' "
-            f"(run `nsx board list` to see available boards)"
-        )
-
-    app_dir = resolve_app_dir(args.app_dir)
-    board_dir = app_dir / "boards" / args.name
-    if board_dir.exists() and not args.force:
-        raise NSXConfigError(
-            f"board directory already exists: {board_dir} (use --force to overwrite)"
-        )
-    board_dir.mkdir(parents=True, exist_ok=True)
-
-    yaml_text = bd.render_custom_board_yaml(name=args.name, parent=parent.name)
-    cmake_text = bd.render_custom_board_cmake(name=args.name, parent=parent.name)
-    (board_dir / "board.yaml").write_text(yaml_text, encoding="utf-8")
-    (board_dir / "board.cmake").write_text(cmake_text, encoding="utf-8")
-
-    # Validate the generated descriptor resolves against its parent.
-    resolved = bd.load_board_descriptor_file(board_dir / "board.yaml")
-
     if args.json:
+        # Suppress progress/next-step chatter; emit only the JSON document.
+        resolved = api.create_board(
+            args.name,
+            from_board=args.from_board,
+            app_dir=args.app_dir,
+            force=args.force,
+            emit=lambda _event: None,
+        )
         print(json.dumps(_descriptor_to_dict(resolved), indent=2))
         return
-    print(f"Created custom board '{args.name}' (inherits {parent.name}) at:")
-    print(f"  {board_dir}")
-    print("Next steps:")
-    print(f"  1) Edit boards/{args.name}/board.yaml to add an 'overrides:' block if needed")
-    print(f"  2) Set target.board: {args.name} in nsx.yml")
-    print("  3) Run `nsx lock` then `nsx configure`")
+    api.create_board(
+        args.name,
+        from_board=args.from_board,
+        app_dir=args.app_dir,
+        force=args.force,
+    )

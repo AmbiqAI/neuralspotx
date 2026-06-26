@@ -7,6 +7,8 @@ import json
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
+import pytest
+
 from neuralspotx import cli
 
 
@@ -129,3 +131,41 @@ def test_board_create_existing_dir_requires_force(tmp_path: Path) -> None:
     # --force overwrites cleanly.
     _out3, _err3, code3 = _invoke(*args, "--force")
     assert code3 == 0
+
+
+def test_api_create_board_programmatic(tmp_path: Path) -> None:
+    """``neuralspotx.api.create_board`` scaffolds without going through the CLI."""
+    import neuralspotx as nsx
+
+    desc = nsx.create_board(
+        "my510",
+        from_board="apollo510_evb",
+        app_dir=tmp_path,
+        emit=lambda _event: None,
+    )
+    assert desc.name == "my510"
+    assert desc.tier == "custom"
+    assert desc.registered is False
+    assert desc.soc == "apollo510"
+
+    board_dir = tmp_path / "boards" / "my510"
+    assert (board_dir / "board.yaml").is_file()
+    assert (board_dir / "board.cmake").is_file()
+    assert "inherits: apollo510_evb" in (board_dir / "board.yaml").read_text()
+
+
+def test_api_create_board_requires_parent(tmp_path: Path) -> None:
+    import neuralspotx as nsx
+    from neuralspotx import NSXConfigError
+
+    with pytest.raises(NSXConfigError):
+        nsx.create_board("orphan", app_dir=tmp_path, emit=lambda _event: None)
+
+
+def test_api_create_board_accepts_request_object(tmp_path: Path) -> None:
+    import neuralspotx as nsx
+
+    request = nsx.BoardCreateRequest(name="my510", from_board="apollo510_evb", app_dir=str(tmp_path))
+    desc = nsx.create_board(request, emit=lambda _event: None)
+    assert desc.name == "my510"
+    assert (tmp_path / "boards" / "my510" / "board.yaml").is_file()

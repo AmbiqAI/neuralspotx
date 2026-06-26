@@ -37,6 +37,7 @@ from __future__ import annotations
 # tests can do ``monkeypatch.setattr(operations._lock, "resolve_ref", ...)``.
 from . import (  # noqa: F401
     _app_lifecycle,
+    _board,
     _build,
     _cache,
     _common,
@@ -47,6 +48,7 @@ from . import (  # noqa: F401
     _sync,
 )
 from ._app_lifecycle import create_app_impl, init_module_impl
+from ._board import create_board_impl
 from ._build import (
     build_app_impl,
     clean_app_impl,
@@ -79,6 +81,8 @@ __all__ = [
     # App lifecycle
     "create_app_impl",
     "init_module_impl",
+    # Board scaffolding
+    "create_board_impl",
     # Cache
     "cache_info_impl",
     "clean_cache_impl",

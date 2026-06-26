@@ -176,10 +176,18 @@ Legend: **Sev** = severity (High / Med / Low), **Risk** = change risk.
     forward-compatible, so replacing `.raw` with nested dataclasses would risk
     dropping unknown keys on save and freeze a deliberately-open schema — a net
     loss of flexibility. Left as-is by design.
-- [ ] **12 (L1) — Move `board create` out of the CLI.** Logic lives in
+- [x] **12 (L1) — Move `board create` out of the CLI.** Logic lives in
   `cli/_cmd_board.py` (~L80) instead of `operations/`/`api/`; it's the one
   command that bypasses the stack. Push it down so the API can offer programmatic
   board creation. _Sev: Med · Risk: Med._
+  - Done: extracted the scaffolding logic into `operations.create_board_impl`
+    (new `operations/_board.py`) and exposed `api.create_board` (new
+    `api/_board.py`) plus a typed `BoardCreateRequest`. The CLI handler
+    `cmd_board_create` is now a thin shim that delegates to `api.create_board`
+    (no-op emitter in `--json` mode). `create_board`/`BoardCreateRequest` are
+    re-exported from `neuralspotx.api` and the top-level package and documented
+    in `docs/reference/public-api.md`. Board creation is now programmatic and
+    flows through the standard api → operations stack like every other command.
 - [ ] **13 (L2) — Separate dependency computation from acquisition.**
   `_resolve_module_closure` triggers side-effectful `_acquire_modules_for_app`
   mid-DFS (`module_registry/_closure.py` ~L98). Split for testability and
