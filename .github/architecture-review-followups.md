@@ -38,10 +38,18 @@ Legend: **Sev** = severity (High / Med / Low), **Risk** = change risk.
     descriptor-facing copy; added skip-if-absent cross-repo contract test
     `tests/test_board_cpu_facts_contract.py` guarding it against the SDK SoC
     facts, and corrected the `BoardCpu` docstring to name the real source.
-- [ ] **3 (B3) — Audit `soc_family`.** It equals `soc` for all 15 boards today, so
+- [x] **3 (B3) — Audit `soc_family`.** It equals `soc` for all 15 boards today, so
   it carries no discriminating information. Either collapse it or make it mirror
   the SDK's `NSX_SOC_SERIES` grouping (e.g. apollo3 series grouping
   apollo3+apollo3p). _Sev: Low · Risk: Low._
+  - Done (Option A): removed the redundant `soc_family` field from the
+    `BoardDescriptor` dataclass, its parse/merge paths, the `board show`
+    human/JSON output, and all 15 packaged `board.yaml` files. `metadata`'s
+    starter-profile derivation now joins the registry `soc_families` table on
+    the descriptor's `soc` (the keys already equalled `soc`), a zero-behavior
+    change. Stale `NSX_SOC_FAMILY` note dropped from the board.yaml headers.
+    The future idea of regrouping into an `NSX_SOC_SERIES`-style coarse bucket
+    (e.g. folding apollo330 into apollo5) is deferred — no consumer needs it today.
 - [ ] **4 (B7) — Move board magic numbers into descriptors.** `AM_PACKAGE_BGA`
   and `STACK_SIZE=4096` are hardcoded inline in each `board.cmake` with no
   provenance. Promote to `board.yaml` (or SoC facts) with a comment.

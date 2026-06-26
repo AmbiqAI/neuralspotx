@@ -2,8 +2,8 @@
 
 Each packaged board under ``neuralspotx/boards/<name>/`` ships a
 ``board.yaml`` descriptor that is the **source of truth** for the
-board's SoC, SoC family, SDK provider, CPU/ABI, and supported
-toolchains. :mod:`neuralspotx.constants` derives its legacy
+board's SoC, SDK provider, CPU/ABI, and supported toolchains.
+:mod:`neuralspotx.constants` derives its legacy
 ``DEFAULT_SOC_FOR_BOARD`` / ``BOARD_SDK_PROVIDER`` tables from these
 descriptors instead of hand-maintained dicts.
 
@@ -56,7 +56,6 @@ class BoardDescriptor:
     name: str
     tier: str
     soc: str
-    soc_family: str
     sdk_provider: str
     registered: bool
     cpu: BoardCpu
@@ -122,7 +121,6 @@ def _merge_inherited(
     board = dict(raw.get("board") or {})
     merged: dict = {
         "schema_version": raw.get("schema_version", SCHEMA_VERSION),
-        "soc_family": raw.get("soc_family", parent.soc_family),
         "sdk_provider": raw.get("sdk_provider", parent.sdk_provider),
         "cpu": raw.get("cpu")
         or {
@@ -173,7 +171,6 @@ def _build_descriptor(raw: dict, *, path: Path) -> BoardDescriptor:
         name=str(_require(board, "name", where=path)),
         tier=str(board.get("tier", "evb")),
         soc=str(_require(board, "soc", where=path)),
-        soc_family=str(_require(raw, "soc_family", where=path)),
         sdk_provider=str(_require(raw, "sdk_provider", where=path)),
         registered=bool(board.get("registered", True)),
         cpu=BoardCpu(

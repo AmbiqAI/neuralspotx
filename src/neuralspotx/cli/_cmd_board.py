@@ -26,7 +26,6 @@ def _descriptor_to_dict(desc: bd.BoardDescriptor) -> dict[str, object]:
         "name": desc.name,
         "tier": desc.tier,
         "soc": desc.soc,
-        "soc_family": desc.soc_family,
         "sdk_provider": desc.sdk_provider,
         "registered": desc.registered,
         "cpu": {
@@ -84,7 +83,6 @@ def cmd_board_show(args: argparse.Namespace) -> None:
     print(f"board:        {desc.name}")
     print(f"tier:         {desc.tier}")
     print(f"soc:          {desc.soc}")
-    print(f"soc_family:   {desc.soc_family}")
     print(f"sdk_provider: {desc.sdk_provider}")
     print(f"registered:   {desc.registered}")
     print(f"cpu:          {desc.cpu.core} ({desc.cpu.abi}, float={desc.cpu.float_abi})")
