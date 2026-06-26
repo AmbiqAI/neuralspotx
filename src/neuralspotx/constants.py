@@ -184,16 +184,18 @@ def normalize_soc(value: str | None) -> str | None:
 # ---------------------------------------------------------------------------
 #
 # This dict is the authoritative mapping from canonical board name to the
-# AmbiqSuite SDK provider name that supplies its low-level SDK payload. Its
-# values are derived from the per-board ``board.yaml`` descriptors (the
-# ``sdk_provider`` field), in the canonical board order.
+# SDK provider name that supplies its low-level SDK payload. Today every
+# registered board resolves to the single staged provider (``ambiqsuite``), but
+# the descriptor field remains first-class Python metadata: the CLI / public
+# API expose it, starter-profile derivation copies it through, and tests pin the
+# current single-valued invariant explicitly.
 #
 # The CMake helper ``nsx_select_sdk_provider`` (in
-# ``src/neuralspotx/cmake/nsx_sdk_providers.cmake``) consumes the
-# generated CMake table ``nsx_board_table.cmake``, which is produced
-# from this dict by ``scripts/gen_board_table.py``. Drift between the
-# Python dict and the committed CMake table is guarded by
-# ``tests/test_board_table_drift.py``.
+# ``src/neuralspotx/cmake/nsx_sdk_providers.cmake``) now consumes the generated
+# registered-board table ``nsx_board_table.cmake`` instead of mirroring this
+# dict one-for-one, because the provider is currently single-valued on the CMake
+# side. Drift between the Python board inventory and the committed CMake table
+# is guarded by ``tests/test_board_table_drift.py``.
 
 BOARD_SDK_PROVIDER: dict[str, str] = {
     b: _DESCRIPTORS[b].sdk_provider for b in _BOARD_ORDER if b in _DESCRIPTORS

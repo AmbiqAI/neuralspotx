@@ -1,8 +1,8 @@
-"""Drift guard for the generated CMake board → SDK provider table.
+"""Drift guard for the generated CMake registered-board table.
 
 The committed ``src/neuralspotx/cmake/nsx_board_table.cmake`` must
 exactly match the output of ``scripts/gen_board_table.py`` rendered
-from ``BOARD_SDK_PROVIDER`` in :mod:`neuralspotx.constants`.
+from the canonical registered board inventory in :mod:`neuralspotx.constants`.
 
 If this test fails, run::
 
@@ -42,6 +42,13 @@ def test_all_boards_have_a_provider() -> None:
 
     extra = [b for b in BOARD_SDK_PROVIDER if b not in BOARDS]
     assert not extra, f"BOARD_SDK_PROVIDER has boards not in BOARDS: {extra}"
+
+
+def test_sdk_provider_contract_is_currently_single_valued() -> None:
+    """The current staged SDK-provider contract is single-valued."""
+
+    assert SDK_PROVIDERS == frozenset({"ambiqsuite"})
+    assert set(BOARD_SDK_PROVIDER.values()) == {"ambiqsuite"}
 
 
 def test_committed_cmake_table_matches_generator_output() -> None:

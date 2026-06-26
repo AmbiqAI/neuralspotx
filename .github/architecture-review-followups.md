@@ -114,13 +114,24 @@ Legend: **Sev** = severity (High / Med / Low), **Risk** = change risk.
         board/SoC names which would collide under case-folding, plus tests that pin
         uniqueness under case-folding and verify `validate_board_registry()` flags
         an injected collision instead of silently dispatching to the wrong board.
-- [ ] **8 (B5) — Decide on the single-valued SDK-provider abstraction.**
+- [x] **8 (B5) — Decide on the single-valued SDK-provider abstraction.**
   `SDKProvider` has one member; `nsx_board_table.cmake` is a 15-branch dispatch
   that always returns `"ambiqsuite"`; module gate requires
   `support.ambiqsuite=true`. Either simplify to a single helper (delete per-board
   branches) or document the intended multi-vendor contract. Replace the regex
   parse of `board.cmake` text in `nsx_sdk_providers.cmake` with a parent field
   read from `board.yaml`. _Sev: Med · Risk: Med._
+  - Done: simplified the CMake-side contract to the current reality: the
+    generated `nsx_board_table.cmake` now carries the registered-board inventory
+    (case-insensitive membership) instead of a fake 15-branch board→provider
+    dispatch that always returned `ambiqsuite`, and `nsx_select_sdk_provider()`
+    sets `NSX_SDK_PROVIDER=ambiqsuite` once a board resolves to a registered EVB.
+    For custom boards, provider inference now follows `inherits:` from
+    `board.yaml` rather than regex-parsing `NSX_PARENT_BOARD` out of generated
+    `board.cmake` text. Kept `sdk_provider` first-class on the Python side
+    (`board.yaml`, descriptors, CLI/API) and added tests that pin the current
+    single-valued invariant plus a CMake-level regression proving `board.yaml`
+    wins over conflicting `board.cmake` text.
 
 ## Layering refactors (ascending risk)
 

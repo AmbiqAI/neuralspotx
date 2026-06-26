@@ -96,9 +96,12 @@ def _packaged_cmake_text() -> str:
 
 def test_cmake_provider_list_matches_python_board_map() -> None:
     text = _packaged_cmake_text()
-    # The selector compares the lowercased board against literal strings
-    # like `_board_lc STREQUAL "apollo510_evb"`.  Pull all such literals.
-    cmake_boards = {m.lower() for m in re.findall(r'_board_lc\s+STREQUAL\s+"([^"]+)"', text)}
+    # The generated table carries the lowercased registered board list in
+    # `_NSX_REGISTERED_BOARDS_LOWER`. Pull the quoted entries from that list.
+    cmake_boards = {
+        m.lower()
+        for m in re.findall(r'^\s*"([^"]+)"\s*$', text, flags=re.MULTILINE)
+    }
     py_boards = {b.lower() for b in BOARDS}
     assert cmake_boards == py_boards, (
         f"CMake/Python board lists drifted.\n"
