@@ -92,6 +92,23 @@ def test_validate_board_registry_clean_for_shipped_descriptors() -> None:
     assert validate_board_registry() == []
 
 
+def test_default_board_is_registered() -> None:
+    """The centralized create-app default must be a real registered board."""
+
+    assert constants.DEFAULT_BOARD in _BOARD_ORDER
+    assert constants.DEFAULT_BOARD in DEFAULT_SOC_FOR_BOARD
+
+
+def test_validate_board_registry_reports_unregistered_default_board(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A DEFAULT_BOARD that drifts off the registry is reported, not silent."""
+
+    monkeypatch.setattr(constants, "DEFAULT_BOARD", "not_a_real_board")
+    problems = validate_board_registry()
+    assert any("DEFAULT_BOARD" in p for p in problems), problems
+
+
 def test_validate_board_registry_reports_missing_descriptor(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

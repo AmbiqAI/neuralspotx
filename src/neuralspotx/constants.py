@@ -58,6 +58,9 @@ def validate_board_registry() -> list[str]:
     * the packaged ``board.yaml`` descriptors loaded without error;
     * every name in ``_BOARD_ORDER`` ships a registered descriptor;
     * every registered descriptor is listed in ``_BOARD_ORDER``;
+    * the create-app default board (``DEFAULT_BOARD``) is itself a registered
+      board, so the centralized default can never silently point at a renamed or
+      unregistered board;
     * no two canonical board / SoC names collide under case-folding (see the
       case invariant documented above ``BOARDS``). This is the one place where
       the load-bearing case of identifiers like ``apollo330mP_evb`` /
@@ -93,6 +96,11 @@ def validate_board_registry() -> list[str]:
             ),
         )
     )
+    if DEFAULT_BOARD not in _BOARD_ORDER:
+        problems.append(
+            f"DEFAULT_BOARD '{DEFAULT_BOARD}' is not a registered board "
+            f"(must be one of {list(_BOARD_ORDER)})"
+        )
     return problems
 
 
