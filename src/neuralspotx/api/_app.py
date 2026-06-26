@@ -7,6 +7,7 @@ from pathlib import Path
 
 from .. import operations
 from .._io import Emitter, using_emitter
+from ..constants import DEFAULT_BOARD
 from ..models import DoctorReport
 from ..subprocess_utils import timeout_budget
 from ._requests import (
@@ -24,7 +25,7 @@ PathLike = str | Path
 def create_app(
     app_dir: PathLike | AppCreateRequest,
     *,
-    board: str = "apollo510_evb",
+    board: str = DEFAULT_BOARD,
     soc: str | None = None,
     force: bool = False,
     no_bootstrap: bool = False,

@@ -11,6 +11,7 @@ from .._errors import NSXConfigError, NSXModuleError
 from .._io import info, warn
 from ..constants import (
     BOARD_SDK_PROVIDER,
+    DEFAULT_BOARD,
     DEFAULT_SOC_FOR_BOARD,
     DEFAULT_TOOLCHAIN,
     normalize_board,
@@ -70,7 +71,7 @@ def _save_lean_app_manifest(app_dir: Path, nsx_cfg: dict, *, baseline_none: bool
 def create_app_impl(
     app_dir: Path,
     *,
-    board: str = "apollo510_evb",
+    board: str = DEFAULT_BOARD,
     soc: str | None = None,
     force: bool = False,
     no_bootstrap: bool = False,

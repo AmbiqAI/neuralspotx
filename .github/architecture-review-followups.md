@@ -135,9 +135,15 @@ Legend: **Sev** = severity (High / Med / Low), **Risk** = change risk.
 
 ## Layering refactors (ascending risk)
 
-- [ ] **9 (L5) — Make the hardcoded default board configurable.**
+- [x] **9 (L5) — Make the hardcoded default board configurable.**
   `board="apollo510_evb"` in `api/_app.py` (~L30) and
   `operations/_app_lifecycle.py` (~L80). _Sev: Low · Risk: Low._
+  - Done: introduced `constants.DEFAULT_BOARD` as the single configuration
+    point for create-app defaults and threaded it through the typed request
+    dataclass, the public API wrapper, and the lifecycle implementation. Added
+    an API-dispatch regression test pinning that `create_app()` without an
+    explicit board passes the canonical default through unchanged, so these
+    three call sites cannot silently drift again.
 - [ ] **10 (L4) — Fold `init_module_impl`'s 11 args into a request dataclass**
   (`operations/_app_lifecycle.py` ~L225); the codebase already uses request
   dataclasses elsewhere. _Sev: Low · Risk: Low._

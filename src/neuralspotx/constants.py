@@ -149,6 +149,11 @@ BOARDS: tuple[str, ...] = tuple(DEFAULT_SOC_FOR_BOARD.keys())
 # Canonical SoC identifiers (load-bearing case for ``apollo330P``).
 SOCS: tuple[str, ...] = tuple(dict.fromkeys(DEFAULT_SOC_FOR_BOARD.values()))
 
+# Canonical default board for create-app flows. This remains explicit instead of
+# being inferred from descriptor iteration order so the API/request defaults and
+# lifecycle implementation stay aligned on one configuration point.
+DEFAULT_BOARD = "apollo510_evb"
+
 # Lower-cased lookup tables for case-insensitive normalization at input
 # boundaries.  Built once at import; never mutated.
 _BOARD_LOOKUP: dict[str, str] = {b.lower(): b for b in BOARDS}

@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from ..constants import DEFAULT_BOARD
+
 PathLike = str | Path
 
 
@@ -21,7 +23,7 @@ class AppCreateRequest:
     """
 
     app_dir: PathLike
-    board: str = "apollo510_evb"
+    board: str = DEFAULT_BOARD
     soc: str | None = None
     force: bool = False
     no_bootstrap: bool = False

@@ -29,6 +29,7 @@ from neuralspotx import (
     update_modules,
     view_app,
 )
+from neuralspotx.constants import DEFAULT_BOARD
 
 
 def test_create_app_dispatches_to_operations(
@@ -59,6 +60,28 @@ def test_create_app_dispatches_to_operations(
     )
 
     assert calls == [(tmp_path.resolve(), "apollo4p_evb", "apollo4p", True, True)]
+
+
+def test_create_app_uses_canonical_default_board(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    calls: list[tuple[Path, str, str | None, bool, bool]] = []
+
+    def fake_create(
+        app_dir: Path,
+        *,
+        board: str = DEFAULT_BOARD,
+        soc: str | None = None,
+        force: bool = False,
+        no_bootstrap: bool = False,
+    ) -> None:
+        calls.append((app_dir, board, soc, force, no_bootstrap))
+
+    monkeypatch.setattr(operations, "create_app_impl", fake_create)
+
+    create_app(tmp_path)
+
+    assert calls == [(tmp_path.resolve(), DEFAULT_BOARD, None, False, False)]
 
 
 def test_doctor_dispatch(monkeypatch: pytest.MonkeyPatch) -> None:
