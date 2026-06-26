@@ -50,9 +50,16 @@ Legend: **Sev** = severity (High / Med / Low), **Risk** = change risk.
     change. Stale `NSX_SOC_FAMILY` note dropped from the board.yaml headers.
     The future idea of regrouping into an `NSX_SOC_SERIES`-style coarse bucket
     (e.g. folding apollo330 into apollo5) is deferred — no consumer needs it today.
-- [ ] **4 (B7) — Move board magic numbers into descriptors.** `AM_PACKAGE_BGA`
+- [x] **4 (B7) — Move board magic numbers into descriptors.** `AM_PACKAGE_BGA`
   and `STACK_SIZE=4096` are hardcoded inline in each `board.cmake` with no
   provenance. Promote to `board.yaml` (or SoC facts) with a comment.
+  - Done (Option A): the two defines are identical across all 15 boards (global
+    build defaults, not per-board facts), so rather than duplicate them into 15
+    descriptors we documented their provenance in place — added inline comments
+    in every `board.cmake` explaining `AM_PACKAGE_BGA` (AmbiqSuite chip-package
+    selector, BGA variant) and `STACK_SIZE` (startup C-runtime stack bytes). No
+    behavior change. Promoting to descriptor fields was deemed unnecessary while
+    the values stay uniform; revisit if a board needs a different package/stack.
   _Sev: Low · Risk: Low._
 - [ ] **5 (B1) — Collapse board/SoC identity duplication.** The SoC string + part
   macros are restated across `board.yaml`, `soc.cmake`, `board.cmake`,
