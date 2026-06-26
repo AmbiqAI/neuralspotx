@@ -206,9 +206,16 @@ Legend: **Sev** = severity (High / Med / Low), **Risk** = change risk.
     intrinsic coupling is self-documenting. Dry-run/read-only resolution already
     works via `acquire_missing=False` with the locked-closure fallback in
     `operations/_lock.py`.
-- [ ] **14 (L3) — Decompose the `_sync_app_impl_unlocked` god function**
+- [x] **14 (L3) — Decompose the `_sync_app_impl_unlocked` god function**
   (`operations/_sync.py` ~L125, 200+ lines branching over module kinds).
   _Sev: Low · Risk: Med._
+  Done: extracted a frozen `_SyncContext` (app_dir/registry/cmake_nsx/frozen/force)
+  plus per-kind handlers — `_resolve_vendored_dir`, `_sync_vendored_entry`,
+  `_sync_unresolved_entry`, `_verify_duplicate_path`, `_sync_local_entry`,
+  `_sync_fetchable_entry` — leaving `_sync_app_impl_unlocked` as a slim
+  preamble→dispatch→postamble orchestrator. Strictly behavior-preserving: all
+  branch order, error messages, and comments retained; covered by
+  `tests/test_nsx_lock.py` (frozen/force/local-source-drift/no-op/fresh-checkout).
 
 ## Cleanup & docs
 
