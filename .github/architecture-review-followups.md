@@ -255,5 +255,13 @@ Legend: **Sev** = severity (High / Med / Low), **Risk** = change risk.
   Compatibility Shims" subsection cataloguing the narrow pre-v1 shims
   (`_normalize_legacy_registry_metadata`, singular `target:`/`profile:` keys,
   `local: true`, string-mixed enums) so they stay isolated and removable.
-- [ ] **18 (R5) — Document the schema break-and-fix policy** (lock/descriptor
+- [x] **18 (R5) — Document the schema break-and-fix policy** (lock/descriptor
   schema mismatch raises with no migration path). _Sev: Low · Risk: Low._
+  Done: added a "Schema Versioning & Break-and-Fix Policy" section to AGENTS.md
+  explaining the deliberate no-migration stance and the two artifact classes —
+  generated/disposable (`nsx.lock` v4, caches: reject + regenerate via
+  `nsx lock` / `nsx cache clean`; hash cache tolerates legacy, rejects only
+  newer) vs authored/packaged (`registry.lock.yaml`, `nsx-module.yaml`, board
+  descriptors v1: exact-match required) — plus the 4-step checklist for bumping
+  a schema (bump constant + writer, no reader migration, update packaged
+  artifacts, keep the failure message actionable).
