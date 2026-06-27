@@ -81,7 +81,7 @@ targets:
         resolved:
           tool_version: 0.6.9
           vendored_at: boards/apollo510_evb
-          content_hash: sha256:8afb811e5249b62f39a18bdadc3e5d2017a3d04490e11f684ac203f23de571ed
+          content_hash: sha256:92475fa453fa03373abd7913459027cc310ce976ddb493c408648771bbf1a0f8
           acquired_at: '2026-06-24T21:35:30+00:00'
       nsx-core:
         project: nsx-ambiq-sdk
@@ -110,7 +110,7 @@ targets:
         resolved:
           tool_version: 0.6.9
           vendored_at: cmake/nsx
-          content_hash: sha256:7d61372d6eb4caf27d750963c46870a35868f7d0674a5f6346a5fdda26f9cb97
+          content_hash: sha256:33ee3e77978b2abca3313148e815fdae3ef2321ef3a947596587b9ab9630d3c2
           acquired_at: '2026-06-24T21:35:30+00:00'
       nsx-interrupt:
         project: nsx-ambiq-sdk
@@ -211,7 +211,7 @@ targets:
         resolved:
           tool_version: 0.6.9
           vendored_at: boards/apollo510b_evb
-          content_hash: sha256:bfb817dc96d06aa60a6496f8be039ea5eb61337fd771be8c23b07dbf52c1b089
+          content_hash: sha256:44a8b155b4392387c37ca0e8af1f1c5ce21a6fa7726b6c8d868208ac73a47b68
           acquired_at: '2026-06-24T21:35:31+00:00'
       nsx-core:
         project: nsx-ambiq-sdk
@@ -240,7 +240,7 @@ targets:
         resolved:
           tool_version: 0.6.9
           vendored_at: cmake/nsx
-          content_hash: sha256:7d61372d6eb4caf27d750963c46870a35868f7d0674a5f6346a5fdda26f9cb97
+          content_hash: sha256:33ee3e77978b2abca3313148e815fdae3ef2321ef3a947596587b9ab9630d3c2
           acquired_at: '2026-06-24T21:35:31+00:00'
       nsx-interrupt:
         project: nsx-ambiq-sdk
@@ -341,7 +341,7 @@ targets:
         resolved:
           tool_version: 0.6.9
           vendored_at: boards/apollo330mP_evb
-          content_hash: sha256:f10ae901a78b61851f9c00c9334f1ed5c3255edd9662e2d95761d4fcd5b86e53
+          content_hash: sha256:bc9ade0c2040bae20871806146fc095a1db197143e1a5ae63081608d3dd6fcba
           acquired_at: '2026-06-24T21:35:32+00:00'
       nsx-core:
         project: nsx-ambiq-sdk
@@ -370,7 +370,7 @@ targets:
         resolved:
           tool_version: 0.6.9
           vendored_at: cmake/nsx
-          content_hash: sha256:7d61372d6eb4caf27d750963c46870a35868f7d0674a5f6346a5fdda26f9cb97
+          content_hash: sha256:33ee3e77978b2abca3313148e815fdae3ef2321ef3a947596587b9ab9630d3c2
           acquired_at: '2026-06-24T21:35:32+00:00'
       nsx-interrupt:
         project: nsx-ambiq-sdk
@@ -471,7 +471,7 @@ targets:
         resolved:
           tool_version: 0.6.9
           vendored_at: boards/apollo510dL_evb
-          content_hash: sha256:704dc84bc0f3e003869c1fede1b311025edf4ff15498733a4903381c4c014f6e
+          content_hash: sha256:c28778fe11e2f70955e752038133a5ae2639ea9acf8bb1e2c5f029dc3bcc0e3f
           acquired_at: '2026-06-24T21:35:33+00:00'
       nsx-core:
         project: nsx-ambiq-sdk
@@ -500,7 +500,7 @@ targets:
         resolved:
           tool_version: 0.6.9
           vendored_at: cmake/nsx
-          content_hash: sha256:7d61372d6eb4caf27d750963c46870a35868f7d0674a5f6346a5fdda26f9cb97
+          content_hash: sha256:33ee3e77978b2abca3313148e815fdae3ef2321ef3a947596587b9ab9630d3c2
           acquired_at: '2026-06-24T21:35:33+00:00'
       nsx-interrupt:
         project: nsx-ambiq-sdk
@@ -601,7 +601,7 @@ targets:
         resolved:
           tool_version: 0.6.9
           vendored_at: boards/apollo4p_blue_kxr_evb
-          content_hash: sha256:3634c52975abd5ff22c8d66db249da3bc8fbab6b49cc015739d7c3afd78f6024
+          content_hash: sha256:1723b99a8ca4f13a1339bf6aeeea45fa74ca2cbf2d9a6f3bf045ec41d8e66dad
           acquired_at: '2026-06-24T21:35:34+00:00'
       nsx-core:
         project: nsx-ambiq-sdk
@@ -620,7 +620,7 @@ targets:
         resolved:
           tool_version: 0.6.9
           vendored_at: cmake/nsx
-          content_hash: sha256:7d61372d6eb4caf27d750963c46870a35868f7d0674a5f6346a5fdda26f9cb97
+          content_hash: sha256:33ee3e77978b2abca3313148e815fdae3ef2321ef3a947596587b9ab9630d3c2
           acquired_at: '2026-06-24T21:35:34+00:00'
       nsx-interrupt:
         project: nsx-ambiq-sdk

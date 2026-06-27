@@ -25,6 +25,12 @@ set(_NSX_REGISTERED_BOARDS_LOWER
 )
 
 function(nsx_board_is_registered board_name out_var)
+    # Enable the IN_LIST if() operator (CMP0057). This file is also
+    # included in `cmake -P` script mode, where the policy otherwise
+    # defaults to OLD and IN_LIST raises an error.
+    if(POLICY CMP0057)
+        cmake_policy(SET CMP0057 NEW)
+    endif()
     string(TOLOWER "${board_name}" _board_lc)
     if(_board_lc IN_LIST _NSX_REGISTERED_BOARDS_LOWER)
         set(${out_var} TRUE PARENT_SCOPE)
