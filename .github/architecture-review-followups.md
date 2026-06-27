@@ -227,9 +227,23 @@ Legend: **Sev** = severity (High / Med / Low), **Risk** = change risk.
   stdlib-only leaf `_cache_paths.nsx_cache_root()` (no intra-package imports, so
   no cycle risk) as the single source of truth; all three call sites now derive
   their per-cache file paths from it. Behavior-preserving.
-- [ ] **16 (R4) — Audit raw-OSError/ValueError leakage** past the `NSXError` CLI
+- [x] **16 (R4) — Audit raw-OSError/ValueError leakage** past the `NSXError` CLI
   mediator (e.g. `shutil` copytree/rmtree, `from_mapping` parsing) against the
   "friendly failure" rule. _Sev: Med · Risk: Low._
+  Done: audited every CLI handler path. Core config (`project_config`) and the
+  cache readers were already well-guarded. Hardened the genuine leaks for **both**
+  the CLI and programmatic surfaces: (1) the subprocess chokepoint
+  `subprocess_utils._runner` now wraps `Popen` so a missing executable
+  (`cmake`/`ninja`/`git` not on PATH) raises a typed `NSXToolchainError` instead
+  of a raw `FileNotFoundError` — covers all build/lock/sync/git spawns; (2)
+  `nsx_lock._io.read_lock_file` wraps `OSError`/`yaml.YAMLError`/`ValueError`
+  (e.g. an `nsx.lock` with unresolved merge-conflict markers) into a typed
+  `NSXLockError`, letting the already-typed schema-mismatch error pass through;
+  (3) added a verbose-gated `except OSError` backstop to the CLI `main()` so any
+  residual environmental/permission failure produces a friendly `error: …` exit
+  instead of a traceback. New regression tests in `tests/test_error_mediation.py`.
+  Left metadata's internal `ValueError` validation contract intact (callers like
+  `api/_modules` already translate it).
 - [ ] **17 (R3) — Inventory & document env escape hatches**
   (`NSX_SKIP_COMPAT_CHECK`, legacy-metadata shims) in AGENTS.md.
   _Sev: Low · Risk: Low._

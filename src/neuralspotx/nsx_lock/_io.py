@@ -36,8 +36,19 @@ def read_lock_file(app_dir: Path) -> LockFile | None:
     path = lock_path(app_dir)
     if not path.exists():
         return None
-    raw = yaml.safe_load(path.read_text(encoding="utf-8"))
-    lock_file = LockFile.from_yaml_dict(raw or {})
+    try:
+        raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+        lock_file = LockFile.from_yaml_dict(raw or {})
+    except NSXLockError:
+        # Already a typed, well-messaged failure (e.g. a schema-version
+        # mismatch carrying the `nsx lock` upgrade hint) — surface as-is.
+        raise
+    except (OSError, yaml.YAMLError, ValueError) as exc:
+        raise NSXLockError(
+            f"could not read {path}: {exc}. The file may be unreadable or contain "
+            f"invalid YAML (e.g. unresolved merge-conflict markers). Run `nsx lock` "
+            f"to regenerate it."
+        ) from exc
     lock_file.path = path
     return lock_file
 

@@ -1268,4 +1268,14 @@ def main(argv: list[str] | None = None) -> int:
         if msg and msg != "1":
             sys.stderr.write(f"error: {msg}\n")
         return 1
+    except OSError as exc:
+        # Backstop for environmental failures (permission denied, missing
+        # files/dirs, disk full, etc.) that escaped the typed-error
+        # boundary in a handler. Re-raise under --verbose for a full
+        # traceback; otherwise honour the friendly-failure rule rather
+        # than dumping a raw Python traceback on the user.
+        if args.verbose > 0:
+            raise
+        sys.stderr.write(f"error: {exc}\n")
+        return 1
     return 0
