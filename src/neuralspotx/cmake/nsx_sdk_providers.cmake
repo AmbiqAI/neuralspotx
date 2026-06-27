@@ -22,36 +22,51 @@ function(_nsx_module_relpath_or_default out_var module_name)
     endif()
 endfunction()
 
-# Board → SDK provider mapping is generated from
-# src/neuralspotx/constants.py (BOARD_SDK_PROVIDER) by
+# Registered-board inventory is generated from
+# src/neuralspotx/constants.py (BOARDS) by
 # scripts/gen_board_table.py. Keep this include relative to this file.
 include("${CMAKE_CURRENT_LIST_DIR}/nsx_board_table.cmake")
 
-# Resolve a board name to one the generated provider table recognises.
+# Read the declarative parent board link from ``board.yaml``.
 #
-# Custom boards created by `nsx board create` are not in the generated
-# table; they ship a thin `boards/<name>/board.cmake` that sets
-# `NSX_PARENT_BOARD "<evb>"` and delegates to the parent EVB. SDK-provider
-# selection runs before any board.cmake is included, so for an unknown
-# board we walk the parent link until we reach a board the table knows,
-# letting the inherited EVB's provider apply automatically. Requires
-# `NSX_ROOT` to be set by the caller (the bootstrap does this).
+# Custom boards created by ``nsx board create`` already declare
+# ``inherits: <evb>`` in ``boards/<name>/board.yaml``. Provider selection runs
+# before any board.cmake is included, so this must come from the descriptor
+# rather than from the generated ``board.cmake`` shim.
+function(_nsx_read_parent_board out_var board_name)
+    set(_board_yaml "${NSX_ROOT}/boards/${board_name}/board.yaml")
+    if(NOT EXISTS "${_board_yaml}")
+        set(${out_var} "" PARENT_SCOPE)
+        return()
+    endif()
+
+    file(STRINGS "${_board_yaml}" _inherits_lines REGEX "^[ \t]*inherits:[ \t]*[^#\r\n]+")
+    if(_inherits_lines STREQUAL "")
+        set(${out_var} "" PARENT_SCOPE)
+        return()
+    endif()
+
+    list(GET _inherits_lines 0 _inherits_line)
+    string(REGEX REPLACE "^[ \t]*inherits:[ \t]*['\"]?([^'\"# \t\r\n]+)['\"]?.*$" "\\1" _parent "${_inherits_line}")
+    set(${out_var} "${_parent}" PARENT_SCOPE)
+endfunction()
+
+# Resolve a board name to one the registered-board table recognises.
+#
+# Custom boards are not in the generated table, so for an unknown board we walk
+# the declarative ``inherits`` link until we reach a registered EVB, letting the
+# inherited EVB's provider apply automatically. Requires ``NSX_ROOT`` to be set
+# by the caller (the bootstrap does this).
 function(_nsx_resolve_provider_board board_name out_var)
     set(_current "${board_name}")
     # Bounded walk guards against cycles and runaway inheritance chains.
     foreach(_depth RANGE 0 8)
-        nsx_lookup_sdk_provider("${_current}" _provider)
-        if(NOT _provider STREQUAL "")
+        nsx_board_is_registered("${_current}" _registered)
+        if(_registered)
             set(${out_var} "${_current}" PARENT_SCOPE)
             return()
         endif()
-        set(_board_cmake "${NSX_ROOT}/boards/${_current}/board.cmake")
-        if(NOT EXISTS "${_board_cmake}")
-            break()
-        endif()
-        file(READ "${_board_cmake}" _board_text)
-        string(REGEX MATCH "NSX_PARENT_BOARD[ \t]+\"([^\"]+)\"" _ "${_board_text}")
-        set(_parent "${CMAKE_MATCH_1}")
+        _nsx_read_parent_board(_parent "${_current}")
         if(_parent STREQUAL "" OR _parent STREQUAL "${_current}")
             break()
         endif()
@@ -74,8 +89,10 @@ function(nsx_select_sdk_provider board_name)
     if(NSX_SDK_PROVIDER STREQUAL "")
         # Follow the parent link for custom boards before giving up.
         _nsx_resolve_provider_board("${board_name}" _provider_board)
-        nsx_lookup_sdk_provider("${_provider_board}" NSX_SDK_PROVIDER)
-        if(NSX_SDK_PROVIDER STREQUAL "")
+        nsx_board_is_registered("${_provider_board}" _registered)
+        if(_registered)
+            set(NSX_SDK_PROVIDER "ambiqsuite")
+        else()
             message(FATAL_ERROR
                 "Unable to infer SDK provider for board '${board_name}'. "
                 "Set -DNSX_SDK_PROVIDER=ambiqsuite."

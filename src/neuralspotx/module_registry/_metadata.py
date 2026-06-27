@@ -14,6 +14,7 @@ from ..metadata import (
     registry_entry_for_module,
     validate_nsx_module_metadata,
 )
+from ..models import ModuleMetadata
 from ..project_config import (
     _metadata_path_relative_to_project,
     _module_clone_dir,
@@ -45,7 +46,7 @@ from ..project_config import (
 # is captured by the caller's choice to enter the scope, so we don't
 # need to key on it.
 
-_metadata_scope: contextvars.ContextVar[dict[tuple[str, str], dict[str, Any]] | None] = (
+_metadata_scope: contextvars.ContextVar[dict[tuple[str, str], ModuleMetadata] | None] = (
     contextvars.ContextVar("nsx_metadata_scope", default=None)
 )
 
@@ -163,7 +164,7 @@ def _load_module_metadata(
     module_name: str,
     registry: dict[str, Any],
     app_dir: Path | None = None,
-) -> dict[str, Any]:
+) -> ModuleMetadata:
     cache = _metadata_scope.get()
     cache_key: tuple[str, str] | None = None
     if cache is not None:
@@ -177,10 +178,11 @@ def _load_module_metadata(
     data = _read_yaml(metadata_path)
     data = _normalize_legacy_registry_metadata(data, module_name)
     validate_nsx_module_metadata(data, str(metadata_path))
+    meta = ModuleMetadata.from_raw(data)
 
     if cache is not None and cache_key is not None:
-        cache[cache_key] = data
-    return data
+        cache[cache_key] = meta
+    return meta
 
 
 def packaged_module_metadata_path(

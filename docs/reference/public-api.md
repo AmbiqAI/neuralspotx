@@ -47,6 +47,7 @@ tagged; this page will be updated at the v1.0 release.
 | Symbol | Returns | Tier |
 |---|---|---|
 | `create_app` | `Path` | Provisional |
+| `create_board` | `BoardDescriptor` | Provisional |
 | `configure_app` | `None` | Provisional |
 | `build_app` | `None` | Provisional |
 | `flash_app` | `None` | Provisional |
@@ -84,6 +85,7 @@ contract; dataclass field names are part of the contract.
 | Symbol | Used by | Tier |
 |---|---|---|
 | `AppCreateRequest` | `create_app` | Provisional |
+| `BoardCreateRequest` | `create_board` | Provisional |
 | `AppActionRequest` | base class for app-scoped actions | Provisional |
 | `AppViewRequest` | `view_app` | Provisional |
 | `AppBuildRequest` | `build_app` | Provisional |

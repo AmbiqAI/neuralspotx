@@ -29,6 +29,8 @@ import time
 from collections.abc import Iterator
 from pathlib import Path
 
+from ._cache_paths import nsx_cache_root
+
 # ---------------------------------------------------------------------------
 # Config
 # ---------------------------------------------------------------------------
@@ -89,14 +91,7 @@ def ttl_override(seconds: float | None) -> Iterator[None]:
 
 
 def _cache_path() -> Path:
-    override = os.environ.get("NSX_CACHE_DIR")
-    if override:
-        base = Path(override).expanduser()
-    else:
-        xdg = os.environ.get("XDG_CACHE_HOME")
-        base = Path(xdg).expanduser() if xdg else Path.home() / ".cache"
-        base = base / "nsx"
-    return base / "resolve-ref-cache.json"
+    return nsx_cache_root() / "resolve-ref-cache.json"
 
 
 # ---------------------------------------------------------------------------

@@ -39,7 +39,6 @@ def test_inherits_pulls_parent_facts(tmp_path: Path) -> None:
     assert desc.registered is False
     # Inherited scalar facts.
     assert desc.soc == parent.soc
-    assert desc.soc_family == parent.soc_family
     assert desc.sdk_provider == parent.sdk_provider
     assert desc.cpu == parent.cpu
     assert desc.toolchains == parent.toolchains
@@ -145,7 +144,6 @@ def test_child_scalar_overrides_parent(tmp_path: Path) -> None:
         tmp_path / "boards" / "custom" / "board.yaml",
         "schema_version: 1\n"
         "inherits: apollo510_evb\n"
-        "soc_family: r5\n"
         "board:\n"
         "  name: custom\n"
         "  soc: apollo510_custom\n",

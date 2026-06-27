@@ -8,6 +8,7 @@ from typing import Any
 
 from .._errors import NSXConfigError, NSXModuleError
 from ..metadata import is_compatible
+from ..models import ModuleMetadata
 from ._metadata import _load_module_metadata, metadata_cache_scope
 from ._nsx_cfg import _local_module_names, _vendored_module_names
 from ._policy import _validate_board_module_dep_policy, _validate_sdk_provider_policy
@@ -76,7 +77,7 @@ def _resolve_module_closure_inner(
     visited: set[str] = set()
     visiting: set[str] = set()
     resolved: list[str] = []
-    metadata_cache: dict[str, dict[str, Any]] = {}
+    metadata_cache: dict[str, ModuleMetadata] = {}
 
     def dfs(module_name: str) -> None:
         if module_name in visited:
@@ -90,6 +91,12 @@ def _resolve_module_closure_inner(
             raise NSXModuleError(f"Dependency cycle detected at module '{module_name}'")
         visiting.add(module_name)
 
+        # Acquisition is interleaved with traversal by necessity: a module's
+        # dependencies live inside its own nsx-module.yaml, so the graph is
+        # discovered incrementally (fetch -> parse -> expand). We cannot compute
+        # the full closure up front and acquire afterwards. The local/vendored
+        # sets computed once above are reused here so traversal-skipping and
+        # acquisition share a single source of truth for what is app-owned.
         if acquire_missing and app_dir is not None:
             _acquire_modules_for_app(
                 app_dir,
@@ -102,12 +109,12 @@ def _resolve_module_closure_inner(
         module_meta = _load_module_metadata(module_name, registry, app_dir=app_dir)
         metadata_cache[module_name] = module_meta
 
-        if not module_meta["support"]["ambiqsuite"]:
+        if not module_meta.supports_ambiqsuite:
             raise NSXModuleError(
                 f"Module '{module_name}' is not NSX-eligible (support.ambiqsuite=false)"
             )
         if not _compat_check_skipped() and not is_compatible(
-            module_meta,
+            module_meta.raw,
             board=board,
             soc=soc,
             toolchain=toolchain,
@@ -120,7 +127,7 @@ def _resolve_module_closure_inner(
                 "to bypass."
             )
 
-        for dep_name in module_meta["depends"]["required"]:
+        for dep_name in module_meta.required_deps:
             dfs(dep_name)
 
         visiting.remove(module_name)
@@ -137,7 +144,7 @@ def _resolve_module_closure_inner(
     sdk_providers = [
         name
         for name, meta in metadata_cache.items()
-        if meta.get("module", {}).get("type") == "sdk_provider"
+        if meta.module_type == "sdk_provider"
     ]
     if len(sdk_providers) > 1:
         raise NSXModuleError(
@@ -161,7 +168,7 @@ def _module_dependents(
             if name in skip:
                 continue
             metadata = _load_module_metadata(name, registry, app_dir=app_dir)
-            for dep in metadata["depends"]["required"]:
+            for dep in metadata.required_deps:
                 if dep in dependents:
                     dependents[dep].add(name)
     return dependents

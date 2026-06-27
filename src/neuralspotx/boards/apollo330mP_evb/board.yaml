@@ -2,14 +2,13 @@
 #
 # Source of truth for board -> SoC / SDK-provider derivation consumed by
 # neuralspotx.constants via neuralspotx/board_descriptors.py. Keep in sync
-# with board.cmake (NSX_SOC_FAMILY / NSX_CPU / NSX_ABI_FLAGS).
+# with board.cmake (NSX_CPU / NSX_ABI_FLAGS).
 schema_version: 1
 board:
   name: apollo330mP_evb
   tier: evb
   soc: apollo330P
   registered: true
-soc_family: apollo330P
 sdk_provider: ambiqsuite
 cpu:
   core: cortex-m55

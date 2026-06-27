@@ -6,12 +6,16 @@ legacy ``constants`` tables remain a faithful derivation of them.
 
 from __future__ import annotations
 
+import pytest
+
 from neuralspotx import board_descriptors as bd
+from neuralspotx import constants
 from neuralspotx.constants import (
     _BOARD_ORDER,
     BOARD_SDK_PROVIDER,
     DEFAULT_SOC_FOR_BOARD,
     SDK_PROVIDERS,
+    validate_board_registry,
 )
 
 
@@ -80,3 +84,48 @@ def test_load_board_returns_descriptor_with_cpu() -> None:
 
 def test_load_board_unknown_returns_none() -> None:
     assert bd.load_board("no_such_board") is None
+
+
+def test_validate_board_registry_clean_for_shipped_descriptors() -> None:
+    """The packaged descriptors must validate without any problems."""
+
+    assert validate_board_registry() == []
+
+
+def test_default_board_is_registered() -> None:
+    """The centralized create-app default must be a real registered board."""
+
+    assert constants.DEFAULT_BOARD in _BOARD_ORDER
+    assert constants.DEFAULT_BOARD in DEFAULT_SOC_FOR_BOARD
+
+
+def test_validate_board_registry_reports_unregistered_default_board(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A DEFAULT_BOARD that drifts off the registry is reported, not silent."""
+
+    monkeypatch.setattr(constants, "DEFAULT_BOARD", "not_a_real_board")
+    problems = validate_board_registry()
+    assert any("DEFAULT_BOARD" in p for p in problems), problems
+
+
+def test_validate_board_registry_reports_missing_descriptor(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A board in _BOARD_ORDER without a descriptor is reported, not raised."""
+
+    monkeypatch.setattr(
+        constants, "_BOARD_ORDER", (*_BOARD_ORDER, "ghost_board"), raising=True
+    )
+    problems = validate_board_registry()
+    assert any("ghost_board" in p for p in problems)
+
+
+def test_validate_board_registry_reports_load_error(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A captured descriptor-load error surfaces via the validator."""
+
+    monkeypatch.setattr(constants, "_DESCRIPTOR_LOAD_ERROR", "boom", raising=True)
+    problems = validate_board_registry()
+    assert any("boom" in p for p in problems)

@@ -1,13 +1,12 @@
 """CMake-level provider inference for custom (inheriting) boards.
 
-Regression guard for the gap Codex flagged on the custom-board flow:
+Regression guard for the custom-board provider flow:
 ``nsx board create <name> --from <evb>`` scaffolds a thin
-``boards/<name>/board.cmake`` that delegates to a parent EVB, but SDK
-provider selection runs (in ``nsx_bootstrap_app``) *before* any
-``board.cmake`` is included, and the generated provider table only knows
-the registered EVBs. Without the parent-follow fallback in
-``nsx_sdk_providers.cmake`` the custom board fails with "Unable to infer
-SDK provider" unless the user passes ``-DNSX_SDK_PROVIDER`` by hand.
+``boards/<name>/board.cmake`` plus a declarative ``board.yaml`` with
+``inherits: <evb>``. SDK provider selection runs (in ``nsx_bootstrap_app``)
+*before* any ``board.cmake`` is included, and the generated board table only
+knows the registered EVBs. Provider inference therefore has to follow the
+descriptor's ``inherits`` link, not scrape parent data out of generated CMake.
 
 These tests drive the real packaged CMake in ``cmake -P`` script mode, so
 they exercise ``nsx_select_sdk_provider`` end to end without a firmware
@@ -51,6 +50,10 @@ def _providers_cmake(tmp_path: Path) -> Path:
 def _scaffold_custom_board(nsx_root: Path, name: str, parent: str) -> None:
     board_dir = nsx_root / "boards" / name
     board_dir.mkdir(parents=True)
+    board_dir.joinpath("board.yaml").write_text(
+        bd.render_custom_board_yaml(name=name, parent=parent),
+        encoding="utf-8",
+    )
     board_dir.joinpath("board.cmake").write_text(
         bd.render_custom_board_cmake(name=name, parent=parent),
         encoding="utf-8",
@@ -128,3 +131,18 @@ def test_unknown_board_without_parent_still_errors(tmp_path: Path) -> None:
 
     assert result.returncode != 0
     assert "Unable to infer SDK provider" in result.stdout + result.stderr
+
+
+def test_provider_parent_comes_from_board_yaml_not_board_cmake(tmp_path: Path) -> None:
+    nsx_root = tmp_path / "app"
+    _scaffold_custom_board(nsx_root, "my_apollo510", "apollo510_evb")
+    board_dir = nsx_root / "boards" / "my_apollo510"
+    board_dir.joinpath("board.cmake").write_text(
+        bd.render_custom_board_cmake(name="my_apollo510", parent="not_a_real_board"),
+        encoding="utf-8",
+    )
+
+    result = _run_select(tmp_path, board="my_apollo510", nsx_root=nsx_root)
+
+    assert result.returncode == 0, result.stderr
+    assert "RESOLVED_PROVIDER=ambiqsuite" in result.stdout + result.stderr

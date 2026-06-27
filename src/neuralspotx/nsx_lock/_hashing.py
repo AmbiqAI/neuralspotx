@@ -8,6 +8,7 @@ import os
 from pathlib import Path
 from typing import Iterable
 
+from .._cache_paths import nsx_cache_root
 from ._constants import _ARTIFACT_HASH_CACHE_SCHEMA_VERSION, _HASH_EXCLUDE_DIRS
 
 
@@ -76,14 +77,7 @@ def _git_artifact_hash_cache_path() -> Path:
     no eviction is needed.
     """
 
-    override = os.environ.get("NSX_CACHE_DIR")
-    if override:
-        base = Path(override).expanduser()
-    else:
-        xdg = os.environ.get("XDG_CACHE_HOME")
-        base = Path(xdg).expanduser() if xdg else Path.home() / ".cache"
-        base = base / "nsx"
-    return base / "git-artifact-hashes.json"
+    return nsx_cache_root() / "git-artifact-hashes.json"
 
 
 def _read_artifact_hash_cache() -> dict[str, str]:

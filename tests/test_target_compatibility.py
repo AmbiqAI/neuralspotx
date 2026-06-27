@@ -13,6 +13,7 @@ from __future__ import annotations
 import pytest
 
 from neuralspotx._errors import NSXModuleError
+from neuralspotx.models import ModuleMetadata
 from neuralspotx.module_registry import _closure
 
 
@@ -34,7 +35,8 @@ def _resolve(
     tc: str = "arm-none-eabi-gcc",
 ) -> list[str]:
     monkeypatch.setattr(
-        _closure, "_load_module_metadata", lambda name, registry, app_dir=None: meta
+        _closure, "_load_module_metadata",
+        lambda name, registry, app_dir=None: ModuleMetadata.from_raw(meta),
     )
     return _closure._resolve_module_closure(
         ["m"],

@@ -9,9 +9,32 @@ import sys
 import time
 from collections.abc import Callable
 from pathlib import Path
+from typing import Any
 
+from .._errors import NSXToolchainError
 from ._verbosity import _VERBOSITY, _effective_timeout
 from ._winjob import _ProcessContainer
+
+
+def _popen(cmd: list[str], **kwargs: Any) -> subprocess.Popen:  # type: ignore[type-arg]
+    """Spawn *cmd*, translating a missing executable into a typed error.
+
+    ``subprocess.Popen`` raises a raw ``FileNotFoundError`` (an
+    ``OSError``) when the program is not on ``PATH``. Surface it as an
+    :class:`NSXToolchainError` so both the CLI mediator and library
+    embedders get the friendly-failure / typed-error contract instead of
+    an unhandled traceback. The subprocess's *exit* failures are still
+    raised as :class:`subprocess.CalledProcessError` by the callers.
+    """
+
+    try:
+        return subprocess.Popen(cmd, **kwargs)
+    except FileNotFoundError as exc:
+        raise NSXToolchainError(
+            f"command not found: {cmd[0]!r} \u2014 is it installed and on your PATH?"
+        ) from exc
+    except OSError as exc:
+        raise NSXToolchainError(f"failed to launch {cmd[0]!r}: {exc}") from exc
 
 
 def _split_emitted_lines(
@@ -93,7 +116,7 @@ def run(
         # Binary pipe: we read raw bytes (``os.read`` on POSIX, ``readline``
         # on Windows) and decode ourselves so we can split on \r as well as
         # \n and re-emit the original terminator for in-place progress.
-        proc = subprocess.Popen(
+        proc = _popen(
             cmd,
             cwd=str(cwd) if cwd else None,
             stdout=subprocess.PIPE,
@@ -101,7 +124,7 @@ def run(
             start_new_session=(os.name != "nt"),
         )
     else:
-        proc = subprocess.Popen(
+        proc = _popen(
             cmd,
             cwd=str(cwd) if cwd else None,
             start_new_session=(os.name != "nt"),
@@ -212,7 +235,7 @@ def run_capture(
     Same timeout / process-tree semantics as :func:`run`.
     """
     effective = _effective_timeout(timeout)
-    proc = subprocess.Popen(
+    proc = _popen(
         cmd,
         cwd=str(cwd) if cwd else None,
         text=True,

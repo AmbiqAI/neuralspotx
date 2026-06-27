@@ -11,13 +11,14 @@ from .._errors import NSXConfigError, NSXModuleError
 from .._io import info, warn
 from ..constants import (
     BOARD_SDK_PROVIDER,
+    DEFAULT_BOARD,
     DEFAULT_SOC_FOR_BOARD,
     DEFAULT_TOOLCHAIN,
     normalize_board,
     normalize_soc,
 )
 from ..metadata import load_yaml, validate_nsx_module_metadata
-from ..models import ModuleChange
+from ..models import ModuleChange, ModuleInitRequest
 from ..module_registry import (
     _acquire_modules_for_app,
     _generate_nsx_config,
@@ -70,7 +71,7 @@ def _save_lean_app_manifest(app_dir: Path, nsx_cfg: dict, *, baseline_none: bool
 def create_app_impl(
     app_dir: Path,
     *,
-    board: str = "apollo510_evb",
+    board: str = DEFAULT_BOARD,
     soc: str | None = None,
     force: bool = False,
     no_bootstrap: bool = False,
@@ -216,38 +217,27 @@ def _create_app_body(
     return app_dir
 
 
-def init_module_impl(
-    module_dir: Path,
-    *,
-    module_name: str | None = None,
-    module_type: str = "runtime",
-    summary: str | None = None,
-    version: str = "0.1.0",
-    dependencies: list[str] | None = None,
-    boards: list[str] | None = None,
-    socs: list[str] | None = None,
-    toolchains: list[str] | None = None,
-    force: bool = False,
-) -> ModuleChange:
-    """Create a standard custom-module skeleton."""
+def init_module_impl(request: ModuleInitRequest) -> ModuleChange:
+    """Create a standard custom-module skeleton from a request DTO."""
 
-    module_name = (module_name or module_dir.name).strip()
+    module_dir = Path(request.module_dir).expanduser().resolve()
+    module_name = (request.module_name or module_dir.name).strip()
     if not module_name:
         raise NSXModuleError("Module name must not be empty.")
 
     if module_dir.exists() and not module_dir.is_dir():
         raise NSXModuleError(f"Module path already exists and is not a directory: {module_dir}")
-    if module_dir.exists() and any(module_dir.iterdir()) and not force:
+    if module_dir.exists() and any(module_dir.iterdir()) and not request.force:
         raise NSXModuleError(f"Module directory already exists and is not empty: {module_dir}")
 
-    dependency_names = _unique_preserving_order(dependencies or [])
-    board_names = _unique_preserving_order(boards or ["*"])
-    soc_names = _unique_preserving_order(socs or ["*"])
-    toolchain_names = _unique_preserving_order(toolchains or [DEFAULT_TOOLCHAIN])
+    dependency_names = _unique_preserving_order(request.dependencies or [])
+    board_names = _unique_preserving_order(request.boards or ["*"])
+    soc_names = _unique_preserving_order(request.socs or ["*"])
+    toolchain_names = _unique_preserving_order(request.toolchains or [DEFAULT_TOOLCHAIN])
 
     package_name = _module_package_name(module_name)
     module_target = _module_target_name(module_name)
-    summary_text = summary or f"{module_name} - add a one-line summary here"
+    summary_text = request.summary or f"{module_name} - add a one-line summary here"
     dependency_records = [
         {
             "name": dep,
@@ -268,8 +258,8 @@ def init_module_impl(
             module_dir,
             context={
                 "module_name": module_name,
-                "module_type": module_type,
-                "version": version,
+                "module_type": request.module_type,
+                "version": request.version,
                 "summary_literal": json.dumps(summary_text),
                 "package_name": package_name,
                 "module_target": module_target,
@@ -289,6 +279,6 @@ def init_module_impl(
     return ModuleChange(
         name=module_name,
         before=None,
-        after=version,
+        after=request.version,
         action="added",
     )

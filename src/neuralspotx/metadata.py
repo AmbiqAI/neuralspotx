@@ -84,10 +84,11 @@ def load_yaml(path: Path) -> dict[str, Any]:
 def _derive_starter_profiles(data: dict[str, Any]) -> dict[str, Any]:
     """Expand ``soc_families`` + ``board_profiles`` into full starter profiles.
 
-    Each profile's SoC family comes from the first-class board descriptor, so
-    the per-board module list is assembled from the family baseline plus the
-    board's own ``nsx-board-<board>`` module and the shared ``core_modules`` —
-    no per-board duplication in the lock.
+    Each profile's SoC comes from the first-class board descriptor and is used
+    to look up the matching ``soc_families`` baseline, so the per-board module
+    list is assembled from that baseline plus the board's own
+    ``nsx-board-<board>`` module and the shared ``core_modules`` — no per-board
+    duplication in the lock.
     """
 
     from .board_descriptors import load_board
@@ -111,7 +112,9 @@ def _derive_starter_profiles(data: dict[str, Any]) -> dict[str, Any]:
                 f"registry.lock: board_profiles['{board}'] has no board descriptor "
                 f"(expected src/neuralspotx/boards/{board}/board.yaml)"
             )
-        family_key = descriptor.soc_family
+        # ``soc_families`` is keyed by the board's SoC (the descriptor's
+        # ``soc``); each SoC maps to its SDK provisioning baseline.
+        family_key = descriptor.soc
         family = families.get(family_key)
         if family is None:
             raise ValueError(

@@ -63,6 +63,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+from ._cache_paths import nsx_cache_root
+
 __all__ = [
     "InvalidContentHashError",
     "module_cache_root",
@@ -80,25 +82,10 @@ __all__ = [
 # ---------------------------------------------------------------------------
 
 
-def _nsx_cache_root() -> Path:
-    """Return the base nsx cache directory (parent of ``modules/``).
-
-    Mirrors :func:`nsx_lock._git_artifact_hash_cache_path`'s resolution
-    so both caches live in the same root.
-    """
-
-    override = os.environ.get("NSX_CACHE_DIR")
-    if override:
-        return Path(override).expanduser()
-    xdg = os.environ.get("XDG_CACHE_HOME")
-    base = Path(xdg).expanduser() if xdg else Path.home() / ".cache"
-    return base / "nsx"
-
-
 def module_cache_root() -> Path:
     """Return the directory under which all module artifact entries live."""
 
-    return _nsx_cache_root() / "modules"
+    return nsx_cache_root() / "modules"
 
 
 _HEX_DIGEST_RE = re.compile(r"^[0-9a-f]+$")

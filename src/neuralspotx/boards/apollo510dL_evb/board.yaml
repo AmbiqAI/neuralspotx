@@ -2,7 +2,7 @@
 #
 # Source of truth for board -> SoC / SDK-provider derivation consumed by
 # neuralspotx.constants via neuralspotx/board_descriptors.py. Keep in sync
-# with board.cmake (NSX_SOC_FAMILY / NSX_CPU / NSX_ABI_FLAGS).
+# with board.cmake (NSX_CPU / NSX_ABI_FLAGS).
 #
 # registered: false -- this variant ships a board package but is intentionally
 # absent from the legacy constants.DEFAULT_SOC_FOR_BOARD / BOARD_SDK_PROVIDER
@@ -13,7 +13,6 @@ board:
   tier: evb
   soc: apollo510L
   registered: true
-soc_family: apollo510L
 sdk_provider: ambiqsuite
 cpu:
   core: cortex-m55

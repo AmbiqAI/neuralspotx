@@ -30,6 +30,7 @@ from neuralspotx import (
     project_config,
     tooling,
 )
+from neuralspotx.models import ModuleInitRequest
 from neuralspotx.subprocess_utils import extract_view_command
 
 _ALL_ERRORS = (
@@ -100,9 +101,7 @@ class TestMigratedSites:
     def test_operations_init_module_empty_name_raises_module_error(self, tmp_path):
         with pytest.raises(NSXModuleError, match="Module name must not be empty"):
             operations.init_module_impl(
-                tmp_path,
-                module_name="   ",
-                force=True,
+                ModuleInitRequest(module_dir=tmp_path, module_name="   ", force=True),
             )
 
     def test_operations_outdated_missing_lock_raises_config_error(self, tmp_path):

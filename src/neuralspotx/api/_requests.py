@@ -5,6 +5,13 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from ..constants import DEFAULT_BOARD
+
+# ``ModuleInitRequest`` lives in the neutral ``models`` layer so the operations
+# impl can consume it without importing ``api``. Re-exported here to preserve the
+# public ``neuralspotx.api.ModuleInitRequest`` import path.
+from ..models import ModuleInitRequest as ModuleInitRequest
+
 PathLike = str | Path
 
 
@@ -21,10 +28,27 @@ class AppCreateRequest:
     """
 
     app_dir: PathLike
-    board: str = "apollo510_evb"
+    board: str = DEFAULT_BOARD
     soc: str | None = None
     force: bool = False
     no_bootstrap: bool = False
+
+
+@dataclass(slots=True)
+class BoardCreateRequest:
+    """Request parameters for scaffolding a custom board.
+
+    Attributes:
+        name: New custom board identifier (becomes ``boards/<name>/``).
+        from_board: Parent EVB whose SoC/provider/CPU facts are inherited.
+        app_dir: App root under which ``boards/<name>/`` is written.
+        force: Overwrite an existing ``boards/<name>/`` directory.
+    """
+
+    name: str
+    from_board: str
+    app_dir: PathLike = "."
+    force: bool = False
 
 
 @dataclass(slots=True)
@@ -213,19 +237,3 @@ class ModuleRegisterRequest:
     project_local_path: PathLike | None = None
     override: bool = False
     dry_run: bool = False
-
-
-@dataclass(slots=True)
-class ModuleInitRequest:
-    """Request parameters for creating a custom-module skeleton."""
-
-    module_dir: PathLike
-    module_name: str | None = None
-    module_type: str = "runtime"
-    summary: str | None = None
-    version: str = "0.1.0"
-    dependencies: list[str] | None = None
-    boards: list[str] | None = None
-    socs: list[str] | None = None
-    toolchains: list[str] | None = None
-    force: bool = False
