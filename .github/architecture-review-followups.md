@@ -244,8 +244,16 @@ Legend: **Sev** = severity (High / Med / Low), **Risk** = change risk.
   instead of a traceback. New regression tests in `tests/test_error_mediation.py`.
   Left metadata's internal `ValueError` validation contract intact (callers like
   `api/_modules` already translate it).
-- [ ] **17 (R3) — Inventory & document env escape hatches**
+- [x] **17 (R3) — Inventory & document env escape hatches**
   (`NSX_SKIP_COMPAT_CHECK`, legacy-metadata shims) in AGENTS.md.
   _Sev: Low · Risk: Low._
+  Done: added an "Environment Variables & Escape Hatches" section to AGENTS.md
+  inventorying all runtime knobs — the two escape hatches
+  (`NSX_SKIP_COMPAT_CHECK`, `NSX_ALLOW_VERSION_MISMATCH`) with their single
+  enforcement sites, the git/cache/parallelism/lock-staleness tuning vars with
+  defaults, and the external vars honored (`XDG_*`, `ATFE_ROOT`). Plus a "Legacy
+  Compatibility Shims" subsection cataloguing the narrow pre-v1 shims
+  (`_normalize_legacy_registry_metadata`, singular `target:`/`profile:` keys,
+  `local: true`, string-mixed enums) so they stay isolated and removable.
 - [ ] **18 (R5) — Document the schema break-and-fix policy** (lock/descriptor
   schema mismatch raises with no migration path). _Sev: Low · Risk: Low._

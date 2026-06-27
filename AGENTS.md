@@ -163,6 +163,55 @@ Fast local and CI-safe tests are preferred.
 User-facing operations like flash/view/doctor should fail with actionable
 messages, not raw tracebacks, unless verbose mode is explicitly requested.
 
+### Environment Variables & Escape Hatches
+
+`nsx` is configured through `nsx.yml`; the environment variables below are the
+complete set of runtime knobs and emergency bypasses. Treat the **escape
+hatches** as audited, last-resort overrides — they intentionally weaken a
+safety check, so any new one must be added here and justified in its PR.
+
+**Escape hatches (bypass a safety check — use sparingly):**
+
+| Variable | Effect | Enforcement site |
+| --- | --- | --- |
+| `NSX_SKIP_COMPAT_CHECK` | Truthy (`1`/`true`/`yes`/`on`) skips the per-target module↔board/SoC compatibility gate during closure resolution. | `module_registry/_closure.py` (single gate) |
+| `NSX_ALLOW_VERSION_MISMATCH` | Truthy bypasses the `nsx.lock` ↔ tool major-version compatibility check. | `project_config._check_nsx_version_compatibility` |
+
+**Runtime tuning (safe to set; never weaken integrity):**
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `NSX_CACHE_DIR` | `$XDG_CACHE_HOME/nsx` or `~/.cache/nsx` | Root for all nsx caches (module artifacts, git-artifact hashes, resolve-ref). Single source: `_cache_paths.nsx_cache_root()`. |
+| `NSX_DISABLE_MODULE_CACHE` | unset (cache on) | Truthy disables the content-addressed module artifact cache. |
+| `NSX_RESOLVE_TTL` | `300` (s) | TTL for the on-disk `git ls-remote` resolve cache; `0` disables it. |
+| `NSX_RESOLVE_PARALLELISM` | `8` (capped to the work size) | Worker count for parallel ref resolution; `1` forces serial. |
+| `NSX_LOCK_STALE_DAYS` | `14` | Age after which a lock tracking a moving ref is flagged stale; `0` disables the check. |
+| `NSX_GIT_RETRIES` | `3` (clamped 1–10) | Total git attempts for transient network failures. |
+| `NSX_GIT_RETRY_BASE_DELAY` | `0.5` (s) | First backoff delay between git retries. |
+| `NSX_GIT_RETRY_MAX_DELAY` | `8` (s) | Cap on each git retry backoff. |
+| `NSX_GIT_LOW_SPEED_LIMIT` | `1000` (B/s) | git stalled-transfer threshold; `0` disables. |
+| `NSX_GIT_LOW_SPEED_TIME` | `60` (s) | git stalled-transfer window; `0` disables. |
+| `NSX_GIT_TIMEOUT` | `600` (s) | Wall-clock cap per git invocation; `0` disables. |
+
+**External / standard variables honored (not nsx-owned):** `XDG_CACHE_HOME`
+and `XDG_CONFIG_HOME` (cache/config roots), `ATFE_ROOT` (Ambiq toolchain probe
+in `nsx doctor`).
+
+### Legacy Compatibility Shims
+
+These narrow shims accept pre-v1 / legacy input shapes. Keep them isolated and
+clearly named so they can be removed once callers migrate — do not let legacy
+spellings leak into new code paths:
+
+- `module_registry/_metadata._normalize_legacy_registry_metadata` — normalizes
+  legacy registry-metadata layout into the current schema.
+- Legacy singular `target:` / `profile:` manifest keys (alongside the current
+  `targets:` block) in `models/_loader.py` / `models/_project.py`.
+- Legacy `local: true` module declaration mapped to the `local` lock kind
+  (`nsx_lock`).
+- String-mixed enums (`Toolchain`, `Scope`, `ModuleType`, `OutdatedStatus`,
+  `ProfileStatus`) that compare equal to their legacy plain-string spellings.
+
 ### Release Discipline
 
 `neuralspotx` uses PR-first workflow and Release Please.
