@@ -28,6 +28,7 @@ from pathlib import Path
 from .. import api, operations
 from .._errors import NSXError, NSXToolchainError
 from .._logging import configure_logging
+from ..constants import DEFAULT_BOARD
 from ..metadata import SUPPORTED_MODULE_TYPES
 from ..models import CommandCategory, CommandHint, CommandScope, OutdatedReport
 from ..project_config import resolve_app_dir
@@ -510,7 +511,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     p_new = sub.add_parser("create-app", help="Create a new standalone NSX app project")
     p_new.add_argument("app_dir", help="App directory to create")
-    p_new.add_argument("--board", default="apollo510_evb", help="Target board package suffix")
+    p_new.add_argument("--board", default=DEFAULT_BOARD, help="Target board package suffix")
     p_new.add_argument(
         "--soc", default=None, help="Target SoC package suffix (default inferred from board)"
     )
@@ -526,7 +527,7 @@ def _build_parser() -> argparse.ArgumentParser:
 
     p_new_alias = sub.add_parser("new", help="Alias for create-app")
     p_new_alias.add_argument("app_dir", help="App directory to create")
-    p_new_alias.add_argument("--board", default="apollo510_evb", help="Target board package suffix")
+    p_new_alias.add_argument("--board", default=DEFAULT_BOARD, help="Target board package suffix")
     p_new_alias.add_argument(
         "--soc", default=None, help="Target SoC package suffix (default inferred from board)"
     )
