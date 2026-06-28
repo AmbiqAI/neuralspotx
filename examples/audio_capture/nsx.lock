@@ -96,12 +96,12 @@ targets:
       nsx-pmu-armv8m:
         project: nsx-pmu-armv8m
         kind: git
-        constraint: 60384f86d7b5fa6b97148e822f608b8a4d0d9a07
+        constraint: b311be1960eb7426ff37641c6c813a7a6d84d2d0
         resolved:
           url: https://github.com/AmbiqAI/nsx-pmu-armv8m.git
-          commit: 60384f86d7b5fa6b97148e822f608b8a4d0d9a07
+          commit: b311be1960eb7426ff37641c6c813a7a6d84d2d0
           vendored_at: modules/nsx-pmu-armv8m
-          content_hash: sha256:bfb1b8c121e744e7948f2082f2ac3ee8c6d9319092b563a2844b60de41c7c787
+          content_hash: sha256:cdb095c001c3457b9c6add483958fdb63413a7efba86477a342f5bf1e8935184
           acquired_at: '2026-06-24T21:35:27+00:00'
       nsx-tooling:
         project: neuralspotx
@@ -216,12 +216,12 @@ targets:
       nsx-pmu-armv8m:
         project: nsx-pmu-armv8m
         kind: git
-        constraint: 60384f86d7b5fa6b97148e822f608b8a4d0d9a07
+        constraint: b311be1960eb7426ff37641c6c813a7a6d84d2d0
         resolved:
           url: https://github.com/AmbiqAI/nsx-pmu-armv8m.git
-          commit: 60384f86d7b5fa6b97148e822f608b8a4d0d9a07
+          commit: b311be1960eb7426ff37641c6c813a7a6d84d2d0
           vendored_at: modules/nsx-pmu-armv8m
-          content_hash: sha256:bfb1b8c121e744e7948f2082f2ac3ee8c6d9319092b563a2844b60de41c7c787
+          content_hash: sha256:cdb095c001c3457b9c6add483958fdb63413a7efba86477a342f5bf1e8935184
           acquired_at: '2026-06-24T21:35:27+00:00'
       nsx-tooling:
         project: neuralspotx
@@ -336,12 +336,12 @@ targets:
       nsx-pmu-armv8m:
         project: nsx-pmu-armv8m
         kind: git
-        constraint: 60384f86d7b5fa6b97148e822f608b8a4d0d9a07
+        constraint: b311be1960eb7426ff37641c6c813a7a6d84d2d0
         resolved:
           url: https://github.com/AmbiqAI/nsx-pmu-armv8m.git
-          commit: 60384f86d7b5fa6b97148e822f608b8a4d0d9a07
+          commit: b311be1960eb7426ff37641c6c813a7a6d84d2d0
           vendored_at: modules/nsx-pmu-armv8m
-          content_hash: sha256:bfb1b8c121e744e7948f2082f2ac3ee8c6d9319092b563a2844b60de41c7c787
+          content_hash: sha256:cdb095c001c3457b9c6add483958fdb63413a7efba86477a342f5bf1e8935184
           acquired_at: '2026-06-24T21:35:28+00:00'
       nsx-tooling:
         project: neuralspotx
@@ -456,12 +456,12 @@ targets:
       nsx-pmu-armv8m:
         project: nsx-pmu-armv8m
         kind: git
-        constraint: 60384f86d7b5fa6b97148e822f608b8a4d0d9a07
+        constraint: b311be1960eb7426ff37641c6c813a7a6d84d2d0
         resolved:
           url: https://github.com/AmbiqAI/nsx-pmu-armv8m.git
-          commit: 60384f86d7b5fa6b97148e822f608b8a4d0d9a07
+          commit: b311be1960eb7426ff37641c6c813a7a6d84d2d0
           vendored_at: modules/nsx-pmu-armv8m
-          content_hash: sha256:bfb1b8c121e744e7948f2082f2ac3ee8c6d9319092b563a2844b60de41c7c787
+          content_hash: sha256:cdb095c001c3457b9c6add483958fdb63413a7efba86477a342f5bf1e8935184
           acquired_at: '2026-06-24T21:35:29+00:00'
       nsx-tooling:
         project: neuralspotx
