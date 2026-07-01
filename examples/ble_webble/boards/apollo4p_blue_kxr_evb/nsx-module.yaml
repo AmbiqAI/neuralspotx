@@ -1,0 +1,38 @@
+schema_version: 1
+
+module:
+  name: nsx-board-apollo4p-blue-kxr-evb
+  type: board
+  version: "0.1.0"
+
+support:
+  ambiqsuite: true
+  zephyr: false
+
+build:
+  cmake:
+    package: nsx_board_apollo4p_blue_kxr_evb
+    targets:
+      - nsx::board_apollo4p_blue_kxr_evb
+
+depends:
+  required:
+    - nsx-ambiq-hal
+    - nsx-ambiq-bsp
+    - nsx-soc-hal
+    - nsx-cmsis-startup
+    - nsx-ambiqsuite
+  optional: []
+
+constraints:
+  required_sdk_provider: nsx-ambiqsuite
+
+compatibility:
+  boards:
+    - apollo4p_blue_kxr_evb
+  socs:
+    - apollo4p
+  toolchains:
+    - arm-none-eabi-gcc
+    - armclang
+    - atfe
