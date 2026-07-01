@@ -1,0 +1,59 @@
+schema_version: 2
+project:
+  name: ble_webble
+target:
+  board: apollo4p_blue_kxr_evb
+  soc: apollo4p
+toolchain: arm-none-eabi-gcc
+channel: preview
+profile: apollo4p_blue_kxr_evb_minimal
+profile_status: active
+modules:
+- name: nsx-freertos
+  source:
+    path: /home/adamp/Ambiq/neuralspotx/nsx-modules/nsx-ambiq-sdk/modules/nsx-freertos
+  local: true
+- name: nsx-cordio
+  source:
+    path: /home/adamp/Ambiq/neuralspotx/nsx-modules/nsx-ambiq-sdk/modules/nsx-cordio
+  local: true
+- name: nsx-ble
+  source:
+    path: /home/adamp/Ambiq/neuralspotx/nsx-modules/nsx-ambiq-sdk/modules/nsx-ble
+  local: true
+features: {}
+tooling:
+  nsx:
+    version: 0.7.0
+    major: 0
+module_registry:
+  projects:
+    nsx-freertos:
+      local_path: /home/adamp/Ambiq/neuralspotx/nsx-modules/nsx-ambiq-sdk/modules/nsx-freertos
+    nsx-cordio:
+      local_path: /home/adamp/Ambiq/neuralspotx/nsx-modules/nsx-ambiq-sdk/modules/nsx-cordio
+    nsx-ble:
+      local_path: /home/adamp/Ambiq/neuralspotx/nsx-modules/nsx-ambiq-sdk/modules/nsx-ble
+    nsx-power:
+      local_path: /home/adamp/Ambiq/neuralspotx/nsx-modules/nsx-ambiq-sdk/modules/nsx-power
+  modules:
+    nsx-freertos:
+      local_path: /home/adamp/Ambiq/neuralspotx/nsx-modules/nsx-ambiq-sdk/modules/nsx-freertos
+      project: nsx-freertos
+      revision: local
+      metadata: /home/adamp/Ambiq/neuralspotx/nsx-modules/nsx-ambiq-sdk/modules/nsx-freertos/nsx-module.yaml
+    nsx-cordio:
+      local_path: /home/adamp/Ambiq/neuralspotx/nsx-modules/nsx-ambiq-sdk/modules/nsx-cordio
+      project: nsx-cordio
+      revision: local
+      metadata: /home/adamp/Ambiq/neuralspotx/nsx-modules/nsx-ambiq-sdk/modules/nsx-cordio/nsx-module.yaml
+    nsx-ble:
+      local_path: /home/adamp/Ambiq/neuralspotx/nsx-modules/nsx-ambiq-sdk/modules/nsx-ble
+      project: nsx-ble
+      revision: local
+      metadata: /home/adamp/Ambiq/neuralspotx/nsx-modules/nsx-ambiq-sdk/modules/nsx-ble/nsx-module.yaml
+    nsx-power:
+      local_path: /home/adamp/Ambiq/neuralspotx/nsx-modules/nsx-ambiq-sdk/modules/nsx-power
+      project: nsx-power
+      revision: local
+      metadata: /home/adamp/Ambiq/neuralspotx/nsx-modules/nsx-ambiq-sdk/modules/nsx-power/nsx-module.yaml
