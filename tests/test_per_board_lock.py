@@ -275,6 +275,11 @@ def test_regenerate_active_board_glue_uses_active_board_module_set(
         "apollo4p_blue_kxr_evb": _FakeLock(["nsx-core"]),
     }
     monkeypatch.setattr(sync_mod, "read_lock", lambda _app, board_key: locks.get(board_key))
+    monkeypatch.setattr(
+        sync_mod,
+        "read_lock_file",
+        lambda _app: type("_FakeLockFile", (), {"targets": locks})(),
+    )
     monkeypatch.setattr(sync_mod, "_load_registry", lambda: {})
     monkeypatch.setattr(sync_mod, "expand_profile_seeds", lambda cfg, _reg: cfg)
 
@@ -295,7 +300,7 @@ def test_regenerate_active_board_glue_uses_active_board_module_set(
     sync_mod.regenerate_active_board_glue(tmp_path, "apollo4p_blue_kxr_evb")
 
     assert captured["modules"] == ["nsx-core"]
-    assert captured["gitignore"] == ["nsx-core"]
+    assert captured["gitignore"] == ["nsx-core", "nsx-pmu-armv8m"]
     assert "nsx-pmu-armv8m" not in captured["modules"]
 
 

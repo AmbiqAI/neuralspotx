@@ -29,7 +29,7 @@ add_executable(ble_webble
 )
 
 target_link_libraries(ble_webble PRIVATE
-    nsx::board_apollo4p_blue_kxr_evb
+    nsx::board
     nsx::runtime_core
     nsx::freertos
     nsx::ble

@@ -20,6 +20,7 @@ from ..nsx_lock import (
     hash_tree,
     lock_path,
     read_lock,
+    read_lock_file,
 )
 from ..project_config import (
     _board_key_for_app,
@@ -36,6 +37,20 @@ from ..project_config import (
 from ._lock import _apply_active_target, _resolved_module_path, lock_app_impl
 
 _log = get_logger(__name__)
+
+
+def _locked_module_union(app_dir: Path, active_modules: list[str]) -> list[str]:
+    """Return active modules followed by sibling-target-only locked modules."""
+
+    union = list(active_modules)
+    lock_file = read_lock_file(app_dir)
+    if lock_file is None:
+        return union
+    for target_lock in lock_file.targets.values():
+        for name in target_lock.modules:
+            if name not in union:
+                union.append(name)
+    return union
 
 
 def _ensure_app_modules(app_dir: Path, board: str | None = None) -> None:
@@ -84,7 +99,8 @@ def regenerate_active_board_glue(app_dir: Path, board: str | None = None) -> Non
     nsx_cfg = expand_profile_seeds(nsx_cfg, _load_registry())
     ordered_modules = list(lock.modules)
     _write_app_module_file(app_dir, nsx_cfg, module_names=ordered_modules)
-    _write_modules_gitignore_for_module_names(app_dir, nsx_cfg, ordered_modules)
+    _write_modules_gitignore_for_module_names(
+        app_dir, nsx_cfg, _locked_module_union(app_dir, ordered_modules))
 
 
 
@@ -500,7 +516,8 @@ def _sync_app_impl_unlocked(
     _write_cmake_nsx_gitignore(app_dir)
     ordered_modules = list(lock.modules)
     _write_app_module_file(app_dir, nsx_cfg, module_names=ordered_modules)
-    _write_modules_gitignore_for_module_names(app_dir, nsx_cfg, ordered_modules)
+    _write_modules_gitignore_for_module_names(
+        app_dir, nsx_cfg, _locked_module_union(app_dir, ordered_modules))
 
     # Now that ``cmake/nsx`` has been replaced by _copy_packaged_tree,
     # verify any packaged lock entry mapped to that path against its

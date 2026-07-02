@@ -46,7 +46,8 @@ is `nsx` itself, via `pipx`).
 
 ## Available Examples
 
-All examples target the **Apollo510 EVB** (`apollo510_evb` profile).
+Most examples target the **Apollo510 EVB** (`apollo510_evb`) by default.
+Board-specific examples declare their supported targets in `nsx.yml`.
 
 ### :material-hand-wave: hello_world
 
@@ -86,6 +87,14 @@ CMSIS-NN optimized kernels. Runs a small neural network on a canned audio
 buffer and reports the classification result.
 
 **Extra modules:** `cmsis-nn`
+
+### :material-bluetooth: ble_webble
+
+Minimal Bluetooth LE peripheral using `nsx-cordio` and `nsx-ble`. Shows an
+app-owned WSF buffer pool, FreeRTOS dispatcher task, board BLE IRQ policy,
+Device Information Service values, and read/notify/write characteristics.
+
+**Extra modules:** `nsx-ble`, `nsx-cordio`
 
 ### :material-microphone: audio_capture
 

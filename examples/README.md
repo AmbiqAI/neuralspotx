@@ -24,10 +24,13 @@ nsx view      --app-dir .        # (optional) SWO viewer
 | `kws_infer`      | `cmsis-nn`         | Keyword-spotting TFLite Micro inference  |
 | `pmu_profiling`  | `nsx-pmu-armv8m`   | PMU cycle / event counting              |
 | `audio_capture`  | `nsx-audio`        | PDM microphone capture + SWO stats      |
+| `ble_webble`     | `nsx-ble`, `nsx-cordio` | Bluetooth LE peripheral with app-owned stack policy |
 | `usb_serial`     | `nsx-usb`          | USB CDC echo                            |
 | `usb_rpc`        | `nsx-usb`, `nsx-nanopb` | USB RPC with protobuf serialization |
 
-All examples target the **Apollo510 EVB** (`apollo510_evb` profile).
+Most examples target the **Apollo510 EVB** (`apollo510_evb`) by default.
+Board-specific examples, such as `ble_webble`, declare their own supported
+target list in `nsx.yml`.
 
 ## Running the E2E test suite
 
