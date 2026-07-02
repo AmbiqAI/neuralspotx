@@ -55,13 +55,14 @@ the app’s generated CMake support.
 nsx view
 ```
 
-`nsx view` launches the SEGGER SWO viewer for the active board target, waits briefly
-for the viewer to attach, and then issues the app's normal SEGGER reset target.
-This keeps the default reset behavior while avoiding the common case where SWO is
-empty because the target was already running before the viewer attached.
+`nsx view` launches the SEGGER SWO viewer for the active board target and uses a
+board-appropriate reset policy. Most boards open the viewer, wait briefly for it
+to attach, and then issue the app's normal SEGGER reset target. Apollo4 secure
+targets default to attach-only viewing because SEGGER's Apollo4 reset flow halts
+in the secure boot handoff and can make the SWO viewer exit.
 
-If needed, you can disable the automatic reset with `--no-reset-on-open` or adjust
-the attach delay with `--reset-delay-ms`.
+If needed, you can force a reset with `--reset-on-open`, disable the reset with
+`--no-reset-on-open`, or adjust the attach delay with `--reset-delay-ms`.
 
 ## Clean
 
@@ -78,8 +79,11 @@ nsx flash
 nsx view
 ```
 
-For Apollo510, the validated behavior is to keep the normal `Reset` sequence and
-open the viewer before resetting. A stronger SEGGER reset mode was not required.
+For Apollo4 secure boards, the validated sequence is `nsx flash` followed by
+`nsx view` so the flash command's reset+go starts the app and view attaches
+without another reset. For Apollo510, the validated behavior is to keep the
+normal viewer-first reset sequence. A stronger SEGGER reset mode was not
+required.
 
 If you are running from a source checkout, activate the `uv` environment first
 and then use the same `nsx ...` commands.

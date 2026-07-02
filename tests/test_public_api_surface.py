@@ -207,13 +207,13 @@ class TestCliApiParity:
                 build_dir=None,
                 toolchain=None,
                 probe_serial="1160002204",
-                no_reset_on_open=False,
+                reset_on_open=None,
                 reset_delay_ms=400,
                 timeout=None,
             )
         )
         assert len(calls) == 1
-        assert calls[0]["reset_on_open"] is True
+        assert calls[0]["reset_on_open"] is None
         assert calls[0]["probe_serial"] == "1160002204"
 
     def test_cmd_flash_routes_through_api(

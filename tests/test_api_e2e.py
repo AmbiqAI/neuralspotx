@@ -941,6 +941,145 @@ def test_view_fails_clearly_when_viewer_exits_before_reset(
     assert reset_calls == []
 
 
+def test_view_auto_skips_reset_for_apollo4_secure_board(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    create_app(
+        AppCreateRequest(
+            app_dir=tmp_path / "hello_ap4_view",
+            board="apollo4p_blue_kxr_evb",
+            no_bootstrap=True,
+        )
+    )
+
+    app_dir = tmp_path / "hello_ap4_view"
+    build_dir = app_dir / "build" / "apollo4p_blue_kxr_evb"
+    build_dir.mkdir(parents=True, exist_ok=True)
+    (build_dir / "build.ninja").write_text("# fake\n", encoding="utf-8")
+
+    reset_calls: list[list[str]] = []
+
+    def fake_run_capture(cmd: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+        del cwd
+        reset_calls.append(cmd)
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(operations._build, "run_capture", fake_run_capture)
+    monkeypatch.setattr(operations._build, "extract_view_command", lambda *_args, **_kw: ["viewer"])
+
+    class _DoneProc:
+        pid = 1234
+
+        def wait(self, timeout: float | None = None) -> int:
+            del timeout
+            return 0
+
+    monkeypatch.setattr(operations._build.subprocess, "Popen", lambda *args, **kwargs: _DoneProc())
+
+    view_app(AppViewRequest(app_dir=app_dir))
+
+    assert reset_calls == []
+
+
+def test_view_auto_skips_reset_for_custom_board_inheriting_apollo4(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app_dir = tmp_path / "hello_custom_ap4_view"
+    app_dir.mkdir()
+    (app_dir / "nsx.yml").write_text(
+        "schema_version: 2\n"
+        "project:\n"
+        "  name: hello_custom_ap4_view\n"
+        "targets:\n"
+        "  default: my_apollo4\n"
+        "  supported: [my_apollo4]\n",
+        encoding="utf-8",
+    )
+    board_dir = app_dir / "boards" / "my_apollo4"
+    board_dir.mkdir(parents=True)
+    board_dir.joinpath("board.yaml").write_text(
+        "schema_version: 1\n"
+        "inherits: apollo4p_blue_kxr_evb\n"
+        "board:\n"
+        "  name: my_apollo4\n"
+        "  tier: custom\n"
+        "  registered: false\n",
+        encoding="utf-8",
+    )
+
+    build_dir = app_dir / "build" / "my_apollo4"
+    build_dir.mkdir(parents=True, exist_ok=True)
+    (build_dir / "build.ninja").write_text("# fake\n", encoding="utf-8")
+
+    reset_calls: list[list[str]] = []
+
+    def fake_run_capture(cmd: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+        del cwd
+        reset_calls.append(cmd)
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(operations._build, "run_capture", fake_run_capture)
+    monkeypatch.setattr(operations._build, "extract_view_command", lambda *_args, **_kw: ["viewer"])
+
+    class _DoneProc:
+        pid = 1234
+
+        def wait(self, timeout: float | None = None) -> int:
+            del timeout
+            return 0
+
+    monkeypatch.setattr(operations._build.subprocess, "Popen", lambda *args, **kwargs: _DoneProc())
+
+    view_app(AppViewRequest(app_dir=app_dir))
+
+    assert reset_calls == []
+
+
+def test_view_explicit_reset_overrides_apollo4_auto_policy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    create_app(
+        AppCreateRequest(
+            app_dir=tmp_path / "hello_ap4_view_reset",
+            board="apollo4p_blue_kxr_evb",
+            no_bootstrap=True,
+        )
+    )
+
+    app_dir = tmp_path / "hello_ap4_view_reset"
+    build_dir = app_dir / "build" / "apollo4p_blue_kxr_evb"
+    build_dir.mkdir(parents=True, exist_ok=True)
+    (build_dir / "build.ninja").write_text("# fake\n", encoding="utf-8")
+
+    reset_calls: list[list[str]] = []
+
+    def fake_run_capture(cmd: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+        del cwd
+        reset_calls.append(cmd)
+        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(operations._build, "run_capture", fake_run_capture)
+    monkeypatch.setattr(operations._build, "extract_view_command", lambda *_args, **_kw: ["viewer"])
+
+    class _RunningProc:
+        pid = 1234
+
+        def poll(self) -> None:
+            return None
+
+        def wait(self, timeout: float | None = None) -> int:
+            del timeout
+            return 0
+
+    monkeypatch.setattr(operations._build.subprocess, "Popen", lambda *args, **kwargs: _RunningProc())
+
+    view_app(AppViewRequest(app_dir=app_dir, reset_on_open=True, reset_delay_ms=0))
+
+    assert reset_calls == [
+        ["cmake", "--build", str(build_dir), "--target", "hello_ap4_view_reset_reset", "-j", "1"]
+    ]
+
+
 def test_view_warns_when_probe_already_in_use(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:

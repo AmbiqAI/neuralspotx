@@ -250,7 +250,7 @@ def cmd_view(args: argparse.Namespace) -> None:
         build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
         toolchain=args.toolchain,
         probe_serial=getattr(args, "probe_serial", None),
-        reset_on_open=not args.no_reset_on_open,
+        reset_on_open=getattr(args, "reset_on_open", None),
         reset_delay_ms=args.reset_delay_ms,
         duration_s=getattr(args, "duration", None),
         capture=Path(args.capture).expanduser().resolve()
@@ -642,9 +642,18 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional SEGGER J-Link USB serial number to use",
     )
-    p_view.add_argument(
-        "--no-reset-on-open",
+    reset_group = p_view.add_mutually_exclusive_group()
+    reset_group.add_argument(
+        "--reset-on-open",
+        dest="reset_on_open",
         action="store_true",
+        default=None,
+        help="Force a target reset after opening the SWO viewer",
+    )
+    reset_group.add_argument(
+        "--no-reset-on-open",
+        dest="reset_on_open",
+        action="store_false",
         help="Open the SWO viewer without issuing the app reset target after attach",
     )
     p_view.add_argument(
