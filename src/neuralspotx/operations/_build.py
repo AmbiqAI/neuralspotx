@@ -13,6 +13,7 @@ from pathlib import Path
 
 from .._errors import NSXError
 from .._io import info, warn
+from ..constants import DEFAULT_SOC_FOR_BOARD
 from ..project_config import _run_cmake_configure
 from ..subprocess_utils import (
     extract_view_command,
@@ -199,6 +200,23 @@ def _raise_if_viewer_exited(
     )
 
 
+def _resolved_view_reset_on_open(board: str, reset_on_open: bool | None) -> bool:
+    """Return the effective SWO reset policy for *board*."""
+
+    if reset_on_open is not None:
+        return reset_on_open
+
+    soc = DEFAULT_SOC_FOR_BOARD.get(board)
+    if soc in {"apollo4l", "apollo4p"}:
+        info(
+            "Using attach-only SWO view for Apollo4 secure-reset flow; "
+            "flash first or pass --reset-on-open to force a reset."
+        )
+        return False
+
+    return True
+
+
 def view_app_impl(
     app_dir: Path,
     *,
@@ -206,15 +224,17 @@ def view_app_impl(
     build_dir: Path | None = None,
     toolchain: str | None = None,
     probe_serial: str | None = None,
-    reset_on_open: bool = True,
+    reset_on_open: bool | None = None,
     reset_delay_ms: int = 400,
     duration_s: float | None = None,
     capture: Path | None = None,
 ) -> Path:
     """Launch the SEGGER SWO viewer for an app.
 
-    By default, the viewer is attached first and then the target is reset once.
-    This avoids a common race where SWO stays silent until the next reset.
+    By default, NSX chooses the board-appropriate reset policy. Most boards
+    attach the viewer first and then reset once; Apollo4 secure boards attach
+    without resetting because SEGGER's Apollo4 reset path halts in the secure
+    boot handoff and can make the SWO viewer exit.
 
     When *duration_s* is set the viewer is terminated (process group and
     all) after that many seconds, so the command always returns. When
@@ -242,6 +262,7 @@ def view_app_impl(
     target = f"{app_name}_view"
     view_cmd = extract_view_command(resolved_build_dir, target)
     info(f"Starting SWO viewer for {app_name} on {resolved_board}")
+    effective_reset_on_open = _resolved_view_reset_on_open(resolved_board, reset_on_open)
 
     probe = probe_serial or _probe_serial_from_view_cmd(view_cmd)
     if probe:
@@ -291,7 +312,7 @@ def view_app_impl(
         viewer_proc = subprocess.Popen(run_cmd, **popen_kwargs)  # type: ignore[arg-type]
         viewer_pid = getattr(viewer_proc, "pid", "unknown")
         info(f"SWO viewer launched (pid={viewer_pid})")
-        if reset_on_open:
+        if effective_reset_on_open:
             if reset_delay_ms > 0:
                 time.sleep(reset_delay_ms / 1000.0)
             _raise_if_viewer_exited(

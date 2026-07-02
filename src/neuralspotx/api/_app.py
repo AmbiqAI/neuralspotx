@@ -213,7 +213,7 @@ def view_app(
     build_dir: PathLike | None = None,
     toolchain: str | None = None,
     probe_serial: str | None = None,
-    reset_on_open: bool = True,
+    reset_on_open: bool | None = None,
     reset_delay_ms: int = 400,
     duration_s: float | None = None,
     capture: PathLike | None = None,

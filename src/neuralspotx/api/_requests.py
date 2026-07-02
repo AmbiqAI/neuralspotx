@@ -83,9 +83,9 @@ class AppViewRequest(AppActionRequest):
     """Request parameters for launching the SWO viewer.
 
     Attributes:
-        reset_on_open: When True (default), reset the target once the
-            viewer attaches. Avoids a race where SWO is silent until
-            the next reset.
+        reset_on_open: When True, reset the target once the viewer
+            attaches. When False, attach without resetting. When None
+            (default), choose the board-appropriate policy.
         reset_delay_ms: Delay between attaching the viewer and issuing
             the reset, in milliseconds.
         duration_s: When set, terminate the viewer after this many
@@ -95,7 +95,7 @@ class AppViewRequest(AppActionRequest):
             in addition to stdout.
     """
 
-    reset_on_open: bool = True
+    reset_on_open: bool | None = None
     reset_delay_ms: int = 400
     duration_s: float | None = None
     capture: PathLike | None = None
