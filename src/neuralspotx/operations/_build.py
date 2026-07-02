@@ -11,9 +11,9 @@ import time
 from collections.abc import Callable
 from pathlib import Path
 
+from .. import board_descriptors as bd
 from .._errors import NSXError
 from .._io import info, warn
-from ..constants import DEFAULT_SOC_FOR_BOARD
 from ..project_config import _run_cmake_configure
 from ..subprocess_utils import (
     extract_view_command,
@@ -200,13 +200,29 @@ def _raise_if_viewer_exited(
     )
 
 
-def _resolved_view_reset_on_open(board: str, reset_on_open: bool | None) -> bool:
+def _view_board_soc(app_dir: Path, board: str) -> str | None:
+    """Resolve the SoC for a packaged or app-local board."""
+
+    descriptor = bd.load_board(board)
+    if descriptor is not None:
+        return descriptor.soc
+
+    board_yaml = app_dir / "boards" / board / "board.yaml"
+    if board_yaml.exists():
+        return bd.load_board_descriptor_file(board_yaml).soc
+
+    return None
+
+
+def _resolved_view_reset_on_open(
+    app_dir: Path, board: str, reset_on_open: bool | None
+) -> bool:
     """Return the effective SWO reset policy for *board*."""
 
     if reset_on_open is not None:
         return reset_on_open
 
-    soc = DEFAULT_SOC_FOR_BOARD.get(board)
+    soc = _view_board_soc(app_dir, board)
     if soc in {"apollo4l", "apollo4p"}:
         info(
             "Using attach-only SWO view for Apollo4 secure-reset flow; "
@@ -262,7 +278,9 @@ def view_app_impl(
     target = f"{app_name}_view"
     view_cmd = extract_view_command(resolved_build_dir, target)
     info(f"Starting SWO viewer for {app_name} on {resolved_board}")
-    effective_reset_on_open = _resolved_view_reset_on_open(resolved_board, reset_on_open)
+    effective_reset_on_open = _resolved_view_reset_on_open(
+        resolved_app_dir, resolved_board, reset_on_open
+    )
 
     probe = probe_serial or _probe_serial_from_view_cmd(view_cmd)
     if probe:
