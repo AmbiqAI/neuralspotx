@@ -1,0 +1,37 @@
+{
+  "version": 6,
+  "cmakeMinimumRequired": {
+    "major": 3,
+    "minor": 24,
+    "patch": 0
+  },
+  "configurePresets": [
+    {
+      "name": "gcc-ninja",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/gcc-ninja",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/nsx/toolchains/arm-none-eabi-gcc.cmake",
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "armclang-ninja",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/armclang-ninja",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/nsx/toolchains/armclang.cmake",
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    },
+    {
+      "name": "atfe-ninja",
+      "generator": "Ninja",
+      "binaryDir": "${sourceDir}/build/atfe-ninja",
+      "cacheVariables": {
+        "CMAKE_TOOLCHAIN_FILE": "${sourceDir}/cmake/nsx/toolchains/atfe.cmake",
+        "CMAKE_BUILD_TYPE": "Release"
+      }
+    }
+  ]
+}

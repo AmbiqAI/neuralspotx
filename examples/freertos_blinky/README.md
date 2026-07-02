@@ -20,8 +20,8 @@ optional `nsx-freertos` module via `requires:` on top of each board's derived
 The `nsx-freertos` module deliberately does **not** ship a `FreeRTOSConfig.h`.
 Kernel configuration is application policy, so the app publishes it through the
 `nsx::freertos_config` interface target. This example does that in
-[CMakeLists.txt](CMakeLists.txt) **before** `nsx_bootstrap_app()` adds the
-module:
+`examples/freertos_blinky/CMakeLists.txt` **before** `nsx_bootstrap_app()` adds
+the module:
 
 ```cmake
 add_library(app_freertos_config INTERFACE)
@@ -30,7 +30,7 @@ target_include_directories(app_freertos_config INTERFACE
 add_library(nsx::freertos_config ALIAS app_freertos_config)
 ```
 
-The kernel config lives in [config/FreeRTOSConfig.h](config/FreeRTOSConfig.h)
+The kernel config lives in `examples/freertos_blinky/config/FreeRTOSConfig.h`
 (seeded from the module template). On ARMv8-M the kernel's strong
 `SVC_Handler`, `PendSV_Handler`, and `SysTick_Handler` override the startup's
 weak vectors automatically. On Cortex-M4F, `nsx-freertos` provides strong shim
@@ -40,7 +40,7 @@ handler remapping is needed in either path.
 
 The application also provides the hooks the config enables
 (`vApplicationMallocFailedHook`, `vApplicationStackOverflowHook`) in
-[src/main.c](src/main.c).
+`examples/freertos_blinky/src/main.c`.
 
 ## Build & Run
 
