@@ -250,6 +250,8 @@ static int webble_service_init(void) {
     if (status != NS_STATUS_SUCCESS) {
         return status;
     }
+    /* RGB is exactly 3 bytes; reject short/long ATT writes before the callback copies. */
+    webbleRgb.value.settings &= ~ATTS_SET_VARIABLE_LEN;
 
     webbleService.numCharacteristics = 3;
     webble_stage(WEBBLE_STAGE_CREATE_SERVICE);
