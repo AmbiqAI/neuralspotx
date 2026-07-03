@@ -214,6 +214,17 @@ def _view_board_soc(app_dir: Path, board: str) -> str | None:
     return None
 
 
+# SoCs confirmed (via J-Link "Secure Part... Secure Chip. Bootloader needs to
+# run which will then halt when finish." reset behavior) to hang the SWO
+# viewer if it issues a reset after attach: the secure bootloader halts the
+# core post-reset and never reaches app code, so the viewer sees no SWO and
+# exits during the reset handoff. apollo4l is included on the same secure
+# bootloader basis as apollo4p, though not independently hardware-verified.
+# Non-secure siblings (apollo3, apollo4, apollo510) are unaffected and keep
+# the default viewer-first-reset flow.
+_SWO_SECURE_RESET_SOCS = frozenset({"apollo3p", "apollo4l", "apollo4p", "apollo510b"})
+
+
 def _resolved_view_reset_on_open(
     app_dir: Path, board: str, reset_on_open: bool | None
 ) -> bool:
@@ -223,9 +234,9 @@ def _resolved_view_reset_on_open(
         return reset_on_open
 
     soc = _view_board_soc(app_dir, board)
-    if soc in {"apollo4l", "apollo4p"}:
+    if soc in _SWO_SECURE_RESET_SOCS:
         info(
-            "Using attach-only SWO view for Apollo4 secure-reset flow; "
+            "Using attach-only SWO view for this secure-reset SoC; "
             "flash first or pass --reset-on-open to force a reset."
         )
         return False

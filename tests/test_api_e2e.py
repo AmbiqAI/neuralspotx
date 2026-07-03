@@ -941,19 +941,23 @@ def test_view_fails_clearly_when_viewer_exits_before_reset(
     assert reset_calls == []
 
 
-def test_view_auto_skips_reset_for_apollo4_secure_board(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize(
+    "board",
+    ["apollo3p_evb", "apollo4p_blue_kxr_evb", "apollo510b_evb"],
+)
+def test_view_auto_skips_reset_for_secure_boards(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, board: str
 ) -> None:
+    app_dir = tmp_path / f"hello_{board}_view"
     create_app(
         AppCreateRequest(
-            app_dir=tmp_path / "hello_ap4_view",
-            board="apollo4p_blue_kxr_evb",
+            app_dir=app_dir,
+            board=board,
             no_bootstrap=True,
         )
     )
 
-    app_dir = tmp_path / "hello_ap4_view"
-    build_dir = app_dir / "build" / "apollo4p_blue_kxr_evb"
+    build_dir = app_dir / "build" / board
     build_dir.mkdir(parents=True, exist_ok=True)
     (build_dir / "build.ninja").write_text("# fake\n", encoding="utf-8")
 
