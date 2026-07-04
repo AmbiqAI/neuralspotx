@@ -3,7 +3,7 @@
 schema_version: 4
 targets:
   apollo4p_blue_kxr_evb:
-    generated_at: '2026-07-03T01:15:17+00:00'
+    generated_at: '2026-07-04T00:26:01+00:00'
     nsx_tool:
       version: 0.7.0
     manifest:
@@ -100,8 +100,8 @@ targets:
         resolved:
           tool_version: 0.7.0
           vendored_at: cmake/nsx
-          content_hash: sha256:33ee3e77978b2abca3313148e815fdae3ef2321ef3a947596587b9ab9630d3c2
-          acquired_at: '2026-07-01T23:41:01+00:00'
+          content_hash: sha256:52286e8f1581ac2719640916c6a36efc864be54afa5bddcbae3258d68b395c85
+          acquired_at: '2026-07-04T00:26:01+00:00'
       nsx-freertos:
         project: nsx-ambiq-sdk
         kind: git
@@ -133,7 +133,7 @@ targets:
           content_hash: sha256:99f73e4d59fd116f20204bbab08db33c4b145b8a9b5ed241a8e681ccd0dfb4dd
           acquired_at: '2026-07-03T01:15:22+00:00'
   apollo3p_evb:
-    generated_at: '2026-07-03T01:15:22+00:00'
+    generated_at: '2026-07-04T00:26:01+00:00'
     nsx_tool:
       version: 0.7.0
     manifest:
@@ -230,8 +230,8 @@ targets:
         resolved:
           tool_version: 0.7.0
           vendored_at: cmake/nsx
-          content_hash: sha256:33ee3e77978b2abca3313148e815fdae3ef2321ef3a947596587b9ab9630d3c2
-          acquired_at: '2026-07-02T00:03:41+00:00'
+          content_hash: sha256:52286e8f1581ac2719640916c6a36efc864be54afa5bddcbae3258d68b395c85
+          acquired_at: '2026-07-04T00:26:01+00:00'
       nsx-freertos:
         project: nsx-ambiq-sdk
         kind: git
@@ -263,7 +263,7 @@ targets:
           content_hash: sha256:99f73e4d59fd116f20204bbab08db33c4b145b8a9b5ed241a8e681ccd0dfb4dd
           acquired_at: '2026-07-03T01:15:22+00:00'
   apollo510b_evb:
-    generated_at: '2026-07-03T01:15:22+00:00'
+    generated_at: '2026-07-04T00:26:01+00:00'
     nsx_tool:
       version: 0.7.0
     manifest:
@@ -370,8 +370,8 @@ targets:
         resolved:
           tool_version: 0.7.0
           vendored_at: cmake/nsx
-          content_hash: sha256:33ee3e77978b2abca3313148e815fdae3ef2321ef3a947596587b9ab9630d3c2
-          acquired_at: '2026-07-02T03:47:42+00:00'
+          content_hash: sha256:52286e8f1581ac2719640916c6a36efc864be54afa5bddcbae3258d68b395c85
+          acquired_at: '2026-07-04T00:26:01+00:00'
       nsx-freertos:
         project: nsx-ambiq-sdk
         kind: git
