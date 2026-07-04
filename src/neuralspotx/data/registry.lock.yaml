@@ -177,6 +177,10 @@ modules:
     project: neuralspotx
     revision: main
     metadata: src/neuralspotx/boards/apollo4p_blue_kxr_evb/nsx-module.yaml
+  nsx-board-apollo4p-evb-disp-shield-rev2:
+    project: neuralspotx
+    revision: main
+    metadata: src/neuralspotx/boards/apollo4p_evb_disp_shield_rev2/nsx-module.yaml
   nsx-core:
     project: nsx-ambiq-sdk
     revision: main
@@ -380,3 +384,4 @@ board_profiles:
   apollo4p_evb: {channel: preview}
   apollo4p_blue_kbr_evb: {channel: preview}
   apollo4p_blue_kxr_evb: {channel: preview}
+  apollo4p_evb_disp_shield_rev2: {channel: preview}
