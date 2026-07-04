@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.7.1](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.0...neuralspotx-v0.7.1) (2026-07-04)
+
+
+### Features
+
+* **api:** add create_board() public API with BoardCreateRequest DTO ([fb8d921](https://github.com/AmbiqAI/neuralspotx/commit/fb8d9219a79918889fb252dd8b561893d3b049d1))
+* **api:** architecture review follow-ups — create_board API, typed errors, board-registry hardening ([#160](https://github.com/AmbiqAI/neuralspotx/issues/160)) ([fb8d921](https://github.com/AmbiqAI/neuralspotx/commit/fb8d9219a79918889fb252dd8b561893d3b049d1))
+* **boards:** add Apollo4P EVB Display Shield Rev2 ([d3c6ee9](https://github.com/AmbiqAI/neuralspotx/commit/d3c6ee9e30d2cb09a4c8b1ba0b195a30840b9cbc))
+
+
+### Bug Fixes
+
+* **boards:** don't set NSX_AMBIQ_HAL_MCU_DIR for apollo2/apollo3 parts ([#159](https://github.com/AmbiqAI/neuralspotx/issues/159)) ([dfa7b9b](https://github.com/AmbiqAI/neuralspotx/commit/dfa7b9b7b087d4f74446c80f55179cc2e1a40161))
+* **boards:** enable armclang/ATfE for AP3p and AP4p ([#161](https://github.com/AmbiqAI/neuralspotx/issues/161)) ([4f1ec79](https://github.com/AmbiqAI/neuralspotx/commit/4f1ec79046d4ff68c191dcacdcf44ed18681563f))
+* **lock:** make git resolve/sync resilient to transient git failures and hangs ([#157](https://github.com/AmbiqAI/neuralspotx/issues/157)) ([bb6d884](https://github.com/AmbiqAI/neuralspotx/commit/bb6d8845feef6c96cf5e8ecd99d73db30d8cfdd6))
+* **registry:** bump nsx-pmu-armv8m to armclang-compat commit ([#162](https://github.com/AmbiqAI/neuralspotx/issues/162)) ([0653cff](https://github.com/AmbiqAI/neuralspotx/commit/0653cff71065a8e15296d85c267706e5560c26b9))
+
 ## [0.7.0](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.6.9...neuralspotx-v0.7.0) (2026-06-24)
 
 
