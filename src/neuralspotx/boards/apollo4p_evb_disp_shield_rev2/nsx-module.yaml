@@ -34,3 +34,5 @@ compatibility:
     - apollo4p
   toolchains:
     - arm-none-eabi-gcc
+    - armclang
+    - atfe
