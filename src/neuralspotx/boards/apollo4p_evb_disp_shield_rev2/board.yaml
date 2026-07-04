@@ -1,0 +1,24 @@
+# NSX board descriptor (schema_version 1).
+#
+# Source of truth for board -> SoC / SDK-provider derivation consumed by
+# neuralspotx.constants via neuralspotx/board_descriptors.py. Keep in sync
+# with board.cmake (NSX_CPU / NSX_ABI_FLAGS).
+#
+# This is the Apollo4 Plus EVB fitted with the Apollo4 Plus Display Kit
+# shield (AmbiqSuite board `apollo4p_evb_disp_shield_rev2`). Same silicon
+# and package as `apollo4p_evb`; the shield adds populated PSRAM
+# (APS25616N) and a display interface. Hardware-validated: PSRAM XIP
+# read/write via nsx-psram, zero mismatches.
+schema_version: 1
+board:
+  name: apollo4p_evb_disp_shield_rev2
+  tier: evb
+  soc: apollo4p
+  registered: true
+sdk_provider: ambiqsuite
+cpu:
+  core: cortex-m4
+  float_abi: hard
+  abi: thumbv7em-fpv4sp-hard
+toolchains:
+  - arm-none-eabi-gcc
