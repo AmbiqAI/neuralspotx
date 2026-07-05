@@ -53,7 +53,7 @@ modules across the `r3`, `r4`, and `r5` lines.
 
 Only a small set of first-class modules are currently sourced from separate
 repositories, notably `nsx-pmu-armv8m`, `nsx-cmsis-nn`, `nsx-helia-rt`,
-`nsx-nanopb`, and the packaged board/tooling content that ships directly from
+`nsx-nanopb`, `helia-dsp`, `nsx-tileio-ble`, `nsx-tileio-usb`, and the packaged board/tooling content that ships directly from
 `neuralspotx`.
 
 | Module | Category | Description | SoC Support |
@@ -74,10 +74,17 @@ repositories, notably `nsx-pmu-armv8m`, `nsx-cmsis-nn`, `nsx-helia-rt`,
 | `nsx-spi` | :material-expansion-card: Peripheral | SPI wrapper for talking to SPI-attached devices and peripherals. | All |
 | `nsx-audio` | :material-expansion-card: Peripheral | PDM audio capture driver with DMA-backed sampling and callback delivery. | Apollo5B, 510, 510B |
 | `nsx-usb` | :material-expansion-card: Peripheral | USB CDC serial driver using TinyUSB with proper error handling. | Apollo5B, 510, 510B, 4P |
+| `nsx-cordio` | :material-bluetooth: Wireless | Cordio/WSF Bluetooth LE host stack (HCI/DM/L2CAP/ATT/SMP/GATT), vendored from AmbiqSuite third_party and built from source per-SoC transport. | Apollo3, 3P, 4P, 510B |
+| `nsx-ble` | :material-bluetooth: Wireless | App-facing BLE convenience API — define a GATT service with read/write/notify characteristics on top of `nsx-cordio`. | Apollo3, 3P, 4P, 510B |
+| `nsx-freertos` | :material-cog: Runtime | Optional FreeRTOS kernel middleware — vendors a pinned upstream FreeRTOS-Kernel and builds the SoC-selected CMSIS port. | Apollo3P, 4P, 510, 510B, 330P, 510L |
 | `nsx-nanopb` | :material-library: Library | Vendored nanopb — zero-dynamic-memory Protocol Buffers in ANSI C. | All |
 | `nsx-pmu-armv8m` | :material-speedometer: Profiling | Armv8-M PMU helpers for hardware counter configuration, capture, and transport. | Apollo5B, 510, 510B, 330P |
 | `nsx-cmsis-nn` | :material-brain: ML | heliaCORE kernels and NSX integration for ML inference workloads. | Apollo5B, Apollo510, Apollo510B, Apollo510L |
 | `nsx-helia-rt` | :material-brain: ML | Helia runtime integration for NSX-managed inference applications. | Apollo5B, Apollo510, Apollo510B, Apollo510L |
+| `helia-dsp` | :material-function-variant: DSP | NSX-packaged helia-dsp fork of CMSIS-DSP — FFT, filtering, and statistics kernels. | All |
+| `nsx-physiokit` | :material-heart-pulse: Biosignals | Physiologic signal-processing primitives for ECG, PPG, respiration, IMU, and HRV workflows. | All |
+| `nsx-tileio-ble` | :material-bluetooth: Wireless | Tileio BLE transport wrapper on top of `nsx-ble`. | Apollo3, 3P, 510B, 4P Blue |
+| `nsx-tileio-usb` | :material-usb: Peripheral | Tileio USB transport wrapper on top of `nsx-usb`. | Apollo4P, 330P, 510, 510B, 510L |
 
 ## Module Families
 
@@ -142,6 +149,7 @@ These make up the common reusable runtime layer for NSX apps.
 | --- | --- | --- | --- |
 | `nsx-core` | Common runtime initialization and baseline app support. | Almost every NSX app uses this directly or indirectly. | [nsx-ambiq-sdk](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules/nsx-core) |
 | `nsx-tooling` | Generated app CMake and tooling integration packaged from `neuralspotx`. | Internal CLI-generated app support and helper wiring. | [GitHub](https://github.com/AmbiqAI/neuralspotx/tree/main/src/neuralspotx/cmake) |
+| `nsx-freertos` | Optional FreeRTOS kernel middleware — vendors a pinned upstream FreeRTOS-Kernel and builds the SoC-selected CMSIS port. Kernel/heap policy and `FreeRTOSConfig.h` stay app-owned. | Opt-in preemptive scheduling for apps that need it (e.g. `ble_webble`). | [nsx-ambiq-sdk](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules/nsx-freertos) |
 
 Migration-friendly portable helpers such as `nsx_printf`, `nsx_delay_us`, and
 interrupt master enable/disable now live in `nsx-core` directly rather than in
@@ -167,6 +175,10 @@ separate upstream repositories instead of the unified `nsx-ambiq-sdk` monorepo.
 | `nsx-cmsis-nn` | heliaCORE kernels and NSX integration for ML inference workloads. | Accelerated neural-network kernels for inference apps. | [GitHub](https://github.com/AmbiqAI/ns-cmsis-nn) |
 | `nsx-helia-rt` | Helia runtime integration for NSX-managed inference applications. | Runtime support for Helia-based inference deployments. | [GitHub](https://github.com/AmbiqAI/helia-rt) |
 | `nsx-nanopb` | Vendored nanopb with NSX packaging metadata. | Protocol Buffers support for RPC and host/device message transport. | [GitHub](https://github.com/AmbiqAI/nsx-nanopb) |
+| `helia-dsp` | NSX-packaged helia-dsp fork of CMSIS-DSP, preserving upstream Source/ CMake as the single source of truth. | Signal processing, feature extraction, and FFT/filtering kernels for embedded DSP workloads. | [GitHub](https://github.com/AmbiqAI/helia-dsp) |
+| `nsx-physiokit` | Physiologic signal-processing primitives for ECG, PPG, respiration, IMU, and HRV workflows, built on `helia-dsp`. | Wearable-vitals prototyping, heart-rate/respiration analytics, and embedded biosignal preprocessing. | [GitHub](https://github.com/AmbiqAI/nsx-physiokit) |
+| `nsx-tileio-ble` | Tileio BLE transport wrapper on top of `nsx-ble`. | Stream Tileio slot data and UIO state over BLE GATT notifications. | [GitHub](https://github.com/AmbiqAI/nsx-tileio) |
+| `nsx-tileio-usb` | Tileio USB transport wrapper on top of `nsx-usb`. | Stream Tileio slot data and UIO updates over a USB vendor transport. | [GitHub](https://github.com/AmbiqAI/nsx-tileio) |
 
 ### Peripheral and Bus Modules
 
@@ -183,6 +195,17 @@ helpers into the baseline runtime core.
 Legacy `nsx-peripherals` is no longer a first-class packaged module. Its useful
 pieces were retired into focused unified surfaces such as `nsx-power`,
 `nsx-psram`, and board button facts layered on `nsx-gpio`.
+
+### Wireless / BLE Modules
+
+Bluetooth LE support is split into a low-level host stack and an app-facing
+convenience API, so apps that only need the stack (or want to bring their own
+wrapper) don't have to pull in both.
+
+| Module | What it provides | Typical use | More info |
+| --- | --- | --- | --- |
+| `nsx-cordio` | Cordio/WSF BLE host stack (HCI/DM/L2CAP/ATT/SMP/GATT), vendored from AmbiqSuite third_party and built per-SoC transport (Cooper, integrated BLE, EM9305). | Low-level BLE host stack for higher-level BLE wrappers. | [GitHub](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules/nsx-cordio) |
+| `nsx-ble` | App-facing BLE convenience API ported from legacy neuralSPOT `ns-ble`; define a GATT service with read/write/notify characteristics on top of `nsx-cordio`. | Stand up a single BLE GATT service with minimal source changes from legacy `ns-ble` apps. | [GitHub](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules/nsx-ble) |
 
 ## What Is Not First-Class Yet
 

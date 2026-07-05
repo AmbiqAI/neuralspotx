@@ -82,11 +82,26 @@ projects:
     url: https://github.com/AmbiqAI/ns-cmsis-nn.git
     revision: v7.26.0
     path: modules/ns-cmsis-nn
+  helia-dsp:
+    name: helia-dsp
+    url: https://github.com/AmbiqAI/helia-dsp.git
+    revision: 78a36d99a8c9b519c2e6da4ad59124fd25c1dcb1
+    path: modules/helia-dsp
   helia-rt:
     name: helia-rt
     url: https://github.com/AmbiqAI/helia-rt.git
     revision: helia-rt-v1.16.0
     path: modules/helia-rt
+  nsx-physiokit:
+    name: nsx-physiokit
+    url: https://github.com/AmbiqAI/nsx-physiokit.git
+    revision: 3a26f4c1f83adcca88b8fdaeb0e7e1c34afae1d2
+    path: modules/nsx-physiokit
+  nsx-tileio:
+    name: nsx-tileio
+    url: https://github.com/AmbiqAI/nsx-tileio.git
+    revision: 6c96b908985b72a464a6cd68d16073a76076d18e
+    path: modules/nsx-tileio
 
 modules:
   nsx-ambiqsuite:
@@ -217,6 +232,18 @@ modules:
     project: nsx-ambiq-sdk
     revision: main
     metadata: modules/nsx-usb/nsx-module.yaml
+  nsx-cordio:
+    project: nsx-ambiq-sdk
+    revision: main
+    metadata: modules/nsx-cordio/nsx-module.yaml
+  nsx-ble:
+    project: nsx-ambiq-sdk
+    revision: main
+    metadata: modules/nsx-ble/nsx-module.yaml
+  nsx-freertos:
+    project: nsx-ambiq-sdk
+    revision: main
+    metadata: modules/nsx-freertos/nsx-module.yaml
   nsx-nanopb:
     project: nsx-nanopb
     revision: v0.1.0
@@ -225,10 +252,26 @@ modules:
     project: ns-cmsis-nn
     revision: v7.26.0
     metadata: modules/ns-cmsis-nn/nsx/nsx-module.yaml
+  helia-dsp:
+    project: helia-dsp
+    revision: 78a36d99a8c9b519c2e6da4ad59124fd25c1dcb1
+    metadata: modules/helia-dsp/nsx-module.yaml
+  nsx-physiokit:
+    project: nsx-physiokit
+    revision: 3a26f4c1f83adcca88b8fdaeb0e7e1c34afae1d2
+    metadata: modules/nsx-physiokit/nsx-module.yaml
   nsx-helia-rt:
     project: helia-rt
     revision: helia-rt-v1.16.0
     metadata: modules/helia-rt/nsx/nsx-module.yaml
+  nsx-tileio-ble:
+    project: nsx-tileio
+    revision: 6c96b908985b72a464a6cd68d16073a76076d18e
+    metadata: modules/nsx-tileio-ble/nsx-module.yaml
+  nsx-tileio-usb:
+    project: nsx-tileio
+    revision: 6c96b908985b72a464a6cd68d16073a76076d18e
+    metadata: modules/nsx-tileio-usb/nsx-module.yaml
   nsx-tooling:
     project: neuralspotx
     revision: main
