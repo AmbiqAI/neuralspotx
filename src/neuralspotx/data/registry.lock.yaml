@@ -294,6 +294,7 @@ soc_families:
       - nsx-i2c
       - nsx-interrupt
       - nsx-perf
+      - nsx-psram
       - nsx-spi
       - nsx-timer
       - nsx-uart
@@ -322,6 +323,7 @@ soc_families:
       - nsx-i2c
       - nsx-interrupt
       - nsx-perf
+      - nsx-psram
       - nsx-spi
       - nsx-timer
       - nsx-uart
@@ -352,6 +354,7 @@ soc_families:
       - nsx-interrupt
       - nsx-perf
       - nsx-power
+      - nsx-psram
       - nsx-spi
       - nsx-timer
       - nsx-uart
