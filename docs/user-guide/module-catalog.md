@@ -53,7 +53,8 @@ modules across the `r3`, `r4`, and `r5` lines.
 
 Only a small set of first-class modules are currently sourced from separate
 repositories, notably `nsx-pmu-armv8m`, `nsx-cmsis-nn`, `nsx-helia-rt`,
-`nsx-nanopb`, `helia-dsp`, `nsx-tileio-ble`, `nsx-tileio-usb`, and the packaged board/tooling content that ships directly from
+`nsx-nanopb`, `helia-dsp`, `nsx-physiokit`, `nsx-tileio-ble`, `nsx-tileio-usb`,
+`nsx-sensors`, and the packaged board/tooling content that ships directly from
 `neuralspotx`.
 
 | Module | Category | Description | SoC Support |
@@ -85,6 +86,7 @@ repositories, notably `nsx-pmu-armv8m`, `nsx-cmsis-nn`, `nsx-helia-rt`,
 | `nsx-physiokit` | :material-heart-pulse: Biosignals | Physiologic signal-processing primitives for ECG, PPG, respiration, IMU, and HRV workflows. | All |
 | `nsx-tileio-ble` | :material-bluetooth: Wireless | Tileio BLE transport wrapper on top of `nsx-ble`. | Apollo3, 3P, 510B, 4P Blue |
 | `nsx-tileio-usb` | :material-usb: Peripheral | Tileio USB transport wrapper on top of `nsx-usb`. | Apollo4P, 330P, 510, 510B, 510L |
+| `nsx-sensors` | :material-expansion-card: Peripheral | Reusable external I2C/SPI-attached sensor and accessory drivers (MAX86150, MPU6050, ICM-45605, INA228, LED Stick) with a consistent context-based init pattern. | Apollo3, 3P, 4L, 4P, 330P, 510, 510B, 510L |
 
 ## Module Families
 
@@ -191,6 +193,7 @@ helpers into the baseline runtime core.
 | `nsx-i2c` | I2C wrapper and related helpers. | Sensor and peripheral bring-up over I2C. | [GitHub](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules/nsx-i2c) |
 | `nsx-spi` | SPI wrapper and related helpers. | SPI device bring-up and integration. | [GitHub](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules/nsx-spi) |
 | `nsx-uart` | UART wrapper and related helpers. | Serial communication, console, or bridge workflows. | [GitHub](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules/nsx-uart) |
+| `nsx-sensors` | External I2C/SPI-attached sensor and accessory drivers (MAX86150, MPU6050, ICM-45605, INA228, LED Stick) built on `nsx-i2c`/`nsx-spi` with a consistent context-based init pattern. | Bio-sensor capture, IMU bring-up, current/voltage monitoring, simple I2C accessory control. | [GitHub](https://github.com/AmbiqAI/nsx-sensors) |
 
 Legacy `nsx-peripherals` is no longer a first-class packaged module. Its useful
 pieces were retired into focused unified surfaces such as `nsx-power`,
