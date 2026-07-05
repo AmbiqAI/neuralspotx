@@ -84,7 +84,7 @@ repositories, notably `nsx-pmu-armv8m`, `nsx-cmsis-nn`, `nsx-helia-rt`,
 | `helia-dsp` | :material-function-variant: DSP | NSX-packaged helia-dsp fork of CMSIS-DSP — FFT, filtering, and statistics kernels. | All |
 | `nsx-physiokit` | :material-heart-pulse: Biosignals | Physiologic signal-processing primitives for ECG, PPG, respiration, IMU, and HRV workflows. | All |
 | `nsx-tileio-ble` | :material-bluetooth: Wireless | Tileio BLE transport wrapper on top of `nsx-ble`. | Apollo3, 3P, 510B, 4P Blue |
-| `nsx-tileio-usb` | :material-usb: Peripheral | Tileio USB transport wrapper on top of `nsx-usb`. | Apollo4P, 330P, 510, 510B, 510L |
+| `nsx-tileio-usb` | :material-usb: Peripheral | Scaffold for the planned Tileio USB transport wrapper on top of `nsx-usb`; implementation in progress, not yet app-integration validated. | Apollo4P, 330P, 510, 510B, 510L |
 
 ## Module Families
 
@@ -178,7 +178,7 @@ separate upstream repositories instead of the unified `nsx-ambiq-sdk` monorepo.
 | `helia-dsp` | NSX-packaged helia-dsp fork of CMSIS-DSP, preserving upstream Source/ CMake as the single source of truth. | Signal processing, feature extraction, and FFT/filtering kernels for embedded DSP workloads. | [GitHub](https://github.com/AmbiqAI/helia-dsp) |
 | `nsx-physiokit` | Physiologic signal-processing primitives for ECG, PPG, respiration, IMU, and HRV workflows, built on `helia-dsp`. | Wearable-vitals prototyping, heart-rate/respiration analytics, and embedded biosignal preprocessing. | [GitHub](https://github.com/AmbiqAI/nsx-physiokit) |
 | `nsx-tileio-ble` | Tileio BLE transport wrapper on top of `nsx-ble`. | Stream Tileio slot data and UIO state over BLE GATT notifications. | [GitHub](https://github.com/AmbiqAI/nsx-tileio) |
-| `nsx-tileio-usb` | Tileio USB transport wrapper on top of `nsx-usb`. | Stream Tileio slot data and UIO updates over a USB vendor transport. | [GitHub](https://github.com/AmbiqAI/nsx-tileio) |
+| `nsx-tileio-usb` | Scaffold for the planned Tileio USB transport wrapper on top of `nsx-usb`; implementation in progress, not yet app-integration validated. | Stream Tileio slot data and UIO updates over a USB vendor transport. | [GitHub](https://github.com/AmbiqAI/nsx-tileio) |
 
 ### Peripheral and Bus Modules
 
