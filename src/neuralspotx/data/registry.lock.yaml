@@ -100,8 +100,13 @@ projects:
   nsx-tileio:
     name: nsx-tileio
     url: https://github.com/AmbiqAI/nsx-tileio.git
-    revision: 6c96b908985b72a464a6cd68d16073a76076d18e
+    revision: 1c2257aeeeccb21badbcc04e342af38c63ccc8b0
     path: modules/nsx-tileio
+  nsx-sensors:
+    name: nsx-sensors
+    url: https://github.com/AmbiqAI/nsx-sensors.git
+    revision: 9a73d590fee7b377011af0b998a7563571acc228
+    path: modules/nsx-sensors
 
 modules:
   nsx-ambiqsuite:
@@ -266,12 +271,16 @@ modules:
     metadata: modules/helia-rt/nsx/nsx-module.yaml
   nsx-tileio-ble:
     project: nsx-tileio
-    revision: 6c96b908985b72a464a6cd68d16073a76076d18e
+    revision: 1c2257aeeeccb21badbcc04e342af38c63ccc8b0
     metadata: modules/nsx-tileio-ble/nsx-module.yaml
   nsx-tileio-usb:
     project: nsx-tileio
-    revision: 6c96b908985b72a464a6cd68d16073a76076d18e
+    revision: 1c2257aeeeccb21badbcc04e342af38c63ccc8b0
     metadata: modules/nsx-tileio-usb/nsx-module.yaml
+  nsx-sensors:
+    project: nsx-sensors
+    revision: 9a73d590fee7b377011af0b998a7563571acc228
+    metadata: modules/nsx-sensors/nsx-module.yaml
   nsx-tooling:
     project: neuralspotx
     revision: main
