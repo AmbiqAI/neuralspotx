@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.3](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.2...neuralspotx-v0.7.3) (2026-07-05)
+
+
+### Features
+
+* **examples:** add host-side BLE smoke tool for ble_webble ([#170](https://github.com/AmbiqAI/neuralspotx/issues/170)) ([00d733a](https://github.com/AmbiqAI/neuralspotx/commit/00d733ab427c5d2befb01803135f2988a858db87))
+
 ## [0.7.2](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.1...neuralspotx-v0.7.2) (2026-07-05)
 
 
