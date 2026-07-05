@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.2](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.1...neuralspotx-v0.7.2) (2026-07-05)
+
+
+### Bug Fixes
+
+* **registry:** vendor nsx-psram in apollo3/4/5 family sdk_modules ([#168](https://github.com/AmbiqAI/neuralspotx/issues/168)) ([11070f8](https://github.com/AmbiqAI/neuralspotx/commit/11070f875f74086e5e0a21284cbc825dc3c232c1))
+
 ## [0.7.1](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.0...neuralspotx-v0.7.1) (2026-07-04)
 
 
