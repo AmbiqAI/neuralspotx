@@ -54,6 +54,23 @@ nsx build --board apollo3p_evb
 nsx build --board apollo510b_evb
 ```
 
+## Host demo
+
+A small Python smoke tool is available at:
+
+- `tools/ble_webble_host.py`
+
+Examples:
+
+```bash
+python -m py_compile tools/ble_webble_host.py
+python tools/ble_webble_host.py --list
+python tools/ble_webble_host.py --name NSX-AP5 --notify-seconds 3 --rgb 102030
+```
+
+When multiple matching boards are advertising, re-run with `--address` to
+target the intended device explicitly.
+
 ## Flash
 
 When multiple probes are attached, always specify the intended J-Link serial.
