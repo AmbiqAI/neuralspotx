@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.7.4](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.3...neuralspotx-v0.7.4) (2026-07-06)
+
+
+### Features
+
+* **registry:** promote nsx-sensors to first-class, bump nsx-tileio pin ([#173](https://github.com/AmbiqAI/neuralspotx/issues/173)) ([7723bb4](https://github.com/AmbiqAI/neuralspotx/commit/7723bb42dbc451c26327076408cd9619aa940df0))
+
+
+### Bug Fixes
+
+* **view:** keep SWO viewer alive when stdin is non-interactive ([#175](https://github.com/AmbiqAI/neuralspotx/issues/175)) ([6dafd68](https://github.com/AmbiqAI/neuralspotx/commit/6dafd6880331eee8fc6caa99de1ccd8321f18495))
+
 ## [0.7.3](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.2...neuralspotx-v0.7.3) (2026-07-05)
 
 
