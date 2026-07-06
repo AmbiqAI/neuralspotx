@@ -310,6 +310,14 @@ def view_app_impl(
     popen_kwargs: dict[str, object] = {"cwd": str(resolved_build_dir)}
     if os.name != "nt":
         popen_kwargs["start_new_session"] = True
+    # JLinkSWOViewerCL exits on "any key" — including the EOF it reads
+    # immediately when stdin is closed or redirected from /dev/null (any
+    # non-interactive invocation: CI, scripts, backgrounded shells).
+    # Always give the viewer a pipe we never write to so it can never
+    # observe EOF and behaves identically in every context; the viewer
+    # is closed with Ctrl-C (handled below) or --duration instead of
+    # SEGGER's "press any key" prompt.
+    popen_kwargs["stdin"] = subprocess.PIPE
     run_cmd = list(view_cmd)
     if stream_output:
         # Line-buffer the viewer so captured output is not block-buffered
