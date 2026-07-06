@@ -47,18 +47,16 @@ For NSX, the current "core" migration target is the baseline required to:
 That is why the first migration wave emphasizes modules such as:
 
 1. `nsx-core`
-2. `nsx-harness`
-3. `nsx-utils`
-4. `nsx-perf`
-5. `nsx-pmu-armv8m`
-6. `nsx-power`
-7. `nsx-i2c`
-8. `nsx-spi`
-9. `nsx-uart`
-10. `nsx-soc-hal`
-11. `nsx-cmsis-startup`
-12. `nsx-ambiq-hal`
-13. `nsx-ambiq-bsp`
+2. `nsx-perf`
+3. `nsx-pmu-armv8m`
+4. `nsx-power`
+5. `nsx-i2c`
+6. `nsx-spi`
+7. `nsx-uart`
+8. `nsx-soc-hal`
+9. `nsx-cmsis-startup`
+10. `nsx-ambiq-hal`
+11. `nsx-ambiq-bsp`
 
 ## Refactoring Direction
 
@@ -103,22 +101,24 @@ Status definitions:
 | Legacy module | NSX status | Current NSX home | Notes |
 | --- | --- | --- | --- |
 | `ns-core` | Migrated | `nsx-core` | Core runtime and bring-up surface are present. |
-| `ns-harness` | Migrated | `nsx-harness` | Print, debug, and profiling-adjacent harness support are present. |
-| `ns-i2c` | Migrated | `nsx-i2c` | Bus wrapper and register-driver helpers are available. |
+| `ns-harness` | Split | `nsx-core`, `nsx-perf`, `nsx-pmu-armv8m` | Print/delay/interrupt shims moved into `nsx-core`; perf and PMU-based profiling moved into `nsx-perf`/`nsx-pmu-armv8m`. TFLM `DebugLog` registration is superseded by `helia-rt`'s own implementation. The one remaining gap is packaging-only: the `MicroProfilerInterface` glue (`NsxPmuProfiler`) still lives only in the `kws_infer` example rather than as a reusable module. |
+| `ns-i2c` | Migrated | `nsx-i2c` | Bus wrapper and register-driver helpers are available; sample device drivers (MPU6050, MAX86150) moved into `nsx-sensors`. |
 | `ns-spi` | Migrated | `nsx-spi` | SPI wrapper support is available. |
 | `ns-uart` | Migrated | `nsx-uart` | UART wrapper support is available. |
-| `ns-features` | Partial | `ns-features` | The legacy features area has a module directory but has not been fully migrated to the NSX module system. |
+| `ns-features` | Future | none yet | No first-class NSX equivalent found; quaternion/Euler feature-extraction helpers have not been ported. |
 | `ns-peripherals` | Migrated | `nsx-power`, `nsx-psram`, board button facts on `nsx-gpio` | The mixed legacy bucket was retired into focused unified surfaces rather than kept as a same-name module. |
-| `ns-utils` | Split | `nsx-utils`, `nsx-perf`, `nsx-pmu-armv8m`, `nsx-power` | Legacy utilities bundled several concerns that are now being separated. |
-| `ns-ble` | Partial | no first-class `nsx-ble` yet | BLE-related code exists in add-on areas, but not as a clean first-class NSX module. |
+| `ns-utils` | Split | `nsx-core`, `nsx-perf`, `nsx-pmu-armv8m`, `nsx-power` | Legacy utilities bundled several concerns that are now separated; portable helpers (`nsx_printf`, `nsx_delay_us`, interrupt enable/disable) live directly in `nsx-core`. |
+| `ns-ble` | Migrated | `nsx-ble` (+ `nsx-cordio`) | First-class, registry-listed. Hardware-smoke validated via the `ble_webble` example (CI build matrix across GCC/armclang, 3 boards). Still an early baseline: single service/connection, no OOB pairing. |
 | `ns-usb` | Migrated | `nsx-usb` | USB CDC serial driver using TinyUSB with proper error handling. |
-| `ns-imu` | Partial | sensor and physiokit modules | Pieces exist, but there is not yet a broad migration-equivalent IMU module. |
+| `ns-imu` | Partial | `nsx-sensors` (ICM-45605 only) | The ICM-45605 driver (TDK "basic driver" scope) was ported into `nsx-sensors`; the rest of the legacy `ns-imu` generic wrapper was intentionally not carried forward. |
 | `ns-audio` | Migrated | `nsx-audio` | PDM audio capture driver with DMA-backed sampling and callback delivery. |
-| `ns-camera` | Future | none yet | Candidate optional camera or sensor module. |
-| `ns-ipc` | Future | none yet | Candidate utility module if ring-buffer or IPC patterns remain broadly useful. |
-| `ns-model` | Future | none yet | Candidate model/runtime integration module once the baseline is stable. |
-| `ns-nnsp` | Future | none yet | Candidate optional signal or speech-processing module rather than baseline. |
-| `ns-rpc` | Future | none yet | Candidate optional transport or RPC module. |
+| `ns-physiokit` (separate repo) | Migrated | `nsx-physiokit` | First-class, registry-listed. Biosignal (ECG/PPG/respiration/HRV) primitives, built on `helia-dsp`. |
+| `ns-tileio` (separate repo, tio-ble/tio-usb) | Migrated | `nsx-tileio-ble`, `nsx-tileio-usb` | First-class, registry-listed. Hardware validated on Apollo4 Blue Plus and Apollo510B via local bring-up apps and Python host tools. |
+| `ns-camera` | Future | none yet | Narrow, app-specific demo hardware (Arducam Mega SPI, Apollo4-only) — likely not worth a direct port. |
+| `ns-ipc` | Dropped | none | Decided not to migrate. |
+| `ns-model` | Dropped | none | Decided not to migrate. |
+| `ns-nnsp` | Dropped | none | Decided not to migrate. |
+| `ns-rpc` | Dropped | none | Decided not to migrate; `nsx-nanopb` (protobuf framing) is available as a building block if a transport wrapper is revisited later. |
 
 ## Recommended Migration Order
 
@@ -146,12 +146,12 @@ Focus here first.
 
 These are good follow-on targets once the baseline is stable.
 
-1. USB
-2. BLE
-3. RPC or transport helpers
-4. IMU or sensor abstraction
-5. audio capture
-6. model/runtime integration
+1. USB — done (`nsx-usb`)
+2. BLE — done (`nsx-ble`, `nsx-cordio`)
+3. RPC or transport helpers — dropped (`ns-rpc`); `nsx-nanopb` remains available as a framing building block if revisited
+4. IMU or sensor abstraction — partial (`nsx-sensors`, ICM-45605 only; MPU6050/MAX86150/INA228/LED-stick also live here)
+5. audio capture — done (`nsx-audio`)
+6. model/runtime integration — dropped (`ns-model`)
 
 These should generally land as optional first-class modules rather than as part
 of the starter baseline.
