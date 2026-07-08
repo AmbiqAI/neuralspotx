@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.7.5](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.4...neuralspotx-v0.7.5) (2026-07-08)
+
+
+### Features
+
+* **app:** add frozen parameter to configure_app/build_app/flash_app ([#178](https://github.com/AmbiqAI/neuralspotx/issues/178)) ([b973776](https://github.com/AmbiqAI/neuralspotx/commit/b973776e2e22dc73868268bc33d3eef80f5dcaf8))
+
+
+### Documentation
+
+* refresh neuralSPOT-&gt;NSX migration status tables ([#176](https://github.com/AmbiqAI/neuralspotx/issues/176)) ([5636705](https://github.com/AmbiqAI/neuralspotx/commit/56367053617c72c417e2e4205abea6f20fe0d54e))
+
 ## [0.7.4](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.3...neuralspotx-v0.7.4) (2026-07-06)
 
 
