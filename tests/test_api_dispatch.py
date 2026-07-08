@@ -124,6 +124,7 @@ def test_configure_view_and_clean_dispatch(tmp_path: Path, monkeypatch: pytest.M
         build_dir: Path | None = None,
         toolchain: str | None = None,
         probe_serial: str | None = None,
+        frozen: bool = False,
         reset_on_open: bool = True,
         reset_delay_ms: int = 400,
         duration_s: float | None = None,

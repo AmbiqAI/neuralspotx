@@ -235,6 +235,7 @@ def view_app(
     build_dir: PathLike | None = None,
     toolchain: str | None = None,
     probe_serial: str | None = None,
+    frozen: bool = False,
     reset_on_open: bool | None = None,
     reset_delay_ms: int = 400,
     duration_s: float | None = None,
@@ -242,7 +243,13 @@ def view_app(
     timeout_s: float | None = None,
     emit: Emitter | None = None,
 ) -> None:
-    """Launch the SEGGER SWO viewer for an app."""
+    """Launch the SEGGER SWO viewer for an app.
+
+    *frozen* verifies ``modules/`` against ``nsx.lock`` and raises on any
+    drift instead of silently re-vendoring, when a (re)configure is
+    triggered (same trigger rule as :func:`flash_app`) — see
+    :class:`AppActionRequest`.
+    """
 
     request = (
         app_dir
@@ -253,6 +260,7 @@ def view_app(
             build_dir=build_dir,
             toolchain=toolchain,
             probe_serial=probe_serial,
+            frozen=frozen,
             reset_on_open=reset_on_open,
             reset_delay_ms=reset_delay_ms,
             duration_s=duration_s,
@@ -267,6 +275,7 @@ def view_app(
             build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
             toolchain=request.toolchain,
             probe_serial=request.probe_serial,
+            frozen=request.frozen,
             reset_on_open=request.reset_on_open,
             reset_delay_ms=request.reset_delay_ms,
             duration_s=request.duration_s,

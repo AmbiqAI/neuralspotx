@@ -280,6 +280,7 @@ def view_app_impl(
     build_dir: Path | None = None,
     toolchain: str | None = None,
     probe_serial: str | None = None,
+    frozen: bool = False,
     reset_on_open: bool | None = None,
     reset_delay_ms: int = 400,
     duration_s: float | None = None,
@@ -297,6 +298,13 @@ def view_app_impl(
     *capture* is set the viewer's output is line-streamed to both stdout
     and the given file (combined with *duration_s* this gives a bounded,
     automation-friendly SWO capture).
+
+    Args:
+        frozen: When a (re)configure is needed (no ``build.ninja`` yet, or
+            a ``probe_serial`` was given — same trigger rule as
+            ``flash_app_impl``), verify ``modules/`` against ``nsx.lock``
+            and raise on any drift instead of silently re-vendoring (see
+            ``_ensure_app_modules``).
     """
 
     resolved_app_dir, app_name, resolved_board, resolved_build_dir = _resolve_build_context(
@@ -307,7 +315,7 @@ def view_app_impl(
     warn_if_lock_stale(resolved_app_dir, resolved_board)
     regenerate_active_board_glue(resolved_app_dir, resolved_board)
     if probe_serial is not None or not (resolved_build_dir / "build.ninja").exists():
-        _ensure_app_modules(resolved_app_dir, resolved_board)
+        _ensure_app_modules(resolved_app_dir, resolved_board, frozen=frozen)
         _run_cmake_configure(
             resolved_app_dir,
             resolved_build_dir,

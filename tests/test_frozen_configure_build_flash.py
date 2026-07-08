@@ -150,3 +150,55 @@ class TestFlashFrozen:
         (build_dir / "build.ninja").write_text("# already configured\n")
 
         flash_app_impl(tmp_path, frozen=True)  # no probe_serial -> must not raise
+
+
+class TestViewFrozen:
+    def test_frozen_raises_on_drift_when_probe_serial_given(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """view_app_impl shares flash_app_impl's probe_serial-forces-
+
+        reconfigure trigger, so it must honor frozen identically --
+        otherwise AppViewRequest.frozen (inherited from AppActionRequest)
+        would be silently accepted but ignored.
+        """
+        from neuralspotx.operations import view_app_impl
+
+        _make_vendored(tmp_path, "my-vend")
+        _write_nsx_yml(tmp_path, [{"name": "my-vend", "source": {"vendored": True}}])
+        lock_app_impl(tmp_path)
+        (tmp_path / "modules" / "my-vend" / "hello.txt").write_text("MUTATED", encoding="utf-8")
+
+        build_dir = tmp_path / "build" / "apollo510_evb"
+        build_dir.mkdir(parents=True, exist_ok=True)
+        (build_dir / "build.ninja").write_text("# already configured\n")
+
+        with pytest.raises(NSXError):
+            view_app_impl(tmp_path, probe_serial="1160002204", frozen=True)
+
+
+class TestRequestPositionalCompat:
+    def test_frozen_is_keyword_only_on_request_dataclasses(self) -> None:
+        """frozen must not consume a positional slot on AppActionRequest.
+
+        AppActionRequest is a base class: inserting a new positional field
+        would silently shift the meaning of positional construction of
+        every subclass (e.g. ``AppBuildRequest(app_dir, None, None, None,
+        None, "all", 4)`` would bind frozen="all", target=4 with no error).
+        Same guard timeout_s already relies on.
+        """
+        from neuralspotx import AppBuildRequest, AppFlashRequest
+
+        r = AppBuildRequest("app", None, None, None, None, "mytarget", 4)
+        assert r.target == "mytarget"
+        assert r.jobs == 4
+        assert r.frozen is False
+
+        # AppFlashRequest's own 6th positional field is jobs (pre-PR layout
+        # preserved): frozen must not have claimed that slot.
+        f = AppFlashRequest("app", None, None, None, None, 2)
+        assert f.jobs == 2
+        assert f.frozen is False
+
+        with pytest.raises(TypeError):
+            AppFlashRequest("app", None, None, None, None, 2, True)  # no 7th positional

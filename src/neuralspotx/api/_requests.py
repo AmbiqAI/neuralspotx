@@ -72,9 +72,13 @@ class AppActionRequest:
             child process group is SIGTERM/SIGKILL'd and
             :class:`NSXError` is raised.
 
-    ``timeout_s`` is keyword-only so subclasses (e.g. :class:`AppBuildRequest`)
-    can keep their existing positional argument order.  Construct with
-    ``AppBuildRequest(app_dir, target="all", jobs=4, timeout_s=300)``.
+    ``frozen`` and ``timeout_s`` are keyword-only so subclasses (e.g.
+    :class:`AppBuildRequest`) keep their existing positional argument
+    order — inserting a new positional field into this base class would
+    silently shift the meaning of positional construction like
+    ``AppBuildRequest(app_dir, None, None, None, None, "all", 4)``.
+    Construct with ``AppBuildRequest(app_dir, target="all", jobs=4,
+    timeout_s=300)``.
     """
 
     app_dir: PathLike
@@ -82,7 +86,7 @@ class AppActionRequest:
     build_dir: PathLike | None = None
     toolchain: str | None = None
     probe_serial: str | None = None
-    frozen: bool = False
+    frozen: bool = field(default=False, kw_only=True)
     timeout_s: float | None = field(default=None, kw_only=True)
 
 

@@ -253,6 +253,7 @@ def cmd_view(args: argparse.Namespace) -> None:
         build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
         toolchain=args.toolchain,
         probe_serial=getattr(args, "probe_serial", None),
+        frozen=getattr(args, "frozen", False),
         reset_on_open=getattr(args, "reset_on_open", None),
         reset_delay_ms=args.reset_delay_ms,
         duration_s=getattr(args, "duration", None),
@@ -667,6 +668,16 @@ def _build_parser() -> argparse.ArgumentParser:
         "--probe-serial",
         default=None,
         help="Optional SEGGER J-Link USB serial number to use",
+    )
+    p_view.add_argument(
+        "--frozen",
+        action="store_true",
+        help=(
+            "When a (re)configure is needed, error on any drift between nsx.yml, "
+            "nsx.lock, and modules/ instead of correcting it. Note: passing "
+            "--probe-serial always forces a reconfigure; --frozen only changes "
+            "how the accompanying module sync behaves, not whether it runs."
+        ),
     )
     reset_group = p_view.add_mutually_exclusive_group()
     reset_group.add_argument(
