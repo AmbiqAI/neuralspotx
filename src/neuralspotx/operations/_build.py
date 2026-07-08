@@ -36,12 +36,18 @@ def configure_app_impl(
     build_dir: Path | None = None,
     toolchain: str | None = None,
     probe_serial: str | None = None,
+    frozen: bool = False,
 ) -> Path:
     """Configure an app with CMake.
 
     Automatically acquires any missing modules (git clone or packaged
     copy) before running CMake so that a freshly cloned app whose
     ``modules/`` directory is gitignored works out of the box.
+
+    Args:
+        frozen: Verify ``modules/`` against ``nsx.lock`` and raise on any
+            drift instead of silently re-vendoring (see
+            ``_ensure_app_modules``).
 
     Returns:
         The resolved build directory.
@@ -53,7 +59,7 @@ def configure_app_impl(
         build_dir=build_dir,
     )
     warn_if_lock_stale(resolved_app_dir, resolved_board)
-    _ensure_app_modules(resolved_app_dir, resolved_board)
+    _ensure_app_modules(resolved_app_dir, resolved_board, frozen=frozen)
     _run_cmake_configure(
         resolved_app_dir,
         resolved_build_dir,
@@ -74,9 +80,17 @@ def build_app_impl(
     toolchain: str | None = None,
     target: str | None = None,
     jobs: int = 8,
+    frozen: bool = False,
     on_line: "Callable[[str], None] | None" = None,
 ) -> Path:
-    """Build an app target and return the build directory."""
+    """Build an app target and return the build directory.
+
+    Args:
+        frozen: When a (re)configure is needed (no ``build.ninja`` yet),
+            verify ``modules/`` against ``nsx.lock`` and raise on any
+            drift instead of silently re-vendoring (see
+            ``_ensure_app_modules``).
+    """
 
     resolved_app_dir, app_name, resolved_board, resolved_build_dir = _resolve_build_context(
         app_dir,
@@ -86,7 +100,7 @@ def build_app_impl(
     warn_if_lock_stale(resolved_app_dir, resolved_board)
     regenerate_active_board_glue(resolved_app_dir, resolved_board)
     if not (resolved_build_dir / "build.ninja").exists():
-        _ensure_app_modules(resolved_app_dir, resolved_board)
+        _ensure_app_modules(resolved_app_dir, resolved_board, frozen=frozen)
         _run_cmake_configure(
             resolved_app_dir, resolved_build_dir, resolved_board, toolchain=toolchain
         )
@@ -106,9 +120,24 @@ def flash_app_impl(
     toolchain: str | None = None,
     probe_serial: str | None = None,
     jobs: int = 8,
+    frozen: bool = False,
     on_line: "Callable[[str], None] | None" = None,
 ) -> Path:
-    """Flash an app using its generated CMake flash target."""
+    """Flash an app using its generated CMake flash target.
+
+    Args:
+        frozen: When a (re)configure is needed (no ``build.ninja`` yet, or
+            a ``probe_serial`` was given — see below), verify ``modules/``
+            against ``nsx.lock`` and raise on any drift instead of
+            silently re-vendoring (see ``_ensure_app_modules``).
+
+            Note: passing ``probe_serial`` always forces a reconfigure
+            here (the serial is baked into the CMake cache via
+            ``-DNSX_JLINK_SERIAL``, so a stale build must not be flashed
+            against a different probe) — ``frozen`` does not skip that
+            reconfigure, it only changes how the accompanying module
+            sync behaves if one is needed.
+    """
 
     resolved_app_dir, app_name, resolved_board, resolved_build_dir = _resolve_build_context(
         app_dir,
@@ -118,7 +147,7 @@ def flash_app_impl(
     warn_if_lock_stale(resolved_app_dir, resolved_board)
     regenerate_active_board_glue(resolved_app_dir, resolved_board)
     if probe_serial is not None or not (resolved_build_dir / "build.ninja").exists():
-        _ensure_app_modules(resolved_app_dir, resolved_board)
+        _ensure_app_modules(resolved_app_dir, resolved_board, frozen=frozen)
         _run_cmake_configure(
             resolved_app_dir,
             resolved_build_dir,

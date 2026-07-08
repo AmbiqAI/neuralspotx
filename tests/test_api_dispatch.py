@@ -102,7 +102,7 @@ def test_doctor_dispatch(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_configure_view_and_clean_dispatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    configure_calls: list[tuple[Path, str | None, Path | None, str | None, str | None]] = []
+    configure_calls: list[tuple[Path, str | None, Path | None, str | None, str | None, bool]] = []
     view_calls: list[tuple[Path, str | None, Path | None, str | None, str | None]] = []
     clean_calls: list[tuple[Path, str | None, Path | None, str | None, bool]] = []
 
@@ -113,8 +113,9 @@ def test_configure_view_and_clean_dispatch(tmp_path: Path, monkeypatch: pytest.M
         build_dir: Path | None = None,
         toolchain: str | None = None,
         probe_serial: str | None = None,
+        frozen: bool = False,
     ) -> None:
-        configure_calls.append((app_dir, board, build_dir, toolchain, probe_serial))
+        configure_calls.append((app_dir, board, build_dir, toolchain, probe_serial, frozen))
 
     def fake_view(
         app_dir: Path,
@@ -155,13 +156,14 @@ def test_configure_view_and_clean_dispatch(tmp_path: Path, monkeypatch: pytest.M
             board="apollo510_evb",
             build_dir=build_dir,
             probe_serial="1160002204",
+            frozen=True,
         )
     )
     view_app(app_dir, board="apollo3p_evb", build_dir=build_dir, probe_serial="1160002204")
     clean_app(AppCleanRequest(app_dir=app_dir, build_dir=build_dir, full=True))
 
     assert configure_calls == [
-        (app_dir.resolve(), "apollo510_evb", build_dir.resolve(), None, "1160002204")
+        (app_dir.resolve(), "apollo510_evb", build_dir.resolve(), None, "1160002204", True)
     ]
     assert view_calls == [
         (app_dir.resolve(), "apollo3p_evb", build_dir.resolve(), None, "1160002204")
@@ -170,8 +172,8 @@ def test_configure_view_and_clean_dispatch(tmp_path: Path, monkeypatch: pytest.M
 
 
 def test_build_and_flash_dispatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    build_calls: list[tuple[Path, str | None, Path | None, str | None, str | None, int]] = []
-    flash_calls: list[tuple[Path, str | None, Path | None, str | None, str | None, int]] = []
+    build_calls: list[tuple[Path, str | None, Path | None, str | None, str | None, int, bool]] = []
+    flash_calls: list[tuple[Path, str | None, Path | None, str | None, str | None, int, bool]] = []
 
     def fake_build(
         app_dir: Path,
@@ -181,9 +183,10 @@ def test_build_and_flash_dispatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
         toolchain: str | None = None,
         target: str | None = None,
         jobs: int = 8,
+        frozen: bool = False,
         on_line: object = None,
     ) -> None:
-        build_calls.append((app_dir, board, build_dir, toolchain, target, jobs))
+        build_calls.append((app_dir, board, build_dir, toolchain, target, jobs, frozen))
 
     def fake_flash(
         app_dir: Path,
@@ -193,9 +196,10 @@ def test_build_and_flash_dispatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
         toolchain: str | None = None,
         probe_serial: str | None = None,
         jobs: int = 8,
+        frozen: bool = False,
         on_line: object = None,
     ) -> None:
-        flash_calls.append((app_dir, board, build_dir, toolchain, probe_serial, jobs))
+        flash_calls.append((app_dir, board, build_dir, toolchain, probe_serial, jobs, frozen))
 
     monkeypatch.setattr(operations, "build_app_impl", fake_build)
     monkeypatch.setattr(operations, "flash_app_impl", fake_flash)
@@ -210,17 +214,20 @@ def test_build_and_flash_dispatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
             build_dir=build_dir,
             target="custom-target",
             jobs=3,
+            frozen=True,
         )
     )
     flash_app(
-        AppFlashRequest(app_dir=app_dir, build_dir=build_dir, probe_serial="1160002204", jobs=2)
+        AppFlashRequest(
+            app_dir=app_dir, build_dir=build_dir, probe_serial="1160002204", jobs=2, frozen=True
+        )
     )
 
     assert build_calls == [
-        (app_dir.resolve(), "apollo4l_evb", build_dir.resolve(), None, "custom-target", 3)
+        (app_dir.resolve(), "apollo4l_evb", build_dir.resolve(), None, "custom-target", 3, True)
     ]
     assert flash_calls == [
-        (app_dir.resolve(), None, build_dir.resolve(), None, "1160002204", 2)
+        (app_dir.resolve(), None, build_dir.resolve(), None, "1160002204", 2, True)
     ]
 
 

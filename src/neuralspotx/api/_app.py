@@ -87,6 +87,7 @@ def configure_app(
     build_dir: PathLike | None = None,
     toolchain: str | None = None,
     probe_serial: str | None = None,
+    frozen: bool = False,
     timeout_s: float | None = None,
     emit: Emitter | None = None,
 ) -> None:
@@ -94,6 +95,9 @@ def configure_app(
 
     *timeout_s* sets a wall-clock budget for the underlying ``cmake``
     subprocess; the whole process group is killed on timeout.
+
+    *frozen* verifies ``modules/`` against ``nsx.lock`` and raises on any
+    drift instead of silently re-vendoring — see :class:`AppActionRequest`.
     """
 
     request = (
@@ -105,6 +109,7 @@ def configure_app(
             build_dir=build_dir,
             toolchain=toolchain,
             probe_serial=probe_serial,
+            frozen=frozen,
             timeout_s=timeout_s,
         )
     )
@@ -115,6 +120,7 @@ def configure_app(
             build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
             toolchain=request.toolchain,
             probe_serial=request.probe_serial,
+            frozen=request.frozen,
         )
 
 
@@ -126,6 +132,7 @@ def build_app(
     toolchain: str | None = None,
     target: str | None = None,
     jobs: int = 8,
+    frozen: bool = False,
     timeout_s: float | None = None,
     emit: Emitter | None = None,
     on_line: Callable[[str], None] | None = None,
@@ -135,6 +142,10 @@ def build_app(
     *timeout_s* sets a wall-clock budget for each underlying
     ``cmake`` / ``ninja`` subprocess; the whole process group is killed
     on timeout.
+
+    *frozen* verifies ``modules/`` against ``nsx.lock`` and raises on any
+    drift instead of silently re-vendoring, when a (re)configure is
+    triggered (no ``build.ninja`` yet) — see :class:`AppActionRequest`.
     """
 
     request = (
@@ -147,6 +158,7 @@ def build_app(
             toolchain=toolchain,
             target=target,
             jobs=jobs,
+            frozen=frozen,
             timeout_s=timeout_s,
         )
     )
@@ -158,6 +170,7 @@ def build_app(
             toolchain=request.toolchain,
             target=request.target,
             jobs=request.jobs,
+            frozen=request.frozen,
             on_line=on_line,
         )
 
@@ -170,6 +183,7 @@ def flash_app(
     toolchain: str | None = None,
     probe_serial: str | None = None,
     jobs: int = 8,
+    frozen: bool = False,
     timeout_s: float | None = None,
     emit: Emitter | None = None,
     on_line: Callable[[str], None] | None = None,
@@ -179,6 +193,12 @@ def flash_app(
     *timeout_s* sets a wall-clock budget for each underlying ``cmake``
     invocation (including the J-Link flash target); the whole process
     group is killed on timeout so a hung ``JLinkExe`` cannot leak.
+
+    *frozen* verifies ``modules/`` against ``nsx.lock`` and raises on any
+    drift instead of silently re-vendoring, when a (re)configure is
+    triggered — see :class:`AppActionRequest` and
+    :func:`neuralspotx.operations.flash_app_impl` for why passing
+    *probe_serial* always forces a reconfigure regardless of *frozen*.
     """
 
     request = (
@@ -191,6 +211,7 @@ def flash_app(
             toolchain=toolchain,
             probe_serial=probe_serial,
             jobs=jobs,
+            frozen=frozen,
             timeout_s=timeout_s,
         )
     )
@@ -202,6 +223,7 @@ def flash_app(
             toolchain=request.toolchain,
             probe_serial=request.probe_serial,
             jobs=request.jobs,
+            frozen=request.frozen,
             on_line=on_line,
         )
 

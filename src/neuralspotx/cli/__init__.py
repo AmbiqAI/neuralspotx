@@ -206,6 +206,7 @@ def cmd_configure(args: argparse.Namespace) -> None:
         build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
         toolchain=args.toolchain,
         probe_serial=getattr(args, "probe_serial", None),
+        frozen=getattr(args, "frozen", False),
         timeout_s=getattr(args, "timeout", None),
     )
 
@@ -222,6 +223,7 @@ def cmd_build(args: argparse.Namespace) -> None:
         toolchain=args.toolchain,
         target=args.target,
         jobs=args.jobs,
+        frozen=getattr(args, "frozen", False),
         timeout_s=getattr(args, "timeout", None),
     )
 
@@ -238,6 +240,7 @@ def cmd_flash(args: argparse.Namespace) -> None:
         toolchain=args.toolchain,
         probe_serial=getattr(args, "probe_serial", None),
         jobs=args.jobs,
+        frozen=getattr(args, "frozen", False),
         timeout_s=getattr(args, "timeout", None),
     )
 
@@ -586,6 +589,11 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional SEGGER J-Link USB serial number to use for generated flash/view targets",
     )
+    p_configure.add_argument(
+        "--frozen",
+        action="store_true",
+        help="Error on any drift between nsx.yml, nsx.lock, and modules/ instead of correcting it",
+    )
     _add_timeout(p_configure)
     p_configure.set_defaults(func=cmd_configure)
 
@@ -603,6 +611,14 @@ def _build_parser() -> argparse.ArgumentParser:
         "--update",
         action="store_true",
         help="Re-resolve module constraints to upstream tip and re-vendor before building",
+    )
+    p_build.add_argument(
+        "--frozen",
+        action="store_true",
+        help=(
+            "When a (re)configure is needed (no build.ninja yet), error on any "
+            "drift between nsx.yml, nsx.lock, and modules/ instead of correcting it"
+        ),
     )
     _add_timeout(p_build)
     p_build.set_defaults(func=cmd_build)
@@ -625,6 +641,16 @@ def _build_parser() -> argparse.ArgumentParser:
         "--update",
         action="store_true",
         help="Re-resolve module constraints to upstream tip and re-vendor before flashing",
+    )
+    p_flash.add_argument(
+        "--frozen",
+        action="store_true",
+        help=(
+            "When a (re)configure is needed, error on any drift between nsx.yml, "
+            "nsx.lock, and modules/ instead of correcting it. Note: passing "
+            "--probe-serial always forces a reconfigure; --frozen only changes "
+            "how the accompanying module sync behaves, not whether it runs."
+        ),
     )
     _add_timeout(p_flash)
     p_flash.set_defaults(func=cmd_flash)

@@ -60,6 +60,13 @@ class AppActionRequest:
         board: Optional board override.
         build_dir: Optional build directory override.
         toolchain: Optional toolchain override (``gcc``, ``armclang``).
+        frozen: When a module sync is needed (fresh workspace, or an
+            existing build directory reconfiguring), verify ``modules/``
+            against ``nsx.lock`` and raise instead of silently
+            re-vendoring on any drift. Mirrors ``AppSyncRequest.frozen``.
+            Use this to iterate on a hand-patched vendored module
+            without ``configure``/``build``/``flash`` silently reverting
+            it on the next run.
         timeout_s: Per-subprocess wall-clock budget (seconds).  ``None``
             disables the timeout.  When the budget elapses, the entire
             child process group is SIGTERM/SIGKILL'd and
@@ -75,6 +82,7 @@ class AppActionRequest:
     build_dir: PathLike | None = None
     toolchain: str | None = None
     probe_serial: str | None = None
+    frozen: bool = False
     timeout_s: float | None = field(default=None, kw_only=True)
 
 

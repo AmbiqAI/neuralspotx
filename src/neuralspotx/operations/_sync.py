@@ -53,7 +53,7 @@ def _locked_module_union(app_dir: Path, active_modules: list[str]) -> list[str]:
     return union
 
 
-def _ensure_app_modules(app_dir: Path, board: str | None = None) -> None:
+def _ensure_app_modules(app_dir: Path, board: str | None = None, *, frozen: bool = False) -> None:
     """Ensure all modules declared in nsx.yml are present on disk.
 
     This is called during ``nsx configure`` so that a freshly-cloned app
@@ -66,9 +66,16 @@ def _ensure_app_modules(app_dir: Path, board: str | None = None) -> None:
     according to the resolved lock; it does not rewrite the lock
     after vendoring (``content_hash`` is the upstream-artifact hash,
     so it is correct from the start under v3).
+
+    Args:
+        frozen: Verify ``modules/`` against ``nsx.lock`` and raise on any
+            drift instead of silently re-vendoring. Threaded through from
+            ``configure_app``/``build_app``/``flash_app`` so a hand-patched
+            vendored module is never overwritten by an implicit
+            reconfigure — the caller finds out immediately instead.
     """
 
-    sync_app_impl(app_dir, board=board)
+    sync_app_impl(app_dir, board=board, frozen=frozen)
 
 
 def regenerate_active_board_glue(app_dir: Path, board: str | None = None) -> None:
