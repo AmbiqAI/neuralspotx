@@ -60,14 +60,25 @@ class AppActionRequest:
         board: Optional board override.
         build_dir: Optional build directory override.
         toolchain: Optional toolchain override (``gcc``, ``armclang``).
+        frozen: When a module sync is needed (fresh workspace, or an
+            existing build directory reconfiguring), verify ``modules/``
+            against ``nsx.lock`` and raise instead of silently
+            re-vendoring on any drift. Mirrors ``AppSyncRequest.frozen``.
+            Use this to iterate on a hand-patched vendored module
+            without ``configure``/``build``/``flash`` silently reverting
+            it on the next run.
         timeout_s: Per-subprocess wall-clock budget (seconds).  ``None``
             disables the timeout.  When the budget elapses, the entire
             child process group is SIGTERM/SIGKILL'd and
             :class:`NSXError` is raised.
 
-    ``timeout_s`` is keyword-only so subclasses (e.g. :class:`AppBuildRequest`)
-    can keep their existing positional argument order.  Construct with
-    ``AppBuildRequest(app_dir, target="all", jobs=4, timeout_s=300)``.
+    ``frozen`` and ``timeout_s`` are keyword-only so subclasses (e.g.
+    :class:`AppBuildRequest`) keep their existing positional argument
+    order — inserting a new positional field into this base class would
+    silently shift the meaning of positional construction like
+    ``AppBuildRequest(app_dir, None, None, None, None, "all", 4)``.
+    Construct with ``AppBuildRequest(app_dir, target="all", jobs=4,
+    timeout_s=300)``.
     """
 
     app_dir: PathLike
@@ -75,6 +86,7 @@ class AppActionRequest:
     build_dir: PathLike | None = None
     toolchain: str | None = None
     probe_serial: str | None = None
+    frozen: bool = field(default=False, kw_only=True)
     timeout_s: float | None = field(default=None, kw_only=True)
 
 
