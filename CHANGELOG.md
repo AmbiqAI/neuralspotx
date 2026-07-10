@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.6](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.5...neuralspotx-v0.7.6) (2026-07-10)
+
+
+### Bug Fixes
+
+* **board:** propagate Apollo330 ITCM startup definition ([b676d33](https://github.com/AmbiqAI/neuralspotx/commit/b676d339ad0359fcdc9eb310a7f05b6486274772))
+
 ## [0.7.5](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.4...neuralspotx-v0.7.5) (2026-07-08)
 
 
