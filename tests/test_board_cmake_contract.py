@@ -86,7 +86,11 @@ endfunction()
 function(nsx_select_linker_script)
     cmake_parse_arguments(_sel "" "DEFAULT;ITCM" "" ${ARGN})
     _logcall("nsx_select_linker_script" ${ARGV})
-    set(NSX_LINKER_SCRIPT "${_sel_DEFAULT}" PARENT_SCOPE)
+    if(DEFINED NSX_LINKER_PROFILE AND NSX_LINKER_PROFILE STREQUAL "itcm")
+        set(NSX_LINKER_SCRIPT "${_sel_ITCM}" PARENT_SCOPE)
+    else()
+        set(NSX_LINKER_SCRIPT "${_sel_DEFAULT}" PARENT_SCOPE)
+    endif()
 endfunction()
 
 function(nsx_assert_file_exists path)
@@ -139,7 +143,14 @@ def _board_dir(board: str) -> Path:
         return Path(path)
 
 
-def _capture(tmp_path: Path, *, board: str, family: str) -> str:
+def _capture(
+    tmp_path: Path,
+    *,
+    board: str,
+    family: str,
+    linker_profile: str | None = None,
+    linker_script: str | None = None,
+) -> str:
     """Configure *board* via cmake -P and return its canonical contract dump."""
     src_dir = _board_dir(board)
     board_dir = tmp_path / "boards" / board
@@ -168,6 +179,8 @@ def _capture(tmp_path: Path, *, board: str, family: str) -> str:
                 f'set(NSX_AMBIQSUITE_ROOT "{_STUB_SDK_ROOT}")',
                 f'set(NSX_CMAKE_DIR "{cmake_dir.as_posix()}")',
                 'set(NSX_SDK_PROVIDER "ambiqsuite")',
+                *([f'set(NSX_LINKER_PROFILE "{linker_profile}")'] if linker_profile is not None else []),
+                *([f'set(NSX_LINKER_SCRIPT "{linker_script}")'] if linker_script is not None else []),
                 f'include("{(board_dir / "board.cmake").as_posix()}")',
                 "get_cmake_property(_all VARIABLES)",
                 "list(SORT _all)",
@@ -228,3 +241,29 @@ def test_board_cmake_contract(tmp_path: Path, board: str, family: str) -> None:
     assert capture == golden.read_text(encoding="utf-8"), (
         f"board.cmake contract drift for {board}/{family}"
     )
+
+
+def test_apollo330_itcm_profile_selects_itcm_startup_copy(tmp_path: Path) -> None:
+    capture = _capture(
+        tmp_path,
+        board="apollo330mP_evb",
+        family="gcc",
+        linker_profile="itcm",
+    )
+    assert (
+        "target_compile_definitions: nsx_soc_apollo330P_flags;INTERFACE;"
+        "NSX_STARTUP_COPY_ITCM_TEXT=1"
+    ) in capture
+
+
+def test_apollo330_nbl_override_selects_itcm_startup_copy(tmp_path: Path) -> None:
+    capture = _capture(
+        tmp_path,
+        board="apollo330mP_evb",
+        family="gcc",
+        linker_script="/stub/app/modules/nsx-core/src/apollo330P/gcc/linker_script_nbl.ld",
+    )
+    assert (
+        "target_compile_definitions: nsx_soc_apollo330P_flags;INTERFACE;"
+        "NSX_STARTUP_COPY_ITCM_TEXT=1"
+    ) in capture

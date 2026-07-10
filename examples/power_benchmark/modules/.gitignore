@@ -3,8 +3,5 @@
 nsx-ambiq-sdk/
 nsx-board-apollo510-evb/
 nsx-board-apollo510b-evb/
-nsx-gpio/
-nsx-interrupt/
 nsx-pmu-armv8m/
-nsx-timer/
 nsx-tooling/

@@ -6,7 +6,5 @@ nsx-board-apollo4p-blue-kxr-evb/
 nsx-board-apollo510-evb/
 nsx-board-apollo510b-evb/
 nsx-board-apollo510dl-evb/
-nsx-interrupt/
 nsx-pmu-armv8m/
-nsx-timer/
 nsx-tooling/
