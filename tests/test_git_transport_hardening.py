@@ -140,6 +140,8 @@ class TestProtocolAllowListFlags:
         assert command[-4:] == ["submodule", "update", "--init", "--recursive"]
         for flag in GIT_PROTOCOL_ALLOWLIST_FLAGS:
             assert flag in command
+        assert "protocol.https.allow=always" in command
+        assert "protocol.ssh.allow=always" in command
 
 
 class TestRefusesUnsafeUrls:
