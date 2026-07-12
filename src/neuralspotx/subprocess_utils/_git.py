@@ -57,6 +57,22 @@ GIT_PROTOCOL_ALLOWLIST_FLAGS: tuple[str, ...] = (
     "protocol.file.allow=never",
 )
 
+# URLs supplied directly to ``git clone`` are considered user-provided by
+# Git, but submodule URLs are not. Allow only the supported network transports
+# when Git recursively invokes its submodule helper; ``file`` and ``ext`` stay
+# explicitly disabled.
+_GIT_SUBMODULE_PROTOCOL_FLAGS: tuple[str, ...] = (
+    *GIT_PROTOCOL_ALLOWLIST_FLAGS,
+    "-c",
+    "protocol.http.allow=always",
+    "-c",
+    "protocol.https.allow=always",
+    "-c",
+    "protocol.ssh.allow=always",
+    "-c",
+    "protocol.git.allow=always",
+)
+
 
 # Schemes accepted by :func:`_validate_git_url`. Anything else is
 # refused outright (most importantly ``ext::``, ``file://``,
@@ -457,7 +473,11 @@ def _run_net(cmd, cwd=None):  # type: ignore[no-untyped-def]
 
 
 def git_clone(url: str, dest: Path, *, revision: str | None = None, depth: int = 1) -> None:
-    """Clone a git repo into *dest*, optionally checking out a specific revision."""
+    """Clone a git repo into *dest*, optionally checking out a specific revision.
+
+    Any pinned git submodules are initialized before returning so callers see
+    the complete source artifact that will be compiled or content-hashed.
+    """
 
     _validate_git_url(url)
     cmd = ["git", *_git_net_flags(), "clone", "--single-branch"]
@@ -470,6 +490,33 @@ def git_clone(url: str, dest: Path, *, revision: str | None = None, depth: int =
         lambda: _run_net(cmd),
         label="git clone",
         before_retry=lambda: _robust_rmtree(dest),
+    )
+    if (dest / ".gitmodules").is_file():
+        git_submodule_update(dest)
+
+
+def git_submodule_update(repo: Path) -> None:
+    """Initialize all pinned submodules in *repo* with hardened transport.
+
+    Submodule URLs are part of the checked-out artifact. Git treats them as
+    non-user URLs, so the supported network transports are explicitly enabled;
+    local file and ``ext`` transports remain unavailable.
+    """
+
+    _git_network_retry(
+        lambda: _run_net(
+            [
+                "git",
+                *_GIT_SUBMODULE_PROTOCOL_FLAGS,
+                *_git_lowspeed_flags(),
+                "submodule",
+                "update",
+                "--init",
+                "--recursive",
+            ],
+            cwd=repo,
+        ),
+        label="git submodule update",
     )
 
 
@@ -542,6 +589,9 @@ def git_clone_at_commit(url: str, dest: Path, commit: str) -> None:
             before_retry=lambda: _robust_rmtree(dest),
         )
         _run(["git", *GIT_PROTOCOL_ALLOWLIST_FLAGS, "checkout", "--detach", commit], cwd=dest)
+
+    if (dest / ".gitmodules").is_file():
+        git_submodule_update(dest)
 
 
 def git_fetch(repo: Path, *, remote: str = "origin") -> None:

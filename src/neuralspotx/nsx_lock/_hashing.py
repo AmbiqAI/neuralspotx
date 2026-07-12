@@ -208,13 +208,20 @@ def hash_git_artifact(url: str, commit: str, *, use_cache: bool = True) -> str:
     with tempfile.TemporaryDirectory(prefix="nsx-lock-") as tmp:
         clone_dir = Path(tmp) / "clone"
         git_clone_at_commit(url, clone_dir, commit)
-        git_dir = clone_dir / ".git"
-        if git_dir.exists():
-            # Strip metadata so the hash is over the working tree only,
-            # matching what _vendor_git_module_at_commit() leaves on disk.
-            import shutil
+        # Strip root and nested submodule metadata so the hash is over the
+        # working tree only, matching what vendoring leaves on disk.
+        import shutil
 
-            shutil.rmtree(git_dir, ignore_errors=True)
+        root_git = clone_dir / ".git"
+        if root_git.is_dir():
+            shutil.rmtree(root_git, ignore_errors=True)
+        elif root_git.exists() or root_git.is_symlink():
+            root_git.unlink(missing_ok=True)
+        for git_metadata in clone_dir.rglob(".git"):
+            if git_metadata.is_dir():
+                shutil.rmtree(git_metadata, ignore_errors=True)
+            elif git_metadata.exists() or git_metadata.is_symlink():
+                git_metadata.unlink(missing_ok=True)
         result = hash_tree(clone_dir)
 
     if use_cache:

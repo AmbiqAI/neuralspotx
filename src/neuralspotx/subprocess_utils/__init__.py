@@ -42,6 +42,7 @@ from ._git import (
     git_current_sha,
     git_fetch,
     git_ls_remote,
+    git_submodule_update,
 )
 from ._runner import (
     _ProcessContainer,
@@ -127,6 +128,7 @@ __all__ = [
     "git_current_sha",
     "git_fetch",
     "git_ls_remote",
+    "git_submodule_update",
     "jlink_failure_hint",
     "print_captured_output",
     "run",

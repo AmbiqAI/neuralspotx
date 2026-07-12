@@ -19,6 +19,7 @@ from neuralspotx.subprocess_utils import (
     git_clone,
     git_clone_at_commit,
     git_ls_remote,
+    git_submodule_update,
 )
 
 
@@ -120,6 +121,27 @@ class TestProtocolAllowListFlags:
         assert invocations and invocations[0][0] == "git"
         for flag in GIT_PROTOCOL_ALLOWLIST_FLAGS:
             assert flag in invocations[0]
+
+    def test_git_submodule_update_uses_allow_list(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ) -> None:
+        invocations: list[list[str]] = []
+
+        def fake_run(cmd, *args, **kwargs):  # type: ignore[no-untyped-def]
+            invocations.append(list(cmd))
+
+        monkeypatch.setattr(subprocess_utils, "run", fake_run)
+
+        git_submodule_update(tmp_path)
+
+        assert len(invocations) == 1
+        command = invocations[0]
+        assert command[0] == "git"
+        assert command[-4:] == ["submodule", "update", "--init", "--recursive"]
+        for flag in GIT_PROTOCOL_ALLOWLIST_FLAGS:
+            assert flag in command
+        assert "protocol.https.allow=always" in command
+        assert "protocol.ssh.allow=always" in command
 
 
 class TestRefusesUnsafeUrls:
