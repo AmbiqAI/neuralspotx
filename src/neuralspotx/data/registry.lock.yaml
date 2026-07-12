@@ -92,6 +92,11 @@ projects:
     url: https://github.com/AmbiqAI/helia-rt.git
     revision: helia-rt-v1.16.0
     path: modules/helia-rt
+  helia-rt-source:
+    name: helia-rt-source
+    url: https://github.com/AmbiqAI/helia-rt.git
+    revision: 7c1b162c0fd2336876b69daaa20c87a1e7e2f508
+    path: modules/helia-rt-source
   arm-cmsis-nn:
     name: arm-cmsis-nn
     url: https://github.com/AmbiqAI/arm-cmsis-nn.git
@@ -100,7 +105,7 @@ projects:
   nsx-tflite-micro:
     name: nsx-tflite-micro
     url: https://github.com/AmbiqAI/nsx-tflite-micro.git
-    revision: ae2adc4ea489fb995686ee98d2888dc47bd17965
+    revision: c6c1e01b3ca30bdce974e49a35a0ed9bb2b888a6
     path: modules/nsx-tflite-micro
   nsx-physiokit:
     name: nsx-physiokit
@@ -280,7 +285,7 @@ modules:
     revision: helia-rt-v1.16.0
     metadata: modules/helia-rt/nsx/nsx-module.yaml
   helia-rt-source:
-    project: helia-rt
+    project: helia-rt-source
     revision: 7c1b162c0fd2336876b69daaa20c87a1e7e2f508
     metadata: modules/helia-rt/nsx-source/nsx-module.yaml
   arm-cmsis-nn:
@@ -289,7 +294,7 @@ modules:
     metadata: modules/arm-cmsis-nn/nsx-module.yaml
   nsx-tflite-micro:
     project: nsx-tflite-micro
-    revision: ae2adc4ea489fb995686ee98d2888dc47bd17965
+    revision: c6c1e01b3ca30bdce974e49a35a0ed9bb2b888a6
     metadata: modules/nsx-tflite-micro/nsx-module.yaml
   nsx-tileio-ble:
     project: nsx-tileio

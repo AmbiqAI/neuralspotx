@@ -26,6 +26,25 @@ def _is_full_commit_sha(revision: str) -> bool:
     return len(revision) == 40 and all(ch in "0123456789abcdefABCDEF" for ch in revision)
 
 
+def _strip_git_metadata(tree: Path) -> None:
+    """Remove root and nested Git metadata from a vendored source tree."""
+
+    root_git = tree / ".git"
+    if root_git.is_dir():
+        _rmtree(root_git)
+    elif root_git.exists() or root_git.is_symlink():
+        root_git.unlink(missing_ok=True)
+
+    # Initialized submodules use a .git *file* pointing into the parent
+    # repository's metadata. Remove those files (and nested repos) so the
+    # vendored tree is self-contained before it is cached or hashed.
+    for git_metadata in tree.rglob(".git"):
+        if git_metadata.is_dir():
+            _rmtree(git_metadata)
+        elif git_metadata.exists() or git_metadata.is_symlink():
+            git_metadata.unlink(missing_ok=True)
+
+
 def _ensure_module_cloned(
     app_dir: Path,
     module_name: str,
@@ -66,10 +85,7 @@ def _ensure_module_cloned(
     else:
         git_clone(url, clone_dir, revision=entry.revision)
 
-    # Remove .git so the module is a plain copy, not a nested repo.
-    git_dir = clone_dir / ".git"
-    if git_dir.exists():
-        _rmtree(git_dir)
+    _strip_git_metadata(clone_dir)
 
 
 def _update_module_clone(
@@ -151,9 +167,7 @@ def _vendor_git_module_at_commit(
     _require_tool("git")
     git_clone_at_commit(url, clone_dir, commit)
 
-    git_dir = clone_dir / ".git"
-    if git_dir.exists():
-        _rmtree(git_dir)
+    _strip_git_metadata(clone_dir)
 
     # Slow path completed: seed the cache so the next caller can skip
     # the clone. ``populate`` is best-effort; failures are silent.

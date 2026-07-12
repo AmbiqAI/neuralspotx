@@ -355,6 +355,27 @@ class TestVendorGitIntegration:
         assert (entry / "file.txt").read_text(encoding="utf-8") == "v1"
         assert not (entry / ".git").exists()
 
+    def test_vendor_strips_nested_submodule_git_metadata(
+        self, cache_dir: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        def fake_clone(_url: str, dest: Path, _commit: str) -> None:
+            nested = dest / "external" / "submodule"
+            nested.mkdir(parents=True)
+            (dest / ".git").mkdir()
+            (nested / ".git").write_text("gitdir: ../../.git/modules/submodule\n")
+
+        monkeypatch.setattr(module_registry._vendoring, "git_clone_at_commit", fake_clone)
+
+        app_dir = cache_dir / "nested-git"
+        app_dir.mkdir()
+        module_registry._vendor_git_module_at_commit(
+            app_dir, "demo-mod", _REGISTRY, "deadbeef"
+        )
+
+        clone_dir = app_dir / "modules" / "demo-proj"
+        assert not (clone_dir / ".git").exists()
+        assert not (clone_dir / "external" / "submodule" / ".git").exists()
+
     def test_cache_hit_skips_clone(
         self,
         cache_dir: Path,
