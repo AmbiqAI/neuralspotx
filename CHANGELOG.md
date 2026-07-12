@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.8](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.7...neuralspotx-v0.7.8) (2026-07-12)
+
+
+### Bug Fixes
+
+* **registry:** locate Helia-RT source metadata ([4c1ffb7](https://github.com/AmbiqAI/neuralspotx/commit/4c1ffb7f19b18bbd5c47f0422d2d70426a6c2529))
+
 ## [0.7.7](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.6...neuralspotx-v0.7.7) (2026-07-12)
 
 
