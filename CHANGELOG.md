@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.7](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.6...neuralspotx-v0.7.7) (2026-07-12)
+
+
+### Features
+
+* **registry:** add stock TFLM NSX modules ([9b7c7b8](https://github.com/AmbiqAI/neuralspotx/commit/9b7c7b8f9ffe0b040cb9cd0d990c105f36ad2410))
+
 ## [0.7.6](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.5...neuralspotx-v0.7.6) (2026-07-10)
 
 
