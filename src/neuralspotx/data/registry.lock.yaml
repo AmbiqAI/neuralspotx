@@ -100,7 +100,7 @@ projects:
   nsx-tflite-micro:
     name: nsx-tflite-micro
     url: https://github.com/AmbiqAI/nsx-tflite-micro.git
-    revision: feff8355e5be8b39e2e939a5850e78ee186bba73
+    revision: ae2adc4ea489fb995686ee98d2888dc47bd17965
     path: modules/nsx-tflite-micro
   nsx-physiokit:
     name: nsx-physiokit
@@ -289,7 +289,7 @@ modules:
     metadata: modules/arm-cmsis-nn/nsx-module.yaml
   nsx-tflite-micro:
     project: nsx-tflite-micro
-    revision: feff8355e5be8b39e2e939a5850e78ee186bba73
+    revision: ae2adc4ea489fb995686ee98d2888dc47bd17965
     metadata: modules/nsx-tflite-micro/nsx-module.yaml
   nsx-tileio-ble:
     project: nsx-tileio
