@@ -287,7 +287,7 @@ modules:
   helia-rt-source:
     project: helia-rt-source
     revision: 7c1b162c0fd2336876b69daaa20c87a1e7e2f508
-    metadata: modules/helia-rt/nsx-source/nsx-module.yaml
+    metadata: modules/helia-rt-source/nsx-source/nsx-module.yaml
   arm-cmsis-nn:
     project: arm-cmsis-nn
     revision: 41e0cf520fe68d5e22298f98e1a0ffda1196f8d8
