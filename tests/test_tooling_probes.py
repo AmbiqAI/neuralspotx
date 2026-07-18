@@ -83,10 +83,11 @@ def test_find_jlink_honors_explicit_override(
 def test_find_jlink_checks_posix_install_locations(
     candidate: str, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    expected = Path(candidate)
     monkeypatch.delenv("JLINK_PATH", raising=False)
     monkeypatch.setattr(tooling, "tool_path", lambda _name: None)
-    monkeypatch.setattr(tooling.Path, "is_file", lambda path: str(path) == candidate)
-    assert tooling.find_segger_tool(tooling.JLINK_NAMES) == candidate
+    monkeypatch.setattr(tooling.Path, "is_file", lambda path: path == expected)
+    assert tooling.find_segger_tool(tooling.JLINK_NAMES) == str(expected)
 
 
 def test_find_jlink_checks_windows_install_location(monkeypatch: pytest.MonkeyPatch) -> None:
