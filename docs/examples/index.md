@@ -11,6 +11,10 @@ Most examples are **multi-target**: a single lean `nsx.yml` declares a
 `apollo510_evb`, `apollo510b_evb`, `apollo330mP_evb`). See the support
 matrix below for each example's declared targets.
 
+If you want to bring your own `.tflite` model and walk through the full
+`helia-aot` to NSX integration flow yourself, see
+[Custom Models with heliaAOT](../user-guide/custom-models.md).
+
 ## Quick Start
 
 The recommended flow is to install `nsx` once and create your own app
