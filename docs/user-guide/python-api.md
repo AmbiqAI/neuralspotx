@@ -18,6 +18,7 @@ The `neuralspotx` package exports a small API that mirrors the CLI workflow:
 - `configure_app(...)`
 - `build_app(...)`
 - `flash_app(...)`
+- `reset_target(...)`
 - `view_app(...)`
 - `clean_app(...)`
 - `add_module(...)`
@@ -26,6 +27,12 @@ The `neuralspotx` package exports a small API that mirrors the CLI workflow:
 - `register_module(...)`
 
 Failures raise `neuralspotx.NSXError`.
+
+`flash_app()` returns a `FlashResult` describing the resolved executable,
+artifact, generated J-Link recipe, probe selection, and programming
+verification. Pass `target="<cmake-target>"` to flash an additional executable
+from the same configured app. `reset_target()` exposes explicit `debug` and
+Ambiq `swpoi` reset primitives without changing flash behavior.
 
 The API supports two styles:
 

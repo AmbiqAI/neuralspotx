@@ -125,6 +125,7 @@ class AppBuildRequest(AppActionRequest):
 class AppFlashRequest(AppActionRequest):
     """Request parameters for flashing an app."""
 
+    target: str | None = field(default=None, kw_only=True)
     jobs: int = 8
 
 

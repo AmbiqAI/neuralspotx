@@ -869,10 +869,19 @@ def test_flash_and_view_reconfigure_when_probe_serial_is_supplied(
     ) -> None:
         configure_calls.append((app, build, board, toolchain, probe_serial))
 
-    def fake_run_capture(cmd: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+    def fake_run_capture(
+        cmd: list[str], cwd: Path | None = None
+    ) -> subprocess.CompletedProcess[str]:
         del cwd
         run_calls.append(cmd)
-        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
+        artifact = build_dir / "hello_probe.bin"
+        artifact.write_bytes(b"firmware")
+        recipe = build_dir / "jlink" / "hello_probe" / "flash_cmds.jlink"
+        recipe.parent.mkdir(parents=True, exist_ok=True)
+        recipe.write_text(f'LoadFile "{artifact}", 0x00410000\n', encoding="utf-8")
+        return subprocess.CompletedProcess(
+            cmd, 0, stdout="Flash download: Total time needed: 0.123s\n", stderr=""
+        )
 
     monkeypatch.setattr(operations._build, "_run_cmake_configure", fake_configure)
     monkeypatch.setattr(operations._build, "run_capture", fake_run_capture)
@@ -897,6 +906,7 @@ def test_flash_and_view_reconfigure_when_probe_serial_is_supplied(
         (app_dir, build_dir, "apollo510_evb", None, "1160002204"),
     ]
     assert run_calls == [
+        ["cmake", "--build", str(build_dir), "--target", "hello_probe", "-j", "8"],
         ["cmake", "--build", str(build_dir), "--target", "hello_probe_flash", "-j", "8"],
     ]
 
@@ -905,7 +915,9 @@ def test_view_fails_clearly_when_viewer_exits_before_reset(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     create_app(
-        AppCreateRequest(app_dir=tmp_path / "hello_view_fail", board="apollo510_evb", no_bootstrap=True)
+        AppCreateRequest(
+            app_dir=tmp_path / "hello_view_fail", board="apollo510_evb", no_bootstrap=True
+        )
     )
 
     app_dir = tmp_path / "hello_view_fail"
@@ -915,7 +927,9 @@ def test_view_fails_clearly_when_viewer_exits_before_reset(
 
     reset_calls: list[list[str]] = []
 
-    def fake_run_capture(cmd: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+    def fake_run_capture(
+        cmd: list[str], cwd: Path | None = None
+    ) -> subprocess.CompletedProcess[str]:
         del cwd
         reset_calls.append(cmd)
         return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
@@ -933,7 +947,9 @@ def test_view_fails_clearly_when_viewer_exits_before_reset(
             del timeout
             return 9
 
-    monkeypatch.setattr(operations._build.subprocess, "Popen", lambda *args, **kwargs: _ExitedProc())
+    monkeypatch.setattr(
+        operations._build.subprocess, "Popen", lambda *args, **kwargs: _ExitedProc()
+    )
 
     with pytest.raises(NSXError, match="SWO viewer exited during startup before reset"):
         view_app(AppViewRequest(app_dir=app_dir, reset_delay_ms=0))
@@ -963,7 +979,9 @@ def test_view_auto_skips_reset_for_secure_boards(
 
     reset_calls: list[list[str]] = []
 
-    def fake_run_capture(cmd: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+    def fake_run_capture(
+        cmd: list[str], cwd: Path | None = None
+    ) -> subprocess.CompletedProcess[str]:
         del cwd
         reset_calls.append(cmd)
         return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
@@ -1017,7 +1035,9 @@ def test_view_auto_skips_reset_for_custom_board_inheriting_apollo4(
 
     reset_calls: list[list[str]] = []
 
-    def fake_run_capture(cmd: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+    def fake_run_capture(
+        cmd: list[str], cwd: Path | None = None
+    ) -> subprocess.CompletedProcess[str]:
         del cwd
         reset_calls.append(cmd)
         return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
@@ -1057,7 +1077,9 @@ def test_view_explicit_reset_overrides_apollo4_auto_policy(
 
     reset_calls: list[list[str]] = []
 
-    def fake_run_capture(cmd: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+    def fake_run_capture(
+        cmd: list[str], cwd: Path | None = None
+    ) -> subprocess.CompletedProcess[str]:
         del cwd
         reset_calls.append(cmd)
         return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
@@ -1075,7 +1097,9 @@ def test_view_explicit_reset_overrides_apollo4_auto_policy(
             del timeout
             return 0
 
-    monkeypatch.setattr(operations._build.subprocess, "Popen", lambda *args, **kwargs: _RunningProc())
+    monkeypatch.setattr(
+        operations._build.subprocess, "Popen", lambda *args, **kwargs: _RunningProc()
+    )
 
     view_app(AppViewRequest(app_dir=app_dir, reset_on_open=True, reset_delay_ms=0))
 
@@ -1088,7 +1112,9 @@ def test_view_warns_when_probe_already_in_use(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     create_app(
-        AppCreateRequest(app_dir=tmp_path / "hello_view_busy", board="apollo510_evb", no_bootstrap=True)
+        AppCreateRequest(
+            app_dir=tmp_path / "hello_view_busy", board="apollo510_evb", no_bootstrap=True
+        )
     )
 
     app_dir = tmp_path / "hello_view_busy"

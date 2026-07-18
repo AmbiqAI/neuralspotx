@@ -18,6 +18,7 @@ from .constants import PACKAGED_PROJECT_NAME, normalize_board
 from .metadata import load_registry_lock
 from .models import AppConfig, ModuleRegistryOverride, NsxProject, ProjectEntry
 from .subprocess_utils import run
+from .tooling import JLINK_NAMES, find_segger_tool
 
 
 def _write_text_if_changed(path: Path, content: str) -> bool:
@@ -925,8 +926,15 @@ def _run_cmake_configure(
         "-DCMAKE_BUILD_TYPE=Release",
         f"-DNSX_BOARD={board}",
     ]
-    if probe_serial is not None:
-        cmd.append(f"-DNSX_JLINK_SERIAL={probe_serial}")
+    # Always set the cache entry, including an empty value, so a caller can
+    # return from explicit probe selection to CMake/J-Link auto-selection.
+    cmd.append(f"-DNSX_JLINK_SERIAL={probe_serial or ''}")
+    jlink_executable = find_segger_tool(JLINK_NAMES)
+    # CMake's flash targets and Python's reset/doctor operations must use the
+    # same discovery result, including an explicit not-found state that clears
+    # a stale cached executable.
+    cached_jlink = jlink_executable or "NSX_JLINK_EXE-NOTFOUND"
+    cmd.append(f"-DNSX_JLINK_EXE:FILEPATH={cached_jlink}")
     run(cmd)
 
 

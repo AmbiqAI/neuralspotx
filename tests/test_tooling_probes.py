@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import subprocess
+from pathlib import Path
 
 import pytest
 
@@ -31,8 +32,12 @@ def test_list_jlink_probes_parses_emu_list(monkeypatch: pytest.MonkeyPatch) -> N
     probes = list_jlink_probes()
 
     assert probes == [
-        JLinkProbe(index=0, serial="1160002204", product="J-Link-OB-Apollo4-CortexM", nickname=None),
-        JLinkProbe(index=1, serial="1160001481", product="J-Link-OB-Apollo4-CortexM", nickname=None),
+        JLinkProbe(
+            index=0, serial="1160002204", product="J-Link-OB-Apollo4-CortexM", nickname=None
+        ),
+        JLinkProbe(
+            index=1, serial="1160001481", product="J-Link-OB-Apollo4-CortexM", nickname=None
+        ),
         JLinkProbe(index=2, serial="9000001234", product="J-Link-Pro", nickname="bench-rig"),
     ]
 
@@ -59,6 +64,39 @@ def test_list_jlink_probes_raises_without_executable(monkeypatch: pytest.MonkeyP
 
     with pytest.raises(NSXToolchainError):
         list_jlink_probes()
+
+
+def test_find_jlink_honors_explicit_override(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    commander = tmp_path / "SEGGER tools" / "JLink.exe"
+    commander.parent.mkdir()
+    commander.write_bytes(b"")
+    monkeypatch.setenv("JLINK_PATH", str(commander))
+    assert tooling.find_segger_tool(tooling.JLINK_NAMES) == str(commander)
+
+
+@pytest.mark.parametrize(
+    "candidate",
+    ["/usr/local/bin/JLinkExe", "/Applications/SEGGER/JLink/JLinkExe"],
+)
+def test_find_jlink_checks_posix_install_locations(
+    candidate: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.delenv("JLINK_PATH", raising=False)
+    monkeypatch.setattr(tooling, "tool_path", lambda _name: None)
+    monkeypatch.setattr(tooling.Path, "is_file", lambda path: str(path) == candidate)
+    assert tooling.find_segger_tool(tooling.JLINK_NAMES) == candidate
+
+
+def test_find_jlink_checks_windows_install_location(monkeypatch: pytest.MonkeyPatch) -> None:
+    expected = Path("C:/Program Files/SEGGER/JLink/JLink.exe")
+    monkeypatch.delenv("JLINK_PATH", raising=False)
+    monkeypatch.setenv("ProgramFiles", "C:/Program Files")
+    monkeypatch.delenv("ProgramFiles(x86)", raising=False)
+    monkeypatch.setattr(tooling, "tool_path", lambda _name: None)
+    monkeypatch.setattr(tooling.Path, "is_file", lambda path: path == expected)
+    assert tooling.find_segger_tool(tooling.JLINK_NAMES) == str(expected)
 
 
 def test_find_processes_holding_probe_matches_segger_session(

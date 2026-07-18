@@ -96,12 +96,38 @@ JLINK_SWO_NAMES = ["JLinkSWOViewerCL", "JLinkSWOViewer_CL"]
 
 
 def find_segger_tool(names: list[str]) -> str | None:
-    """Resolve the first available SEGGER executable from *names*."""
+    """Resolve a SEGGER executable across supported host installations.
+
+    ``JLINK_PATH`` is an explicit override for Commander.  Normal ``PATH``
+    lookup remains first-class, followed by the default SEGGER install roots
+    used by macOS and Windows.
+    """
+
+    if names == JLINK_NAMES:
+        override = os.environ.get("JLINK_PATH")
+        if override:
+            candidate = Path(override).expanduser()
+            if candidate.is_file():
+                return str(candidate)
 
     for name in names:
         resolved = tool_path(name)
         if resolved is not None:
             return resolved
+
+    candidates: list[Path] = []
+    if names == JLINK_NAMES:
+        candidates.extend([
+            Path("/usr/local/bin/JLinkExe"),
+            Path("/Applications/SEGGER/JLink/JLinkExe"),
+        ])
+        for env_name in ("ProgramFiles", "ProgramFiles(x86)"):
+            root = os.environ.get(env_name)
+            if root:
+                candidates.append(Path(root) / "SEGGER" / "JLink" / "JLink.exe")
+    for candidate in candidates:
+        if candidate.is_file():
+            return str(candidate)
     return None
 
 
@@ -131,8 +157,7 @@ def list_jlink_probes() -> list[JLinkProbe]:
         from ._errors import NSXToolchainError
 
         raise NSXToolchainError(
-            "JLink executable not found in PATH (looked for: "
-            f"{', '.join(JLINK_NAMES)})."
+            f"JLink executable not found in PATH (looked for: {', '.join(JLINK_NAMES)})."
         )
 
     try:

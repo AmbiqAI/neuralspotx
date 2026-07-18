@@ -57,10 +57,22 @@ def _stub_cmake_side_effects(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(_build_mod, "warn_if_lock_stale", lambda *a, **k: None)
     monkeypatch.setattr(_build_mod, "regenerate_active_board_glue", lambda *a, **k: None)
+    monkeypatch.setattr(_build_mod, "find_segger_tool", lambda _names: None)
     monkeypatch.setattr(_build_mod, "_run_cmake_configure", lambda *a, **k: None)
     monkeypatch.setattr(_build_mod, "run", lambda *a, **k: None)
-    monkeypatch.setattr(_build_mod, "run_capture", lambda *a, **k: type("R", (), {"stdout": "", "stderr": ""})())
+    monkeypatch.setattr(
+        _build_mod, "run_capture", lambda *a, **k: type("R", (), {"stdout": "", "stderr": ""})()
+    )
     monkeypatch.setattr(_build_mod, "print_captured_output", lambda *a, **k: None)
+    monkeypatch.setattr(_build_mod, "flash_programming_verified", lambda _output: True)
+    monkeypatch.setattr(
+        _build_mod,
+        "validate_flash_recipe",
+        lambda build_dir, target: (
+            build_dir / f"{target}.bin",
+            build_dir / "jlink" / target / "flash_cmds.jlink",
+        ),
+    )
 
 
 class TestConfigureFrozen:
@@ -198,7 +210,11 @@ class TestRequestPositionalCompat:
         # preserved): frozen must not have claimed that slot.
         f = AppFlashRequest("app", None, None, None, None, 2)
         assert f.jobs == 2
+        assert f.target is None
         assert f.frozen is False
+
+        with pytest.raises(TypeError):
+            AppFlashRequest("app", None, None, None, None, 2, "secondary")
 
         with pytest.raises(TypeError):
             AppFlashRequest("app", None, None, None, None, 2, True)  # no 7th positional

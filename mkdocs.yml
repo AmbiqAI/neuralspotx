@@ -118,6 +118,7 @@ nav:
       - configure: reference/configure.md
       - build: reference/build.md
       - flash: reference/flash.md
+      - reset: reference/reset.md
       - view: reference/view.md
       - clean: reference/clean.md
       - module: reference/module.md

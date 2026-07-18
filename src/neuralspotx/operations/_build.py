@@ -13,7 +13,8 @@ from pathlib import Path
 
 from .. import board_descriptors as bd
 from .._errors import NSXError
-from .._io import info, warn
+from .._io import info, line, warn
+from ..models import FlashResult
 from ..project_config import _run_cmake_configure
 from ..subprocess_utils import (
     extract_view_command,
@@ -22,11 +23,54 @@ from ..subprocess_utils import (
     run,
     run_capture,
 )
-from ..tooling import find_processes_holding_probe
+from ..tooling import JLINK_NAMES, find_processes_holding_probe, find_segger_tool
 from . import _common
 from ._common import _resolve_build_context
+from ._hardware import (
+    flash_programming_verified,
+    validate_flash_recipe,
+    validate_flash_target_name,
+)
 from ._lock import warn_if_lock_stale
 from ._sync import _ensure_app_modules, regenerate_active_board_glue
+
+
+def _cmake_cache_value(build_dir: Path, variable: str) -> str | None:
+    """Return one typed CMake cache value without invoking CMake."""
+
+    cache_file = build_dir / "CMakeCache.txt"
+    try:
+        lines = cache_file.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeDecodeError):
+        return None
+    prefix = f"{variable}:"
+    for cache_line in lines:
+        if cache_line.startswith(prefix) and "=" in cache_line:
+            return cache_line.split("=", 1)[1]
+    return None
+
+
+def _same_executable_path(cached: str | None, resolved: str | None) -> bool:
+    """Compare a CMake FILEPATH cache value with the current discovery result."""
+
+    if resolved is None:
+        return cached is None or not cached or cached.endswith("-NOTFOUND")
+    if cached is None or not cached or cached.endswith("-NOTFOUND"):
+        return False
+    return os.path.normcase(os.path.normpath(cached)) == os.path.normcase(
+        os.path.normpath(resolved)
+    )
+
+
+def _flash_cache_matches(
+    build_dir: Path, *, probe_serial: str | None, jlink_executable: str | None
+) -> bool:
+    """Return whether cached probe and Commander selection match this flash request."""
+
+    cached_probe = _cmake_cache_value(build_dir, "NSX_JLINK_SERIAL") or ""
+    return cached_probe == (probe_serial or "") and _same_executable_path(
+        _cmake_cache_value(build_dir, "NSX_JLINK_EXE"), jlink_executable
+    )
 
 
 def configure_app_impl(
@@ -118,11 +162,12 @@ def flash_app_impl(
     board: str | None = None,
     build_dir: Path | None = None,
     toolchain: str | None = None,
+    target: str | None = None,
     probe_serial: str | None = None,
     jobs: int = 8,
     frozen: bool = False,
     on_line: "Callable[[str], None] | None" = None,
-) -> Path:
+) -> FlashResult:
     """Flash an app using its generated CMake flash target.
 
     Args:
@@ -146,7 +191,17 @@ def flash_app_impl(
     )
     warn_if_lock_stale(resolved_app_dir, resolved_board)
     regenerate_active_board_glue(resolved_app_dir, resolved_board)
-    if probe_serial is not None or not (resolved_build_dir / "build.ninja").exists():
+    jlink_executable = find_segger_tool(JLINK_NAMES)
+    needs_configure = (
+        probe_serial is not None
+        or not (resolved_build_dir / "build.ninja").exists()
+        or not _flash_cache_matches(
+            resolved_build_dir,
+            probe_serial=probe_serial,
+            jlink_executable=jlink_executable,
+        )
+    )
+    if needs_configure:
         _ensure_app_modules(resolved_app_dir, resolved_board, frozen=frozen)
         _run_cmake_configure(
             resolved_app_dir,
@@ -155,17 +210,79 @@ def flash_app_impl(
             toolchain=toolchain,
             probe_serial=probe_serial,
         )
-    target = f"{app_name}_flash"
-    cmd = ["cmake", "--build", str(resolved_build_dir), "--target", target, "-j", str(jobs)]
-    if _common.get_verbosity() > 0 or on_line is not None:
-        run(cmd, on_line=on_line)
-        return resolved_build_dir
+    resolved_target = target or app_name
+    validate_flash_target_name(resolved_target)
+    # Build and validate every executable before invoking its CMake flash
+    # target. In particular, do not let the primary target's dependency build
+    # flow directly into J-Link: a stale or edited recipe must be rejected
+    # before it can program an unintended artifact.
+    build_cmd = [
+        "cmake",
+        "--build",
+        str(resolved_build_dir),
+        "--target",
+        resolved_target,
+        "-j",
+        str(jobs),
+    ]
     try:
-        result = run_capture(cmd)
+        build_result = run_capture(build_cmd)
     except subprocess.CalledProcessError as exc:
-        raise NSXError(format_subprocess_error(exc, context="Flash")) from None
-    print_captured_output(result)
-    return resolved_build_dir
+        raise NSXError(
+            format_subprocess_error(exc, context=f"Build for flash target '{resolved_target}'")
+        ) from None
+    if build_result.stdout:
+        line(build_result.stdout.rstrip())
+    if build_result.stderr:
+        info(build_result.stderr.rstrip())
+    artifact, recipe = validate_flash_recipe(resolved_build_dir, resolved_target)
+
+    flash_target = f"{resolved_target}_flash"
+    flash_cmd = [
+        "cmake",
+        "--build",
+        str(resolved_build_dir),
+        "--target",
+        flash_target,
+        "-j",
+        str(jobs),
+    ]
+    captured_lines: list[str] = []
+
+    def _capture_line(output_line: str) -> None:
+        captured_lines.append(output_line)
+        if on_line is not None:
+            on_line(output_line)
+
+    if _common.get_verbosity() > 0 or on_line is not None:
+        try:
+            run(flash_cmd, on_line=_capture_line)
+        except subprocess.CalledProcessError as exc:
+            raise NSXError(format_subprocess_error(exc, context="Flash")) from None
+        output = "\n".join(captured_lines)
+    else:
+        try:
+            result = run_capture(flash_cmd)
+        except subprocess.CalledProcessError as exc:
+            raise NSXError(format_subprocess_error(exc, context="Flash")) from None
+        if result.stdout:
+            line(result.stdout.rstrip())
+        if result.stderr:
+            info(result.stderr.rstrip())
+        output = (result.stdout or "") + "\n" + (result.stderr or "")
+
+    if not flash_programming_verified(output):
+        raise NSXError(
+            f"J-Link flash of target '{resolved_target}' produced no programming confirmation. "
+            "The image may not have been programmed; inspect the J-Link output and generated recipe."
+        )
+    return FlashResult(
+        target=resolved_target,
+        artifact=artifact,
+        recipe=recipe,
+        probe_serial=probe_serial,
+        programming_verified=True,
+    )
 
 
 def _terminate_viewer(proc: "subprocess.Popen[object]") -> None:

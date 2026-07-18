@@ -11,6 +11,7 @@ Current top-level commands:
 - `configure`
 - `build`
 - `flash`
+- `reset`
 - `view`
 - `clean`
 - `module`

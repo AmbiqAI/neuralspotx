@@ -50,7 +50,8 @@ tagged; this page will be updated at the v1.0 release.
 | `create_board` | `BoardDescriptor` | Provisional |
 | `configure_app` | `None` | Provisional |
 | `build_app` | `None` | Provisional |
-| `flash_app` | `None` | Provisional |
+| `flash_app` | `FlashResult` | Provisional |
+| `reset_target` | `ResetResult` | Provisional |
 | `view_app` | `None` | Provisional |
 | `clean_app` | `None` | Provisional |
 | `doctor` | `DoctorReport` | Provisional |
@@ -105,6 +106,8 @@ contract; dataclass field names are part of the contract.
 | Symbol | Returned by | Tier |
 |---|---|---|
 | `DoctorReport`, `DoctorCheck` | `doctor` | Provisional |
+| `FlashResult` | `flash_app` | Provisional |
+| `ResetResult` | `reset_target` | Provisional |
 | `OutdatedReport`, `OutdatedModule`, `OutdatedSkip` | `outdated_app` | Provisional |
 | `ModuleChange` | module mutation API | Provisional |
 | `CacheInfo`, `CacheEntry`, `CacheCleanResult` | `cache_info` / `clean_cache` | Provisional |

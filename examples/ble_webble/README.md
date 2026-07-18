@@ -80,6 +80,23 @@ For the local Linux tower used during bring-up:
 nsx flash --board apollo4p_blue_kxr_evb --probe-serial 1160001350
 ```
 
+### Named-target flash probe
+
+This project also defines `ble_webble_flash_probe`, a small secondary
+executable that is excluded from normal builds. It exists to exercise named
+target flashing without changing the primary BLE firmware:
+
+```bash
+nsx flash --board apollo3p_evb \
+  --target ble_webble_flash_probe \
+  --probe-serial <serial>
+```
+
+NSX builds only that executable, checks its generated binary and J-Link
+recipe, then requires J-Link programming confirmation. With an SWO viewer
+attached, the secondary image prints
+`ble_webble_flash_probe: named-target image running` once per second.
+
 ## BLE service
 
 Advertised names:

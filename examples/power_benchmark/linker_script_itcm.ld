@@ -105,17 +105,6 @@ SECTIONS
         . = ALIGN(8);
     } > MCU_TCM
 
-    .heap (NOLOAD):
-    {
-        __heap_start__ = .;
-        end = __heap_start__;
-        _end = end;
-        __end = end;
-        KEEP(*(.heap))
-        __heap_end__ = .;
-        __HeapLimit = __heap_end__;
-    }  > MCU_TCM
-
     .data :
     {
         . = ALIGN(4);
@@ -140,8 +129,24 @@ SECTIONS
         _ebss = .;
     } > MCU_TCM
 
-    ASSERT( _ebss <= ORIGIN(MCU_TCM) + LENGTH(MCU_TCM),
-            "TCM overflow: stack+heap+data+bss exceed MCU_TCM" )
+    /* nsx-core's bounded _sbrk() requires these symbols. Keep the heap after
+     * .data/.bss so allocation can never grow through application state. */
+    .heap (NOLOAD):
+    {
+        . = ALIGN(8);
+        __HeapBase     = .;
+        end            = .;
+        _end           = .;
+        __end__        = .;
+        __heap_start__ = .;
+        KEEP(*(.heap))
+        . = ORIGIN(MCU_TCM) + LENGTH(MCU_TCM);
+        __HeapLimit    = .;
+        __heap_end__   = .;
+    } > MCU_TCM
+
+    ASSERT( __HeapLimit > __HeapBase + 1024,
+            "TCM overflow: stack+data+bss leave less than 1 KiB of heap" )
 
     ASSERT( _e_itcm_text <= 0x00008000,
             "ITCM overflow: CoreMark hot path exceeds 32 KB ITCM" )

@@ -110,3 +110,36 @@ def test_example_configures_and_builds(example_app: Path) -> None:
         f"Expected ELF for {app_name} under {build_root}/<board>/[.axf|.elf]; "
         f"searched board dirs: {[d.name for d in build_dirs]}"
     )
+
+    if app_name == "ble_webble":
+        # This example carries a deliberately tiny EXCLUDE_FROM_ALL image so
+        # hardware smoke tests can exercise named-target flashing without
+        # replacing or complicating the primary BLE application.
+        secondary_target = "ble_webble_flash_probe"
+        secondary_cmd = [
+            "nsx",
+            "build",
+            "--app-dir",
+            str(example_app),
+            "--target",
+            secondary_target,
+        ]
+        if _TOOLCHAIN != "arm-none-eabi-gcc":
+            secondary_cmd += ["--toolchain", _TOOLCHAIN]
+        subprocess.run(secondary_cmd, check=True, timeout=300)
+
+        secondary_artifacts = [
+            build_dir / name
+            for build_dir in build_dirs
+            for name in (
+                f"{secondary_target}.bin",
+                f"{secondary_target}.axf",
+                f"{secondary_target}.elf",
+                secondary_target,
+            )
+        ]
+        assert any(path.exists() for path in secondary_artifacts)
+        assert any(
+            (build_dir / "jlink" / secondary_target / "flash_cmds.jlink").is_file()
+            for build_dir in build_dirs
+        )
