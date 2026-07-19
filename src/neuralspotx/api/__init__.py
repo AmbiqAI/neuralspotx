@@ -21,6 +21,7 @@ from ._app import (
     create_app,
     doctor,
     flash_app,
+    reset_target,
     view_app,
 )
 from ._board import create_board
@@ -93,6 +94,7 @@ __all__ = [
     "doctor",
     "find_app_root",
     "flash_app",
+    "reset_target",
     "generate_sbom",
     "init_module",
     "list_modules",

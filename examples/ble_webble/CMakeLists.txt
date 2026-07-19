@@ -36,3 +36,17 @@ target_link_libraries(ble_webble PRIVATE
 )
 
 nsx_finalize_app(ble_webble)
+
+# A deliberately small secondary image used to exercise NSX named-target
+# build and flash support on the same generated project. EXCLUDE_FROM_ALL
+# keeps the normal BLE example build unchanged.
+add_executable(ble_webble_flash_probe EXCLUDE_FROM_ALL
+    src/flash_probe.c
+)
+
+target_link_libraries(ble_webble_flash_probe PRIVATE
+    nsx::board
+    nsx::runtime_core
+)
+
+nsx_finalize_app(ble_webble_flash_probe)

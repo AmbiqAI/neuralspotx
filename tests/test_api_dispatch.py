@@ -174,7 +174,9 @@ def test_configure_view_and_clean_dispatch(tmp_path: Path, monkeypatch: pytest.M
 
 def test_build_and_flash_dispatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     build_calls: list[tuple[Path, str | None, Path | None, str | None, str | None, int, bool]] = []
-    flash_calls: list[tuple[Path, str | None, Path | None, str | None, str | None, int, bool]] = []
+    flash_calls: list[
+        tuple[Path, str | None, Path | None, str | None, str | None, str | None, int, bool]
+    ] = []
 
     def fake_build(
         app_dir: Path,
@@ -195,12 +197,22 @@ def test_build_and_flash_dispatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
         board: str | None = None,
         build_dir: Path | None = None,
         toolchain: str | None = None,
+        target: str | None = None,
         probe_serial: str | None = None,
         jobs: int = 8,
         frozen: bool = False,
         on_line: object = None,
     ) -> None:
-        flash_calls.append((app_dir, board, build_dir, toolchain, probe_serial, jobs, frozen))
+        flash_calls.append((
+            app_dir,
+            board,
+            build_dir,
+            toolchain,
+            target,
+            probe_serial,
+            jobs,
+            frozen,
+        ))
 
     monkeypatch.setattr(operations, "build_app_impl", fake_build)
     monkeypatch.setattr(operations, "flash_app_impl", fake_flash)
@@ -228,7 +240,7 @@ def test_build_and_flash_dispatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
         (app_dir.resolve(), "apollo4l_evb", build_dir.resolve(), None, "custom-target", 3, True)
     ]
     assert flash_calls == [
-        (app_dir.resolve(), None, build_dir.resolve(), None, "1160002204", 2, True)
+        (app_dir.resolve(), None, build_dir.resolve(), None, None, "1160002204", 2, True)
     ]
 
 

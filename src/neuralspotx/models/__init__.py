@@ -18,6 +18,7 @@ from ._command import (
     DoctorReport,
 )
 from ._discovery import DiscoveryRecord, SearchMatch, SearchResult
+from ._hardware import FlashResult, ResetResult
 from ._loader import NsxProject
 from ._module_metadata import ModuleMetadata
 from ._outdated import OutdatedModule, OutdatedReport, OutdatedSkip
@@ -45,6 +46,7 @@ __all__ = [
     "DiscoveryRecord",
     "DoctorCheck",
     "DoctorReport",
+    "FlashResult",
     "ModuleChange",
     "ModuleEntry",
     "ModuleInitRequest",
@@ -56,6 +58,7 @@ __all__ = [
     "OutdatedReport",
     "OutdatedSkip",
     "ProjectEntry",
+    "ResetResult",
     "SearchMatch",
     "SearchResult",
 ]

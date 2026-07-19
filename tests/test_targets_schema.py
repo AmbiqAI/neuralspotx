@@ -274,3 +274,36 @@ def test_configure_falls_back_to_top_level_toolchain_for_unknown_board(
     project_config._run_cmake_configure(tmp_path, tmp_path / "build", "apollo330mP_evb")
     tc_arg = next(a for a in captured["cmd"] if a.startswith("-DCMAKE_TOOLCHAIN_FILE="))
     assert SUPPORTED_TOOLCHAINS["armclang"] in tc_arg
+
+
+def test_cmake_configure_propagates_jlink_path_override(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from neuralspotx import project_config
+
+    commander = tmp_path / "SEGGER tools" / "JLink.exe"
+    commander.parent.mkdir()
+    commander.write_bytes(b"")
+    monkeypatch.setenv("JLINK_PATH", str(commander))
+    captured: dict[str, list[str]] = {}
+    monkeypatch.setattr(project_config, "run", lambda cmd: captured.setdefault("cmd", cmd))
+
+    project_config._run_cmake_configure(tmp_path, tmp_path / "build", "apollo510_evb")
+
+    assert f"-DNSX_JLINK_EXE:FILEPATH={commander}" in captured["cmd"]
+
+
+def test_cmake_configure_clears_probe_and_missing_jlink_cache(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from neuralspotx import project_config
+
+    captured: dict[str, list[str]] = {}
+    monkeypatch.delenv("JLINK_PATH", raising=False)
+    monkeypatch.setattr(project_config, "find_segger_tool", lambda _names: None)
+    monkeypatch.setattr(project_config, "run", lambda cmd: captured.setdefault("cmd", cmd))
+
+    project_config._run_cmake_configure(tmp_path, tmp_path / "build", "apollo510_evb")
+
+    assert "-DNSX_JLINK_SERIAL=" in captured["cmd"]
+    assert "-DNSX_JLINK_EXE:FILEPATH=NSX_JLINK_EXE-NOTFOUND" in captured["cmd"]

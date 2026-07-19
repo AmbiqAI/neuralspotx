@@ -192,6 +192,7 @@ safety check, so any new one must be added here and justified in its PR.
 | `NSX_GIT_LOW_SPEED_LIMIT` | `1000` (B/s) | git stalled-transfer threshold; `0` disables. |
 | `NSX_GIT_LOW_SPEED_TIME` | `60` (s) | git stalled-transfer window; `0` disables. |
 | `NSX_GIT_TIMEOUT` | `600` (s) | Wall-clock cap per git invocation; `0` disables. |
+| `JLINK_PATH` | unset | Explicit full path to the SEGGER J-Link Commander executable when it is not discoverable from `PATH` or a standard install location. |
 
 **External / standard variables honored (not nsx-owned):** `XDG_CACHE_HOME`
 and `XDG_CONFIG_HOME` (cache/config roots), `ATFE_ROOT` (Ambiq toolchain probe

@@ -211,6 +211,21 @@ def cmd_configure(args: argparse.Namespace) -> None:
     )
 
 
+@command_hint("reset", _C.DEPLOY, _S.ENVIRONMENT, "nsx flash")
+def cmd_reset(args: argparse.Namespace) -> None:
+    quiet_emit = (lambda _event: None) if getattr(args, "quiet", False) else None
+    api.reset_target(
+        device=args.device,
+        probe_serial=getattr(args, "probe_serial", None),
+        kind=args.kind,
+        interface=args.interface,
+        speed_khz=args.speed_khz,
+        timeout_s=getattr(args, "timeout", None),
+        verify_reconnect=getattr(args, "verify_reconnect", False),
+        emit=quiet_emit,
+    )
+
+
 @command_hint("build", _C.BUILD, _S.APP, "nsx flash", "nsx view", "nsx clean")
 def cmd_build(args: argparse.Namespace) -> None:
     app_dir = _selected_app_dir(args)
@@ -233,15 +248,18 @@ def cmd_flash(args: argparse.Namespace) -> None:
     app_dir = _selected_app_dir(args)
     if getattr(args, "update", False):
         api.update_app(app_dir, timeout_s=getattr(args, "timeout", None))
+    quiet_emit = (lambda _event: None) if getattr(args, "quiet", False) else None
     api.flash_app(
         app_dir,
         board=args.board,
         build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
         toolchain=args.toolchain,
+        target=getattr(args, "target", None),
         probe_serial=getattr(args, "probe_serial", None),
         jobs=args.jobs,
         frozen=getattr(args, "frozen", False),
         timeout_s=getattr(args, "timeout", None),
+        emit=quiet_emit,
     )
 
 
@@ -393,6 +411,7 @@ _HELP_GROUPS: tuple[tuple[str, tuple[tuple[str, str], ...]], ...] = (
             ("configure", "Configure a generated NSX app with CMake"),
             ("build", "Build a generated NSX app"),
             ("flash", "Build and flash a generated NSX app"),
+            ("reset", "Explicitly reset a target with SEGGER J-Link"),
             ("view", "Open the SEGGER SWO viewer for a generated NSX app"),
         ),
     ),
@@ -632,6 +651,7 @@ def _build_parser() -> argparse.ArgumentParser:
     p_flash.add_argument(
         "--toolchain", default=None, help="Toolchain override (gcc, armclang, atfe)"
     )
+    p_flash.add_argument("--target", default=None, help="Optional executable target to flash")
     p_flash.add_argument(
         "--probe-serial",
         default=None,
@@ -655,6 +675,24 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     _add_timeout(p_flash)
     p_flash.set_defaults(func=cmd_flash)
+
+    p_reset = sub.add_parser("reset", help="Explicitly reset a target with SEGGER J-Link")
+    p_reset.add_argument("--device", required=True, help="SEGGER J-Link target device name")
+    p_reset.add_argument(
+        "--probe-serial", default=None, help="Optional SEGGER J-Link USB serial number to use"
+    )
+    p_reset.add_argument(
+        "--kind", choices=("debug", "swpoi"), default="debug", help="Reset primitive"
+    )
+    p_reset.add_argument("--interface", default="SWD", help="Debug interface (default: SWD)")
+    p_reset.add_argument("--speed-khz", type=int, default=4000, help="Debug interface speed in kHz")
+    p_reset.add_argument(
+        "--verify-reconnect",
+        action="store_true",
+        help="Reconnect after reset and fail if the target is unavailable",
+    )
+    _add_timeout(p_reset)
+    p_reset.set_defaults(func=cmd_reset)
 
     p_view = sub.add_parser("view", help="Open the SEGGER SWO viewer for a generated NSX app")
     _add_app_selector(p_view)

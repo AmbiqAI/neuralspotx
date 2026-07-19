@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from collections.abc import Callable
 from pathlib import Path
+from typing import Literal
 
 from .. import operations
 from .._io import Emitter, using_emitter
 from ..constants import DEFAULT_BOARD
-from ..models import DoctorReport
+from ..models import DoctorReport, FlashResult, ResetResult
 from ..subprocess_utils import timeout_budget
 from ._requests import (
     AppActionRequest,
@@ -181,13 +182,14 @@ def flash_app(
     board: str | None = None,
     build_dir: PathLike | None = None,
     toolchain: str | None = None,
+    target: str | None = None,
     probe_serial: str | None = None,
     jobs: int = 8,
     frozen: bool = False,
     timeout_s: float | None = None,
     emit: Emitter | None = None,
     on_line: Callable[[str], None] | None = None,
-) -> None:
+) -> FlashResult:
     """Build and flash an NSX app.
 
     *timeout_s* sets a wall-clock budget for each underlying ``cmake``
@@ -209,6 +211,7 @@ def flash_app(
             board=board,
             build_dir=build_dir,
             toolchain=toolchain,
+            target=target,
             probe_serial=probe_serial,
             jobs=jobs,
             frozen=frozen,
@@ -216,15 +219,46 @@ def flash_app(
         )
     )
     with using_emitter(emit), timeout_budget(request.timeout_s):
-        operations.flash_app_impl(
+        return operations.flash_app_impl(
             Path(request.app_dir).expanduser().resolve(),
             board=request.board,
             build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
             toolchain=request.toolchain,
+            target=request.target,
             probe_serial=request.probe_serial,
             jobs=request.jobs,
             frozen=request.frozen,
             on_line=on_line,
+        )
+
+
+def reset_target(
+    *,
+    device: str,
+    probe_serial: str | None = None,
+    kind: Literal["debug", "swpoi"] = "debug",
+    interface: str = "SWD",
+    speed_khz: int = 4000,
+    timeout_s: float | None = None,
+    verify_reconnect: bool = False,
+    emit: Emitter | None = None,
+) -> ResetResult:
+    """Perform an explicit J-Link reset without changing flash policy.
+
+    ``swpoi`` writes ``0x1B`` to Ambiq RSTGEN at ``0x40000004``. The
+    resulting target disconnect is accepted only when J-Link output contains
+    the expected interrupted-write signature. ``verify_reconnect`` performs
+    a separate bounded connection after either reset kind.
+    """
+
+    with using_emitter(emit), timeout_budget(timeout_s):
+        return operations.reset_target_impl(
+            device=device,
+            probe_serial=probe_serial,
+            kind=kind,
+            interface=interface,
+            speed_khz=speed_khz,
+            verify_reconnect=verify_reconnect,
         )
 
 
