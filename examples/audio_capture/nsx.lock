@@ -110,7 +110,7 @@ targets:
         resolved:
           tool_version: 0.7.8
           vendored_at: cmake/nsx
-          content_hash: sha256:d676f25df0c0a44a90a1887a611fa8a29a3570ed2ec9c2a7e2aef45093205196
+          content_hash: sha256:7ec410eb9c51ebf7fc21557a1e232ace5e757af44681f1e645ef433c4ae11b86
           acquired_at: '2026-07-18T23:09:37+00:00'
       nsx-audio:
         project: nsx-ambiq-sdk
@@ -230,7 +230,7 @@ targets:
         resolved:
           tool_version: 0.7.8
           vendored_at: cmake/nsx
-          content_hash: sha256:d676f25df0c0a44a90a1887a611fa8a29a3570ed2ec9c2a7e2aef45093205196
+          content_hash: sha256:7ec410eb9c51ebf7fc21557a1e232ace5e757af44681f1e645ef433c4ae11b86
           acquired_at: '2026-07-18T23:09:37+00:00'
       nsx-audio:
         project: nsx-ambiq-sdk
@@ -350,7 +350,7 @@ targets:
         resolved:
           tool_version: 0.7.8
           vendored_at: cmake/nsx
-          content_hash: sha256:d676f25df0c0a44a90a1887a611fa8a29a3570ed2ec9c2a7e2aef45093205196
+          content_hash: sha256:7ec410eb9c51ebf7fc21557a1e232ace5e757af44681f1e645ef433c4ae11b86
           acquired_at: '2026-07-18T23:09:37+00:00'
       nsx-audio:
         project: nsx-ambiq-sdk
@@ -441,7 +441,7 @@ targets:
         resolved:
           tool_version: 0.7.8
           vendored_at: boards/apollo510dL_evb
-          content_hash: sha256:c28778fe11e2f70955e752038133a5ae2639ea9acf8bb1e2c5f029dc3bcc0e3f
+          content_hash: sha256:8c29a06f23524c0eac9dbab6b1011b8369295e333528233a2efe65d8757a2374
           acquired_at: '2026-07-18T23:09:37+00:00'
       nsx-core:
         project: nsx-ambiq-sdk
@@ -470,7 +470,7 @@ targets:
         resolved:
           tool_version: 0.7.8
           vendored_at: cmake/nsx
-          content_hash: sha256:d676f25df0c0a44a90a1887a611fa8a29a3570ed2ec9c2a7e2aef45093205196
+          content_hash: sha256:7ec410eb9c51ebf7fc21557a1e232ace5e757af44681f1e645ef433c4ae11b86
           acquired_at: '2026-07-18T23:09:37+00:00'
       nsx-audio:
         project: nsx-ambiq-sdk
