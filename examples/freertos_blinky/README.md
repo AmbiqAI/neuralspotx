@@ -1,9 +1,9 @@
 # freertos_blinky
 
-Reference **nsx** application that runs the optional `nsx-freertos` module on
-the Apollo510 EVB and Apollo4P Blue KXR EVB. It creates a single FreeRTOS task
-that prints a tick counter (and the vendored kernel version) once every 500 ms,
-then starts the scheduler.
+Reference **NSX** application that runs the optional `nsx-freertos` module on
+the boards declared in `nsx.yml`, spanning Cortex-M4F and Cortex-M55 targets.
+It creates a single FreeRTOS task that prints a tick counter (and the vendored
+kernel version) once every 500 ms, then starts the scheduler.
 
 This is the canonical integration example for the FreeRTOS enablement work:
 it demonstrates the `nsx::freertos_config` contract, application-owned hooks,
@@ -11,9 +11,9 @@ and both FreeRTOS port paths exercised by NSX today: Cortex-M55
 (`ARM_CM55_NTZ`) on Apollo510 and Cortex-M4F (`ARM_CM4F`) on Apollo4P.
 
 The manifest is also a **multi-target** proving ground: a single lean
-`nsx.yml` declares a `targets:` block for both boards and layers the
-optional `nsx-freertos` module via `requires:` on top of each board's derived
-`<board>_minimal` profile.
+`nsx.yml` declares a `targets:` block for the supported boards and layers the
+optional `nsx-freertos` module via the top-level `modules:` list on each
+board's derived `<board>_minimal` profile.
 
 ## How FreeRTOS is wired in
 
@@ -51,7 +51,7 @@ nsx build     --app-dir .
 nsx flash     --app-dir .      # requires JLink + Apollo510 EVB
 nsx view      --app-dir .      # opens SWO viewer
 
-# Apollo4P Blue KXR EVB
+# Another supported board
 nsx build     --app-dir . --board apollo4p_blue_kxr_evb
 ```
 

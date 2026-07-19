@@ -9,7 +9,7 @@ issue.
 ## Syntax
 
 ```bash
-nsx doctor
+nsx doctor [--json]
 ```
 
 ## What It Checks
@@ -25,6 +25,8 @@ nsx doctor
 - `JLinkSWOViewerCL`
 - basic SEGGER J-Link runtime startup
 
+Use `--json` to emit the complete report in machine-readable form.
+
 ## Example
 
 ```bash
@@ -37,3 +39,4 @@ nsx doctor
 - it does not require a connected target board
 - if SEGGER runtime startup fails, fix that before debugging `nsx flash` or
   `nsx view`
+- run `nsx commands --json` for the authoritative machine-readable argument schema

@@ -27,12 +27,12 @@ nsx build     --app-dir . --board apollo4p_blue_kxr_evb
 
 ## Expected Output
 
-The SWO viewer will print:
+The SWO viewer will print once per second:
 
 ```
-Hello from nsx! (0)
-Hello from nsx! (1)
-Hello from nsx! (2)
+Hello from nsx!
+Hello from nsx!
+Hello from nsx!
 ...
 ```
 

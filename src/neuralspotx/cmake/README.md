@@ -1,14 +1,15 @@
-# NSX Tooling CMake Boundary
+# NSX CMake Support
 
-This directory is the temporary in-place tooling boundary for split-repo work.
+This directory contains the CMake support files packaged with `neuralspotx`.
+Configured apps copy these files into their app-local `cmake/nsx/` directory,
+so the generated project keeps an explicit, reproducible tooling snapshot.
 
-Current status:
-- Used in-place from `src/neuralspotx/cmake`.
-- Maintained as a nested local git repo during migration.
-- Planned to become the standalone `nsx-tooling` repo boundary.
+Key contents include:
 
-Key contents:
-- `nsx_helpers.cmake`
-- `nsx_sdk_providers.cmake`
-- `segger/` templates and SoC defaults
-- package config templates
+- `nsx_helpers.cmake` for app bootstrap, target finalization, and flash recipes;
+- `nsx_sdk_providers.cmake` for SDK-provider selection;
+- `segger/` J-Link templates and SoC defaults; and
+- CMake package configuration templates.
+
+Keep these files compatible with the app-local vendoring model and include
+them in package-data and wheel smoke tests when the packaged layout changes.

@@ -110,6 +110,30 @@ jobs:
       - name: Build distributions
         run: uv build
 
+      - name: Validate distribution metadata
+        run: uvx twine check dist/*
+
+      - name: Smoke test installed wheel assets
+        run: |
+          wheel=$(find dist -maxdepth 1 -type f -name '*.whl' -print -quit)
+          if [[ -z "$wheel" ]]; then
+            echo "No wheel found under dist/."
+            exit 1
+          fi
+
+          smoke_venv="${RUNNER_TEMP}/nsx-wheel-smoke-venv"
+          smoke_app="${RUNNER_TEMP}/nsx-wheel-smoke-app"
+          smoke_module="${RUNNER_TEMP}/nsx-wheel-smoke-module"
+
+          uv venv --python 3.11 "$smoke_venv"
+          uv pip install --python "$smoke_venv/bin/python" "$wheel"
+
+          "$smoke_venv/bin/nsx" create-app "$smoke_app" --no-bootstrap
+          "$smoke_venv/bin/nsx" module init "$smoke_module" \
+            --name nsx-wheel-smoke \
+            --summary "Installed-wheel package-data smoke test."
+          "$smoke_venv/bin/nsx" module validate "$smoke_module/nsx-module.yaml"
+
       - name: Upload release artifacts
         uses: actions/upload-artifact@v4
         with:

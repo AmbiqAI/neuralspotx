@@ -18,7 +18,20 @@ PathLike = str | Path
 
 @dataclass(slots=True)
 class ModuleInitRequest:
-    """Request parameters for creating a custom-module skeleton."""
+    """Describe a custom-module skeleton to create.
+
+    Attributes:
+        module_dir: Destination directory for the generated module.
+        module_name: Manifest module name. Defaults to the destination directory name.
+        module_type: NSX module type written to ``nsx-module.yaml``.
+        summary: Human-readable module summary. A placeholder is generated when omitted.
+        version: Initial semantic version written to the module metadata.
+        dependencies: Required NSX module names, in declaration order.
+        boards: Compatible board names. Defaults to all boards.
+        socs: Compatible SoC names. Defaults to all SoCs.
+        toolchains: Compatible toolchain names. Defaults to the NSX default toolchain.
+        force: Allow generation into an existing non-empty directory.
+    """
 
     module_dir: PathLike
     module_name: str | None = None

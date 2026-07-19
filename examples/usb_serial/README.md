@@ -1,14 +1,14 @@
 # usb_serial
 
-Demonstrates **nsx-usb** on the Apollo510 family.  Opens a USB CDC serial
-port and echoes any received data back to the host.
+Demonstrates **nsx-usb** on supported Apollo3 and Apollo5 boards. Opens a USB
+CDC serial port and echoes any received data back to the host.
 
-This is also a **multi-target** example that exercises additive
-`requires:`. A single lean `nsx.yml` declares a `targets:` block
-supporting both `apollo510_evb` (default) and `apollo510b_evb`, and layers
+This is also a **multi-target** example that exercises additive modules. A
+single lean `nsx.yml` declares a `targets:` block supporting the Apollo510,
+Apollo510B, Apollo330M Plus, and Apollo510L EVBs, and layers
 the TinyUSB serial stack (`nsx-ambiq-usb`, `nsx-usb`) plus its
 `nsx-timer` / `nsx-interrupt` dependencies on top of each board's derived
-`<board>_minimal` profile via a top-level `requires:` list. Both boards
+`<board>_minimal` profile via a top-level `modules:` list. All boards
 share one combined `nsx.lock`.
 
 ## Build & Flash

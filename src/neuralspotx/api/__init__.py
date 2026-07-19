@@ -110,5 +110,6 @@ __all__ = [
     "sync_app",
     "update_app",
     "update_modules",
+    "validate_module_metadata",
     "view_app",
 ]

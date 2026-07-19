@@ -4,9 +4,7 @@
 # neuralspotx.constants via neuralspotx/board_descriptors.py. Keep in sync
 # with board.cmake (NSX_CPU / NSX_ABI_FLAGS).
 #
-# registered: false -- this variant ships a board package but is intentionally
-# absent from the legacy constants.DEFAULT_SOC_FOR_BOARD / BOARD_SDK_PROVIDER
-# tables (matching pre-descriptor behavior). Flip to true to register it.
+# This Apollo510L variant is registered in the built-in board catalog.
 schema_version: 1
 board:
   name: apollo510dL_evb

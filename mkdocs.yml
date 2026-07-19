@@ -93,7 +93,6 @@ nav:
           - Linux: getting-started/install/linux.md
           - Windows: getting-started/install/windows.md
       - First App: getting-started/first-app.md
-      - Examples: getting-started/examples.md
   - User Guide:
       - App Model: user-guide/app-model.md
       - Create an App: user-guide/create-app.md

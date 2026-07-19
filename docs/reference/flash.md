@@ -7,18 +7,23 @@ Builds and flashes a generated NSX app.
 ```text
 nsx flash [--app-dir APP_DIR] [--board BOARD]
           [--build-dir BUILD_DIR] [--toolchain TOOLCHAIN]
-          [--target TARGET] [--probe-serial SERIAL] [--jobs JOBS]
+          [--target TARGET] [--probe-serial PROBE_SERIAL] [--jobs JOBS]
+          [--update] [--frozen] [--timeout SECONDS] [app]
 ```
 
 ## Main Arguments
 
 - `--app-dir`: app directory containing `nsx.yml`; when omitted, NSX searches upward from the current directory
-- `--board`: override board from `nsx.yml`
+- `app`: optional app name or directory; overrides `--app-dir` and is resolved under the current directory and `examples/`
+- `--board`: select a board from the app's supported targets instead of `targets.default`
 - `--build-dir`: build directory override
 - `--toolchain`: toolchain override (`gcc`, `armclang`, `atfe`). Defaults to `nsx.yml` → `arm-none-eabi-gcc`
 - `--target`: optional executable target to flash; omitted selects the app's primary executable
 - `--probe-serial`: select one J-Link explicitly when multiple probes are attached
 - `--jobs`: parallel build jobs
+- `--update`: re-resolve module constraints to upstream tips and re-vendor before flashing
+- `--frozen`: when configure is needed, reject manifest, lock, or vendored-module drift; explicit probe selection still forces configure
+- `--timeout`: wall-clock budget per subprocess; a timeout terminates the process group
 
 ## Example
 
@@ -38,3 +43,4 @@ nsx flash --target hpx_profiler_power
 - uses the board-defined flash settings
 - requires the selected target's `.bin` and generated `jlink/<target>/flash_cmds.jlink` recipe
 - rejects a successful process exit unless J-Link reports an actual flash-download operation
+- run `nsx commands --json` for the authoritative machine-readable argument schema

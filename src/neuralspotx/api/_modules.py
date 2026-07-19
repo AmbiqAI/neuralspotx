@@ -169,7 +169,29 @@ def init_module(
     toolchains: list[str] | None = None,
     force: bool = False,
 ) -> ModuleChange:
-    """Create a standard custom-module skeleton on disk."""
+    """Create a standard custom-module skeleton on disk.
+
+    Args:
+        module_dir: Destination directory or a fully populated request object. When a request
+            object is supplied, the remaining keyword arguments are ignored.
+        module_name: Manifest module name. Defaults to the destination directory name.
+        module_type: NSX module type written to ``nsx-module.yaml``.
+        summary: Human-readable module summary. A placeholder is generated when omitted.
+        version: Initial semantic version written to the module metadata.
+        dependencies: Required NSX module names, in declaration order.
+        boards: Compatible board names. Defaults to all boards.
+        socs: Compatible SoC names. Defaults to all SoCs.
+        toolchains: Compatible toolchain names. Defaults to the NSX default toolchain.
+        force: Allow generation into an existing non-empty directory.
+
+    Returns:
+        A change record describing the newly generated module.
+
+    Raises:
+        NSXModuleError: The module name is empty or the destination cannot be safely used.
+        NSXConfigError: Packaged templates are unavailable.
+        ValueError: Generated metadata is invalid.
+    """
 
     request = (
         module_dir
