@@ -218,7 +218,19 @@ def _create_app_body(
 
 
 def init_module_impl(request: ModuleInitRequest) -> ModuleChange:
-    """Create a standard custom-module skeleton from a request DTO."""
+    """Render and validate a custom-module skeleton from a request DTO.
+
+    Args:
+        request: Module name, compatibility, dependencies, and destination settings.
+
+    Returns:
+        A change record describing the newly generated module.
+
+    Raises:
+        NSXModuleError: The module name is empty or the destination cannot be safely used.
+        NSXConfigError: The packaged template directory is missing.
+        ValueError: Rendered metadata is invalid.
+    """
 
     module_dir = Path(request.module_dir).expanduser().resolve()
     module_name = (request.module_name or module_dir.name).strip()

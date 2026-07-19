@@ -4,17 +4,30 @@
 
 Current top-level commands:
 
-- `commands`
-- `create-app`
-- `new`
-- `doctor`
-- `configure`
+- `add`
+- `board`
 - `build`
-- `flash`
-- `reset`
-- `view`
+- `cache`
 - `clean`
+- `commands`
+- `configure`
+- `create-app`
+- `doctor`
+- `flash`
+- `list-modules`
+- `lock`
 - `module`
+- `new`
+- `outdated`
+- `probes`
+- `reset`
+- `sbom`
+- `sync`
+- `update`
+- `view`
+
+`add`, `list-modules`, and `new` are convenience aliases. Run
+`nsx commands` for the categorized command graph and workflow hints.
 
 ## Typical Lifecycle
 
@@ -46,3 +59,7 @@ table output or general help text:
 
 Use the task-oriented pages in **User Guide** when you want workflow help.
 Use this section when you want exact command syntax.
+
+The JSON command graph is the authoritative machine-readable syntax source.
+Reference pages summarize common options, so automation should consume
+`nsx commands --json` instead of copying usage text from documentation.

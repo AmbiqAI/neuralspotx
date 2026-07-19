@@ -23,9 +23,10 @@ gitGraph
     commit id: "uv.lock refresh" type: HIGHLIGHT
 ```
 
-The tag triggers the rest of `release.yml` automatically: it builds the Python
-distributions, attaches them to the GitHub release, and publishes to PyPI. A
-follow-up PR is opened only if `uv.lock` needs a version refresh (see
+The tag triggers the rest of `release.yml` automatically: it builds and checks
+the Python distributions, smoke-tests the installed wheel, attaches the
+artifacts to the GitHub release, and publishes to PyPI. A follow-up PR is opened
+only if `uv.lock` needs a version refresh (see
 [uv.lock Refresh](#uvlock-refresh)).
 
 ## Version Source of Truth
@@ -72,6 +73,17 @@ The publish job uses GitHub OIDC trusted publishing against the repository's
 configured PyPI project. It runs when Release Please creates a root release in
 that workflow, or when a manual rebuild targets an existing release tag.
 
+Before either GitHub or PyPI receives an artifact, the release job:
+
+1. runs `twine check` against both the wheel and source distribution
+2. installs the wheel into an isolated environment
+3. creates an app without network bootstrap
+4. creates and validates a module scaffold
+
+These checks exercise packaged templates from the installed distribution. A
+command working from a source checkout is not sufficient evidence that its
+templates or other data files were included in the wheel.
+
 ## uv.lock Refresh
 
 After a successful new release from `main`, the same workflow updates the
@@ -89,3 +101,5 @@ lockfile is already in sync.
 - If a tagged release needs to be retried, use the manual rebuild path for the
   existing tag.
 - Keep release notes and changelog generation owned by Release Please.
+- Treat distribution smoke-test failures as packaging regressions; do not
+  bypass the check or publish the affected artifact manually.

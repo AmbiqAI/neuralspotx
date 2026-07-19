@@ -110,7 +110,7 @@ targets:
         resolved:
           tool_version: 0.7.8
           vendored_at: cmake/nsx
-          content_hash: sha256:d676f25df0c0a44a90a1887a611fa8a29a3570ed2ec9c2a7e2aef45093205196
+          content_hash: sha256:7ec410eb9c51ebf7fc21557a1e232ace5e757af44681f1e645ef433c4ae11b86
           acquired_at: '2026-07-18T23:09:41+00:00'
       nsx-interrupt:
         project: nsx-ambiq-sdk
@@ -272,7 +272,7 @@ targets:
         resolved:
           tool_version: 0.7.8
           vendored_at: cmake/nsx
-          content_hash: sha256:d676f25df0c0a44a90a1887a611fa8a29a3570ed2ec9c2a7e2aef45093205196
+          content_hash: sha256:7ec410eb9c51ebf7fc21557a1e232ace5e757af44681f1e645ef433c4ae11b86
           acquired_at: '2026-07-18T23:09:43+00:00'
       nsx-interrupt:
         project: nsx-ambiq-sdk
@@ -434,7 +434,7 @@ targets:
         resolved:
           tool_version: 0.7.8
           vendored_at: cmake/nsx
-          content_hash: sha256:d676f25df0c0a44a90a1887a611fa8a29a3570ed2ec9c2a7e2aef45093205196
+          content_hash: sha256:7ec410eb9c51ebf7fc21557a1e232ace5e757af44681f1e645ef433c4ae11b86
           acquired_at: '2026-07-18T23:09:43+00:00'
       nsx-interrupt:
         project: nsx-ambiq-sdk

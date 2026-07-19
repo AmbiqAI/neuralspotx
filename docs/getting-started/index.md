@@ -42,10 +42,10 @@ No board on hand? You can still install the toolchain and `configure` +
 
     ---
 
-    Eight maintained example apps — hello world, CoreMark, PMU profiling,
-    power benchmarking, audio capture, USB serial, and more.
+    Ten maintained example apps — hello world, FreeRTOS, CoreMark, BLE,
+    audio, USB, ML inference, profiling, and power measurement.
 
-    [:octicons-arrow-right-24: Browse examples](examples.md)
+    [:octicons-arrow-right-24: Browse examples](../examples/)
 
 </div>
 

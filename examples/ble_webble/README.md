@@ -3,9 +3,9 @@
 Minimal BLE peripheral example for NSX BLE targets.
 
 > **Status:** Experimental. The BLE modules and this example have been
-> hardware-smoke-tested on AP3, AP4, and AP510B, but the modules are still
-> being integrated into the normal NSX registry flow and the example currently
-> uses local module paths.
+> hardware-smoke-tested on AP3, AP4, and AP510B. `nsx-freertos`, `nsx-cordio`,
+> and `nsx-ble` are resolved through the packaged NSX registry; the experimental
+> label reflects the example's maturity, not a local-module requirement.
 
 The app demonstrates the optional `nsx-cordio` + `nsx-ble` modules with all
 application policy kept in the app: board power/cache bring-up, FreeRTOS task
@@ -41,10 +41,6 @@ design should stay in the application.
   - `apollo510b_evb`
 - Toolchains build-validated:
   - `gcc`
-
-Before promoting this from experimental to a normal registry-backed example,
-replace the local `nsx-ble`/`nsx-cordio` module paths with registry/git module
-constraints.
 
 ## Build
 

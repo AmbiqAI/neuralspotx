@@ -22,21 +22,27 @@ The intended working layout after `nsx create-app` is:
 
 1. `nsx.yml`: app metadata and module state
 2. `modules/`: vendored module content resolved from the packaged registry
-3. `boards/`: vendored board definitions for the selected target
+3. `boards/`: vendored board definitions required by the app's target set
 4. `cmake/nsx/`: copied NSX build helpers
 5. `src/`: app-owned source code
 
 ## 3. App Model
 
-NSX apps are lightweight, bare-metal, single-target applications.
+NSX apps are lightweight bare-metal applications with an explicit supported
+target set and one active target per operation.
 
 From the product perspective, the app is the primary user-facing unit.
 
-Each app targets:
+Each declared target resolves:
 
 1. one board
-2. one SoC
-3. one toolchain
+2. its SoC and starter profile
+3. its effective toolchain
+
+`targets.default` supplies the active board unless a lifecycle command selects
+another member of `targets.supported` with `--board`. Legacy singular
+`target:` manifests remain a compatibility input, not the preferred shape for
+new multi-target manifests.
 
 ## 4. App Creation Flow
 
@@ -47,7 +53,7 @@ The lifecycle is:
 1. `nsx create-app`: create app skeleton, metadata, top-level CMake, and copy
    packaged `cmake/nsx` support
 2. dependency resolution: determine the required board/module closure for the
-   selected target
+   initial selected target (and each declared target when the set is expanded)
 3. source materialization: obtain module sources from curated registry-backed locations
 4. vendoring: copy required module and board sources into the app
 5. `nsx configure/build/flash/view`: run the CMake-driven app lifecycle
@@ -101,7 +107,8 @@ Why:
 
 ## 8. Compatibility Enforcement
 
-Module compatibility is validated before a module is added to an app.
+Module compatibility is validated against the targets to which a dependency
+applies before it is added to an app.
 
 Each module declares compatibility for:
 
@@ -109,8 +116,9 @@ Each module declares compatibility for:
 2. socs
 3. toolchains
 
-`nsx module add` should fail fast when the module is incompatible with the
-app target.
+`nsx module add` fails fast when the module is incompatible with an applicable
+supported target. A board-scoped dependency must name a subset of
+`targets.supported`.
 
 ## 9. AmbiqSuite Provider Policy
 

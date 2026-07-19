@@ -49,6 +49,11 @@ def test_public_registry_helpers_return_packaged_data() -> None:
     assert neuralspotx.registry_module_project("nsx-soc-hal") == "nsx-ambiq-sdk"
 
 
+def test_api_facade_exports_module_metadata_validation() -> None:
+    assert "validate_module_metadata" in api.__all__
+    assert api.validate_module_metadata is neuralspotx.validate_module_metadata
+
+
 def test_app_update_request_roundtrip() -> None:
     req = neuralspotx.AppUpdateRequest(app_dir="/tmp/app", modules=["nsx-utils"], timeout_s=30.0)
     assert req.app_dir == "/tmp/app"

@@ -123,7 +123,7 @@ Press ++ctrl+c++ to stop the viewer.
 !!! success "That's the full lifecycle"
     You've scaffolded, configured, built, flashed, and observed a firmware
     image on real hardware. Every NSX app — including the
-    [examples](examples.md) — follows these same five commands.
+    [examples](../examples/) — follows these same five commands.
 
 ## What's in the Generated App
 
@@ -146,8 +146,8 @@ automatically — your source tree stays clean.
 
 ## Next Steps
 
-- **[Examples](examples.md)** — eight maintained example apps covering
-  CoreMark, PMU profiling, power measurement, audio, and USB
+- **[Examples](../examples/)** — ten maintained apps covering FreeRTOS, BLE,
+  CoreMark, ML inference, profiling, power measurement, audio, and USB
 - **[App Layout](../user-guide/app-layout.md)** — deep dive into the
   generated directory structure
 - **[Modules](../user-guide/modules.md)** — add or remove dependencies

@@ -38,6 +38,45 @@ jobs:
         run: uv run --group lint ruff check .
 
   # ---------------------------------------------------------------
+  # Distribution smoke test — exercise the installed wheel rather
+  # than the editable source checkout used by the unit-test jobs.
+  # ---------------------------------------------------------------
+  distribution-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install runtime dependencies
+        run: uv sync --no-install-project
+
+      - name: Build wheel
+        run: uv build --wheel
+
+      - name: Install and exercise wheel
+        run: |
+          install_root="$RUNNER_TEMP/nsx-wheel-install"
+          module_dir="$RUNNER_TEMP/nsx-wheel-module"
+          uv pip install --python .venv/bin/python --target "$install_root" --no-deps dist/*.whl
+          (
+            cd "$RUNNER_TEMP"
+            PYTHONPATH="$install_root" "$GITHUB_WORKSPACE/.venv/bin/python" \
+              "$GITHUB_WORKSPACE/tests/smoke_installed_distribution.py" \
+              --install-root "$install_root" \
+              --module-dir "$module_dir"
+          )
+
+  # ---------------------------------------------------------------
   # Unit tests — run on all three platforms
   # ---------------------------------------------------------------
   unit-tests:
@@ -363,13 +402,15 @@ jobs:
   # ---------------------------------------------------------------
   lint-and-test:
     if: always()
-    needs: [lint, unit-tests, example-builds, lock-integrity, cmake-vendor-diff]
+    needs:
+      [lint, distribution-smoke, unit-tests, example-builds, lock-integrity, cmake-vendor-diff]
     runs-on: ubuntu-latest
     steps:
       - name: Decide status
         run: |
           # Fail if any dependency was not successful.
           if [[ "${{ needs.lint.result }}" != "success" ]] ||
+             [[ "${{ needs.distribution-smoke.result }}" != "success" ]] ||
              [[ "${{ needs.unit-tests.result }}" != "success" ]] ||
              [[ "${{ needs.example-builds.result }}" != "success" ]] ||
              [[ "${{ needs.lock-integrity.result }}" != "success" ]] ||

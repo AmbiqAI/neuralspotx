@@ -1,8 +1,9 @@
 # neuralspotx Examples
 
-Self-contained example applications that showcase different nsx-module
-combinations.  Each directory is a complete **nsx app** – it has an
-`nsx.yml`, a `CMakeLists.txt`, and a `src/main.c`.
+Self-contained applications that showcase NSX workflows and module
+combinations. Each directory is a complete **NSX app** with its own `nsx.yml`,
+`nsx.lock`, `CMakeLists.txt`, sources, and usage notes. This file is the
+canonical repository catalog for contributors and source-checkout users.
 
 ## Quick start
 
@@ -16,21 +17,34 @@ nsx view      --app-dir .        # (optional) SWO viewer
 
 ## Examples
 
-| Directory        | Extra modules      | What it shows                           |
-|------------------|--------------------|-----------------------------------------|
-| `hello_world`    | *(base only)*      | Minimal app – SWO printf loop           |
-| `power_benchmark`| `nsx-power`        | Power measurement: CoreMark, while(1), deep sleep |
-| `coremark`       | `nsx-power`        | EEMBC CoreMark with ITCM + NVM shutdown |
-| `kws_infer`      | `cmsis-nn`         | Keyword-spotting TFLite Micro inference  |
-| `pmu_profiling`  | `nsx-pmu-armv8m`   | PMU cycle / event counting              |
-| `audio_capture`  | `nsx-audio`        | PDM microphone capture + SWO stats      |
-| `ble_webble`     | `nsx-ble`, `nsx-cordio` | Bluetooth LE peripheral with app-owned stack policy |
-| `usb_serial`     | `nsx-usb`          | USB CDC echo                            |
-| `usb_rpc`        | `nsx-usb`, `nsx-nanopb` | USB RPC with protobuf serialization |
+| Directory | Modules declared by the app | What it shows |
+|---|---|---|
+| `hello_world` | *(board profile only)* | Minimal SWO printf loop and multi-target build |
+| `freertos_blinky` | `nsx-freertos` | Application-owned FreeRTOS configuration on Cortex-M4F/M55 |
+| `coremark` | `nsx-interrupt`, `nsx-timer` | EEMBC CoreMark with ITCM execution and NVM shutdown |
+| `power_benchmark` | `nsx-power`, `nsx-gpio`, `nsx-timer`, `nsx-interrupt` | Three-phase power measurement firmware |
+| `pmu_profiling` | `nsx-pmu-armv8m` | PMU cycle and event counting |
+| `kws_infer` | `nsx-power`, `nsx-pmu-armv8m`, `nsx-helia-rt` | Keyword-spotting TFLite Micro inference |
+| `audio_capture` | `nsx-audio` | PDM microphone capture and SWO statistics |
+| `ble_webble` | `nsx-freertos`, `nsx-cordio`, `nsx-ble` | Bluetooth LE peripheral with app-owned stack policy |
+| `usb_serial` | `nsx-ambiq-usb`, `nsx-usb`, `nsx-timer`, `nsx-interrupt` | USB CDC echo |
+| `usb_rpc` | `nsx-usb`, `nsx-nanopb` | USB RPC with protobuf serialization |
 
-Most examples target the **Apollo510 EVB** (`apollo510_evb`) by default.
-Board-specific examples, such as `ble_webble`, declare their own supported
-target list in `nsx.yml`.
+Most examples default to the **Apollo510 EVB** (`apollo510_evb`). Each
+manifest's `targets.default` and `targets.supported` fields are the source of
+truth for its current board coverage; `ble_webble` defaults to
+`apollo4p_blue_kxr_evb`.
+
+To try one example without cloning the repository, download the repository
+archive and extract the desired directory:
+
+```bash
+curl -fL https://github.com/AmbiqAI/neuralspotx/archive/refs/heads/main.tar.gz \
+  | tar -xz -f - --strip-components=2 neuralspotx-main/examples/hello_world
+cd hello_world
+nsx configure
+nsx build
+```
 
 ## Running the E2E test suite
 
