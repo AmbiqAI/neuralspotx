@@ -822,11 +822,17 @@ def test_build_app_uses_shared_impl_and_triggers_configure_when_needed(
 
     app_dir = tmp_path / "hello_build"
     build_dir = app_dir / "build" / "apollo510_evb"
-    configure_calls: list[tuple[Path, Path, str, str | None]] = []
+    configure_calls: list[tuple[Path, Path, str, str | None, Path | None]] = []
     build_calls: list[list[str]] = []
 
-    def fake_configure(app: Path, build: Path, board: str, toolchain: str | None = None) -> None:
-        configure_calls.append((app, build, board, toolchain))
+    def fake_configure(
+        app: Path,
+        build: Path,
+        board: str,
+        toolchain: str | None = None,
+        sdk_root: Path | None = None,
+    ) -> None:
+        configure_calls.append((app, build, board, toolchain, sdk_root))
         build.mkdir(parents=True, exist_ok=True)
         (build / "build.ninja").write_text("# fake\n", encoding="utf-8")
 
@@ -839,7 +845,7 @@ def test_build_app_uses_shared_impl_and_triggers_configure_when_needed(
 
     build_app(AppBuildRequest(app_dir=app_dir, jobs=3))
 
-    assert configure_calls == [(app_dir, build_dir, "apollo510_evb", None)]
+    assert configure_calls == [(app_dir, build_dir, "apollo510_evb", None, None)]
     assert build_calls == [
         ["cmake", "--build", str(build_dir), "--target", "hello_build", "-j", "3"]
     ]
@@ -857,7 +863,7 @@ def test_flash_and_view_reconfigure_when_probe_serial_is_supplied(
     build_dir.mkdir(parents=True, exist_ok=True)
     (build_dir / "build.ninja").write_text("# fake\n", encoding="utf-8")
 
-    configure_calls: list[tuple[Path, Path, str, str | None, str | None]] = []
+    configure_calls: list[tuple[Path, Path, str, str | None, str | None, Path | None]] = []
     run_calls: list[list[str]] = []
 
     def fake_configure(
@@ -866,8 +872,9 @@ def test_flash_and_view_reconfigure_when_probe_serial_is_supplied(
         board: str,
         toolchain: str | None = None,
         probe_serial: str | None = None,
+        sdk_root: Path | None = None,
     ) -> None:
-        configure_calls.append((app, build, board, toolchain, probe_serial))
+        configure_calls.append((app, build, board, toolchain, probe_serial, sdk_root))
 
     def fake_run_capture(cmd: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
         del cwd
@@ -893,8 +900,8 @@ def test_flash_and_view_reconfigure_when_probe_serial_is_supplied(
     view_app(AppViewRequest(app_dir=app_dir, probe_serial="1160002204", reset_on_open=False))
 
     assert configure_calls == [
-        (app_dir, build_dir, "apollo510_evb", None, "1160002204"),
-        (app_dir, build_dir, "apollo510_evb", None, "1160002204"),
+        (app_dir, build_dir, "apollo510_evb", None, "1160002204", None),
+        (app_dir, build_dir, "apollo510_evb", None, "1160002204", None),
     ]
     assert run_calls == [
         ["cmake", "--build", str(build_dir), "--target", "hello_probe_flash", "-j", "8"],

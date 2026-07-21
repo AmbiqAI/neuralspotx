@@ -274,3 +274,20 @@ def test_configure_falls_back_to_top_level_toolchain_for_unknown_board(
     project_config._run_cmake_configure(tmp_path, tmp_path / "build", "apollo330mP_evb")
     tc_arg = next(a for a in captured["cmd"] if a.startswith("-DCMAKE_TOOLCHAIN_FILE="))
     assert SUPPORTED_TOOLCHAINS["armclang"] in tc_arg
+
+
+def test_configure_passes_sdk_root_override(tmp_path, monkeypatch: pytest.MonkeyPatch) -> None:
+    from neuralspotx import project_config
+
+    captured: dict[str, list[str]] = {}
+    monkeypatch.setattr(project_config, "run", lambda cmd: captured.setdefault("cmd", cmd))
+
+    sdk_root = tmp_path / "sdk"
+    project_config._run_cmake_configure(
+        tmp_path,
+        tmp_path / "build",
+        "apollo510_evb",
+        sdk_root=sdk_root,
+    )
+
+    assert f"-DNSX_AMBIQSUITE_ROOT_OVERRIDE={sdk_root}" in captured["cmd"]

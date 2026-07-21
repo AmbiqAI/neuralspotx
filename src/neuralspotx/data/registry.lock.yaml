@@ -201,6 +201,10 @@ modules:
     project: neuralspotx
     revision: main
     metadata: src/neuralspotx/boards/apollo4p_evb_disp_shield_rev2/nsx-module.yaml
+  nsx-board-atomiq110-fpga-turbo:
+    project: neuralspotx
+    revision: main
+    metadata: src/neuralspotx/boards/atomiq110_fpga_turbo/nsx-module.yaml
   nsx-core:
     project: nsx-ambiq-sdk
     revision: main
@@ -420,6 +424,7 @@ soc_families:
   apollo510b: *fam_apollo5
   apollo510L: *fam_apollo5
   apollo330P: *fam_apollo5
+  atomiq110: *fam_apollo5
 
 # Per-board profile registration. Order here defines starter-profile order.
 # 'channel' defaults to profile_defaults.channel when omitted.
@@ -440,3 +445,4 @@ board_profiles:
   apollo4p_blue_kbr_evb: {channel: preview}
   apollo4p_blue_kxr_evb: {channel: preview}
   apollo4p_evb_disp_shield_rev2: {channel: preview}
+  atomiq110_fpga_turbo: {channel: preview}

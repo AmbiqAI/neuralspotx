@@ -881,6 +881,7 @@ def _run_cmake_configure(
     board: str,
     toolchain: str | None = None,
     probe_serial: str | None = None,
+    sdk_root: Path | None = None,
 ) -> None:
     from .constants import DEFAULT_TOOLCHAIN, EXPERIMENTAL_TOOLCHAINS, SUPPORTED_TOOLCHAINS
 
@@ -925,6 +926,8 @@ def _run_cmake_configure(
         "-DCMAKE_BUILD_TYPE=Release",
         f"-DNSX_BOARD={board}",
     ]
+    if sdk_root is not None:
+        cmd.append(f"-DNSX_AMBIQSUITE_ROOT_OVERRIDE={sdk_root}")
     if probe_serial is not None:
         cmd.append(f"-DNSX_JLINK_SERIAL={probe_serial}")
     run(cmd)

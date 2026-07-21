@@ -98,11 +98,10 @@ def test_board_cpu_matches_sdk_soc_facts() -> None:
     )
 
 
-# SoCs that legitimately ship SDK facts without a matching NSX board. These are
-# in-development parts (no production EVB yet). ``atomiq110`` / AT110 is bring-up
-# on an FPGA only. Extend this set (with justification) when the SDK adds a new
-# SoC ahead of its board, or remove an entry once a board lands for it.
-ALLOWED_SOCS_WITHOUT_BOARD = frozenset({"atomiq110"})
+# SoCs that legitimately ship SDK facts without a matching NSX board. Extend
+# this set (with justification) when the SDK adds a new SoC ahead of its board,
+# or remove an entry once a board lands for it.
+ALLOWED_SOCS_WITHOUT_BOARD = frozenset()
 
 
 def test_soc_inventory_symmetry() -> None:

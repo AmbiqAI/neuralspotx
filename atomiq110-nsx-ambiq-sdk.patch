@@ -1,0 +1,78 @@
+diff --git a/modules/nsx-core/src/apollo510/nsx_system_platform.c b/modules/nsx-core/src/apollo510/nsx_system_platform.c
+index 1111111..2222222 100644
+--- a/modules/nsx-core/src/apollo510/nsx_system_platform.c
++++ b/modules/nsx-core/src/apollo510/nsx_system_platform.c
+@@
+ #define NSX_DCU_SWO_MASK (                                            \
+     AM_HAL_DCU_CPUTRC_DWT_SWO | AM_HAL_DCU_CPUDBG_NON_INVASIVE |       \
+     AM_HAL_DCU_CPUDBG_S_NON_INVASIVE | AM_HAL_DCU_CPUTRC_PERFCNT |     \
+     AM_HAL_DCU_SWD | AM_HAL_DCU_TRACE)
++
++#if defined(AM_PART_ATOMIQ110)
++#define NSX_DEVPWRSTATUS_REG DEVPWRSTATUS0_b
++#else
++#define NSX_DEVPWRSTATUS_REG DEVPWRSTATUS_b
++#endif
+ 
+ static uint32_t nsx_platform_dcu_unlock_swo(void) {
+@@
+-    if (PWRCTRL->DEVPWRSTATUS_b.PWRSTOTP == 0) {
++    if (PWRCTRL->NSX_DEVPWRSTATUS_REG.PWRSTOTP == 0) {
+         bOffOtpOnExit = true;
+         am_hal_pwrctrl_periph_enable(AM_HAL_PWRCTRL_PERIPH_OTP);
+     }
+ 
+-    if (PWRCTRL->DEVPWRSTATUS_b.PWRSTCRYPTO == 0) {
++    if (PWRCTRL->NSX_DEVPWRSTATUS_REG.PWRSTCRYPTO == 0) {
+         bOffCryptoOnExit = true;
+         am_hal_pwrctrl_periph_enable(AM_HAL_PWRCTRL_PERIPH_CRYPTO);
+     }
+ 
+-    if ((PWRCTRL->DEVPWRSTATUS_b.PWRSTCRYPTO == 1) &&
++    if ((PWRCTRL->NSX_DEVPWRSTATUS_REG.PWRSTCRYPTO == 1) &&
+         (CRYPTO->HOSTCCISIDLE_b.HOSTCCISIDLE == 1)) {
+         am_hal_dcu_get(&ui32dcuVal);
+         if (((ui32dcuVal & NSX_DCU_SWO_MASK) != NSX_DCU_SWO_MASK) &&
+@@
+-#if defined(AM_PART_APOLLO510L) || defined(AM_PART_APOLLO330P)
++#if defined(AM_PART_APOLLO510L) || defined(AM_PART_APOLLO330P) || defined(AM_PART_ATOMIQ110)
+         /* Steps 2-3: BSP helper handles TPIU/ITM/SWO pin/printf.
+          * Trace clock on these parts = XTAL_HS 48 MHz.
+          * JLink SWO viewer: -cpufreq 48000000 -swofreq 1000000 */
+     return am_bsp_itm_printf_enable();
+diff --git a/modules/nsx-core/src/sbrk.c b/modules/nsx-core/src/sbrk.c
+index 3333333..4444444 100644
+--- a/modules/nsx-core/src/sbrk.c
++++ b/modules/nsx-core/src/sbrk.c
+@@
+-extern uint32_t __HeapBase;
++extern uint32_t __HeapBase __attribute__((weak));
++extern uint32_t __heap_start__ __attribute__((weak));
+ extern uint32_t __HeapLimit;
++
++static char *nsx_heap_base(void) {
++    if (&__HeapBase != (uint32_t *)0) {
++        return (char *)&__HeapBase;
++    }
++    return (char *)&__heap_start__;
++}
+ 
+ void *_sbrk(ptrdiff_t incr) {
+     static char *heap_end = (char *)0;
++    char *const base = nsx_heap_base();
+ 
+     if (heap_end == (char *)0) {
+-        heap_end = (char *)&__HeapBase;
++        heap_end = base;
+     }
+ 
+     char *const limit = (char *)&__HeapLimit;
+     char *const prev  = heap_end;
+ 
+     /* Reject negative shrink that would underflow below the base, and any
+      * request that would push the new break past __HeapLimit. */
+-    if (incr < 0 && (prev + incr) < (char *)&__HeapBase) {
++    if (incr < 0 && (prev + incr) < base) {
+         errno = ENOMEM;
+         return (void *)-1;
+     }

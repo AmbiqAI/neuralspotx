@@ -1,0 +1,36 @@
+schema_version: 1
+
+module:
+  name: nsx-board-atomiq110-fpga-turbo
+  type: board
+  version: "0.1.0"
+
+support:
+  ambiqsuite: true
+  zephyr: false
+
+build:
+  cmake:
+    package: nsx_board_atomiq110_fpga_turbo
+    targets:
+      - nsx::board_atomiq110_fpga_turbo
+
+depends:
+  required:
+    - nsx-ambiq-hal
+    - nsx-ambiq-bsp
+    - nsx-soc-hal
+    - nsx-cmsis-startup
+    - nsx-ambiqsuite
+  optional: []
+
+constraints:
+  required_sdk_provider: nsx-ambiqsuite
+
+compatibility:
+  boards:
+    - atomiq110_fpga_turbo
+  socs:
+    - atomiq110
+  toolchains:
+    - arm-none-eabi-gcc

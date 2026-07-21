@@ -60,6 +60,8 @@ class AppActionRequest:
         board: Optional board override.
         build_dir: Optional build directory override.
         toolchain: Optional toolchain override (``gcc``, ``armclang``).
+        sdk_root: Optional out-of-tree AmbiqSuite root passed through as
+            ``-DNSX_AMBIQSUITE_ROOT_OVERRIDE=...`` during CMake configure.
         frozen: When a module sync is needed (fresh workspace, or an
             existing build directory reconfiguring), verify ``modules/``
             against ``nsx.lock`` and raise instead of silently
@@ -86,6 +88,7 @@ class AppActionRequest:
     build_dir: PathLike | None = None
     toolchain: str | None = None
     probe_serial: str | None = None
+    sdk_root: PathLike | None = field(default=None, kw_only=True)
     frozen: bool = field(default=False, kw_only=True)
     timeout_s: float | None = field(default=None, kw_only=True)
 

@@ -206,6 +206,7 @@ def cmd_configure(args: argparse.Namespace) -> None:
         build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
         toolchain=args.toolchain,
         probe_serial=getattr(args, "probe_serial", None),
+        sdk_root=Path(args.sdk_root).expanduser().resolve() if getattr(args, "sdk_root", None) else None,
         frozen=getattr(args, "frozen", False),
         timeout_s=getattr(args, "timeout", None),
     )
@@ -223,6 +224,7 @@ def cmd_build(args: argparse.Namespace) -> None:
         toolchain=args.toolchain,
         target=args.target,
         jobs=args.jobs,
+        sdk_root=Path(args.sdk_root).expanduser().resolve() if getattr(args, "sdk_root", None) else None,
         frozen=getattr(args, "frozen", False),
         timeout_s=getattr(args, "timeout", None),
     )
@@ -240,6 +242,7 @@ def cmd_flash(args: argparse.Namespace) -> None:
         toolchain=args.toolchain,
         probe_serial=getattr(args, "probe_serial", None),
         jobs=args.jobs,
+        sdk_root=Path(args.sdk_root).expanduser().resolve() if getattr(args, "sdk_root", None) else None,
         frozen=getattr(args, "frozen", False),
         timeout_s=getattr(args, "timeout", None),
     )
@@ -253,6 +256,7 @@ def cmd_view(args: argparse.Namespace) -> None:
         build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
         toolchain=args.toolchain,
         probe_serial=getattr(args, "probe_serial", None),
+        sdk_root=Path(args.sdk_root).expanduser().resolve() if getattr(args, "sdk_root", None) else None,
         frozen=getattr(args, "frozen", False),
         reset_on_open=getattr(args, "reset_on_open", None),
         reset_delay_ms=args.reset_delay_ms,
@@ -586,6 +590,11 @@ def _build_parser() -> argparse.ArgumentParser:
         "--toolchain", default=None, help="Toolchain override (gcc, armclang, atfe)"
     )
     p_configure.add_argument(
+        "--sdk-root",
+        default=None,
+        help="Optional out-of-tree AmbiqSuite root passed as NSX_AMBIQSUITE_ROOT_OVERRIDE",
+    )
+    p_configure.add_argument(
         "--probe-serial",
         default=None,
         help="Optional SEGGER J-Link USB serial number to use for generated flash/view targets",
@@ -605,6 +614,11 @@ def _build_parser() -> argparse.ArgumentParser:
     p_build.add_argument("--build-dir", default=None, help="Build directory override")
     p_build.add_argument(
         "--toolchain", default=None, help="Toolchain override (gcc, armclang, atfe)"
+    )
+    p_build.add_argument(
+        "--sdk-root",
+        default=None,
+        help="Optional out-of-tree AmbiqSuite root passed as NSX_AMBIQSUITE_ROOT_OVERRIDE",
     )
     p_build.add_argument("--target", default=None, help="Optional explicit build target")
     p_build.add_argument("--jobs", type=int, default=8, help="Parallel build jobs")
@@ -631,6 +645,11 @@ def _build_parser() -> argparse.ArgumentParser:
     p_flash.add_argument("--build-dir", default=None, help="Build directory override")
     p_flash.add_argument(
         "--toolchain", default=None, help="Toolchain override (gcc, armclang, atfe)"
+    )
+    p_flash.add_argument(
+        "--sdk-root",
+        default=None,
+        help="Optional out-of-tree AmbiqSuite root passed as NSX_AMBIQSUITE_ROOT_OVERRIDE",
     )
     p_flash.add_argument(
         "--probe-serial",
@@ -663,6 +682,11 @@ def _build_parser() -> argparse.ArgumentParser:
     p_view.add_argument("--build-dir", default=None, help="Build directory override")
     p_view.add_argument(
         "--toolchain", default=None, help="Toolchain override (gcc, armclang, atfe)"
+    )
+    p_view.add_argument(
+        "--sdk-root",
+        default=None,
+        help="Optional out-of-tree AmbiqSuite root passed as NSX_AMBIQSUITE_ROOT_OVERRIDE",
     )
     p_view.add_argument(
         "--probe-serial",
