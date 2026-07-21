@@ -568,3 +568,12 @@ am_default_isr(void)
     while(1);
 }
 
+//*****************************************************************************
+//
+// __dso_handle is required for static C++ object destructor registration
+// (__cxa_atexit). Bare-metal builds have no dynamic shared object teardown,
+// so a null definition satisfies the linker.
+//
+//*****************************************************************************
+void *__dso_handle = 0;
+
