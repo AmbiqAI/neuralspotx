@@ -14,6 +14,7 @@ import pytest
 import yaml
 
 from neuralspotx import NSXConfigError, generate_sbom
+from neuralspotx.nsx_lock import LockKind, NsxLock, ResolvedModule, write_lock
 from neuralspotx.operations import lock_app_impl
 
 
@@ -121,6 +122,96 @@ class TestGenerateSbomCycloneDx:
         assert parsed.version == 5
 
 
+def _write_git_provenance_lock(app_dir: Path) -> None:
+    _write_nsx_yml(app_dir, [])
+    write_lock(
+        app_dir,
+        NsxLock(
+            generated_at="2026-07-28T00:00:00Z",
+            nsx_tool_version="0.7.8",
+            target={
+                "board": "apollo510_evb",
+                "soc": "apollo510",
+                "toolchain": "arm-none-eabi-gcc",
+            },
+            modules={
+                "sdk-tagged": ResolvedModule(
+                    project="sdk",
+                    kind=LockKind.GIT,
+                    constraint="v5.2.23",
+                    vendored_at="modules/sdk",
+                    content_hash="sha256:" + "a" * 64,
+                    acquired_at="2026-07-28T00:00:00Z",
+                    url="https://example.com/sdk.git",
+                    tag="v5.2.23",
+                    commit="1" * 40,
+                ),
+                "sdk-bringup": ResolvedModule(
+                    project="sdk",
+                    kind=LockKind.GIT,
+                    constraint="bringup/customer-board",
+                    vendored_at="modules/sdk-bringup",
+                    content_hash="sha256:" + "b" * 64,
+                    acquired_at="2026-07-28T00:00:00Z",
+                    url="https://example.com/sdk.git",
+                    commit="2" * 40,
+                ),
+            },
+        ),
+    )
+
+
+def _spdx_comment_fields(package: dict[str, Any]) -> dict[str, str]:
+    return dict(field.split("=", 1) for field in package["comment"].split("; "))
+
+
+def _cyclonedx_properties(component: dict[str, Any]) -> dict[str, str]:
+    return {item["name"]: item["value"] for item in component["properties"]}
+
+
+class TestSbomGitProvenance:
+    def test_spdx_includes_requested_refs_commits_and_tool_version(self, tmp_path: Path) -> None:
+        _write_git_provenance_lock(tmp_path)
+
+        document = json.loads(generate_sbom(tmp_path, format="spdx"))
+        packages = {package["name"]: package for package in document["packages"]}
+        tagged = packages["sdk-tagged"]
+        bringup = packages["sdk-bringup"]
+
+        assert document["creationInfo"]["creators"] == ["Tool: neuralspotx 0.7.8"]
+        assert tagged["versionInfo"] == "1" * 40
+        assert tagged["downloadLocation"].endswith("@" + "1" * 40)
+        assert _spdx_comment_fields(tagged)["constraint"] == "v5.2.23"
+        assert _spdx_comment_fields(tagged)["tag"] == "v5.2.23"
+        assert bringup["versionInfo"] == "2" * 40
+        assert _spdx_comment_fields(bringup)["constraint"] == "bringup/customer-board"
+        assert "tag" not in _spdx_comment_fields(bringup)
+
+    def test_cyclonedx_includes_requested_refs_commits_and_tool_version(
+        self,
+        tmp_path: Path,
+    ) -> None:
+        _write_git_provenance_lock(tmp_path)
+
+        document = json.loads(generate_sbom(tmp_path, format="cyclonedx"))
+        components = {component["name"]: component for component in document["components"]}
+        tagged = components["sdk-tagged"]
+        bringup = components["sdk-bringup"]
+
+        assert document["metadata"]["tools"] == [
+            {"vendor": "AmbiqAI", "name": "neuralspotx", "version": "0.7.8"}
+        ]
+        assert tagged["version"] == "1" * 40
+        assert _cyclonedx_properties(tagged)["nsx:constraint"] == "v5.2.23"
+        assert _cyclonedx_properties(tagged)["nsx:tag"] == "v5.2.23"
+        assert bringup["version"] == "2" * 40
+        assert (
+            _cyclonedx_properties(bringup)["nsx:constraint"]
+            == "bringup/customer-board"
+        )
+        assert "nsx:tag" not in _cyclonedx_properties(bringup)
+
+
 class TestGenerateSbomErrors:
     def test_missing_lock_raises(self, tmp_path: Path) -> None:
         with pytest.raises(NSXConfigError) as exc:
@@ -170,7 +261,6 @@ class TestSpdxDownloadLocationGitPrefix:
     """SPDX downloadLocation must not double-prefix ``git+``."""
 
     def _build(self, url: str) -> str:
-        from neuralspotx.nsx_lock import LockKind, NsxLock, ResolvedModule
         from neuralspotx.operations._sbom import _build_spdx_document
 
         lock = NsxLock(

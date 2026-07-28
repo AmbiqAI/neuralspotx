@@ -79,12 +79,6 @@ def _module_metadata_path(
 ) -> Path:
     metadata = Path(registry_entry.metadata)
 
-    # 1. Check app-local vendored / cloned path
-    if app_dir is not None and not metadata.is_absolute():
-        vendored_path = app_dir / _vendored_metadata_relpath(registry_entry.metadata)
-        if vendored_path.exists():
-            return vendored_path
-
     if metadata.is_absolute():
         if metadata.exists():
             return metadata
@@ -93,27 +87,37 @@ def _module_metadata_path(
             f"absolute path '{metadata}'"
         )
 
-    # 2. Check packaged content (boards, cmake shipped with neuralspotx)
-    packaged = _packaged_metadata_path(metadata)
-    if packaged is not None:
-        return packaged
-
-    # 3. Check app-local module clone directory
-    if app_dir is not None:
-        project_entry = _registry_project_entry(registry, registry_entry.project)
-        project_path = project_entry.path
-        metadata_rel = _metadata_path_relative_to_project(metadata, project_path)
-        clone_dir = _module_clone_dir(app_dir, registry_entry.project, registry)
-        candidate = clone_dir / metadata_rel
-        if candidate.exists():
-            return candidate
-
-    # 4. Check user-registered local path
     project_entry = _registry_project_entry(registry, registry_entry.project)
+
+    # 1. An explicit local project overrides packaged and app-local mirrors.
     if project_entry.local_path:
         local_root = Path(project_entry.local_path).expanduser()
         metadata_rel = _metadata_path_relative_to_project(metadata, project_entry.path)
         candidate = local_root / metadata_rel
+        if candidate.exists():
+            return candidate
+        raise NSXResolutionError(
+            f"Unable to locate nsx-module.yaml for module '{module_name}' in explicit "
+            f"local project '{registry_entry.project}'. Expected: {candidate}"
+        )
+
+    # 2. Check app-local vendored / cloned path.
+    if app_dir is not None:
+        vendored_path = app_dir / _vendored_metadata_relpath(registry_entry.metadata)
+        if vendored_path.exists():
+            return vendored_path
+
+    # 3. Check packaged content (boards, cmake shipped with neuralspotx).
+    packaged = _packaged_metadata_path(metadata)
+    if packaged is not None:
+        return packaged
+
+    # 4. Check the configured app-local project clone directory.
+    if app_dir is not None:
+        project_path = project_entry.path
+        metadata_rel = _metadata_path_relative_to_project(metadata, project_path)
+        clone_dir = _module_clone_dir(app_dir, registry_entry.project, registry)
+        candidate = clone_dir / metadata_rel
         if candidate.exists():
             return candidate
 

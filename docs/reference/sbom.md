@@ -40,8 +40,13 @@ For each module in `nsx.lock`, the SBOM records:
 
 - The upstream URL and commit SHA (for `git` / `unresolved` kinds).
 - The locked `content_hash` (always; emitted as a SHA-256 checksum).
-- The resolution kind, registry project key, and constraint as
-  package-level annotations.
+- The resolution kind, registry project key, requested constraint, and matched
+  tag (when applicable) as package-level annotations.
+- The neuralspotx tool version that produced the lock.
+
+These fields expose explicit development overrides: branch refs retain both the
+requested ref and resolved commit, while local projects are identified by their
+`local` kind and exact content hash.
 
 License metadata is not currently carried in the lock or in
 `nsx-module.yaml`; every package is emitted with `NOASSERTION` (SPDX)

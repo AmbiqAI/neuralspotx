@@ -8,12 +8,20 @@ Current bundle:
 
 - `nsx-ambiq-sdk` (provider module `nsx-ambiqsuite`, wrappers `nsx-ambiq-hal` / `nsx-ambiq-bsp`)
 
-All provider and wrapper modules resolve to this one project on `main`. See
+All provider and wrapper modules currently resolve to this one project on
+`main`. This is a temporary stable-registry policy exception, not the desired
+release end state. See
 [SDK Upstream Model](../architecture/sdk-upstream-plan.md) for the full picture.
 
 ## Current Revision Model
 
 - `nsx-ambiq-sdk`: `main`
+
+Stable registry revisions are expected to use immutable version tags or full
+commit SHAs. The policy validator allowlists exactly `nsx-ambiq-sdk@main` (and
+the packaged `neuralspotx@main` self-reference) until their immutable pins are
+available. Do not add another floating ref to bypass that gate; use an explicit
+app/workspace development override instead.
 
 ## Contributor Expectations
 

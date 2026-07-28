@@ -373,7 +373,7 @@ def _build_lock_for_app(
             if _is_pkg(registry, nm):
                 continue
             proj = _registry_project_entry(registry, ent.project)
-            if not proj.url:
+            if proj.local_path or not proj.url:
                 continue
             cons = str(ent.revision or "main")
             prev = prev_modules.get(nm)
@@ -421,7 +421,7 @@ def _build_lock_for_app(
             if _is_pkg(registry, nm):
                 continue
             proj = _registry_project_entry(registry, ent.project)
-            if not proj.url:
+            if proj.local_path or not proj.url:
                 continue
             cons = str(ent.revision or "main")
             prev = prev_modules.get(nm)
@@ -577,34 +577,34 @@ def _build_lock_for_app(
 
         # Git-hosted module \u2014 resolve constraint to a commit SHA via ls-remote.
         project_entry = _registry_project_entry(registry, entry.project)
+        if project_entry.local_path:
+            # An explicit local_path is a development override of the
+            # project's stable git source, even when the merged registry entry
+            # still carries its packaged URL.
+            vendored_dir = _resolved_module_path(app_dir, name, registry)
+            rel = (
+                str(vendored_dir.relative_to(app_dir))
+                if vendored_dir.is_relative_to(app_dir)
+                else str(vendored_dir)
+            )
+            source_dir = Path(project_entry.local_path).expanduser().resolve()
+            if not source_dir.exists():
+                raise NSXResolutionError(
+                    f"Local project '{entry.project}' source '{source_dir}' does "
+                    "not exist; cannot lock."
+                )
+            lock.modules[name] = ResolvedModule(
+                project=entry.project,
+                kind=LockKind.LOCAL,
+                constraint=constraint,
+                vendored_at=rel,
+                content_hash=hash_tree(source_dir),
+                acquired_at=utcnow_iso(),
+            )
+            continue
+
         url = project_entry.url
         if not url:
-            # Project has no upstream URL but does declare a local source
-            # path (e.g. registered via `nsx module register
-            # --project-local-path`). Treat it like a local mirror: hash
-            # the source path (the upstream) and skip ls-remote.
-            if project_entry.local_path:
-                vendored_dir = _resolved_module_path(app_dir, name, registry)
-                rel = (
-                    str(vendored_dir.relative_to(app_dir))
-                    if vendored_dir.is_relative_to(app_dir)
-                    else str(vendored_dir)
-                )
-                source_dir = Path(project_entry.local_path).expanduser().resolve()
-                if not source_dir.exists():
-                    raise NSXResolutionError(
-                        f"Local project '{entry.project}' source '{source_dir}' does "
-                        "not exist; cannot lock."
-                    )
-                lock.modules[name] = ResolvedModule(
-                    project=entry.project,
-                    kind=LockKind.LOCAL,
-                    constraint=constraint,
-                    vendored_at=rel,
-                    content_hash=hash_tree(source_dir),
-                    acquired_at=utcnow_iso(),
-                )
-                continue
             raise NSXResolutionError(
                 f"Module '{name}' project '{entry.project}' has no URL in registry; cannot lock."
             )
