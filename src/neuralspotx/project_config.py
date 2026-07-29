@@ -419,6 +419,14 @@ def _write_app_module_file(
             continue
         lines.append(f'set(NSX_APP_MODULE_DIR_{name.replace("-", "_")} "{source_dir.as_posix()}")')
 
+    target = nsx_cfg.get("target")
+    board = target.get("board") if isinstance(target, dict) else None
+    if isinstance(board, str) and board:
+        board_module = f"nsx-board-{board.replace('_', '-').lower()}"
+        if board_module in ordered_module_names:
+            board_dir = _module_source_dir_relative_to_app(board_module, registry, nsx_cfg)
+            lines.append(f'set(NSX_APP_BOARD_DIR "{board_dir.as_posix()}")')
+
     project_dirs = sorted({
         project_dir.as_posix()
         for name in ordered_module_names

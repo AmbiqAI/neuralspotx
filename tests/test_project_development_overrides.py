@@ -392,6 +392,91 @@ def test_local_path_overrides_packaged_neuralspotx_project(tmp_path: Path) -> No
     sync_app(app_dir, frozen=True)
 
 
+def test_local_neuralspotx_board_path_is_emitted_for_bootstrap(tmp_path: Path) -> None:
+    module_name = "nsx-board-apollo510-evb"
+    source = tmp_path / "neuralspotx-checkout"
+    board_dir = source / "src" / "neuralspotx" / "boards" / "apollo510_evb"
+    board_dir.mkdir(parents=True)
+    (board_dir / "nsx-module.yaml").write_text(
+        "\n".join([
+            "schema_version: 1",
+            "module:",
+            f"  name: {module_name}",
+            "  type: runtime",
+            '  version: "0.1.0"',
+            "support:",
+            "  ambiqsuite: true",
+            "  zephyr: false",
+            "build:",
+            "  cmake:",
+            "    package: nsx_board_apollo510_evb",
+            "    targets: [nsx::board_apollo510_evb]",
+            "depends:",
+            "  required: []",
+            "  optional: []",
+            "compatibility:",
+            '  boards: ["*"]',
+            '  socs: ["*"]',
+            '  toolchains: ["arm-none-eabi-gcc"]',
+        ])
+        + "\n",
+        encoding="utf-8",
+    )
+    (board_dir / "board.cmake").write_text(
+        "set(NSX_BOARD_TARGET nsx::board_apollo510_evb)\n",
+        encoding="utf-8",
+    )
+
+    app_dir = tmp_path / "app"
+    app_dir.mkdir()
+    config = {
+        "schema_version": 2,
+        "project": {"name": "local-board-override"},
+        "target": {"board": "apollo510_evb", "soc": "apollo510"},
+        "toolchain": "arm-none-eabi-gcc",
+        "baseline": "none",
+        "modules": [{"name": module_name}],
+        "module_registry": {
+            "projects": {
+                "neuralspotx": {
+                    "local_path": str(source),
+                    "revision": "local-checkout",
+                }
+            },
+            "modules": {
+                module_name: {
+                    "project": "neuralspotx",
+                    "revision": "local-checkout",
+                    "metadata": (
+                        "src/neuralspotx/boards/apollo510_evb/nsx-module.yaml"
+                    ),
+                }
+            },
+        },
+    }
+    (app_dir / "nsx.yml").write_text(
+        yaml.safe_dump(config, sort_keys=False),
+        encoding="utf-8",
+    )
+
+    lock = lock_app(app_dir, quiet=True)
+    assert lock.modules[module_name].kind == LockKind.LOCAL
+    sync_app(app_dir)
+
+    modules_cmake = (app_dir / "cmake" / "nsx" / "modules.cmake").read_text(
+        encoding="utf-8"
+    )
+    expected_dir = "modules/neuralspotx/src/neuralspotx/boards/apollo510_evb"
+    assert f'set(NSX_APP_BOARD_DIR "{expected_dir}")' in modules_cmake
+    assert (app_dir / expected_dir / "board.cmake").is_file()
+
+    bootstrap = (app_dir / "cmake" / "nsx" / "nsx_app_bootstrap.cmake").read_text(
+        encoding="utf-8"
+    )
+    assert 'include("${NSX_ROOT}/${NSX_APP_BOARD_DIR}/board.cmake")' in bootstrap
+    sync_app(app_dir, frozen=True)
+
+
 def test_local_path_missing_metadata_does_not_fall_back_to_packaged_copy(
     tmp_path: Path,
 ) -> None:
