@@ -165,13 +165,16 @@ def _effective_registry(
 ) -> dict[str, Any]:
     """Fold the registry layer stack onto *base_registry*.
 
-    Precedence (lowest to highest): packaged base registry, each
-    ``registry.layers`` entry in order, then the legacy ``module_registry``
-    block. This keeps existing apps (no ``registry:`` block) byte-for-byte
-    identical to the prior single-override behavior.
+    Precedence (lowest to highest): packaged base registry, synthetic starter
+    profile defaults, each ``registry.layers`` entry in order, then the legacy
+    ``module_registry`` block. This keeps explicit workspace/inline development
+    layers above implicit profile defaults while preserving the historical
+    highest precedence of authored app-local overrides.
     """
 
-    merged = base_registry
+    merged = ModuleRegistryOverride.from_mapping(nsx_cfg.get("_profile_registry")).merge_into(
+        base_registry
+    )
     for layer in _iter_registry_layers(nsx_cfg, app_dir):
         merged = layer.merge_into(merged)
     app_override = _resolve_override_local_paths(

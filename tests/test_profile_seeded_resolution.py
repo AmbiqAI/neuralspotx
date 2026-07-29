@@ -16,7 +16,7 @@ from neuralspotx.module_registry import (
     _module_names_from_nsx,
     expand_profile_seeds,
 )
-from neuralspotx.project_config import _load_registry
+from neuralspotx.project_config import _effective_registry, _load_registry
 
 BOARD = "apollo510_evb"
 SOC = "apollo510"
@@ -47,7 +47,7 @@ def test_lean_manifest_expands_to_inlined_closure() -> None:
     expanded = expand_profile_seeds(lean, registry)
 
     assert expanded["modules"] == inlined["modules"]
-    assert expanded["module_registry"] == inlined["module_registry"]
+    assert expanded["_profile_registry"] == inlined["module_registry"]
     assert _module_names_from_nsx(expanded) == _module_names_from_nsx(inlined)
 
 
@@ -95,9 +95,9 @@ def test_authored_module_registry_is_preserved() -> None:
     assert expanded["modules"]  # closure still seeded
     # Authored overrides survive verbatim...
     assert expanded["module_registry"]["projects"]["custom"] == {"url": "x"}
-    # ...and the profile seed is merged under them (not dropped), so every
-    # seeded closure module remains resolvable via the effective registry.
-    seed_modules = expanded["module_registry"]["modules"]
+    # ...and the profile seed remains available below them, so every seeded
+    # closure module remains resolvable via the effective registry.
+    seed_modules = expanded["_profile_registry"]["modules"]
     assert seed_modules, "profile seed registry must be merged into authored registry"
     for record in expanded["modules"]:
         if record["name"] in seed_modules:
@@ -165,7 +165,7 @@ def test_modules_resolve_family_catalog_module_metadata() -> None:
     expanded = expand_profile_seeds(_lean_with_modules(["nsx-timer"]), registry)
 
     assert "nsx-timer" in _module_names_from_nsx(expanded)
-    timer = expanded["module_registry"]["modules"]["nsx-timer"]
+    timer = expanded["_profile_registry"]["modules"]["nsx-timer"]
     assert timer["metadata"] == "modules/nsx-timer/nsx-module.yaml"
     assert timer["project"]
 
@@ -232,7 +232,7 @@ def test_authored_partial_registry_merges_profile_seed() -> None:
         },
     }
     expanded = expand_profile_seeds(lean, registry)
-    mr = expanded["module_registry"]
+    mr = _effective_registry(registry, expanded)
 
     # Authored entry preserved.
     assert mr["projects"]["custom-proj"]["url"] == "https://example.com/custom.git"
@@ -249,7 +249,7 @@ def test_authored_partial_registry_merges_profile_seed() -> None:
             "modules": ["nsx-timer"],
         },
         registry,
-    )["module_registry"]
+    )["_profile_registry"]
     for name in seed_only["projects"]:
         assert name in mr["projects"]
 
@@ -270,8 +270,41 @@ def test_authored_registry_entry_wins_over_seed() -> None:
             "modules": {"nsx-ambiq-bsp": {"revision": "pinned-sha"}},
         },
     }
-    mr = expand_profile_seeds(lean, registry)["module_registry"]
+    expanded = expand_profile_seeds(lean, registry)
+    mr = _effective_registry(registry, expanded)
 
     assert mr["modules"]["nsx-ambiq-bsp"]["revision"] == "pinned-sha"
     # Seed-provided metadata path is preserved through the per-entry merge.
     assert "metadata" in mr["modules"]["nsx-ambiq-bsp"]
+
+
+def test_registry_layer_wins_over_synthetic_profile_defaults() -> None:
+    registry = _load_registry()
+    bringup_ref = "bringup/customer-board"
+    lean = {
+        "schema_version": 2,
+        "project": {"name": "demo"},
+        "target": {"board": BOARD, "soc": SOC},
+        "profile": f"{BOARD}_minimal",
+        "registry": {
+            "layers": [
+                {
+                    "inline": {
+                        "projects": {"nsx-ambiq-sdk": {"revision": bringup_ref}},
+                        "modules": {
+                            "nsx-ambiq-bsp": {
+                                "project": "nsx-ambiq-sdk",
+                                "revision": bringup_ref,
+                            }
+                        },
+                    }
+                }
+            ]
+        },
+    }
+
+    expanded = expand_profile_seeds(lean, registry)
+    effective = _effective_registry(registry, expanded)
+
+    assert effective["projects"]["nsx-ambiq-sdk"]["revision"] == bringup_ref
+    assert effective["modules"]["nsx-ambiq-bsp"]["revision"] == bringup_ref
