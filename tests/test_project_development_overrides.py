@@ -12,7 +12,14 @@ import pytest
 import yaml
 
 import neuralspotx.operations as operations
-from neuralspotx import NSXIntegrityError, NSXResolutionError, load_registry, lock_app, sync_app
+from neuralspotx import (
+    NSXIntegrityError,
+    NSXModuleError,
+    NSXResolutionError,
+    load_registry,
+    lock_app,
+    sync_app,
+)
 from neuralspotx.nsx_lock import LockKind, hash_tree
 
 _MODULE_NAME = "nsx-tflite-micro"
@@ -473,6 +480,13 @@ def test_local_neuralspotx_board_is_mirrored_for_bootstrap(tmp_path: Path) -> No
     with pytest.raises(NSXIntegrityError) as exc:
         sync_app(app_dir, frozen=True)
     assert exc.value.module == module_name
+
+    sync_app(app_dir)
+    expected_mirror = mirrored_board.read_text(encoding="utf-8")
+    shutil.rmtree(board_dir)
+    with pytest.raises(NSXModuleError, match="Local board source"):
+        sync_app(app_dir)
+    assert mirrored_board.read_text(encoding="utf-8") == expected_mirror
 
 
 def test_local_path_missing_metadata_does_not_fall_back_to_packaged_copy(

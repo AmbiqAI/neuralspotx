@@ -384,6 +384,11 @@ def _sync_local_board_overlay(
 
     source_board_dir = source_dir / metadata_rel.parent
     destination = _vendored_target_dir(ctx.app_dir, name, registry_entry.metadata)
+    if not source_board_dir.is_dir():
+        raise NSXModuleError(
+            f"Local board source for '{name}' is missing: {source_board_dir}. "
+            "Restore the board directory or update the project override before syncing."
+        )
     source_hash = hash_tree(source_board_dir)
     destination_hash = hash_tree(destination) if destination.exists() else None
     if destination_hash == source_hash:
