@@ -110,10 +110,10 @@ These adapt raw SDK content into the NSX build and target model.
 
 | Module family | What it provides | Typical use | More info |
 | --- | --- | --- | --- |
-| `nsx-ambiq-hal` | Unified HAL wrapper surface (per-SoC capability-gated). | Pull in supported HAL utilities without wiring raw SDK files by hand. | [nsx-ambiq-sdk](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules) |
-| `nsx-ambiq-bsp` | Unified BSP wrapper surface. | Board-support wiring layered on top of the SDK provider. | [nsx-ambiq-sdk](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules) |
-| `nsx-soc-hal` | Shared SoC-level integration across targets. | Common SoC policy and low-level platform integration. | [nsx-ambiq-sdk](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules/nsx-soc-hal) |
-| `nsx-cmsis-core`, `nsx-cmsis-startup` | CMSIS core and startup integration for NSX targets. | Core CMSIS headers plus startup files, vector-table wiring, and common boot integration. | [nsx-ambiq-sdk](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules) |
+| `nsx-ambiq-hal` | Unified HAL wrapper surface (per-SoC capability-gated). | Pull in supported HAL utilities without wiring raw SDK files by hand. | [nsx-ambiq-sdk](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.23/modules) |
+| `nsx-ambiq-bsp` | Unified BSP wrapper surface. | Board-support wiring layered on top of the SDK provider. | [nsx-ambiq-sdk](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.23/modules) |
+| `nsx-soc-hal` | Shared SoC-level integration across targets. | Common SoC policy and low-level platform integration. | [nsx-ambiq-sdk](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.23/modules/nsx-soc-hal) |
+| `nsx-cmsis-core`, `nsx-cmsis-startup` | CMSIS core and startup integration for NSX targets. | Core CMSIS headers plus startup files, vector-table wiring, and common boot integration. | [nsx-ambiq-sdk](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.23/modules) |
 
 ### Board Modules
 
@@ -149,9 +149,9 @@ These make up the common reusable runtime layer for NSX apps.
 
 | Module | What it provides | Typical use | More info |
 | --- | --- | --- | --- |
-| `nsx-core` | Common runtime initialization and baseline app support. | Almost every NSX app uses this directly or indirectly. | [nsx-ambiq-sdk](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules/nsx-core) |
+| `nsx-core` | Common runtime initialization and baseline app support. | Almost every NSX app uses this directly or indirectly. | [nsx-ambiq-sdk](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.23/modules/nsx-core) |
 | `nsx-tooling` | Generated app CMake and tooling integration packaged from `neuralspotx`. | Internal CLI-generated app support and helper wiring. | [GitHub](https://github.com/AmbiqAI/neuralspotx/tree/main/src/neuralspotx/cmake) |
-| `nsx-freertos` | Optional FreeRTOS kernel middleware — vendors a pinned upstream FreeRTOS-Kernel and builds the SoC-selected CMSIS port. Kernel/heap policy and `FreeRTOSConfig.h` stay app-owned. | Opt-in preemptive scheduling for apps that need it (e.g. `ble_webble`). | [nsx-ambiq-sdk](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules/nsx-freertos) |
+| `nsx-freertos` | Optional FreeRTOS kernel middleware — vendors a pinned upstream FreeRTOS-Kernel and builds the SoC-selected CMSIS port. Kernel/heap policy and `FreeRTOSConfig.h` stay app-owned. | Opt-in preemptive scheduling for apps that need it (e.g. `ble_webble`). | [nsx-ambiq-sdk](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.23/modules/nsx-freertos) |
 
 Migration-friendly portable helpers such as `nsx_printf`, `nsx_delay_us`, and
 interrupt master enable/disable now live in `nsx-core` directly rather than in
@@ -163,7 +163,7 @@ These are the current first-class path for performance instrumentation.
 
 | Module | What it provides | Typical use | More info |
 | --- | --- | --- | --- |
-| `nsx-perf` | Generic performance capture helpers such as DWT or related profiling support. | Perf bring-up, benchmarking, and runtime instrumentation. | [nsx-ambiq-sdk](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules/nsx-perf) |
+| `nsx-perf` | Generic performance capture helpers such as DWT or related profiling support. | Perf bring-up, benchmarking, and runtime instrumentation. | [nsx-ambiq-sdk](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.23/modules/nsx-perf) |
 | `nsx-pmu-armv8m` | Armv8-M PMU configuration, presets, capture, and transport support. | Function-, layer-, and model-level PMU workflows on supported cores. | [GitHub](https://github.com/AmbiqAI/nsx-pmu-armv8m) |
 
 ### External First-Class Modules
@@ -189,10 +189,10 @@ helpers into the baseline runtime core.
 
 | Module | What it provides | Typical use | More info |
 | --- | --- | --- | --- |
-| `nsx-power` | Power-policy and sleep-oriented helpers. | Low-power behavior, block shutdown control, and power-state utilities. | [GitHub](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules/nsx-power) |
-| `nsx-i2c` | I2C wrapper and related helpers. | Sensor and peripheral bring-up over I2C. | [GitHub](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules/nsx-i2c) |
-| `nsx-spi` | SPI wrapper and related helpers. | SPI device bring-up and integration. | [GitHub](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules/nsx-spi) |
-| `nsx-uart` | UART wrapper and related helpers. | Serial communication, console, or bridge workflows. | [GitHub](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules/nsx-uart) |
+| `nsx-power` | Power-policy and sleep-oriented helpers. | Low-power behavior, block shutdown control, and power-state utilities. | [GitHub](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.23/modules/nsx-power) |
+| `nsx-i2c` | I2C wrapper and related helpers. | Sensor and peripheral bring-up over I2C. | [GitHub](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.23/modules/nsx-i2c) |
+| `nsx-spi` | SPI wrapper and related helpers. | SPI device bring-up and integration. | [GitHub](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.23/modules/nsx-spi) |
+| `nsx-uart` | UART wrapper and related helpers. | Serial communication, console, or bridge workflows. | [GitHub](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.23/modules/nsx-uart) |
 | `nsx-sensors` | External I2C/SPI-attached sensor and accessory drivers (MAX86150, MPU6050, ICM-45605, INA228, LED Stick) built on `nsx-i2c`/`nsx-spi` with a consistent context-based init pattern. | Bio-sensor capture, IMU bring-up, current/voltage monitoring, simple I2C accessory control. | [GitHub](https://github.com/AmbiqAI/nsx-sensors) |
 
 Legacy `nsx-peripherals` is no longer a first-class packaged module. Its useful
@@ -207,8 +207,8 @@ wrapper) don't have to pull in both.
 
 | Module | What it provides | Typical use | More info |
 | --- | --- | --- | --- |
-| `nsx-cordio` | Cordio/WSF BLE host stack (HCI/DM/L2CAP/ATT/SMP/GATT), vendored from AmbiqSuite third_party and built per-SoC transport (Cooper, integrated BLE, EM9305). | Low-level BLE host stack for higher-level BLE wrappers. | [GitHub](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules/nsx-cordio) |
-| `nsx-ble` | App-facing BLE convenience API ported from legacy neuralSPOT `ns-ble`; define a GATT service with read/write/notify characteristics on top of `nsx-cordio`. | Stand up a single BLE GATT service with minimal source changes from legacy `ns-ble` apps. | [GitHub](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules/nsx-ble) |
+| `nsx-cordio` | Cordio/WSF BLE host stack (HCI/DM/L2CAP/ATT/SMP/GATT), vendored from AmbiqSuite third_party and built per-SoC transport (Cooper, integrated BLE, EM9305). | Low-level BLE host stack for higher-level BLE wrappers. | [GitHub](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.23/modules/nsx-cordio) |
+| `nsx-ble` | App-facing BLE convenience API ported from legacy neuralSPOT `ns-ble`; define a GATT service with read/write/notify characteristics on top of `nsx-cordio`. | Stand up a single BLE GATT service with minimal source changes from legacy `ns-ble` apps. | [GitHub](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.23/modules/nsx-ble) |
 
 ## What Is Not First-Class Yet
 

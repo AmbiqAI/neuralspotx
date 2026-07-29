@@ -70,12 +70,6 @@ TEMPORARY_STABLE_FLOATING_REF_ALLOWLIST: Final[tuple[FloatingRefAllowance, ...]]
         reason="Packaged board and tooling modules currently resolve from this release branch.",
         removal_condition="Replace packaged self-references with the released neuralspotx tag or SHA.",
     ),
-    FloatingRefAllowance(
-        project="nsx-ambiq-sdk",
-        revision="main",
-        reason="The unified SDK registry entries predate its first immutable release pin.",
-        removal_condition="Remove when the registry moves to the released nsx-ambiq-sdk tag or SHA.",
-    ),
 )
 
 
