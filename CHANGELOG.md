@@ -2,6 +2,15 @@
 
 ## [0.7.9](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.8...neuralspotx-v0.7.9) (2026-07-29)
 
+### Release highlights
+
+* Pin stable registry resolution to `nsx-ambiq-sdk` `v5.2.23` and
+  `nsx-pmu-armv8m` `v0.2.0`, with all example locks regenerated to record the
+  requested tags, exact commits, and content hashes.
+* Preserve explicit local, branch, and SHA development overrides while
+  strengthening frozen lock/schema/git integrity and SBOM provenance for
+  requested refs, resolved commits, content hashes, and the neuralspotx tool
+  version.
 
 ### Features
 
