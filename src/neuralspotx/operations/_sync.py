@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -28,7 +29,9 @@ from ..project_config import (
     _effective_registry,
     _load_app_cfg,
     _load_registry,
+    _metadata_path_relative_to_project,
     _registry_project_entry,
+    _vendored_target_dir,
     _write_app_module_file,
     _write_cmake_nsx_gitignore,
     _write_modules_gitignore_for_module_names,
@@ -320,10 +323,17 @@ def _sync_local_entry(
                 raise NSXModuleError(msg)
             _log.warning("%s", msg)
 
+        board_overlay_changed = _sync_local_board_overlay(
+            ctx,
+            name,
+            source_dir,
+            project_entry.path,
+        )
+
         # Mirror is already in sync with current source: skip.
         if not ctx.force and on_disk_hash == source_hash:
             vendored_paths.add(vendored_dir)
-            return 0
+            return board_overlay_changed
 
         if ctx.frozen:
             raise NSXModuleError(
@@ -333,7 +343,7 @@ def _sync_local_entry(
             )
         _vendor_local_module_into_app(ctx.app_dir, name, ctx.registry)
         vendored_paths.add(vendored_dir)
-        return 1
+        return 1 + board_overlay_changed
 
     # In-tree local (no source path): source IS modules/<name>/.
     # Verify only, like vendored.
@@ -349,6 +359,52 @@ def _sync_local_entry(
         _log.warning("%s", msg)
     vendored_paths.add(vendored_dir)
     return 0
+
+
+def _sync_local_board_overlay(
+    ctx: _SyncContext,
+    name: str,
+    source_dir: Path,
+    project_path: str | None,
+) -> int:
+    """Keep the bootstrap's app-local ``boards/<board>`` view authoritative."""
+
+    if not name.startswith("nsx-board-"):
+        return 0
+
+    from ..metadata import registry_entry_for_module
+    from ..module_registry import _rmtree
+    from ..nsx_lock import _HASH_EXCLUDE_DIRS
+
+    registry_entry = registry_entry_for_module(ctx.registry, name)
+    metadata = Path(registry_entry.metadata)
+    metadata_rel = _metadata_path_relative_to_project(metadata, project_path)
+    if "boards" not in metadata_rel.parts:
+        return 0
+
+    source_board_dir = source_dir / metadata_rel.parent
+    destination = _vendored_target_dir(ctx.app_dir, name, registry_entry.metadata)
+    source_hash = hash_tree(source_board_dir)
+    destination_hash = hash_tree(destination) if destination.exists() else None
+    if destination_hash == source_hash:
+        return 0
+    if ctx.frozen:
+        raise NSXIntegrityError(
+            f"Local board module '{name}' at {destination.relative_to(ctx.app_dir)} "
+            f"does not match source {source_board_dir}. Refusing under --frozen.",
+            module=name,
+        )
+
+    if destination.exists():
+        _rmtree(destination)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copytree(
+        source_board_dir,
+        destination,
+        dirs_exist_ok=True,
+        ignore=shutil.ignore_patterns(*sorted(_HASH_EXCLUDE_DIRS)),
+    )
+    return 1
 
 
 def _sync_fetchable_entry(

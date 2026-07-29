@@ -67,11 +67,7 @@ function(nsx_bootstrap_app)
     include("${NSX_CMAKE_DIR}/nsx_sdk_providers.cmake")
 
     nsx_select_sdk_provider("${NSX_BOARD}")
-    if(DEFINED NSX_APP_BOARD_DIR)
-        include("${NSX_ROOT}/${NSX_APP_BOARD_DIR}/board.cmake")
-    else()
-        include("${NSX_ROOT}/boards/${NSX_BOARD}/board.cmake")
-    endif()
+    include("${NSX_ROOT}/boards/${NSX_BOARD}/board.cmake")
 
     foreach(var
         NSX_TOOLCHAIN_FAMILY

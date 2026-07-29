@@ -392,7 +392,7 @@ def test_local_path_overrides_packaged_neuralspotx_project(tmp_path: Path) -> No
     sync_app(app_dir, frozen=True)
 
 
-def test_local_neuralspotx_board_path_is_emitted_for_bootstrap(tmp_path: Path) -> None:
+def test_local_neuralspotx_board_is_mirrored_for_bootstrap(tmp_path: Path) -> None:
     module_name = "nsx-board-apollo510-evb"
     source = tmp_path / "neuralspotx-checkout"
     board_dir = source / "src" / "neuralspotx" / "boards" / "apollo510_evb"
@@ -463,18 +463,16 @@ def test_local_neuralspotx_board_path_is_emitted_for_bootstrap(tmp_path: Path) -
     assert lock.modules[module_name].kind == LockKind.LOCAL
     sync_app(app_dir)
 
-    modules_cmake = (app_dir / "cmake" / "nsx" / "modules.cmake").read_text(
-        encoding="utf-8"
-    )
-    expected_dir = "modules/neuralspotx/src/neuralspotx/boards/apollo510_evb"
-    assert f'set(NSX_APP_BOARD_DIR "{expected_dir}")' in modules_cmake
-    assert (app_dir / expected_dir / "board.cmake").is_file()
-
-    bootstrap = (app_dir / "cmake" / "nsx" / "nsx_app_bootstrap.cmake").read_text(
-        encoding="utf-8"
-    )
-    assert 'include("${NSX_ROOT}/${NSX_APP_BOARD_DIR}/board.cmake")' in bootstrap
+    mirrored_board = app_dir / "boards" / "apollo510_evb" / "board.cmake"
+    assert mirrored_board.read_text(encoding="utf-8") == (
+        board_dir / "board.cmake"
+    ).read_text(encoding="utf-8")
     sync_app(app_dir, frozen=True)
+
+    mirrored_board.write_text("set(NSX_BOARD_TARGET stale)\n", encoding="utf-8")
+    with pytest.raises(NSXIntegrityError) as exc:
+        sync_app(app_dir, frozen=True)
+    assert exc.value.module == module_name
 
 
 def test_local_path_missing_metadata_does_not_fall_back_to_packaged_copy(
