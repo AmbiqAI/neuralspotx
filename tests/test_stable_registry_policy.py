@@ -21,15 +21,30 @@ def test_packaged_registry_floating_refs_are_exactly_allowlisted() -> None:
         (use.project, use.revision) for use in report.approved_floating
     } == {
         ("neuralspotx", "main"),
-        ("nsx-ambiq-sdk", "main"),
     }
     assert {
         (allowance.project, allowance.revision)
         for allowance in TEMPORARY_STABLE_FLOATING_REF_ALLOWLIST
     } == {
         ("neuralspotx", "main"),
-        ("nsx-ambiq-sdk", "main"),
     }
+
+
+def test_packaged_registry_release_projects_are_immutable() -> None:
+    registry = load_registry()
+
+    assert registry["projects"]["nsx-ambiq-sdk"]["revision"] == "v5.2.23"
+    assert registry["projects"]["nsx-pmu-armv8m"]["revision"] == "v0.2.0"
+    assert registry["modules"]["nsx-pmu-armv8m"]["revision"] == "v0.2.0"
+    assert {
+        entry["revision"]
+        for entry in registry["modules"].values()
+        if entry["project"] == "nsx-ambiq-sdk"
+    } == {"v5.2.23"}
+    assert {
+        profile["project_overrides"]["nsx-ambiq-sdk"]["revision"]
+        for profile in registry["starter_profiles"].values()
+    } == {"v5.2.23"}
 
 
 def test_new_floating_module_ref_is_reported_without_broad_exception() -> None:

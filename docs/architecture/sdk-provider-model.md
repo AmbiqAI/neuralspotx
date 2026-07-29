@@ -22,7 +22,7 @@ The provider is sourced from the unified SDK monorepo, which vendors the
 AmbiqSuite drop, the HAL/BSP wrappers, and the shared NSX module set for
 every supported SoC:
 
-1. `ambiqsuite` → `nsx-ambiq-sdk` (`main`)
+1. `ambiqsuite` → `nsx-ambiq-sdk` (`v5.2.23`)
 
 The provider module (`nsx-ambiqsuite`) and the SDK wrapper modules that the
 bundle vendors resolve to the unified `nsx-ambiq-sdk` project by default. The

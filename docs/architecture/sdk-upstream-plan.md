@@ -15,16 +15,17 @@ NSX board and SoC modules.
 
 One repo, [`nsx-ambiq-sdk`](https://github.com/AmbiqAI/nsx-ambiq-sdk), vendors
 the AmbiqSuite drop, the HAL/BSP wrappers, and the shared NSX module set for
-every supported SoC (Apollo2 through Apollo5). It tracks `main`.
+every supported SoC (Apollo2 through Apollo5). Stable resolution uses the
+immutable `v5.2.23` release.
 
 The provider and wrapper modules NSX resolves are thin metadata views onto that
 one project:
 
 | Provider / wrapper module | Project | Revision |
 |---|---|---|
-| `nsx-ambiqsuite` | `nsx-ambiq-sdk` | `main` |
-| `nsx-ambiq-hal` | `nsx-ambiq-sdk` | `main` |
-| `nsx-ambiq-bsp` | `nsx-ambiq-sdk` | `main` |
+| `nsx-ambiqsuite` | `nsx-ambiq-sdk` | `v5.2.23` |
+| `nsx-ambiq-hal` | `nsx-ambiq-sdk` | `v5.2.23` |
+| `nsx-ambiq-bsp` | `nsx-ambiq-sdk` | `v5.2.23` |
 
 Board profiles depend on the provider module for their SoC family, and NSX
 vendors the resolved SDK content into the generated app. See

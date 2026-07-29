@@ -17,9 +17,9 @@ module_registry:
   projects:
     nsx-pmu-armv8m:
       url: https://github.com/AmbiqAI/nsx-pmu-armv8m.git
-      revision: main
+      revision: v0.2.0
   modules:
     nsx-pmu-armv8m:
       project: nsx-pmu-armv8m
-      revision: main
+      revision: v0.2.0
       metadata: modules/nsx-pmu-armv8m/nsx-module.yaml
