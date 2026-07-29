@@ -92,6 +92,24 @@ def test_legacy_block_wins_over_layers() -> None:
     assert out["projects"]["nsx-core"]["revision"] == "legacy"
 
 
+def test_layers_win_over_synthetic_profile_defaults() -> None:
+    base = _base_registry()
+    nsx_cfg = {
+        "_profile_registry": {
+            "projects": {"nsx-core": {"revision": "profile"}},
+        },
+        "registry": {
+            "layers": [
+                {"inline": {"projects": {"nsx-core": {"revision": "layer"}}}},
+            ]
+        },
+    }
+
+    out = _effective_registry(base, nsx_cfg)
+
+    assert out["projects"]["nsx-core"]["revision"] == "layer"
+
+
 def test_workspace_layer_reads_overlay_file(tmp_path: Path) -> None:
     overlay = tmp_path / "nsx-registry.yaml"
     overlay.write_text(
@@ -112,7 +130,9 @@ def test_workspace_layer_reads_overlay_file(tmp_path: Path) -> None:
     base = _base_registry()
     nsx_cfg = {"registry": {"layers": [{"workspace": "nsx-registry.yaml"}]}}
     out = _effective_registry(base, nsx_cfg, app_dir=tmp_path)
-    assert out["projects"]["nsx-core"]["local_path"] == "../../shared/nsx-core"
+    assert out["projects"]["nsx-core"]["local_path"] == str(
+        (tmp_path / "../../shared/nsx-core").resolve()
+    )
     assert out["modules"]["nsx-extra"]["revision"] == "v9"
 
 

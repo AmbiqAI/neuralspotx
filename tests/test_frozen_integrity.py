@@ -8,7 +8,7 @@ from typing import Any
 import pytest
 import yaml
 
-from neuralspotx import NSXIntegrityError, NSXModuleError
+from neuralspotx import NSXIntegrityError, NSXLockError, NSXModuleError, sync_app
 from neuralspotx.operations import lock_app_impl, sync_app_impl
 
 
@@ -31,6 +31,20 @@ def _make_vendored(app_dir: Path, name: str, content: str = "hello") -> Path:
 
 
 class TestFrozenContentHashIntegrity:
+    def test_unsupported_lock_schema_is_actionable(self, tmp_path: Path) -> None:
+        _write_nsx_yml(tmp_path, [])
+        (tmp_path / "nsx.lock").write_text(
+            "schema_version: 999\ntargets: {}\n",
+            encoding="utf-8",
+        )
+
+        with pytest.raises(NSXLockError) as exc:
+            sync_app(tmp_path, frozen=True)
+
+        message = str(exc.value)
+        assert "schema_version 999" in message
+        assert "Run `nsx lock` to regenerate" in message
+
     def test_mutated_module_raises_integrity_error_with_module_name(self, tmp_path: Path) -> None:
         """Vendor a module, mutate one file, run sync --frozen → NSXIntegrityError."""
 

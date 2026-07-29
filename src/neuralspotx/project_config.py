@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import copy
 import importlib.resources as resources
 import os
 import re
@@ -64,6 +65,25 @@ def _load_workspace_overlay(path: Path) -> dict[str, Any]:
     return data
 
 
+def _resolve_override_local_paths(
+    override: ModuleRegistryOverride,
+    *,
+    base_dir: Path,
+) -> ModuleRegistryOverride:
+    """Resolve relative project ``local_path`` values against their authoring context."""
+
+    projects = copy.deepcopy(override.projects)
+    for project in projects.values():
+        local_path = project.get("local_path")
+        if not isinstance(local_path, str) or not local_path:
+            continue
+        path = Path(local_path).expanduser()
+        if not path.is_absolute():
+            path = base_dir / path
+        project["local_path"] = str(path.resolve())
+    return ModuleRegistryOverride(projects=projects, modules=copy.deepcopy(override.modules))
+
+
 def _iter_registry_layers(
     nsx_cfg: dict[str, Any], app_dir: Path | None
 ) -> list[ModuleRegistryOverride]:
@@ -116,10 +136,18 @@ def _iter_registry_layers(
         if kind == "workspace":
             overlay_path = (base_dir / str(value)).resolve()
             resolved.append(
-                ModuleRegistryOverride.from_mapping(_load_workspace_overlay(overlay_path))
+                _resolve_override_local_paths(
+                    ModuleRegistryOverride.from_mapping(_load_workspace_overlay(overlay_path)),
+                    base_dir=overlay_path.parent,
+                )
             )
         elif kind == "inline":
-            resolved.append(ModuleRegistryOverride.from_mapping(value))
+            resolved.append(
+                _resolve_override_local_paths(
+                    ModuleRegistryOverride.from_mapping(value),
+                    base_dir=base_dir,
+                )
+            )
         else:
             raise NSXConfigError(
                 f"nsx.yml: unknown registry layer kind '{kind}' at index {index} "
@@ -137,16 +165,23 @@ def _effective_registry(
 ) -> dict[str, Any]:
     """Fold the registry layer stack onto *base_registry*.
 
-    Precedence (lowest to highest): packaged base registry, each
-    ``registry.layers`` entry in order, then the legacy ``module_registry``
-    block. This keeps existing apps (no ``registry:`` block) byte-for-byte
-    identical to the prior single-override behavior.
+    Precedence (lowest to highest): packaged base registry, synthetic starter
+    profile defaults, each ``registry.layers`` entry in order, then the legacy
+    ``module_registry`` block. This keeps explicit workspace/inline development
+    layers above implicit profile defaults while preserving the historical
+    highest precedence of authored app-local overrides.
     """
 
-    merged = base_registry
+    merged = ModuleRegistryOverride.from_mapping(nsx_cfg.get("_profile_registry")).merge_into(
+        base_registry
+    )
     for layer in _iter_registry_layers(nsx_cfg, app_dir):
         merged = layer.merge_into(merged)
-    return ModuleRegistryOverride.from_mapping(nsx_cfg.get("module_registry")).merge_into(merged)
+    app_override = _resolve_override_local_paths(
+        ModuleRegistryOverride.from_mapping(nsx_cfg.get("module_registry")),
+        base_dir=app_dir if app_dir is not None else Path.cwd(),
+    )
+    return app_override.merge_into(merged)
 
 
 def validate_app_module_alignment(
@@ -591,12 +626,13 @@ def _metadata_path_relative_to_project(metadata: Path, project_path: str | None)
 
 
 def _is_packaged_module(registry: dict[str, Any], module_name: str) -> bool:
-    """Return True if *module_name* ships packaged with neuralspotx."""
+    """Return whether *module_name* should resolve from packaged content."""
 
     from .metadata import registry_entry_for_module
 
     entry = registry_entry_for_module(registry, module_name)
-    return entry.project == PACKAGED_PROJECT_NAME
+    project = _registry_project_entry(registry, entry.project)
+    return entry.project == PACKAGED_PROJECT_NAME and not project.local_path
 
 
 def _module_clone_dir(app_dir: Path, project_name: str, registry: dict | None = None) -> Path:
@@ -607,7 +643,14 @@ def _module_clone_dir(app_dir: Path, project_name: str, registry: dict | None = 
     """
 
     if registry is not None:
-        project_path = _registry_project_entry(registry, project_name).path
+        project = _registry_project_entry(registry, project_name)
+        project_path = project.path
+        if project.local_path and (
+            not project_path
+            or Path(project_path).is_absolute()
+            or Path(project_path).parts[:1] != ("modules",)
+        ):
+            return app_dir / "modules" / project_name
         if project_path:
             return app_dir / project_path
 

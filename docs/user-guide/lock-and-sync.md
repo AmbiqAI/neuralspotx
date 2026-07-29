@@ -11,6 +11,57 @@ Every NSX app is reproducible through two files:
 `modules/` tree match `nsx.lock` exactly. Use `nsx sync --frozen` in CI to
 fail on drift instead of correcting it.
 
+## Stable and development dependency modes
+
+The packaged `stable` registry is the release default. Its project and module
+revisions are expected to move to immutable version tags or full commit SHAs.
+The current `neuralspotx@main` and `nsx-ambiq-sdk@main` entries are narrow,
+temporary policy exceptions while those release pins are prepared; adding
+another floating stable ref fails the registry policy test.
+
+Internal target bring-up remains explicit and app-local. Use ordered
+`registry.layers` (`workspace` or `inline`) for shared overlays, then
+`module_registry` for the highest-precedence app override:
+
+```yaml
+registry:
+  layers:
+    - packaged
+    - workspace: ../bringup-registry.yaml
+
+module_registry:
+  projects:
+    nsx-ambiq-sdk:
+      local_path: ../nsx-ambiq-sdk
+```
+
+Relative `local_path` values in inline layers and `module_registry` are resolved
+from the app directory. In a workspace layer, they are resolved from the
+workspace overlay file's directory, so shared overlays remain portable.
+
+An explicit `local_path` overrides the project's packaged git URL and produces
+a `local` lock entry with the source tree's content hash. For a branch or SHA
+override, set the project revision and each affected module revision so the
+module's requested constraint is unambiguous:
+
+```yaml
+module_registry:
+  projects:
+    nsx-ambiq-sdk:
+      revision: bringup/customer-board
+  modules:
+    nsx-ambiqsuite:
+      project: nsx-ambiq-sdk
+      revision: bringup/customer-board
+```
+
+Regardless of mode, `nsx.lock` records exact resolved content: git refs resolve
+to a commit SHA plus content hash, while local projects record a content hash.
+SBOM output preserves the lock's project, kind, requested constraint/tag,
+resolved commit (for git), and neuralspotx tool version. This makes branch and
+local development inputs visible in provenance without changing stable
+registry defaults.
+
 ## The `source:` field
 
 Each entry under `modules:` in `nsx.yml` may carry an optional `source:`
@@ -27,7 +78,6 @@ field that tells NSX where the module's contents come from.
 ```yaml
 modules:
   - name: nsx-uart
-    revision: main
 ```
 
 NSX resolves the module against the packaged registry (or any

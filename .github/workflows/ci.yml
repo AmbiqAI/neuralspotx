@@ -403,7 +403,13 @@ jobs:
   lint-and-test:
     if: always()
     needs:
-      [lint, distribution-smoke, unit-tests, example-builds, lock-integrity, cmake-vendor-diff]
+      - lint
+      - distribution-smoke
+      - unit-tests
+      - unit-tests-c-locale
+      - example-builds
+      - lock-integrity
+      - cmake-vendor-diff
     runs-on: ubuntu-latest
     steps:
       - name: Decide status
@@ -412,6 +418,7 @@ jobs:
           if [[ "${{ needs.lint.result }}" != "success" ]] ||
              [[ "${{ needs.distribution-smoke.result }}" != "success" ]] ||
              [[ "${{ needs.unit-tests.result }}" != "success" ]] ||
+             [[ "${{ needs.unit-tests-c-locale.result }}" != "success" ]] ||
              [[ "${{ needs.example-builds.result }}" != "success" ]] ||
              [[ "${{ needs.lock-integrity.result }}" != "success" ]] ||
              [[ "${{ needs.cmake-vendor-diff.result }}" != "success" ]]; then

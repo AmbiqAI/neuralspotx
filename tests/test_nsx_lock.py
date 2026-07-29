@@ -875,6 +875,41 @@ class TestLocalKind:
 
 
 class TestGitKind:
+    def test_tag_and_resolved_commit_survive_lock_round_trip(self, app: Path) -> None:
+        requested_tag = "v5.2.23"
+        resolved_commit = "a" * 40
+        original = NsxLock(
+            generated_at=utcnow_iso(),
+            nsx_tool_version="0.7.8",
+            target={
+                "board": "apollo510_evb",
+                "soc": "apollo510",
+                "toolchain": "arm-none-eabi-gcc",
+            },
+            modules={
+                "fake-mod": ResolvedModule(
+                    project="fake-proj",
+                    kind=LockKind.GIT,
+                    constraint=requested_tag,
+                    vendored_at="modules/fake-proj",
+                    content_hash="sha256:" + "f" * 64,
+                    acquired_at=utcnow_iso(),
+                    url="https://example.com/fake.git",
+                    tag=requested_tag,
+                    commit=resolved_commit,
+                )
+            },
+        )
+
+        write_lock(app, original)
+        restored = read_lock(app)
+
+        assert restored is not None
+        module = restored.modules["fake-mod"]
+        assert module.constraint == requested_tag
+        assert module.tag == requested_tag
+        assert module.commit == resolved_commit
+
     def test_git_lock_records_commit(self, app: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         fake_sha = "a" * 40
         monkeypatch.setattr(operations._lock, "resolve_ref", lambda url, ref: (fake_sha, "branch"))
