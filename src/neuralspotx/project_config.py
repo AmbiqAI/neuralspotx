@@ -643,7 +643,14 @@ def _module_clone_dir(app_dir: Path, project_name: str, registry: dict | None = 
     """
 
     if registry is not None:
-        project_path = _registry_project_entry(registry, project_name).path
+        project = _registry_project_entry(registry, project_name)
+        project_path = project.path
+        if project.local_path and (
+            not project_path
+            or Path(project_path).is_absolute()
+            or Path(project_path).parts[:1] != ("modules",)
+        ):
+            return app_dir / "modules" / project_name
         if project_path:
             return app_dir / project_path
 

@@ -335,7 +335,6 @@ def test_local_path_overrides_packaged_neuralspotx_project(tmp_path: Path) -> No
                 "neuralspotx": {
                     "local_path": str(source),
                     "revision": "local-checkout",
-                    "path": "modules/neuralspotx",
                 }
             },
             "modules": {
@@ -376,9 +375,20 @@ def test_local_path_overrides_packaged_neuralspotx_project(tmp_path: Path) -> No
     assert module.kind == LockKind.LOCAL
     assert module.constraint == "local-checkout"
     assert module.content_hash == hash_tree(source)
+    assert Path(module.vendored_at).as_posix() == "modules/neuralspotx"
 
     sync_app(app_dir)
     assert (app_dir / "modules" / "neuralspotx" / "LOCAL_CHECKOUT.txt").is_file()
+    modules_cmake = (app_dir / "cmake" / "nsx" / "modules.cmake").read_text(
+        encoding="utf-8"
+    )
+    assert (
+        'set(NSX_APP_MODULE_DIR_nsx_tooling "modules/neuralspotx/src/neuralspotx/cmake")'
+        in modules_cmake
+    )
+    gitignore = (app_dir / "modules" / ".gitignore").read_text(encoding="utf-8")
+    assert "neuralspotx/" in gitignore
+    assert "nsx-tooling/" not in gitignore
     sync_app(app_dir, frozen=True)
 
 
