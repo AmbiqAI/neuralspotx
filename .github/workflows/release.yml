@@ -7,16 +7,11 @@ on:
   workflow_dispatch:
     inputs:
       tag:
-        description: Existing release tag to rebuild artifacts for
+        description: Existing release tag to rebuild; leave empty to update the release PR
         required: false
         type: string
 
-permissions:
-  contents: write
-  pull-requests: write
-  issues: write
-  actions: write
-  id-token: write
+permissions: {}
 
 defaults:
   run:
@@ -26,68 +21,331 @@ jobs:
   release-please:
     if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.tag == '') }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
     outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
-      tag_name: ${{ steps.release.outputs.tag_name }}
+      release_created: ${{ steps.release-metadata.outputs.release_created }}
+      tag_name: ${{ steps.release-metadata.outputs.tag_name }}
+      body: ${{ steps.release-metadata.outputs.body }}
       pr: ${{ steps.release.outputs.pr }}
 
     steps:
+      - name: Checkout release landing commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 2
+
       - name: Run Release Please
         id: release
-        uses: googleapis/release-please-action@v4
+        uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4
         with:
           config-file: release-please-config.json
           manifest-file: .release-please-manifest.json
+          skip-github-release: true
 
-      # PRs opened by GITHUB_TOKEN do not trigger other workflows
-      # (GitHub's recursion guard), so the required `lint-and-test`
-      # status on the release PR would otherwise never report. The
-      # `workflow_dispatch` event is explicitly exempted from that
-      # guard, so we dispatch CI on the release-please branch here.
-      # The CI run's check runs attach to the PR's head SHA and
-      # satisfy branch protection.
-      - name: Dispatch CI on the release-please PR branch
-        if: ${{ steps.release.outputs.pr }}
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR_JSON: ${{ steps.release.outputs.pr }}
+      - name: Derive release metadata from the landing commit
+        id: release-metadata
+        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         run: |
+          python - <<'PY' >> "$GITHUB_OUTPUT"
+          import re
+          import subprocess
+          import tomllib
+          from pathlib import Path
+
+          current_text = Path("pyproject.toml").read_text(encoding="utf-8")
+          parent_text = subprocess.check_output(
+              ["git", "show", "HEAD^:pyproject.toml"], text=True
+          )
+          current_version = tomllib.loads(current_text)["project"]["version"]
+          parent_version = tomllib.loads(parent_text)["project"]["version"]
+
+          if current_version == parent_version:
+              print("release_created=false")
+              print("tag_name=")
+              print("body<<RELEASE_NOTES")
+              print("")
+              print("RELEASE_NOTES")
+              raise SystemExit
+
+          changelog = Path("CHANGELOG.md").read_text(encoding="utf-8")
+          heading = re.compile(
+              rf"^## \[{re.escape(current_version)}\].*$", re.MULTILINE
+          ).search(changelog)
+          if heading is None:
+              raise SystemExit(
+                  f"CHANGELOG.md has no release section for {current_version}."
+              )
+          next_heading = re.compile(r"^## \[", re.MULTILINE).search(
+              changelog, heading.end()
+          )
+          body = changelog[heading.start() : next_heading.start() if next_heading else None]
+
+          print("release_created=true")
+          print(f"tag_name=neuralspotx-v{current_version}")
+          print("body<<RELEASE_NOTES")
+          print(body.strip())
+          print("RELEASE_NOTES")
+          PY
+
+  dispatch-release-pr-ci:
+    needs: release-please
+    if: ${{ needs.release-please.result == 'success' && needs.release-please.outputs.pr != '' }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      # GITHUB_TOKEN-created PRs do not trigger other workflows. Dispatch CI
+      # explicitly so the release PR receives its required status check.
+      - name: Dispatch CI on the release-please PR branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_JSON: ${{ needs.release-please.outputs.pr }}
+        run: |
+          set -euo pipefail
           branch=$(printf '%s' "$PR_JSON" | jq -r '.headBranchName')
           echo "Dispatching CI on branch: $branch"
           gh workflow run ci.yml --ref "$branch" --repo "$GITHUB_REPOSITORY"
 
-  build:
+  release-context:
+    needs: release-please
+    if: ${{ always() && ((github.event_name == 'workflow_dispatch' && inputs.tag != '') || (needs.release-please.result == 'success' && needs.release-please.outputs.release_created == 'true')) }}
     runs-on: ubuntu-latest
-    needs:
-      - release-please
-    if: ${{ always() && ((github.event_name == 'workflow_dispatch' && inputs.tag != '') || needs.release-please.outputs.release_created == 'true') }}
-    env:
-      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || needs.release-please.outputs.tag_name }}
+    permissions:
+      contents: read
+    outputs:
+      release_tag: ${{ steps.context.outputs.release_tag }}
+      target_sha: ${{ steps.context.outputs.target_sha }}
+      manual: ${{ steps.context.outputs.manual }}
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Checkout release target
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || needs.release-please.outputs.tag_name }}
+          ref: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.sha }}
+          fetch-depth: 0
 
-      - name: Validate manual tag input
-        if: github.event_name == 'workflow_dispatch' && inputs.tag != ''
+      - name: Resolve release target
+        id: context
+        env:
+          INPUT_TAG: ${{ inputs.tag }}
+          RELEASE_PLEASE_TAG: ${{ needs.release-please.outputs.tag_name }}
+          EVENT_NAME: ${{ github.event_name }}
+          LANDING_SHA: ${{ github.sha }}
         run: |
-          if [[ "${{ inputs.tag }}" != v* && "${{ inputs.tag }}" != neuralspotx-v* ]]; then
-            echo "Manual release rebuilds must target an existing release tag such as v0.6.3 or neuralspotx-v0.6.3."
+          set -euo pipefail
+
+          if [[ "$EVENT_NAME" == "workflow_dispatch" && -n "$INPUT_TAG" ]]; then
+            release_tag="$INPUT_TAG"
+            if [[ ! "$release_tag" =~ ^(v|neuralspotx-v)[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+              echo "Manual rebuilds must target an existing version tag." >&2
+              exit 1
+            fi
+            target_sha=$(git rev-parse "refs/tags/$release_tag^{commit}")
+            manual=true
+          else
+            release_tag="$RELEASE_PLEASE_TAG"
+            target_sha="$LANDING_SHA"
+            manual=false
+          fi
+
+          if [[ -z "$release_tag" ]]; then
+            echo "Release Please did not provide a release tag." >&2
             exit 1
           fi
-          git rev-parse "refs/tags/${{ inputs.tag }}" >/dev/null 2>&1
+          if [[ ! "$target_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Release target is not a full commit SHA: $target_sha" >&2
+            exit 1
+          fi
 
-      - name: Install uv
-        uses: astral-sh/setup-uv@v5
-        with:
-          enable-cache: true
+          printf 'release_tag=%s\n' "$release_tag" >> "$GITHUB_OUTPUT"
+          printf 'target_sha=%s\n' "$target_sha" >> "$GITHUB_OUTPUT"
+          printf 'manual=%s\n' "$manual" >> "$GITHUB_OUTPUT"
 
-      - name: Set up Python
-        uses: actions/setup-python@v5
+  exact-commit-ci:
+    needs: release-context
+    if: ${{ needs.release-context.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: write
+    outputs:
+      run_id: ${{ steps.ci.outputs.run_id }}
+
+    steps:
+      - name: Dispatch and await exact-commit CI
+        id: ci
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_SHA: ${{ needs.release-context.outputs.target_sha }}
+          CI_BRANCH: release-ci-${{ github.run_id }}
+        run: |
+          set -euo pipefail
+
+          workflow_runs="repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs"
+          before_ids=$(gh api "$workflow_runs?event=workflow_dispatch&head_sha=$TARGET_SHA&per_page=100" --jq '[.workflow_runs[].id]')
+          ref="refs/heads/$CI_BRANCH"
+          gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+            --field "ref=$ref" \
+            --field "sha=$TARGET_SHA" >/dev/null
+          cleanup() {
+            gh api --method DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/$CI_BRANCH" >/dev/null
+          }
+          trap cleanup EXIT
+          gh workflow run ci.yml --ref "$CI_BRANCH" --repo "$GITHUB_REPOSITORY"
+
+          run_id=""
+          for _ in {1..60}; do
+            run_id=$(gh api "$workflow_runs?event=workflow_dispatch&head_sha=$TARGET_SHA&per_page=100" |
+              jq -r --argjson before "$before_ids" '
+                [.workflow_runs[]
+                 | select(.id as $id | ($before | index($id)) == null)]
+                | sort_by(.created_at)
+                | last
+                | .id // empty')
+            if [[ -n "$run_id" ]]; then
+              break
+            fi
+            sleep 5
+          done
+
+          if [[ -z "$run_id" ]]; then
+            echo "No fresh CI run appeared for exact commit $TARGET_SHA." >&2
+            exit 1
+          fi
+
+          for _ in {1..120}; do
+            run=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/$run_id")
+            status=$(printf '%s' "$run" | jq -r '.status')
+            conclusion=$(printf '%s' "$run" | jq -r '.conclusion // empty')
+            if [[ "$status" == "completed" ]]; then
+              if [[ "$conclusion" != "success" ]]; then
+                echo "Exact-commit CI concluded $conclusion for $TARGET_SHA." >&2
+                exit 1
+              fi
+
+              jobs=$(gh api "repos/${GITHUB_REPOSITORY}/actions/runs/$run_id/jobs?per_page=100")
+              failed_jobs=$(printf '%s' "$jobs" |
+                jq '[.jobs[] | select(.status != "completed" or (.conclusion != "success" and .conclusion != "skipped"))] | length')
+              required_jobs=$(printf '%s' "$jobs" |
+                jq '[.jobs[] | select(.name == "lint-and-test" and .conclusion == "success")] | length')
+              if [[ "$failed_jobs" != "0" || "$required_jobs" != "1" ]]; then
+                echo "Exact-commit CI has failed or missing required jobs for $TARGET_SHA." >&2
+                exit 1
+              fi
+
+              printf 'run_id=%s\n' "$run_id" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            sleep 10
+          done
+
+          echo "Timed out waiting for exact-commit CI for $TARGET_SHA." >&2
+          exit 1
+
+  create-release-tag:
+    needs:
+      - release-context
+      - exact-commit-ci
+    if: ${{ needs.release-context.outputs.manual == 'false' && needs.exact-commit-ci.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Create immutable annotated release tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.release-context.outputs.release_tag }}
+          TARGET_SHA: ${{ needs.release-context.outputs.target_sha }}
+          LANDING_SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          if [[ ! "$RELEASE_TAG" =~ ^neuralspotx-v[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "New releases must use the neuralspotx-v<version> tag format." >&2
+            exit 1
+          fi
+          if [[ "$TARGET_SHA" != "$LANDING_SHA" ]]; then
+            echo "Release tag target is not the reviewed release landing commit." >&2
+            exit 1
+          fi
+
+          tag_object=$(gh api --method POST "repos/${GITHUB_REPOSITORY}/git/tags" \
+            --field "tag=$RELEASE_TAG" \
+            --field "message=Release $RELEASE_TAG" \
+            --field "object=$TARGET_SHA" \
+            --field "type=commit")
+          tag_object_sha=$(printf '%s' "$tag_object" | jq -r '.sha')
+          if [[ ! "$tag_object_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "GitHub did not return an annotated tag object SHA." >&2
+            exit 1
+          fi
+
+          # Creating a ref, rather than force-updating one, makes a reused tag
+          # fail closed without moving or deleting any published tag.
+          ref=$(gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+            --field "ref=refs/tags/$RELEASE_TAG" \
+            --field "sha=$tag_object_sha")
+          ref_type=$(printf '%s' "$ref" | jq -r '.object.type')
+          ref_sha=$(printf '%s' "$ref" | jq -r '.object.sha')
+          if [[ "$ref_type" != "tag" || "$ref_sha" != "$tag_object_sha" ]]; then
+            echo "Created release ref is not an annotated tag object." >&2
+            exit 1
+          fi
+
+          peeled_sha=$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/$tag_object_sha" --jq '.object.sha')
+          if [[ "$peeled_sha" != "$TARGET_SHA" ]]; then
+            echo "Annotated tag does not peel to the reviewed landing commit." >&2
+            exit 1
+          fi
+
+  build:
+    needs:
+      - release-context
+      - exact-commit-ci
+      - create-release-tag
+    if: ${{ always() && needs.release-context.result == 'success' && needs.exact-commit-ci.result == 'success' && (needs.create-release-tag.result == 'success' || needs.create-release-tag.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      RELEASE_TAG: ${{ needs.release-context.outputs.release_tag }}
+
+    steps:
+      - name: Checkout release tag
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          python-version: "3.11"
+          ref: ${{ needs.release-context.outputs.target_sha }}
+
+      - name: Verify release tag still peels to CI target
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_SHA: ${{ needs.release-context.outputs.target_sha }}
+        run: |
+          set -euo pipefail
+          tag_ref=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/$RELEASE_TAG")
+          tag_type=$(printf '%s' "$tag_ref" | jq -r '.object.type')
+          tag_object_sha=$(printf '%s' "$tag_ref" | jq -r '.object.sha')
+          case "$tag_type" in
+            tag)
+              peeled_sha=$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/$tag_object_sha" --jq '.object.sha')
+              ;;
+            commit)
+              peeled_sha="$tag_object_sha"
+              ;;
+            *)
+              echo "Release tag has unsupported object type: $tag_type" >&2
+              exit 1
+              ;;
+          esac
+          if [[ "$peeled_sha" != "$TARGET_SHA" ]]; then
+            echo "Release tag no longer points to the CI-validated commit." >&2
+            exit 1
+          fi
 
       - name: Validate tag matches package version
         run: |
@@ -106,6 +364,16 @@ jobs:
               )
           print(f"Validated release tag {tag} against package version {version}.")
           PY
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11"
 
       - name: Build distributions
         run: uv build
@@ -135,68 +403,136 @@ jobs:
           "$smoke_venv/bin/nsx" module validate "$smoke_module/nsx-module.yaml"
 
       - name: Upload release artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: python-dist
           path: dist/*
 
   github-release:
-    runs-on: ubuntu-latest
     needs:
       - release-please
+      - release-context
+      - exact-commit-ci
+      - create-release-tag
       - build
-    if: ${{ always() && needs.build.result == 'success' }}
+    if: ${{ always() && needs.release-context.result == 'success' && needs.exact-commit-ci.result == 'success' && needs.build.result == 'success' && (needs.create-release-tag.result == 'success' || needs.create-release-tag.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
     env:
-      RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || needs.release-please.outputs.tag_name }}
+      RELEASE_TAG: ${{ needs.release-context.outputs.release_tag }}
 
     steps:
+      - name: Verify release tag still peels to CI target
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TARGET_SHA: ${{ needs.release-context.outputs.target_sha }}
+        run: |
+          set -euo pipefail
+          tag_ref=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/$RELEASE_TAG")
+          tag_type=$(printf '%s' "$tag_ref" | jq -r '.object.type')
+          tag_object_sha=$(printf '%s' "$tag_ref" | jq -r '.object.sha')
+          if [[ "$tag_type" == "tag" ]]; then
+            peeled_sha=$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/$tag_object_sha" --jq '.object.sha')
+          elif [[ "$tag_type" == "commit" ]]; then
+            peeled_sha="$tag_object_sha"
+          else
+            echo "Release tag has unsupported object type: $tag_type" >&2
+            exit 1
+          fi
+          if [[ "$peeled_sha" != "$TARGET_SHA" ]]; then
+            echo "Release tag no longer points to the CI-validated commit." >&2
+            exit 1
+          fi
+
       - name: Download release artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: python-dist
           path: dist
 
+      - name: Create matching SHA256 manifest
+        run: |
+          set -euo pipefail
+          (cd dist && sha256sum * > SHA256SUMS)
+          (cd dist && sha256sum -c SHA256SUMS)
+
       - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           tag_name: ${{ env.RELEASE_TAG }}
+          body: ${{ needs.release-please.outputs.body }}
           files: dist/*
 
-  # PyPI publish must stay in this workflow. PyPI trusted publishing does not
-  # support calling out to a reusable workflow for the publish step.
   pypi-publish:
-    runs-on: ubuntu-latest
     needs:
-      - release-please
+      - release-context
+      - exact-commit-ci
+      - create-release-tag
       - build
-    if: ${{ always() && needs.build.result == 'success' }}
+    if: ${{ always() && needs.release-context.result == 'success' && needs.exact-commit-ci.result == 'success' && needs.build.result == 'success' && (needs.create-release-tag.result == 'success' || needs.create-release-tag.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write
 
     steps:
+      - name: Verify release tag still peels to CI target
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.release-context.outputs.release_tag }}
+          TARGET_SHA: ${{ needs.release-context.outputs.target_sha }}
+        run: |
+          set -euo pipefail
+          tag_ref=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/$RELEASE_TAG")
+          tag_type=$(printf '%s' "$tag_ref" | jq -r '.object.type')
+          tag_object_sha=$(printf '%s' "$tag_ref" | jq -r '.object.sha')
+          if [[ "$tag_type" == "tag" ]]; then
+            peeled_sha=$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/$tag_object_sha" --jq '.object.sha')
+          elif [[ "$tag_type" == "commit" ]]; then
+            peeled_sha="$tag_object_sha"
+          else
+            echo "Release tag has unsupported object type: $tag_type" >&2
+            exit 1
+          fi
+          if [[ "$peeled_sha" != "$TARGET_SHA" ]]; then
+            echo "Release tag no longer points to the CI-validated commit." >&2
+            exit 1
+          fi
+
       - name: Download release artifacts
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
           name: python-dist
           path: dist
 
       - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
+        uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
+        with:
+          skip-existing: ${{ github.event_name == 'workflow_dispatch' && inputs.tag != '' }}
 
   refresh-uv-lock:
-    runs-on: ubuntu-latest
     needs:
       - release-please
       - github-release
       - pypi-publish
     if: ${{ always() && needs.release-please.outputs.release_created == 'true' && needs.github-release.result == 'success' && needs.pypi-publish.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+    outputs:
+      operation: ${{ steps.cpr.outputs.pull-request-operation }}
+      branch: ${{ steps.cpr.outputs.pull-request-branch }}
 
     steps:
       - name: Checkout main
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: refs/heads/main
 
       - name: Set up Python
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
         with:
           python-version: "3.11"
 
@@ -215,9 +551,6 @@ jobs:
           lock_path = Path("uv.lock")
           text = lock_path.read_text(encoding="utf-8")
 
-          # Update only the editable neuralspotx package version. This keeps the
-          # lockfile in sync with pyproject.toml without sweeping in unrelated
-          # transitive dependency updates that a full `uv lock` would pull in.
           pattern = re.compile(
               r'(\[\[package\]\]\nname = "neuralspotx"\nversion = ")[^"]*(")'
           )
@@ -234,7 +567,7 @@ jobs:
 
       - name: Create uv.lock refresh PR
         id: cpr
-        uses: peter-evans/create-pull-request@v8
+        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8
         with:
           branch: automation/update-uv-lock
           delete-branch: true
@@ -250,13 +583,20 @@ jobs:
           add-paths: |
             uv.lock
 
-      # PRs opened by GITHUB_TOKEN do not trigger other workflows, so dispatch
-      # CI explicitly on the created/updated lock-refresh branch.
+  dispatch-lock-refresh-ci:
+    needs: refresh-uv-lock
+    if: ${{ needs.refresh-uv-lock.result == 'success' && (needs.refresh-uv-lock.outputs.operation == 'created' || needs.refresh-uv-lock.outputs.operation == 'updated') }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    steps:
       - name: Dispatch CI on uv.lock refresh PR branch
-        if: ${{ steps.cpr.outputs.pull-request-operation == 'created' || steps.cpr.outputs.pull-request-operation == 'updated' }}
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ github.token }}
+          REFRESH_BRANCH: ${{ needs.refresh-uv-lock.outputs.branch }}
         run: |
-          branch="${{ steps.cpr.outputs.pull-request-branch }}"
+          set -euo pipefail
+          branch="$REFRESH_BRANCH"
           echo "Dispatching CI on branch: $branch"
           gh workflow run ci.yml --ref "$branch" --repo "$GITHUB_REPOSITORY"
