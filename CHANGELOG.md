@@ -1,5 +1,28 @@
 # Changelog
 
+## [0.7.9](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.8...neuralspotx-v0.7.9) (2026-07-29)
+
+### Release highlights
+
+* Pin stable registry resolution to `nsx-ambiq-sdk` `v5.2.23` and
+  `nsx-pmu-armv8m` `v0.2.0`, with all example locks regenerated to record the
+  requested tags, exact commits, and content hashes.
+* Preserve explicit local, branch, and SHA development overrides while
+  strengthening frozen lock/schema/git integrity and SBOM provenance for
+  requested refs, resolved commits, content hashes, and the neuralspotx tool
+  version.
+
+### Features
+
+* add named-target flashing and explicit reset API ([1a6ffca](https://github.com/AmbiqAI/neuralspotx/commit/1a6ffcaa556e021f7222ed31e9a95c690149896b))
+
+
+### Bug Fixes
+
+* **registry:** harden stable override foundations ([dd369f3](https://github.com/AmbiqAI/neuralspotx/commit/dd369f310add54fcbbe693704d7914f90ff15798))
+* **registry:** pin stable SDK releases ([4e4af8e](https://github.com/AmbiqAI/neuralspotx/commit/4e4af8e26259bdfb23ee97cadda3be3f9010167a))
+* restore packaged module scaffolding and align docs ([886ccd6](https://github.com/AmbiqAI/neuralspotx/commit/886ccd64550530f2c176ea7723d12f305af34b54))
+
 ## [0.7.8](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.7...neuralspotx-v0.7.8) (2026-07-12)
 
 
