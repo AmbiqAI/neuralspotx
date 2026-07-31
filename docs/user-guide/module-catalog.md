@@ -52,10 +52,10 @@ wrappers, CMSIS/startup integration, and most common runtime and peripheral
 modules across the `r3`, `r4`, and `r5` lines.
 
 Only a small set of first-class modules are currently sourced from separate
-repositories, notably `nsx-pmu-armv8m`, `nsx-cmsis-nn`, `nsx-helia-rt`,
-`nsx-nanopb`, `helia-dsp`, `nsx-physiokit`, `nsx-tileio-ble`, `nsx-tileio-usb`,
-`nsx-sensors`, and the packaged board/tooling content that ships directly from
-`neuralspotx`.
+repositories, notably `nsx-pmu-armv8m`, `arm-cmsis-nn`, `nsx-tflite-micro`,
+`nsx-cmsis-nn`, `nsx-helia-rt`, `nsx-nanopb`, `helia-dsp`, `nsx-physiokit`,
+`nsx-tileio-ble`, `nsx-tileio-usb`, `nsx-sensors`, and the packaged
+board/tooling content that ships directly from `neuralspotx`.
 
 | Module | Category | Description | SoC Support |
 | --- | --- | --- | --- |
@@ -80,6 +80,8 @@ repositories, notably `nsx-pmu-armv8m`, `nsx-cmsis-nn`, `nsx-helia-rt`,
 | `nsx-freertos` | :material-cog: Runtime | Optional FreeRTOS kernel middleware — vendors a pinned upstream FreeRTOS-Kernel and builds the SoC-selected CMSIS port. | Apollo3P, 4P, 510, 510B, 330P, 510L |
 | `nsx-nanopb` | :material-library: Library | Vendored nanopb — zero-dynamic-memory Protocol Buffers in ANSI C. | All |
 | `nsx-pmu-armv8m` | :material-speedometer: Profiling | Armv8-M PMU helpers for hardware counter configuration, capture, and transport. | Apollo5B, 510, 510B, 330P |
+| `arm-cmsis-nn` | :material-brain: ML | Standard Arm CMSIS-NN kernels exposed as an NSX CMake target for TFLM consumers. | All |
+| `nsx-tflite-micro` | :material-brain: ML | Helia-RT TensorFlow Lite Micro runtime adapter with reference and standard Arm CMSIS-NN backends. | All |
 | `nsx-cmsis-nn` | :material-brain: ML | heliaCORE kernels and NSX integration for ML inference workloads. | Apollo5B, Apollo510, Apollo510B, Apollo510L |
 | `nsx-helia-rt` | :material-brain: ML | Helia runtime integration for NSX-managed inference applications. | Apollo5B, Apollo510, Apollo510B, Apollo510L |
 | `helia-dsp` | :material-function-variant: DSP | NSX-packaged helia-dsp fork of CMSIS-DSP — FFT, filtering, and statistics kernels. | All |
@@ -174,7 +176,9 @@ separate upstream repositories instead of the unified `nsx-ambiq-sdk` monorepo.
 | Module | What it provides | Typical use | More info |
 | --- | --- | --- | --- |
 | `nsx-pmu-armv8m` | Armv8-M PMU configuration, presets, capture, and transport support. | Hardware-counter-based profiling on supported M55-class targets. | [GitHub](https://github.com/AmbiqAI/nsx-pmu-armv8m) |
-| `nsx-cmsis-nn` | heliaCORE kernels and NSX integration for ML inference workloads. | Accelerated neural-network kernels for inference apps. | [GitHub](https://github.com/AmbiqAI/ns-cmsis-nn) |
+| `arm-cmsis-nn` | Standard Arm CMSIS-NN kernels exposed as `nsx::arm_cmsis_nn`. | CMSIS-NN kernels for TFLM and portable Arm kernel benchmarking. | [arm-cmsis-nn](https://github.com/AmbiqAI/arm-cmsis-nn/tree/v0.1.0) |
+| `nsx-tflite-micro` | Helia-RT TensorFlow Lite Micro runtime adapter with reference and standard Arm CMSIS-NN backends. | TFLM inference and runtime profiling on NSX targets. | [nsx-tflite-micro](https://github.com/AmbiqAI/nsx-tflite-micro/tree/v0.1.0) |
+| `nsx-cmsis-nn` | heliaCORE kernels and NSX integration for ML inference workloads. | Accelerated neural-network kernels for inference apps. | [ns-cmsis-nn](https://github.com/AmbiqAI/ns-cmsis-nn/tree/v7.26.0) |
 | `nsx-helia-rt` | Helia runtime integration for NSX-managed inference applications. | Runtime support for Helia-based inference deployments. | [GitHub](https://github.com/AmbiqAI/helia-rt) |
 | `nsx-nanopb` | Vendored nanopb with NSX packaging metadata. | Protocol Buffers support for RPC and host/device message transport. | [GitHub](https://github.com/AmbiqAI/nsx-nanopb) |
 | `helia-dsp` | NSX-packaged helia-dsp fork of CMSIS-DSP, preserving upstream Source/ CMake as the single source of truth. | Signal processing, feature extraction, and FFT/filtering kernels for embedded DSP workloads. | [GitHub](https://github.com/AmbiqAI/helia-dsp) |
