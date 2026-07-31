@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.10](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.9...neuralspotx-v0.7.10) (2026-07-31)
+
+
+### Bug Fixes
+
+* harden release tag publication ([038f033](https://github.com/AmbiqAI/neuralspotx/commit/038f033698dc5faee75a96a94a33c78341759a2c))
+* **registry:** promote helper modules to v0.1.0 ([18771c3](https://github.com/AmbiqAI/neuralspotx/commit/18771c3c422a8eab6c8f089e2b43846b732264c3))
+
 ## [0.7.9](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.8...neuralspotx-v0.7.9) (2026-07-29)
 
 ### Release highlights
