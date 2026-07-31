@@ -100,12 +100,12 @@ projects:
   arm-cmsis-nn:
     name: arm-cmsis-nn
     url: https://github.com/AmbiqAI/arm-cmsis-nn.git
-    revision: 41e0cf520fe68d5e22298f98e1a0ffda1196f8d8
+    revision: v0.1.0
     path: modules/arm-cmsis-nn
   nsx-tflite-micro:
     name: nsx-tflite-micro
     url: https://github.com/AmbiqAI/nsx-tflite-micro.git
-    revision: c6c1e01b3ca30bdce974e49a35a0ed9bb2b888a6
+    revision: v0.1.0
     path: modules/nsx-tflite-micro
   nsx-physiokit:
     name: nsx-physiokit
@@ -290,11 +290,11 @@ modules:
     metadata: modules/helia-rt-source/nsx-source/nsx-module.yaml
   arm-cmsis-nn:
     project: arm-cmsis-nn
-    revision: 41e0cf520fe68d5e22298f98e1a0ffda1196f8d8
+    revision: v0.1.0
     metadata: modules/arm-cmsis-nn/nsx-module.yaml
   nsx-tflite-micro:
     project: nsx-tflite-micro
-    revision: c6c1e01b3ca30bdce974e49a35a0ed9bb2b888a6
+    revision: v0.1.0
     metadata: modules/nsx-tflite-micro/nsx-module.yaml
   nsx-tileio-ble:
     project: nsx-tileio
