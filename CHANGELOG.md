@@ -2,6 +2,15 @@
 
 ## [0.7.10](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.9...neuralspotx-v0.7.10) (2026-07-31)
 
+### Release highlights
+
+* Promote `nsx-tflite-micro` and `arm-cmsis-nn` to immutable `v0.1.0`
+  registry tags, resolving to exact commits
+  `7afcf2b4170e039caf4c49f91e2c45d5869be333` and
+  `6d21a6f821fb72541173a6c4d05d83329fa74f7c`, respectively.
+* Harden release publication with an exact-commit CI gate and a fail-closed
+  annotated-tag publisher that verifies `neuralspotx-v0.7.10` peels to the
+  CI-validated landing commit before building or publishing artifacts.
 
 ### Bug Fixes
 
