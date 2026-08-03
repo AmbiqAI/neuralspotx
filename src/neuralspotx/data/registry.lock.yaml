@@ -45,7 +45,9 @@ projects:
   nsx-pmu-armv8m:
     name: nsx-pmu-armv8m
     url: https://github.com/AmbiqAI/nsx-pmu-armv8m.git
-    revision: b311be1960eb7426ff37641c6c813a7a6d84d2d0
+    # Open branch: b311be1 (main) + the AM_PART_ATOMIQ110 PMU event-map
+    # guard fix atomiq110 builds need. Re-pin to a commit/tag once merged.
+    revision: fix/atomiq110-pmu-map-macro
     path: modules/nsx-pmu-armv8m
   nsx-uart:
     name: nsx-uart
@@ -215,7 +217,7 @@ modules:
     metadata: modules/nsx-perf/nsx-module.yaml
   nsx-pmu-armv8m:
     project: nsx-pmu-armv8m
-    revision: b311be1960eb7426ff37641c6c813a7a6d84d2d0
+    revision: fix/atomiq110-pmu-map-macro
     metadata: modules/nsx-pmu-armv8m/nsx-module.yaml
   nsx-power:
     project: nsx-ambiq-sdk
@@ -424,7 +426,14 @@ soc_families:
   apollo510b: *fam_apollo5
   apollo510L: *fam_apollo5
   apollo330P: *fam_apollo5
-  atomiq110: *fam_apollo5
+  # atomiq110 support is still landing on nsx-ambiq-sdk's open
+  # feat/nsx-power-atomiq110 branch (its own arch dir, CRM_TPIUCLKCFG
+  # bus-fault workarounds for the FPGA turbo board, rebuilt HAL/BSP libs).
+  # Pin this SoC there until that branch merges to main, then collapse this
+  # back to the *fam_apollo5 alias.
+  atomiq110:
+    <<: *fam_apollo5
+    revision: feat/nsx-power-atomiq110
 
 # Per-board profile registration. Order here defines starter-profile order.
 # 'channel' defaults to profile_defaults.channel when omitted.
