@@ -15,7 +15,7 @@ projects:
   nsx-ambiq-sdk:
     name: nsx-ambiq-sdk
     url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
-    revision: v5.2.23
+    revision: v5.2.24
     path: modules/nsx-ambiq-sdk
   nsx-soc-hal:
     name: nsx-soc-hal
@@ -126,31 +126,31 @@ projects:
 modules:
   nsx-ambiqsuite:
     project: nsx-ambiq-sdk
-    revision: v5.2.23
+    revision: v5.2.24
     metadata: modules/nsx-ambiqsuite/nsx-module.yaml
   nsx-ambiq-hal:
     project: nsx-ambiq-sdk
-    revision: v5.2.23
+    revision: v5.2.24
     metadata: modules/nsx-ambiq-hal/nsx-module.yaml
   nsx-ambiq-bsp:
     project: nsx-ambiq-sdk
-    revision: v5.2.23
+    revision: v5.2.24
     metadata: modules/nsx-ambiq-bsp/nsx-module.yaml
   nsx-ambiq-usb:
     project: nsx-ambiq-sdk
-    revision: v5.2.23
+    revision: v5.2.24
     metadata: modules/nsx-ambiq-usb/nsx-module.yaml
   nsx-soc-hal:
     project: nsx-ambiq-sdk
-    revision: v5.2.23
+    revision: v5.2.24
     metadata: modules/nsx-soc-hal/nsx-module.yaml
   nsx-cmsis-core:
     project: nsx-ambiq-sdk
-    revision: v5.2.23
+    revision: v5.2.24
     metadata: modules/nsx-cmsis-core/nsx-module.yaml
   nsx-cmsis-startup:
     project: nsx-ambiq-sdk
-    revision: v5.2.23
+    revision: v5.2.24
     metadata: modules/nsx-cmsis-startup/nsx-module.yaml
   nsx-board-apollo2-evb:
     project: neuralspotx
@@ -218,11 +218,11 @@ modules:
     metadata: src/neuralspotx/boards/apollo4p_evb_disp_shield_rev2/nsx-module.yaml
   nsx-core:
     project: nsx-ambiq-sdk
-    revision: v5.2.23
+    revision: v5.2.24
     metadata: modules/nsx-core/nsx-module.yaml
   nsx-perf:
     project: nsx-ambiq-sdk
-    revision: v5.2.23
+    revision: v5.2.24
     metadata: modules/nsx-perf/nsx-module.yaml
   nsx-pmu-armv8m:
     project: nsx-pmu-armv8m
@@ -230,39 +230,39 @@ modules:
     metadata: modules/nsx-pmu-armv8m/nsx-module.yaml
   nsx-power:
     project: nsx-ambiq-sdk
-    revision: v5.2.23
+    revision: v5.2.24
     metadata: modules/nsx-power/nsx-module.yaml
   nsx-uart:
     project: nsx-ambiq-sdk
-    revision: v5.2.23
+    revision: v5.2.24
     metadata: modules/nsx-uart/nsx-module.yaml
   nsx-i2c:
     project: nsx-ambiq-sdk
-    revision: v5.2.23
+    revision: v5.2.24
     metadata: modules/nsx-i2c/nsx-module.yaml
   nsx-spi:
     project: nsx-ambiq-sdk
-    revision: v5.2.23
+    revision: v5.2.24
     metadata: modules/nsx-spi/nsx-module.yaml
   nsx-audio:
     project: nsx-ambiq-sdk
-    revision: v5.2.23
+    revision: v5.2.24
     metadata: modules/nsx-audio/nsx-module.yaml
   nsx-usb:
     project: nsx-ambiq-sdk
-    revision: v5.2.23
+    revision: v5.2.24
     metadata: modules/nsx-usb/nsx-module.yaml
   nsx-cordio:
     project: nsx-ambiq-sdk
-    revision: v5.2.23
+    revision: v5.2.24
     metadata: modules/nsx-cordio/nsx-module.yaml
   nsx-ble:
     project: nsx-ambiq-sdk
-    revision: v5.2.23
+    revision: v5.2.24
     metadata: modules/nsx-ble/nsx-module.yaml
   nsx-freertos:
     project: nsx-ambiq-sdk
-    revision: v5.2.23
+    revision: v5.2.24
     metadata: modules/nsx-freertos/nsx-module.yaml
   nsx-nanopb:
     project: nsx-nanopb
@@ -332,7 +332,7 @@ soc_families:
   apollo2: &fam_apollo2
     provider: nsx-ambiqsuite
     project: nsx-ambiq-sdk
-    revision: v5.2.23
+    revision: v5.2.24
     modules:
       - nsx-ambiqsuite
       - nsx-ambiq-hal
@@ -351,7 +351,7 @@ soc_families:
   apollo3: &fam_apollo3
     provider: nsx-ambiqsuite
     project: nsx-ambiq-sdk
-    revision: v5.2.23
+    revision: v5.2.24
     modules:
       - nsx-ambiqsuite
       - nsx-ambiq-hal
@@ -381,7 +381,7 @@ soc_families:
   apollo4l: &fam_apollo4
     provider: nsx-ambiqsuite
     project: nsx-ambiq-sdk
-    revision: v5.2.23
+    revision: v5.2.24
     modules:
       - nsx-ambiqsuite
       - nsx-ambiq-hal
@@ -411,7 +411,7 @@ soc_families:
   apollo5b: &fam_apollo5
     provider: nsx-ambiqsuite
     project: nsx-ambiq-sdk
-    revision: v5.2.23
+    revision: v5.2.24
     modules:
       - nsx-ambiqsuite
       - nsx-ambiq-hal

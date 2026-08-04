@@ -15,7 +15,7 @@ fail on drift instead of correcting it.
 
 The packaged `stable` registry is the release default. Its project and module
 revisions are expected to move to immutable version tags or full commit SHAs.
-The SDK defaults are pinned to immutable releases (`nsx-ambiq-sdk@v5.2.23` and
+The SDK defaults are pinned to immutable releases (`nsx-ambiq-sdk@v5.2.24` and
 `nsx-pmu-armv8m@v0.2.0`). The packaged `neuralspotx@main` self-reference remains
 the single narrow temporary exception; adding another floating stable ref fails
 the registry policy test.
