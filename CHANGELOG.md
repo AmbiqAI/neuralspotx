@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.11](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.10...neuralspotx-v0.7.11) (2026-08-04)
+
+
+### Bug Fixes
+
+* **registry:** promote Ambiq SDK to v5.2.24 ([07c229b](https://github.com/AmbiqAI/neuralspotx/commit/07c229b0f323cfb79ec7542fbb17b4df1bf18397))
+
 ## [0.7.10](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.9...neuralspotx-v0.7.10) (2026-07-31)
 
 ### Release highlights
