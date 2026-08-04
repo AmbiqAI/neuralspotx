@@ -2,6 +2,18 @@
 
 ## [0.7.11](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.10...neuralspotx-v0.7.11) (2026-08-04)
 
+### Release highlights
+
+* Promote `nsx-ambiq-sdk` to `v5.2.24`; its annotated tag peels to the exact
+  release commit
+  `a9f4ec25a162f6f3700623feb691423bb5a51132`.
+* All 73/73 promoted binary archive blobs are byte-identical to `v5.2.23`.
+  This provenance correction changes only 22 ACfE SHA-256 manifest records,
+  which now describe the archives actually shipped.
+* The stable registry lock pins `v5.2.24`; all ten example `nsx.lock` files
+  resolve it to the exact release commit above and record content hashes.
+* `v5.2.23` remains published and immutable; its tag, release, and commit are
+  unchanged.
 
 ### Bug Fixes
 
