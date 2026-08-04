@@ -18,9 +18,9 @@ module_registry:
   projects:
     nsx-ambiq-sdk:
       url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
-      revision: v5.2.23
+      revision: v5.2.24
   modules:
     nsx-freertos:
       project: nsx-ambiq-sdk
-      revision: v5.2.23
+      revision: v5.2.24
       metadata: modules/nsx-freertos/nsx-module.yaml

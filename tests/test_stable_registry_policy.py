@@ -33,7 +33,7 @@ def test_packaged_registry_floating_refs_are_exactly_allowlisted() -> None:
 def test_packaged_registry_release_projects_are_immutable() -> None:
     registry = load_registry()
 
-    assert registry["projects"]["nsx-ambiq-sdk"]["revision"] == "v5.2.23"
+    assert registry["projects"]["nsx-ambiq-sdk"]["revision"] == "v5.2.24"
     assert registry["projects"]["nsx-pmu-armv8m"]["revision"] == "v0.2.0"
     assert registry["projects"]["arm-cmsis-nn"]["revision"] == "v0.1.0"
     assert registry["projects"]["nsx-tflite-micro"]["revision"] == "v0.1.0"
@@ -44,11 +44,11 @@ def test_packaged_registry_release_projects_are_immutable() -> None:
         entry["revision"]
         for entry in registry["modules"].values()
         if entry["project"] == "nsx-ambiq-sdk"
-    } == {"v5.2.23"}
+    } == {"v5.2.24"}
     assert {
         profile["project_overrides"]["nsx-ambiq-sdk"]["revision"]
         for profile in registry["starter_profiles"].values()
-    } == {"v5.2.23"}
+    } == {"v5.2.24"}
 
 
 def test_new_floating_module_ref_is_reported_without_broad_exception() -> None:

@@ -16,16 +16,26 @@ NSX board and SoC modules.
 One repo, [`nsx-ambiq-sdk`](https://github.com/AmbiqAI/nsx-ambiq-sdk), vendors
 the AmbiqSuite drop, the HAL/BSP wrappers, and the shared NSX module set for
 every supported SoC (Apollo2 through Apollo5). Stable resolution uses the
-immutable `v5.2.23` release.
+immutable `v5.2.24` release.
 
 The provider and wrapper modules NSX resolves are thin metadata views onto that
 one project:
 
 | Provider / wrapper module | Project | Revision |
 |---|---|---|
-| `nsx-ambiqsuite` | `nsx-ambiq-sdk` | `v5.2.23` |
-| `nsx-ambiq-hal` | `nsx-ambiq-sdk` | `v5.2.23` |
-| `nsx-ambiq-bsp` | `nsx-ambiq-sdk` | `v5.2.23` |
+| `nsx-ambiqsuite` | `nsx-ambiq-sdk` | `v5.2.24` |
+| `nsx-ambiq-hal` | `nsx-ambiq-sdk` | `v5.2.24` |
+| `nsx-ambiq-bsp` | `nsx-ambiq-sdk` | `v5.2.24` |
+
+`v5.2.24` is the immutable provenance-correction release titled
+[`nsx-ambiq-sdk 5.2.24 — AmbiqSuite stable-2026.06.18`](https://github.com/AmbiqAI/nsx-ambiq-sdk/releases/tag/v5.2.24).
+Its annotated tag peels to commit
+[`a9f4ec25a162f6f3700623feb691423bb5a51132`](https://github.com/AmbiqAI/nsx-ambiq-sdk/commit/a9f4ec25a162f6f3700623feb691423bb5a51132),
+and it preserves the ABI-correct binary HAL/BSP archive payload from
+`v5.2.23` byte-for-byte. The source tree also carries provenance metadata and
+versioned BLE DIS corrections, so its full git content hash is intentionally
+new. The correction records the already validated ACfE ABI provenance and fixes 22
+stale ACfE manifest hashes; `v5.2.23` remains published and immutable.
 
 Board profiles depend on the provider module for their SoC family, and NSX
 vendors the resolved SDK content into the generated app. See

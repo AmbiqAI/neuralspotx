@@ -57,11 +57,11 @@ def test_derived_profile_module_layout() -> None:
     # Apollo5 is sourced from the consolidated nsx-ambiq-sdk monorepo: the
     # project override pins the monorepo and every module the monorepo
     # vendors gets a module override pointing back at it.
-    assert prof["project_overrides"] == {"nsx-ambiq-sdk": {"revision": "v5.2.23"}}
+    assert prof["project_overrides"] == {"nsx-ambiq-sdk": {"revision": "v5.2.24"}}
     assert set(prof["module_overrides"]) == set(family["sdk_modules"])
     assert prof["module_overrides"]["nsx-ambiqsuite"] == {
         "project": "nsx-ambiq-sdk",
-        "revision": "v5.2.23",
+        "revision": "v5.2.24",
         "metadata": "modules/nsx-ambiqsuite/nsx-module.yaml",
     }
     # A shared-name module (also vendored by the monorepo) resolves to the

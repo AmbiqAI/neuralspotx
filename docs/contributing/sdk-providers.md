@@ -8,13 +8,16 @@ Current bundle:
 
 - `nsx-ambiq-sdk` (provider module `nsx-ambiqsuite`, wrappers `nsx-ambiq-hal` / `nsx-ambiq-bsp`)
 
-All provider and wrapper modules resolve to the immutable `v5.2.23` release of
+All provider and wrapper modules resolve to the immutable `v5.2.24` release of
 this project. See
 [SDK Upstream Model](../architecture/sdk-upstream-plan.md) for the full picture.
+The release is a provenance correction: its binary payload is unchanged from
+`v5.2.23`, while 22 stale ACfE manifest hashes and their ABI provenance are
+corrected in the SDK release.
 
 ## Current Revision Model
 
-- `nsx-ambiq-sdk`: `v5.2.23`
+- `nsx-ambiq-sdk`: `v5.2.24`
 - `nsx-pmu-armv8m`: `v0.2.0`
 
 Stable registry revisions are expected to use immutable version tags or full
