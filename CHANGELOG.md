@@ -12,8 +12,8 @@
   which now describe the archives actually shipped.
 * The stable registry lock pins `v5.2.24`; all ten example `nsx.lock` files
   resolve it to the exact release commit above and record content hashes.
-* `v5.2.23` remains published and immutable; its tag, release, and commit are
-  unchanged.
+* `v5.2.23` remains published and immutable by policy; its tag, release, and
+  commit remain unchanged.
 
 ### Bug Fixes
 
