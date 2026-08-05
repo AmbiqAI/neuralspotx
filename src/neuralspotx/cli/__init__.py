@@ -1203,10 +1203,10 @@ def _build_parser() -> argparse.ArgumentParser:
 
     p_cache = sub.add_parser(
         "cache",
-        help="Inspect or clean the on-disk module artifact cache",
+        help="Inspect or clean neuralSPOT-X on-disk caches",
         description=(
-            "Manage the content-addressed cache of vendored module "
-            "artifacts under $NSX_CACHE_DIR/modules/. Cache hits let "
+            "Inspect the content-addressed module cache or clean every "
+            "neuralSPOT-X cache under $NSX_CACHE_DIR. Cache hits let "
             "`nsx sync` skip git clones for already-seen (commit, "
             "content_hash) tuples."
         ),
@@ -1227,10 +1227,10 @@ def _build_parser() -> argparse.ArgumentParser:
 
     p_cache_clean = cache_sub.add_parser(
         "clean",
-        help="Remove every cached module artifact",
+        help="Remove every neuralSPOT-X cache",
         description=(
-            "Delete every cache entry. Subsequent `nsx sync` runs will "
-            "re-clone modules and repopulate the cache."
+            "Delete module artifacts, git-artifact hashes, ref resolutions, "
+            "and their lock files. Subsequent operations repopulate them."
         ),
     )
     p_cache_clean.add_argument(

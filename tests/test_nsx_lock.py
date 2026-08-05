@@ -62,6 +62,25 @@ _GIT_PROJECT_OVERRIDES: dict[str, Any] = {
 }
 
 
+def _pinned_git_project_overrides(commit: str) -> dict[str, Any]:
+    return {
+        "projects": {
+            "fake-proj": {
+                "url": "https://example.com/fake.git",
+                "revision": commit,
+                "path": "modules/fake-proj",
+            }
+        },
+        "modules": {
+            "fake-mod": {
+                "project": "fake-proj",
+                "revision": commit,
+                "metadata": "modules/fake-proj/nsx-module.yaml",
+            }
+        },
+    }
+
+
 def _write_nsx_yml(
     app_dir: Path,
     modules: list[dict[str, Any]] | None = None,
@@ -728,7 +747,9 @@ class TestLocalKind:
         assert "app-proj/" in gitignore
         assert "nsx-dep/" not in gitignore
 
-    def test_check_uses_locked_closure_when_metadata_not_materialized(self, app: Path) -> None:
+    def test_check_uses_locked_closure_when_metadata_not_materialized(
+        self, app: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
         registry_overrides = {
             "projects": {
                 "dep-proj": {
@@ -795,6 +816,15 @@ class TestLocalKind:
                     ),
                 },
             ),
+        )
+        expected_hashes = {
+            "https://example.com/dep.git": "sha256:" + "d" * 64,
+            "https://example.com/app.git": "sha256:" + "a" * 64,
+        }
+        monkeypatch.setattr(
+            operations._lock,
+            "hash_git_artifact",
+            lambda url, commit: expected_hashes[url],
         )
 
         lock_app_impl(app, check=True)
@@ -937,6 +967,78 @@ class TestGitKind:
         # content_hash is the upstream-artifact hash from
         # hash_git_artifact, not a hash of modules/<name>/.
         assert m.content_hash == "sha256:" + "f" * 64
+
+    def test_git_lock_rechecks_unchanged_commit_via_versioned_hash_cache(
+        self, app: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from neuralspotx import _parallel
+
+        fake_sha = "a" * 40
+        hashes = iter(("sha256:" + "e" * 64, "sha256:" + "9" * 64))
+        calls: list[tuple[str, str]] = []
+        batches: list[list[tuple[str, str]]] = []
+        monkeypatch.setattr(operations._lock, "resolve_ref", lambda url, ref: (fake_sha, "branch"))
+
+        def fake_hash(url: str, commit: str) -> str:
+            calls.append((url, commit))
+            return next(hashes)
+
+        def recording_map(fn, items):  # noqa: ANN001, ANN202
+            batch = list(items)
+            batches.append(batch)
+            return [fn(item) for item in batch]
+
+        monkeypatch.setattr(_parallel, "parallel_map", recording_map)
+        monkeypatch.setattr(operations._lock, "hash_git_artifact", fake_hash)
+        _write_nsx_yml(
+            app,
+            [{"name": "fake-mod", "project": "fake-proj", "revision": fake_sha}],
+            registry_overrides=_pinned_git_project_overrides(fake_sha),
+        )
+        _write_fake_git_metadata(app)
+
+        lock_app_impl(app)
+        lock_app_impl(app)
+
+        lock = read_lock(app)
+        assert lock is not None
+        assert lock.modules["fake-mod"].content_hash == "sha256:" + "9" * 64
+        assert calls == [
+            ("https://example.com/fake.git", fake_sha),
+            ("https://example.com/fake.git", fake_sha),
+        ]
+        assert batches == [
+            [("https://example.com/fake.git", fake_sha)],
+            [("https://example.com/fake.git", fake_sha)],
+            [("https://example.com/fake.git", fake_sha)],
+        ]
+
+    def test_git_lock_retains_matching_previous_hash_when_offline(
+        self,
+        app: Path,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        fake_sha = "a" * 40
+        previous_hash = "sha256:" + "e" * 64
+        monkeypatch.setattr(operations._lock, "resolve_ref", lambda url, ref: (fake_sha, "branch"))
+        monkeypatch.setattr(operations._lock, "hash_git_artifact", lambda url, commit: previous_hash)
+        _write_nsx_yml(
+            app,
+            [{"name": "fake-mod", "project": "fake-proj", "revision": fake_sha}],
+            registry_overrides=_pinned_git_project_overrides(fake_sha),
+        )
+        _write_fake_git_metadata(app)
+        lock_app_impl(app)
+
+        def offline(_url: str, _commit: str) -> str:
+            raise OSError("offline")
+
+        monkeypatch.setattr(operations._lock, "hash_git_artifact", offline)
+        lock_app_impl(app)
+
+        lock = read_lock(app)
+        assert lock is not None
+        assert lock.modules["fake-mod"].content_hash == previous_hash
 
     def test_git_lock_refreshes_branch_constraints_each_run(
         self, app: Path, monkeypatch: pytest.MonkeyPatch

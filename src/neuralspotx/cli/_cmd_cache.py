@@ -35,12 +35,12 @@ def cmd_cache_clean(args: argparse.Namespace) -> None:
     if not args.yes:
         preview = api.clean_cache(dry_run=True)
         if preview.removed_count == 0:
-            print(f"nsx module cache at {preview.root} is already empty.")
+            print(f"nsx caches at {preview.root} are already empty.")
             return
         print(
-            f"This will delete {preview.removed_count} cached module artifact(s) "
+            f"This will delete {preview.removed_count} neuralSPOT-X cache item(s) "
             f"under {preview.root}. Re-run with --yes to confirm."
         )
         return
     result = api.clean_cache()
-    print(f"Removed {result.removed_count} cached module artifact(s).")
+    print(f"Removed {result.removed_count} neuralSPOT-X cache item(s).")

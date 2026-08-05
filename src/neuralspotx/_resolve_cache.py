@@ -4,8 +4,8 @@ Speeds up repeated ``nsx lock`` invocations — e.g. when helia-profiler
 profiles multiple models in sequence and the module constraints haven't
 changed between runs.
 
-Cache file: ``$NSX_CACHE_DIR/resolve-ref-cache.json``  (same base as
-``git-artifact-hashes.json``).
+Cache file: ``$NSX_CACHE_DIR/resolve-ref-cache.json`` (same base as the
+versioned git-artifact-hash cache).
 
 Configuration (env vars):
     NSX_RESOLVE_TTL   Seconds that a cached ``(url, ref) -> (sha, kind)``
@@ -86,7 +86,7 @@ def ttl_override(seconds: float | None) -> Iterator[None]:
 
 
 # ---------------------------------------------------------------------------
-# Cache path (shares $NSX_CACHE_DIR with git-artifact-hashes.json)
+# Cache path (shares $NSX_CACHE_DIR with the git-artifact-hash cache)
 # ---------------------------------------------------------------------------
 
 

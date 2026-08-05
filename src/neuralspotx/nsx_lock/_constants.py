@@ -9,11 +9,10 @@ from __future__ import annotations
 LOCK_FILENAME = "nsx.lock"
 LOCK_SCHEMA_VERSION = 4
 
-# Schema version of the on-disk ``git-artifact-hashes.json`` user
-# cache. Bumped when the file layout changes incompatibly so older
-# nsx releases reading a newer cache can fail with a clear
-# :class:`NSXCacheError` instead of silently dropping entries.
-_ARTIFACT_HASH_CACHE_SCHEMA_VERSION = 1
+# Schema version of the on-disk ``git-artifact-hashes-vN.json`` user cache.
+# This versions both the layout and the hashing semantics: v2 includes
+# recursively hydrated git submodules in artifact hashes.
+_ARTIFACT_HASH_CACHE_SCHEMA_VERSION = 2
 
 # Files/dirs to exclude when hashing a vendored module tree.
 # Local-source mirrors should ignore developer-only environment/cache

@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Any
 
 from .._errors import (
+    NSXCacheError,
     NSXConfigError,
     NSXError,
     NSXLockError,
@@ -425,16 +426,14 @@ def _build_lock_for_app(
                 continue
             cons = str(ent.revision or "main")
             prev = prev_modules.get(nm)
-            if (
-                prev
-                and prev.kind == LockKind.GIT
-                and prev.constraint == cons
-                and prev.url == proj.url
-                and prev.commit
-                and prev.content_hash
+            if _should_reuse_previous_git_resolution(
+                prev,
+                constraint=cons,
+                url=proj.url,
+                refresh_floating_refs=refresh_floating_git_refs,
             ):
-                # The previous lock already has a usable upstream hash;
-                # the main loop will reuse it without cloning.
+                assert prev is not None and prev.commit is not None
+                jobs[(proj.url, prev.commit)] = None
                 continue
             cached = resolve_ref_cache.get((proj.url, cons))
             if cached is None:
@@ -669,30 +668,40 @@ def _build_lock_for_app(
             else str(vendored_dir)
         )
 
-        # Upstream-artifact hash: clone at the resolved commit, hash the
-        # working tree (sans .git). Re-use the previous lock's hash when
-        # the (url, commit) pair is unchanged \u2014 the upstream artifact
-        # is content-addressed by the commit SHA, so a re-clone would
-        # produce the same hash.
+        # Upstream-artifact hash: clone at the resolved commit, hydrate
+        # submodules, strip git metadata, and hash the working tree.
+        # Always consult hash_git_artifact rather than trusting a prior
+        # lock entry: its versioned persistent cache makes unchanged
+        # commits cheap while invalidating hashes from older semantics.
         cache_key = (url, commit)
-        if (
-            previous_entry
-            and previous_entry.kind == LockKind.GIT
-            and previous_entry.url == url
-            and previous_entry.commit == commit
-            and previous_entry.content_hash
-        ):
-            content_hash = previous_entry.content_hash
-            git_artifact_hash_cache.setdefault(cache_key, content_hash)
-        elif cache_key in git_artifact_hash_cache:
+        if cache_key in git_artifact_hash_cache:
             content_hash = git_artifact_hash_cache[cache_key]
         else:
             try:
                 content_hash = hash_git_artifact(url, commit)
+            except NSXCacheError:
+                raise
             except Exception as exc:  # noqa: BLE001 \u2014 surface as actionable error
-                raise NSXResolutionError(
-                    f"Failed to compute upstream hash for '{name}' ({url} @ {commit}): {exc}"
-                ) from exc
+                if (
+                    previous_entry
+                    and previous_entry.kind == LockKind.GIT
+                    and previous_entry.url == url
+                    and previous_entry.commit == commit
+                    and previous_entry.content_hash
+                ):
+                    _log.warning(
+                        "could not refresh upstream hash for %s (%s @ %s): %s; "
+                        "retaining the previous lock hash.",
+                        name,
+                        url,
+                        commit,
+                        exc,
+                    )
+                    content_hash = previous_entry.content_hash
+                else:
+                    raise NSXResolutionError(
+                        f"Failed to compute upstream hash for '{name}' ({url} @ {commit}): {exc}"
+                    ) from exc
             git_artifact_hash_cache[cache_key] = content_hash
 
         lock.modules[name] = ResolvedModule(
