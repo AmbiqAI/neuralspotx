@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.12](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.11...neuralspotx-v0.7.12) (2026-08-05)
+
+
+### Bug Fixes
+
+* **cache:** verify persistent artifact integrity ([20df850](https://github.com/AmbiqAI/neuralspotx/commit/20df850f0382dc2d2a2584aa6324feca60c1bc84))
+
 ## [0.7.11](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.10...neuralspotx-v0.7.11) (2026-08-04)
 
 ### Release highlights
