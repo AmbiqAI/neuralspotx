@@ -2,6 +2,18 @@
 
 ## [0.7.12](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.11...neuralspotx-v0.7.12) (2026-08-05)
 
+### Release highlights
+
+* Correct persistent artifact-cache integrity after recursive submodule
+  hydration landed without a cache-schema bump. Artifact-hash caches now
+  distinguish the recursive-submodule semantics, and module-cache hits
+  verify both the cache key and copied tree contents before reuse.
+* `nsx cache clean` now removes all persistent cache layers. Online lock
+  migration recomputes hashes normally; when an offline refresh cannot reach
+  the upstream, the prior hash is retained with a warning.
+* Regenerate the three `examples/kws_infer/nsx.lock` `ns-cmsis-nn` records
+  from stale `e34fccb9…` to `9e99a004…` for the same `v7.26.0` commit. No
+  other lock records changed.
 
 ### Bug Fixes
 
