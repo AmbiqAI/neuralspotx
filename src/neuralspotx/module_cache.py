@@ -23,7 +23,7 @@ round-trip entirely and just ``copytree`` the cached entry into
 Cache layout::
 
     $NSX_CACHE_DIR/
-        git-artifact-hashes.json     (existing)
+        git-artifact-hashes-v2.json  (current hashing semantics)
         modules/
             <aa>/<bbbbbb...>/         <- cache entry; mirror of stripped
                                          working tree (no .git)
@@ -43,8 +43,8 @@ Environment variables
 
 Safety
 ------
-- Entries are immutable: a content hash never changes for a given
-  commit, so no eviction is needed.
+- Every read verifies the cached tree against its path's content hash.
+- Every write verifies the source tree before publishing it.
 - Cache writes are *atomic*: the populating process writes to a unique
   ``<digest>.tmp.<pid>.<rand>/`` directory next to the target and
   ``os.replace()``s it into place. Concurrent populators race
@@ -166,12 +166,18 @@ def lookup(content_hash: str, dest: Path) -> bool:
 
     try:
         src = cache_entry_for_hash(content_hash)
+        expected_hash = _canonical_content_hash(content_hash)
     except InvalidContentHashError:
         # Untrusted lockfile entry; treat as a miss so the caller
         # falls back to a fresh clone (and any subsequent populate()
         # will be a no-op for the same reason).
         return False
-    if not src.is_dir():
+    if not src.is_dir() or src.is_symlink():
+        if src.exists() or src.is_symlink():
+            _remove_path_best_effort(src)
+        return False
+    if not _tree_matches(src, expected_hash):
+        _remove_path_best_effort(src)
         return False
 
     # Replace dest atomically-enough for our purposes: the prior
@@ -182,6 +188,10 @@ def lookup(content_hash: str, dest: Path) -> bool:
             _rmtree(dest)
         dest.parent.mkdir(parents=True, exist_ok=True)
         shutil.copytree(src, dest, symlinks=True)
+        if not _tree_matches(dest, expected_hash):
+            _remove_path_best_effort(dest)
+            _remove_path_best_effort(src)
+            return False
     except (OSError, shutil.Error):
         # Cached entry is unreadable / partial. Treat as miss; the
         # caller will fall back to a fresh clone, and a subsequent
@@ -218,13 +228,18 @@ def populate(content_hash: str, source: Path) -> None:
 
     try:
         target = cache_entry_for_hash(content_hash)
+        expected_hash = _canonical_content_hash(content_hash)
     except InvalidContentHashError:
         # Refuse to write outside the cache root.
         return
-    if target.exists():
-        # Already cached (by us on a prior run, or by a concurrent
-        # populator). Nothing to do.
+    if not _tree_matches(source, expected_hash):
         return
+    if target.exists() or target.is_symlink():
+        if target.is_dir() and _tree_matches(target, expected_hash):
+            return
+        _remove_path_best_effort(target)
+        if target.exists() or target.is_symlink():
+            return
 
     try:
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -246,11 +261,14 @@ def populate(content_hash: str, source: Path) -> None:
         # first and treating it as the destination for copytree.
         shutil.rmtree(tmp)
         shutil.copytree(source, tmp, symlinks=True)
+        if not _tree_matches(tmp, expected_hash):
+            _remove_path_best_effort(tmp)
+            return
         os.replace(tmp, target)
     except OSError:
         # Race: a concurrent populator beat us. ``os.replace`` onto a
         # non-empty directory fails on POSIX; treat as success.
-        if target.is_dir():
+        if target.is_dir() and _tree_matches(target, expected_hash):
             try:
                 _rmtree(tmp)
             except OSError:
@@ -292,29 +310,21 @@ def iter_entries() -> list[Path]:
 def clear() -> int:
     """Delete every entry under the module cache.
 
-    Returns the number of entries removed. The cache root itself is
-    left in place so subsequent ``populate()`` calls don't need to
-    recreate it.
+    Returns the number of entries removed. The exact module-cache root
+    is removed as well, including interrupted-populate temporary trees.
     """
 
     root = module_cache_root()
-    if not root.is_dir():
+    if not root.exists() and not root.is_symlink():
         return 0
-    removed = 0
-    for shard in list(root.iterdir()):
-        if not shard.is_dir():
-            continue
-        for entry in list(shard.iterdir()):
-            try:
-                _rmtree(entry)
-                removed += 1
-            except OSError:
-                pass
-        try:
-            shard.rmdir()
-        except OSError:
-            pass
-    return removed
+    if not root.is_dir() or root.is_symlink():
+        _remove_path_best_effort(root)
+        return int(not root.exists() and not root.is_symlink())
+    entries = len(iter_entries())
+    _remove_path_best_effort(root)
+    if root.exists() or root.is_symlink():
+        return 0
+    return entries or 1
 
 
 # ---------------------------------------------------------------------------
@@ -352,3 +362,26 @@ def _rmtree(path: Path) -> None:
         shutil.rmtree(path, onexc=_on_rm_error)
     else:
         shutil.rmtree(path, onerror=_on_rm_error)
+
+
+def _canonical_content_hash(content_hash: str) -> str:
+    return f"sha256:{_digest_from_content_hash(content_hash)}"
+
+
+def _tree_matches(path: Path, expected_hash: str) -> bool:
+    try:
+        from .nsx_lock._hashing import hash_tree
+
+        return path.is_dir() and hash_tree(path) == expected_hash
+    except OSError:
+        return False
+
+
+def _remove_path_best_effort(path: Path) -> None:
+    try:
+        if path.is_symlink() or path.is_file():
+            path.unlink(missing_ok=True)
+        elif path.exists():
+            _rmtree(path)
+    except OSError:
+        pass

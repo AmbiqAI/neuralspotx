@@ -9,6 +9,7 @@ from typing import Any
 import pytest
 
 from neuralspotx import module_cache, module_registry
+from neuralspotx.nsx_lock import hash_tree
 
 # ---------------------------------------------------------------------------
 # Path resolution
@@ -136,7 +137,7 @@ class TestPopulateLookup:
     def test_populate_then_lookup_round_trip(self, cache_dir: Path) -> None:
         src = cache_dir / "src"
         _make_tree(src)
-        digest = "sha256:" + "a" * 64
+        digest = hash_tree(src)
 
         module_cache.populate(digest, src)
 
@@ -156,7 +157,7 @@ class TestPopulateLookup:
     def test_lookup_replaces_existing_dest_on_hit(self, cache_dir: Path) -> None:
         src = cache_dir / "src"
         _make_tree(src)
-        digest = "sha256:" + "b" * 64
+        digest = hash_tree(src)
         module_cache.populate(digest, src)
 
         dest = cache_dir / "dest"
@@ -185,7 +186,7 @@ class TestPopulateLookup:
     def test_populate_is_idempotent(self, cache_dir: Path) -> None:
         src = cache_dir / "src"
         _make_tree(src)
-        digest = "sha256:" + "d" * 64
+        digest = hash_tree(src)
 
         module_cache.populate(digest, src)
         # Mutate src; second populate should be a no-op (existing entry wins).
@@ -205,6 +206,26 @@ class TestPopulateLookup:
 
         dest = cache_dir / "dest"
         assert module_cache.lookup(digest, dest) is False
+        assert not entry.exists()
+
+    def test_lookup_discards_tree_stored_under_wrong_hash(self, cache_dir: Path) -> None:
+        requested = "sha256:" + "a" * 64
+        entry = module_cache.cache_entry_for_hash(requested)
+        _make_tree(entry)
+
+        dest = cache_dir / "dest"
+        assert module_cache.lookup(requested, dest) is False
+        assert not dest.exists()
+        assert not entry.exists()
+
+    def test_populate_refuses_source_that_does_not_match_key(self, cache_dir: Path) -> None:
+        src = cache_dir / "src"
+        _make_tree(src)
+        requested = "sha256:" + "b" * 64
+
+        module_cache.populate(requested, src)
+
+        assert not module_cache.cache_entry_for_hash(requested).exists()
 
 
 # ---------------------------------------------------------------------------
@@ -216,19 +237,24 @@ class TestMaintenance:
     def test_iter_entries_lists_populated_caches(self, cache_dir: Path) -> None:
         src = cache_dir / "src"
         _make_tree(src)
+        expected: list[str] = []
         for prefix in ("11", "22", "33"):
-            module_cache.populate("sha256:" + prefix + "0" * 62, src)
+            (src / "a.txt").write_text(prefix, encoding="utf-8")
+            digest = hash_tree(src)
+            expected.append(digest.removeprefix("sha256:")[:2])
+            module_cache.populate(digest, src)
 
         entries = module_cache.iter_entries()
         assert len(entries) == 3
         prefixes = sorted(e.parent.name for e in entries)
-        assert prefixes == ["11", "22", "33"]
+        assert prefixes == sorted(expected)
 
     def test_clear_removes_all_entries(self, cache_dir: Path) -> None:
         src = cache_dir / "src"
         _make_tree(src)
-        for prefix in ("11", "22"):
-            module_cache.populate("sha256:" + prefix + "0" * 62, src)
+        for content in ("one", "two"):
+            (src / "a.txt").write_text(content, encoding="utf-8")
+            module_cache.populate(hash_tree(src), src)
 
         removed = module_cache.clear()
         assert removed == 2
@@ -338,7 +364,10 @@ class TestVendorGitIntegration:
 
         app_dir = cache_dir / "app1"
         app_dir.mkdir()
-        digest = "sha256:" + "1" * 64
+        expected = cache_dir / "expected-app1"
+        expected.mkdir()
+        (expected / "file.txt").write_text("v1", encoding="utf-8")
+        digest = hash_tree(expected)
         module_registry._vendor_git_module_at_commit(
             app_dir, "demo-mod", _REGISTRY, "deadbeef", content_hash=digest
         )
@@ -385,7 +414,7 @@ class TestVendorGitIntegration:
         src = cache_dir / "prebuilt"
         src.mkdir()
         (src / "file.txt").write_text("from-cache", encoding="utf-8")
-        digest = "sha256:" + "2" * 64
+        digest = hash_tree(src)
         module_cache.populate(digest, src)
 
         clone, state = _fake_clone({"file.txt": "should-not-appear"})
@@ -426,7 +455,7 @@ class TestVendorGitIntegration:
         src = cache_dir / "prebuilt"
         src.mkdir()
         (src / "file.txt").write_text("cached", encoding="utf-8")
-        digest = "sha256:" + "3" * 64
+        digest = hash_tree(src)
         module_cache.populate(digest, src)
 
         monkeypatch.setenv("NSX_DISABLE_MODULE_CACHE", "1")
@@ -457,7 +486,7 @@ def _make_source_tree(root: Path, name: str, content: str = "hello") -> Path:
     src.mkdir(parents=True, exist_ok=True)
     (src / "file.txt").write_text(content, encoding="utf-8")
     (src / "sub").mkdir(exist_ok=True)
-    (src / "sub" / "nested.txt").write_text(f"nested-{name}", encoding="utf-8")
+    (src / "sub" / "nested.txt").write_text(f"nested-{content}", encoding="utf-8")
     return src
 
 
@@ -469,7 +498,8 @@ class TestModuleCacheConcurrencyR19:
         monkeypatch.setenv("NSX_CACHE_DIR", str(tmp_path / "cache"))
         monkeypatch.delenv("NSX_DISABLE_MODULE_CACHE", raising=False)
 
-        digest = _VALID_HASH_PREFIX + "aa" + "1" * 62
+        expected_src = _make_source_tree(tmp_path / "expected", "source")
+        digest = hash_tree(expected_src)
         n_threads = 8
         barrier = threading.Barrier(n_threads)
         errors: list[str] = []
@@ -514,14 +544,17 @@ class TestModuleCacheConcurrencyR19:
 
         n_threads = 6
         barrier = threading.Barrier(n_threads)
-        digests = [_VALID_HASH_PREFIX + f"{i:02d}" + "2" * 62 for i in range(n_threads)]
+        sources = [
+            _make_source_tree(tmp_path / "sources", f"mod-{i}", content=f"content-{i}")
+            for i in range(n_threads)
+        ]
+        digests = [hash_tree(source) for source in sources]
         errors: list[str] = []
 
         def worker(idx: int) -> None:
-            src = _make_source_tree(tmp_path / "sources", f"mod-{idx}", content=f"content-{idx}")
             barrier.wait()
             try:
-                module_cache.populate(digests[idx], src)
+                module_cache.populate(digests[idx], sources[idx])
             except Exception as exc:
                 errors.append(f"worker {idx}: {exc}")
 
@@ -546,7 +579,8 @@ class TestModuleCacheConcurrencyR19:
         monkeypatch.setenv("NSX_CACHE_DIR", str(tmp_path / "cache"))
         monkeypatch.delenv("NSX_DISABLE_MODULE_CACHE", raising=False)
 
-        digest = _VALID_HASH_PREFIX + "bb" + "3" * 62
+        expected_src = _make_source_tree(tmp_path / "expected", "source", content="stable")
+        digest = hash_tree(expected_src)
         n_lookups = 6
         iterations = 20
         barrier = threading.Barrier(1 + n_lookups)
@@ -555,7 +589,7 @@ class TestModuleCacheConcurrencyR19:
         def populator() -> None:
             barrier.wait()
             for i in range(iterations):
-                src = _make_source_tree(tmp_path / "pop-sources", f"iter-{i}", content=f"v{i}")
+                src = _make_source_tree(tmp_path / "pop-sources", f"iter-{i}", content="stable")
                 module_cache.populate(digest, src)
 
         def looker(idx: int) -> None:
@@ -595,8 +629,12 @@ class TestPublicCacheApi:
 
         src = cache_dir / "src"
         _make_tree(src)
-        for prefix in ("aa", "bb"):
-            module_cache.populate("sha256:" + prefix + "0" * 62, src)
+        expected: list[str] = []
+        for content in ("one", "two"):
+            (src / "a.txt").write_text(content, encoding="utf-8")
+            digest = hash_tree(src)
+            expected.append(digest.removeprefix("sha256:"))
+            module_cache.populate(digest, src)
 
         info = api.cache_info()
         assert isinstance(info, CacheInfo)
@@ -604,10 +642,7 @@ class TestPublicCacheApi:
         assert info.entry_count == 2
         assert info.total_size_bytes > 0
         digests = sorted(e.digest for e in info.entries)
-        assert digests == [
-            "aa" + "0" * 62,
-            "bb" + "0" * 62,
-        ]
+        assert digests == sorted(expected)
         # to_dict matches CacheInfo's own properties
         d = info.to_dict()
         assert d["entry_count"] == 2
@@ -619,7 +654,7 @@ class TestPublicCacheApi:
 
         src = cache_dir / "src"
         _make_tree(src)
-        module_cache.populate("sha256:" + "cc" + "0" * 62, src)
+        module_cache.populate(hash_tree(src), src)
 
         result = api.clean_cache(dry_run=True)
         assert isinstance(result, CacheCleanResult)
@@ -633,13 +668,74 @@ class TestPublicCacheApi:
 
         src = cache_dir / "src"
         _make_tree(src)
-        for prefix in ("dd", "ee", "ff"):
-            module_cache.populate("sha256:" + prefix + "0" * 62, src)
+        for content in ("one", "two", "three"):
+            (src / "a.txt").write_text(content, encoding="utf-8")
+            module_cache.populate(hash_tree(src), src)
 
         result = api.clean_cache()
         assert result.dry_run is False
         assert result.removed_count == 3
         assert module_cache.iter_entries() == []
+
+    def test_clean_cache_removes_every_known_cache_and_preserves_unrelated_files(
+        self, cache_dir: Path
+    ) -> None:
+        from neuralspotx import api
+        from neuralspotx._cache_paths import nsx_cache_root
+
+        src = cache_dir / "src"
+        _make_tree(src)
+        module_cache.populate(hash_tree(src), src)
+        root = nsx_cache_root()
+        known_files = (
+            root / "git-artifact-hashes.json",
+            root / "git-artifact-hashes.json.lock",
+            root / "git-artifact-hashes-v2.json",
+            root / "git-artifact-hashes-v2.json.lock",
+            root / "resolve-ref-cache.json",
+            root / "resolve-ref-cache.json.lock",
+        )
+        for path in known_files:
+            path.write_text("cached", encoding="utf-8")
+        unrelated = root / "keep-me.txt"
+        unrelated.write_text("not owned by neuralSPOT-X", encoding="utf-8")
+
+        preview = api.clean_cache(dry_run=True)
+        assert preview.removed_count == 7
+        assert module_cache.module_cache_root().exists()
+        assert all(path.exists() for path in known_files)
+
+        result = api.clean_cache()
+        assert result.removed_count == 7
+        assert not module_cache.module_cache_root().exists()
+        assert all(not path.exists() for path in known_files)
+        assert unrelated.read_text(encoding="utf-8") == "not owned by neuralSPOT-X"
+
+    def test_clean_cache_is_best_effort_when_one_cache_file_cannot_be_removed(
+        self, cache_dir: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        from neuralspotx import api
+        from neuralspotx._cache_paths import nsx_cache_root
+
+        root = nsx_cache_root()
+        blocked = root / "git-artifact-hashes.json"
+        removable = root / "resolve-ref-cache.json"
+        root.mkdir(parents=True)
+        blocked.write_text("blocked", encoding="utf-8")
+        removable.write_text("remove", encoding="utf-8")
+        original_unlink = Path.unlink
+
+        def selective_unlink(path: Path, *args: object, **kwargs: object) -> None:
+            if path == blocked:
+                raise PermissionError("simulated")
+            original_unlink(path, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "unlink", selective_unlink)
+        result = api.clean_cache()
+
+        assert result.removed_count == 1
+        assert blocked.exists()
+        assert not removable.exists()
 
     def test_cache_info_reflects_disabled_env(
         self, cache_dir: Path, monkeypatch: pytest.MonkeyPatch

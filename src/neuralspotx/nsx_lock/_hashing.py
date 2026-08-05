@@ -77,19 +77,24 @@ def _git_artifact_hash_cache_path() -> Path:
     no eviction is needed.
     """
 
-    return nsx_cache_root() / "git-artifact-hashes.json"
+    # Keep semantic generations in separate files so an older nsx can
+    # continue using its v1 cache after a newer release writes v2.
+    return (
+        nsx_cache_root()
+        / f"git-artifact-hashes-v{_ARTIFACT_HASH_CACHE_SCHEMA_VERSION}.json"
+    )
 
 
 def _read_artifact_hash_cache() -> dict[str, str]:
     """Load the on-disk ``(url@commit) -> hash`` cache.
 
-    File layout (v1):
+    File layout (v2):
 
-        {"schema_version": 1, "entries": {"<url>@<commit>": "sha256:..."}}
+        {"schema_version": 2, "entries": {"<url>@<commit>": "sha256:..."}}
 
-    A legacy flat-mapping layout (no ``schema_version`` key — every key
-    is a cache entry) is also accepted and treated as v1 so existing
-    user caches don't have to be discarded by this upgrade.
+    Cache versions cover hashing semantics as well as the JSON layout.
+    Legacy flat mappings and v1 records predate recursive submodule
+    hydration, so they are intentionally invalidated rather than reused.
 
     Any cache file with a higher ``schema_version`` than this version
     of nsx supports surfaces as a typed :class:`NSXCacheError` so the
@@ -108,8 +113,7 @@ def _read_artifact_hash_cache() -> dict[str, str]:
 
     sv = data.get("schema_version")
     if sv is None:
-        # Legacy layout: the entire mapping is the entries dict.
-        return {k: v for k, v in data.items() if isinstance(k, str) and isinstance(v, str)}
+        return {}
 
     if not isinstance(sv, int) or isinstance(sv, bool) or sv < 1:
         # Unparseable header — treat as if absent so a future writer can
@@ -123,6 +127,8 @@ def _read_artifact_hash_cache() -> dict[str, str]:
             f"supports (v{_ARTIFACT_HASH_CACHE_SCHEMA_VERSION}). "
             "Run `nsx cache clean` (or remove the file) and retry."
         )
+    if sv < _ARTIFACT_HASH_CACHE_SCHEMA_VERSION:
+        return {}
 
     entries = data.get("entries", {})
     if not isinstance(entries, dict):
@@ -184,7 +190,7 @@ def hash_git_artifact(url: str, commit: str, *, use_cache: bool = True) -> str:
 
     Caching: ``(url, commit) -> hash`` is content-addressed and
     immutable, so results are persisted to a user cache file
-    (``~/.cache/nsx/git-artifact-hashes.json`` by default; override
+    (``~/.cache/nsx/git-artifact-hashes-v2.json`` by default; override
     with ``NSX_CACHE_DIR``) and reused across processes. Pass
     ``use_cache=False`` to force a fresh clone-and-hash. Callers that
     invoke this many times in one run should also memoize within the

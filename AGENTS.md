@@ -268,9 +268,10 @@ upgrading data. There are two artifact classes with two behaviors:
   rejected with a typed error that tells the user how to recreate it:
   `nsx lock` regenerates the lock; `nsx cache clean` clears caches. `nsx lock`
   itself catches the lock mismatch and rewrites the file in place. The
-  git-artifact-hash cache is intentionally more tolerant — it accepts the
-  legacy flat layout and only hard-fails on a *newer* schema than this tool
-  understands (forward incompatibility), since the cache is safe to discard.
+  git-artifact-hash cache invalidates legacy and older schemas because its
+  version covers hashing semantics as well as JSON layout; the next lock
+  operation rewrites the current schema. It hard-fails only on a *newer*
+  schema than this tool understands (forward incompatibility).
 - **Authored / packaged artifacts** — `registry.lock.yaml`, per-module
   `nsx-module.yaml`, and board descriptors. These ship and move in lockstep
   with the tool, so an **exact** `schema_version` match is required; a mismatch

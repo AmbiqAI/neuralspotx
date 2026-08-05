@@ -162,7 +162,7 @@ targets:
           tag: v7.26.0
           commit: 2bb81953a20518cf65613bd612352cc462dd7a5e
           vendored_at: modules/ns-cmsis-nn
-          content_hash: sha256:e34fccb9df432ceb0a3e4cafd07771c22b7e58955a886beca434091c2f26f4e7
+          content_hash: sha256:9e99a00415678aaed59dde525eb51fc4f0e8f978139d72a876f93db38e238368
           acquired_at: '2026-08-04T04:01:38+00:00'
       nsx-helia-rt:
         project: helia-rt
@@ -335,7 +335,7 @@ targets:
           tag: v7.26.0
           commit: 2bb81953a20518cf65613bd612352cc462dd7a5e
           vendored_at: modules/ns-cmsis-nn
-          content_hash: sha256:e34fccb9df432ceb0a3e4cafd07771c22b7e58955a886beca434091c2f26f4e7
+          content_hash: sha256:9e99a00415678aaed59dde525eb51fc4f0e8f978139d72a876f93db38e238368
           acquired_at: '2026-08-04T04:01:40+00:00'
       nsx-helia-rt:
         project: helia-rt
@@ -508,7 +508,7 @@ targets:
           tag: v7.26.0
           commit: 2bb81953a20518cf65613bd612352cc462dd7a5e
           vendored_at: modules/ns-cmsis-nn
-          content_hash: sha256:e34fccb9df432ceb0a3e4cafd07771c22b7e58955a886beca434091c2f26f4e7
+          content_hash: sha256:9e99a00415678aaed59dde525eb51fc4f0e8f978139d72a876f93db38e238368
           acquired_at: '2026-08-04T04:01:41+00:00'
       nsx-helia-rt:
         project: helia-rt
