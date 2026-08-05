@@ -1,0 +1,22 @@
+schema_version: 2
+project:
+  name: executorch_add
+targets:
+  default: apollo510_evb
+  supported:
+    - apollo510_evb
+toolchain: arm-none-eabi-gcc
+channel: stable
+modules:
+  - nsx-executorch
+features: {}
+module_registry:
+  projects:
+    executorch:
+      local_path: ../../../nsx-executorch
+      path: modules/executorch
+  modules:
+    nsx-executorch:
+      project: executorch
+      revision: 3a97429b0ce0c192861fc3e3729fb81432fd22cf
+      metadata: modules/executorch/nsx/nsx-module.yaml
