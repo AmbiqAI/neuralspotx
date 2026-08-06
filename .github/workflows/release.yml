@@ -17,6 +17,21 @@ defaults:
   run:
     shell: bash
 
+# Release Please mutation, tag creation, and publication must never run
+# concurrently with themselves: serialize every invocation of this workflow
+# (push-triggered and manual rebuilds alike) so overlapping runs cannot race
+# on the release PR branch, an in-flight tag, or a publish step.
+#
+# `queue: max` matters here as much as `cancel-in-progress: false` does: the
+# default `queue: single` would silently cancel an already-*pending* run (for
+# example, a release-landing push waiting behind exact-commit-ci) the moment
+# a second push queues behind it, dropping that release with no error. `max`
+# lets pending runs queue up (FIFO) instead of displacing each other.
+concurrency:
+  group: release
+  cancel-in-progress: false
+  queue: max
+
 jobs:
   release-please:
     if: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || (github.event_name == 'workflow_dispatch' && inputs.tag == '') }}
@@ -36,7 +51,7 @@ jobs:
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ github.sha }}
-          fetch-depth: 2
+          fetch-depth: 1
 
       - name: Run Release Please
         id: release
@@ -49,21 +64,31 @@ jobs:
       - name: Derive release metadata from the landing commit
         id: release-metadata
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           python - <<'PY' >> "$GITHUB_OUTPUT"
+          import os
           import re
           import subprocess
           import tomllib
           from pathlib import Path
 
           current_text = Path("pyproject.toml").read_text(encoding="utf-8")
-          parent_text = subprocess.check_output(
-              ["git", "show", "HEAD^:pyproject.toml"], text=True
-          )
           current_version = tomllib.loads(current_text)["project"]["version"]
-          parent_version = tomllib.loads(parent_text)["project"]["version"]
+          tag_name = f"neuralspotx-v{current_version}"
 
-          if current_version == parent_version:
+          # Whether this push is landing a *new* release must not depend on
+          # how many commits the merged release PR contained or which
+          # GitHub merge method (merge commit, squash, or rebase) landed
+          # it -- diffing pyproject.toml against HEAD^ broke that
+          # invariant once the release PR could carry a second commit (the
+          # uv.lock sync). Tag existence is agnostic to both.
+          tag_check = subprocess.run(
+              ["gh", "api", f"repos/{os.environ['GITHUB_REPOSITORY']}/git/ref/tags/{tag_name}"],
+              capture_output=True,
+          )
+          if tag_check.returncode == 0:
               print("release_created=false")
               print("tag_name=")
               print("body<<RELEASE_NOTES")
@@ -85,31 +110,230 @@ jobs:
           body = changelog[heading.start() : next_heading.start() if next_heading else None]
 
           print("release_created=true")
-          print(f"tag_name=neuralspotx-v{current_version}")
+          print(f"tag_name={tag_name}")
           print("body<<RELEASE_NOTES")
           print(body.strip())
           print("RELEASE_NOTES")
           PY
 
-  dispatch-release-pr-ci:
+  sync-release-lock:
     needs: release-please
     if: ${{ needs.release-please.result == 'success' && needs.release-please.outputs.pr != '' }}
     runs-on: ubuntu-latest
     permissions:
-      actions: write
-      contents: read
+      contents: write
+      pull-requests: read
+    outputs:
+      branch: ${{ steps.push.outputs.branch }}
+      head_sha: ${{ steps.push.outputs.head_sha }}
+      changed: ${{ steps.push.outputs.changed }}
     steps:
-      # GITHUB_TOKEN-created PRs do not trigger other workflows. Dispatch CI
-      # explicitly so the release PR receives its required status check.
-      - name: Dispatch CI on the release-please PR branch
+      - name: Checkout release landing commit
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+
+      - name: Validate release PR branch and fetch its head
+        id: pr
         env:
           GH_TOKEN: ${{ github.token }}
           PR_JSON: ${{ needs.release-please.outputs.pr }}
         run: |
           set -euo pipefail
+
+          # The release PR branch/component naming is a release-please
+          # convention (release-please--branches--<target>--components--<pkg>).
+          # Pin it to this repository's own config instead of trusting the
+          # action output string outright, so a spoofed or unexpected branch
+          # name fails closed rather than being checked out and pushed to.
+          package_name=$(jq -r '.packages["."]["package-name"]' release-please-config.json)
+          expected_branch="release-please--branches--main--components--${package_name}"
+
+          number=$(printf '%s' "$PR_JSON" | jq -r '.number')
           branch=$(printf '%s' "$PR_JSON" | jq -r '.headBranchName')
-          echo "Dispatching CI on branch: $branch"
-          gh workflow run ci.yml --ref "$branch" --repo "$GITHUB_REPOSITORY"
+
+          if [[ ! "$number" =~ ^[0-9]+$ ]]; then
+            echo "Release Please did not report a numeric PR number." >&2
+            exit 1
+          fi
+          if [[ "$branch" != "$expected_branch" ]]; then
+            echo "Unexpected release PR branch name: $branch (expected $expected_branch)." >&2
+            exit 1
+          fi
+
+          pr=$(gh api "repos/${GITHUB_REPOSITORY}/pulls/$number")
+          state=$(printf '%s' "$pr" | jq -r '.state')
+          head_ref=$(printf '%s' "$pr" | jq -r '.head.ref')
+          head_repo=$(printf '%s' "$pr" | jq -r '.head.repo.full_name // empty')
+          base_repo=$(printf '%s' "$pr" | jq -r '.base.repo.full_name // empty')
+          head_sha=$(printf '%s' "$pr" | jq -r '.head.sha')
+
+          # Refuse anything that is not this exact bot-owned, same-repo,
+          # open release branch: never push to a fork or an unrelated PR.
+          if [[ "$state" != "open" ]]; then
+            echo "Release PR #$number is not open." >&2
+            exit 1
+          fi
+          if [[ "$head_ref" != "$branch" ]]; then
+            echo "Release PR head ref ($head_ref) does not match reported branch ($branch)." >&2
+            exit 1
+          fi
+          if [[ "$head_repo" != "$GITHUB_REPOSITORY" || "$base_repo" != "$GITHUB_REPOSITORY" ]]; then
+            echo "Release PR is not entirely within $GITHUB_REPOSITORY; refusing to push." >&2
+            exit 1
+          fi
+          if [[ ! "$head_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Release PR head is not a full commit SHA: $head_sha" >&2
+            exit 1
+          fi
+
+          printf 'branch=%s\n' "$branch" >> "$GITHUB_OUTPUT"
+          printf 'head_sha=%s\n' "$head_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Checkout the validated release PR branch
+        env:
+          BRANCH: ${{ steps.pr.outputs.branch }}
+          EXPECTED_SHA: ${{ steps.pr.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+          git fetch origin "$BRANCH"
+          actual_sha=$(git rev-parse FETCH_HEAD)
+          if [[ "$actual_sha" != "$EXPECTED_SHA" ]]; then
+            echo "Fetched branch head ($actual_sha) does not match the validated PR head ($EXPECTED_SHA)." >&2
+            exit 1
+          fi
+          git checkout -B "$BRANCH" FETCH_HEAD
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: "3.11"
+
+      - name: Regenerate uv.lock for the bumped version
+        run: |
+          set -euo pipefail
+          version=$(python3 -c '
+          import tomllib
+          from pathlib import Path
+          print(tomllib.loads(Path("pyproject.toml").read_text(encoding="utf-8"))["project"]["version"])
+          ')
+          echo "Locking neuralspotx $version"
+          # Canonical dependency-resolution command (not a regex edit of
+          # uv.lock) so the editable package version and any other lock
+          # metadata that depends on it stay coherent.
+          uv lock
+
+      - name: Commit and push uv.lock if it changed
+        id: push
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ steps.pr.outputs.branch }}
+          EXPECTED_SHA: ${{ steps.pr.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+
+          if git diff --quiet -- uv.lock; then
+            echo "uv.lock already matches pyproject.toml; nothing to push."
+            printf 'branch=%s\n' "$BRANCH" >> "$GITHUB_OUTPUT"
+            printf 'head_sha=%s\n' "$EXPECTED_SHA" >> "$GITHUB_OUTPUT"
+            printf 'changed=false\n' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          changed_files=$(git status --porcelain=v1 -- . | awk '{print $2}')
+          if [[ "$changed_files" != "uv.lock" ]]; then
+            echo "Refusing to push: expected only uv.lock to change, got: $changed_files" >&2
+            exit 1
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add uv.lock
+          git commit --message "chore: sync uv.lock for the release-please branch"
+
+          # Plain, non-force push to the exact bot-owned branch validated
+          # above. This uses the job's GITHUB_TOKEN (not a PAT), so the push
+          # itself will not trigger other workflows -- CI is dispatched
+          # explicitly in the next job against this new commit.
+          if ! git push origin "HEAD:refs/heads/$BRANCH"; then
+            echo "Direct push to $BRANCH was rejected (branch protection?)." >&2
+            echo "Falling back to a single-file commit via the GitHub Contents API." >&2
+
+            # Fail fast, with a clear error, if the branch moved since we
+            # validated it -- rather than relying solely on the Contents
+            # API's blob-sha conflict check below to reject a stale write.
+            remote_sha=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/$BRANCH" --jq '.object.sha')
+            if [[ "$remote_sha" != "$EXPECTED_SHA" ]]; then
+              echo "Branch $BRANCH is now at $remote_sha, not the validated head $EXPECTED_SHA; aborting." >&2
+              exit 1
+            fi
+
+            # uv.lock can exceed the ~128 KiB single-argument limit that
+            # execve enforces on Linux runners, so the base64 payload is
+            # written to a file and passed with gh's "@file" field syntax
+            # instead of being interpolated into the command line.
+            lock_b64_path="${RUNNER_TEMP}/uv.lock.b64"
+            base64 < uv.lock | tr -d '\n' > "$lock_b64_path"
+            existing_sha=$(gh api "repos/${GITHUB_REPOSITORY}/contents/uv.lock?ref=$BRANCH" --jq '.sha')
+            api_commit=$(gh api --method PUT "repos/${GITHUB_REPOSITORY}/contents/uv.lock" \
+              --field "message=chore: sync uv.lock for the release-please branch" \
+              --field "content=@${lock_b64_path}" \
+              --field "sha=$existing_sha" \
+              --field "branch=$BRANCH")
+            new_sha=$(printf '%s' "$api_commit" | jq -r '.commit.sha')
+          else
+            new_sha=$(git rev-parse HEAD)
+          fi
+
+          if [[ ! "$new_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Did not obtain a commit SHA for the pushed uv.lock update." >&2
+            exit 1
+          fi
+
+          printf 'branch=%s\n' "$BRANCH" >> "$GITHUB_OUTPUT"
+          printf 'head_sha=%s\n' "$new_sha" >> "$GITHUB_OUTPUT"
+          printf 'changed=true\n' >> "$GITHUB_OUTPUT"
+
+  dispatch-release-pr-ci:
+    needs: sync-release-lock
+    if: ${{ needs.sync-release-lock.result == 'success' }}
+    runs-on: ubuntu-latest
+    permissions:
+      actions: write
+      contents: read
+    steps:
+      # GITHUB_TOKEN-created PRs and GITHUB_TOKEN pushes do not trigger other
+      # workflows. Dispatch CI explicitly, and only now -- after the uv.lock
+      # sync job has landed its commit (or confirmed none was needed) -- so
+      # the required status check runs against the final branch head rather
+      # than the earlier, pre-sync Release Please commit.
+      - name: Confirm the branch still points at the synced head
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ needs.sync-release-lock.outputs.branch }}
+          EXPECTED_SHA: ${{ needs.sync-release-lock.outputs.head_sha }}
+        run: |
+          set -euo pipefail
+          remote_sha=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/$BRANCH" --jq '.object.sha')
+          if [[ "$remote_sha" != "$EXPECTED_SHA" ]]; then
+            echo "Branch $BRANCH moved to $remote_sha after uv.lock sync recorded $EXPECTED_SHA." >&2
+            exit 1
+          fi
+
+      - name: Dispatch CI on the release-please PR branch
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BRANCH: ${{ needs.sync-release-lock.outputs.branch }}
+        run: |
+          set -euo pipefail
+          echo "Dispatching CI on branch: $BRANCH"
+          gh workflow run ci.yml --ref "$BRANCH" --repo "$GITHUB_REPOSITORY"
 
   release-context:
     needs: release-please
@@ -510,93 +734,3 @@ jobs:
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
         with:
           skip-existing: ${{ github.event_name == 'workflow_dispatch' && inputs.tag != '' }}
-
-  refresh-uv-lock:
-    needs:
-      - release-please
-      - github-release
-      - pypi-publish
-    if: ${{ always() && needs.release-please.outputs.release_created == 'true' && needs.github-release.result == 'success' && needs.pypi-publish.result == 'success' }}
-    runs-on: ubuntu-latest
-    permissions:
-      contents: write
-      pull-requests: write
-    outputs:
-      operation: ${{ steps.cpr.outputs.pull-request-operation }}
-      branch: ${{ steps.cpr.outputs.pull-request-branch }}
-
-    steps:
-      - name: Checkout main
-        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
-        with:
-          ref: refs/heads/main
-
-      - name: Set up Python
-        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
-        with:
-          python-version: "3.11"
-
-      - name: Sync uv.lock to package version
-        id: version
-        run: |
-          python - <<'PY' >> "$GITHUB_OUTPUT"
-          import re
-          import tomllib
-          from pathlib import Path
-
-          version = tomllib.loads(
-              Path("pyproject.toml").read_text(encoding="utf-8")
-          )["project"]["version"]
-
-          lock_path = Path("uv.lock")
-          text = lock_path.read_text(encoding="utf-8")
-
-          pattern = re.compile(
-              r'(\[\[package\]\]\nname = "neuralspotx"\nversion = ")[^"]*(")'
-          )
-          if not pattern.search(text):
-              raise SystemExit(
-                  "Could not locate editable neuralspotx package block in uv.lock."
-              )
-
-          updated = pattern.sub(rf"\g<1>{version}\g<2>", text, count=1)
-          lock_path.write_text(updated, encoding="utf-8")
-
-          print(f"version={version}")
-          PY
-
-      - name: Create uv.lock refresh PR
-        id: cpr
-        uses: peter-evans/create-pull-request@5f6978faf089d4d20b00c7766989d076bb2fc7f1 # v8
-        with:
-          branch: automation/update-uv-lock
-          delete-branch: true
-          commit-message: "chore: refresh uv.lock after release"
-          title: "chore: refresh uv.lock for neuralspotx v${{ steps.version.outputs.version }}"
-          body: |
-            Refresh `uv.lock` after the `neuralspotx` release workflow published v${{ steps.version.outputs.version }}.
-
-            This keeps the editable package entry in `uv.lock` aligned with `pyproject.toml` after Release Please bumps the package version.
-
-            Only the editable `neuralspotx` version line is changed; transitive
-            dependency pins are left untouched.
-          add-paths: |
-            uv.lock
-
-  dispatch-lock-refresh-ci:
-    needs: refresh-uv-lock
-    if: ${{ needs.refresh-uv-lock.result == 'success' && (needs.refresh-uv-lock.outputs.operation == 'created' || needs.refresh-uv-lock.outputs.operation == 'updated') }}
-    runs-on: ubuntu-latest
-    permissions:
-      actions: write
-      contents: read
-    steps:
-      - name: Dispatch CI on uv.lock refresh PR branch
-        env:
-          GH_TOKEN: ${{ github.token }}
-          REFRESH_BRANCH: ${{ needs.refresh-uv-lock.outputs.branch }}
-        run: |
-          set -euo pipefail
-          branch="$REFRESH_BRANCH"
-          echo "Dispatching CI on branch: $branch"
-          gh workflow run ci.yml --ref "$branch" --repo "$GITHUB_REPOSITORY"
