@@ -181,10 +181,10 @@ separate upstream repositories instead of the unified `nsx-ambiq-sdk` monorepo.
 | `nsx-cmsis-nn` | heliaCORE kernels and NSX integration for ML inference workloads. | Accelerated neural-network kernels for inference apps. | [ns-cmsis-nn](https://github.com/AmbiqAI/ns-cmsis-nn/tree/v7.26.0) |
 | `nsx-helia-rt` | Helia runtime integration for NSX-managed inference applications. | Runtime support for Helia-based inference deployments. | [GitHub](https://github.com/AmbiqAI/helia-rt) |
 | `nsx-nanopb` | Vendored nanopb with NSX packaging metadata. | Protocol Buffers support for RPC and host/device message transport. | [GitHub](https://github.com/AmbiqAI/nsx-nanopb) |
-| `helia-dsp` | NSX-packaged helia-dsp fork of CMSIS-DSP, preserving upstream Source/ CMake as the single source of truth. | Signal processing, feature extraction, and FFT/filtering kernels for embedded DSP workloads. | [GitHub](https://github.com/AmbiqAI/helia-dsp) |
+| `helia-dsp` | NSX-packaged helia-dsp fork of CMSIS-DSP, preserving upstream Source/ CMake as the single source of truth. Distribution `v1.0.0` carries the CMSIS-DSP `1.17.x` API/payload lineage. | Signal processing, feature extraction, and FFT/filtering kernels for embedded DSP workloads. | [helia-dsp](https://github.com/AmbiqAI/helia-dsp/tree/v1.0.0) |
 | `nsx-physiokit` | Physiologic signal-processing primitives for ECG, PPG, respiration, IMU, and HRV workflows, built on `helia-dsp`. | Wearable-vitals prototyping, heart-rate/respiration analytics, and embedded biosignal preprocessing. | [GitHub](https://github.com/AmbiqAI/nsx-physiokit) |
-| `nsx-tileio-ble` | Tileio BLE transport wrapper on top of `nsx-ble`. | Stream Tileio slot data and UIO state over BLE GATT notifications. | [GitHub](https://github.com/AmbiqAI/nsx-tileio) |
-| `nsx-tileio-usb` | Tileio USB transport wrapper on top of `nsx-usb`. | Stream Tileio slot data and UIO updates over a USB vendor transport. | [GitHub](https://github.com/AmbiqAI/nsx-tileio) |
+| `nsx-tileio-ble` | Tileio BLE transport wrapper on top of `nsx-ble`. | Stream Tileio slot data and UIO state over BLE GATT notifications. | [nsx-tileio](https://github.com/AmbiqAI/nsx-tileio/tree/v0.1.0) |
+| `nsx-tileio-usb` | Tileio USB transport wrapper on top of `nsx-usb`. | Stream Tileio slot data and UIO updates over a USB vendor transport. | [nsx-tileio](https://github.com/AmbiqAI/nsx-tileio/tree/v0.1.0) |
 
 ### Peripheral and Bus Modules
 
