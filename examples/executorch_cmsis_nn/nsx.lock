@@ -3,12 +3,12 @@
 schema_version: 4
 targets:
   apollo510_evb:
-    generated_at: '2026-08-05T21:14:21+00:00'
+    generated_at: '2026-08-05T23:20:40+00:00'
     nsx_tool:
       version: 0.7.12
     manifest:
       path: nsx.yml
-      hash: sha256:0bae4ee57de22227075983683fedec62392a7de53a7f1dda7a4c1e2074400dd5
+      hash: sha256:a6044f8e0591c7d1d6ab8830139e2d1405d9d3674f28548a11e562c25c65d876
     target:
       board: apollo510_evb
       soc: apollo510
@@ -120,11 +120,22 @@ targets:
           vendored_at: cmake/nsx
           content_hash: sha256:7ec410eb9c51ebf7fc21557a1e232ace5e757af44681f1e645ef433c4ae11b86
           acquired_at: '2026-08-05T20:41:11+00:00'
+      arm-cmsis-nn:
+        project: arm-cmsis-nn
+        kind: git
+        constraint: v0.1.0
+        resolved:
+          url: https://github.com/AmbiqAI/arm-cmsis-nn.git
+          tag: v0.1.0
+          commit: 6d21a6f821fb72541173a6c4d05d83329fa74f7c
+          vendored_at: modules/arm-cmsis-nn
+          content_hash: sha256:869c880135085f099aedb1d37c86805488afdac3d2f9091cd9aafacc9ea32573
+          acquired_at: '2026-08-05T23:13:01+00:00'
       nsx-executorch:
         project: executorch
         kind: local
         constraint: 3a97429b0ce0c192861fc3e3729fb81432fd22cf
         resolved:
           vendored_at: modules/executorch
-          content_hash: sha256:40fa8bc94fc38d4a1cc1b16b5a6330c40939cc2fc787140f67311c59a2dae505
-          acquired_at: '2026-08-05T21:14:22+00:00'
+          content_hash: sha256:a6acf689ea0764a946edd7ec18ba082669c080a094037066b2810d5fa0d0e612
+          acquired_at: '2026-08-05T23:20:41+00:00'

@@ -1,6 +1,6 @@
 schema_version: 2
 project:
-  name: executorch_add
+  name: executorch_cmsis_nn
 targets:
   default: apollo510_evb
   supported:
