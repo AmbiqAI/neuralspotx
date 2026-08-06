@@ -11,6 +11,7 @@ stale-head race.
 
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 import yaml
@@ -268,15 +269,21 @@ def test_every_gh_cli_step_declares_gh_token() -> None:
     `gh` does not share actions/checkout's persisted git credentials; a step
     that runs `gh api`/`gh workflow run` without GH_TOKEN fails at runtime
     with an auth error, even though the workflow parses fine and other,
-    string-matching tests could pass.
+    string-matching tests could pass. This also has to catch indirect
+    invocations, like the release-metadata step's
+    ``subprocess.run(["gh", "api", ...])`` in embedded Python, not just the
+    literal shell command forms -- a plain ``"gh api" in run`` substring
+    check misses that (the tokens are separate list elements, not adjacent
+    text), which would let a GH_TOKEN regression there go undetected.
     """
     workflow = _workflow()
+    gh_invocation = re.compile(r'(?:\bgh\s+(?:api|workflow\s+run|pr)\b|(["\'])gh\1\s*,)')
 
     offenders = []
     for job_name, job in workflow["jobs"].items():
         for step in job.get("steps", []):
             run = step.get("run") or ""
-            if not any(token in run for token in ("gh api", "gh workflow run", "gh pr")):
+            if not gh_invocation.search(run):
                 continue
             env = step.get("env") or {}
             if "GH_TOKEN" not in env:
@@ -329,6 +336,31 @@ def test_release_created_detection_is_merge_method_agnostic() -> None:
     assert 'git show HEAD^:pyproject.toml' not in text
     assert "parent_version" not in text
     assert "merge method" in text.lower()
+
+
+def test_release_created_detection_fails_closed_on_non_404_tag_lookup_errors() -> None:
+    """A tag-lookup failure that isn't a clean 404 must not be treated as "no tag".
+
+    Otherwise an auth, rate-limit, or transient network failure on the `gh
+    api` call would silently read as "this version hasn't been released
+    yet" and try to re-publish an already-released version downstream.
+    """
+    workflow = _workflow()
+    text = _workflow_text()
+
+    assert '"HTTP 404" in tag_check.stderr' in text
+    assert "Could not determine whether" in text
+    assert "raise SystemExit" in text
+
+    metadata_step = next(
+        step
+        for step in workflow["jobs"]["release-please"]["steps"]
+        if step.get("id") == "release-metadata"
+    )
+    # `gh api`'s stderr is only inspectable if it's actually captured as text.
+    assert "capture_output=True" in metadata_step["run"]
+    assert "text=True" in metadata_step["run"]
+    assert metadata_step["env"]["GH_TOKEN"] == "${{ github.token }}"
 
 
 def test_release_workflow_serializes_concurrent_runs() -> None:

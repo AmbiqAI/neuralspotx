@@ -84,11 +84,27 @@ jobs:
           # it -- diffing pyproject.toml against HEAD^ broke that
           # invariant once the release PR could carry a second commit (the
           # uv.lock sync). Tag existence is agnostic to both.
+          #
+          # Fail closed on anything other than a clean 404: an auth,
+          # rate-limit, or network failure here must not be silently
+          # treated as "tag does not exist" (which would then try to
+          # re-tag/re-publish an already-released version downstream).
           tag_check = subprocess.run(
               ["gh", "api", f"repos/{os.environ['GITHUB_REPOSITORY']}/git/ref/tags/{tag_name}"],
               capture_output=True,
+              text=True,
           )
           if tag_check.returncode == 0:
+              tag_exists = True
+          elif "HTTP 404" in tag_check.stderr:
+              tag_exists = False
+          else:
+              raise SystemExit(
+                  f"Could not determine whether {tag_name} exists "
+                  f"(gh api exited {tag_check.returncode}): {tag_check.stderr.strip()}"
+              )
+
+          if tag_exists:
               print("release_created=false")
               print("tag_name=")
               print("body<<RELEASE_NOTES")
