@@ -37,6 +37,53 @@ Declares:
 4. enabled modules and revisions
 5. optional app-local module registry overrides
 
+## Project Record Lifecycle
+
+`registry.lock.yaml` has two independent maps: `projects` (git/packaged
+sources) and `modules` (module name → `project` + `revision` + `metadata`
+path). A module's `project` field is looked up by name in `projects` at
+resolution time — nothing iterates `projects` up front, so during automatic
+module resolution a `projects` entry is only ever reached when some
+`modules.<name>.project`, `soc_families.<family>.project`,
+`starter_profiles.<profile>.project_overrides`, or
+`starter_profiles.<profile>.module_overrides.<name>.project` field names it.
+(`nsx module register --project <existing-name>` can also deliberately reuse
+an existing `projects` record as its source without a module or profile
+naming it first — see "Working with Modules" below — so a record can be
+structurally unreached today and still be a legitimate, intentionally kept
+reuse target; that is what `RESERVED_REGISTRY_PROJECT_NAMES` documents when
+it applies.)
+
+This means consolidating a module's source into another project (e.g. a
+one-repo-per-module layout absorbed into a monorepo such as
+`nsx-ambiq-sdk`) is a **two-part edit**: repoint the `modules.<name>.project`
+field *and* delete the old `projects.<name>` record in the same change.
+Leaving the old record behind doesn't break anything at runtime (it is
+simply never read during automatic resolution), but it rots silently —
+pointing at a URL that may no longer exist, be renamed, or be archived —
+until someone tries to reuse it as a `--project` reference or a
+`module_registry` override anchor.
+
+`neuralspotx.registry_policy.orphaned_registry_project_report` enforces this
+contract structurally (deterministic, no network) and runs in
+`tests/test_stable_registry_policy.py`. `scripts/audit_registry_project_urls.py`
+is the companion *network* audit: it checks that every project's git URL is
+actually reachable, with an explicit, documented exemption for
+packaged/self-referential projects (`neuralspotx`) that never need a network
+clone in the built-in flow. Run it manually or from a scheduled job — it is
+intentionally not part of the normal (network-free) unit-test suite.
+
+If a project record is ever intentionally kept without being referenced —
+e.g. as a documented backward-compatible override anchor so
+`module_registry.modules.<name>.project: <name>` keeps working for apps that
+pin it without also supplying a `module_registry.projects.<name>` stanza —
+add its name to `registry_policy.RESERVED_REGISTRY_PROJECT_NAMES` with a
+comment explaining the contract. That set is empty today: no first-class
+module currently needs it. Once a reservation is no longer needed (the
+project record itself was deleted), remove its name from
+`RESERVED_REGISTRY_PROJECT_NAMES` in the same change — a stale reservation
+is reported the same way a stale immutable-ref allowance is.
+
 ## Resolution Order
 
 1. load the curated lock registry

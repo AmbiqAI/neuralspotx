@@ -11,6 +11,19 @@ _VERSION_TAG_RE: Final[re.Pattern[str]] = re.compile(
     r"^(?:[A-Za-z0-9._-]+-)?v\d+(?:\.\d+)*(?:[-+][A-Za-z0-9.-]+)?$"
 )
 
+# Project records that are intentionally kept even though nothing in the
+# packaged registry currently points a module or starter-profile override at
+# them. Empty today: when a module's source is absorbed into another project
+# (e.g. consolidated into `nsx-ambiq-sdk`), the matching `projects.<name>`
+# record must be deleted in the *same* change (see PR #113 / commit
+# c50d7e8, "chore(registry): drop dead module entries absorbed into unified
+# SDK"). If a future project record is ever kept on purpose as a documented
+# backward-compatible override anchor (e.g. so `module_registry.modules.<m>
+# .project: <name>` keeps working without an app needing to also supply a
+# `module_registry.projects.<name>` stanza), add its name here with a
+# comment explaining the contract instead of silently leaving it orphaned.
+RESERVED_REGISTRY_PROJECT_NAMES: Final[frozenset[str]] = frozenset()
+
 
 @dataclass(frozen=True, slots=True)
 class FloatingRefAllowance:
@@ -174,3 +187,101 @@ def _add_ref_use(
     revision = raw.get("revision")
     if isinstance(revision, str) and revision:
         uses.add(RegistryRefUse(project=project, revision=revision, location=location))
+
+
+@dataclass(frozen=True, slots=True)
+class OrphanedProjectReport:
+    """Structured result of checking `projects` for unreferenced records."""
+
+    orphaned: tuple[str, ...]
+    reserved: tuple[str, ...]
+    stale_reserved: tuple[str, ...]
+
+    @property
+    def is_valid(self) -> bool:
+        return not self.orphaned and not self.stale_reserved
+
+
+def _referenced_project_names(registry: dict[str, Any]) -> set[str]:
+    """Every project name reachable from a module, family, or profile override.
+
+    A project is "reachable" when at least one of the following points at it
+    by name:
+
+    * a `modules.<module>.project` entry (the default resolution path),
+    * a `soc_families.<family>.project` entry (the SDK-provider baseline a
+      family resolves to, even before it has any `board_profiles` entry to
+      derive a starter profile from — see `metadata._derive_starter_profiles`,
+      which only emits `project_overrides` for families with a registered
+      board), or
+    * a `starter_profiles.<profile>.project_overrides` / `.module_overrides`
+      entry (the derived-profile resolution path).
+
+    This intentionally mirrors runtime resolution (`_registry_project_entry`
+    is only ever called with a project name sourced from one of these
+    places) rather than doing a network reachability check; see
+    `scripts/audit_registry_project_urls.py` for the separate, network-based
+    URL-liveness audit.
+    """
+
+    referenced: set[str] = set()
+
+    modules = registry.get("modules", {})
+    if isinstance(modules, dict):
+        for entry in modules.values():
+            if isinstance(entry, dict) and isinstance(entry.get("project"), str):
+                referenced.add(entry["project"])
+
+    families = registry.get("soc_families", {})
+    if isinstance(families, dict):
+        for family in families.values():
+            if isinstance(family, dict) and isinstance(family.get("project"), str):
+                referenced.add(family["project"])
+
+    profiles = registry.get("starter_profiles", {})
+    if isinstance(profiles, dict):
+        for profile in profiles.values():
+            if not isinstance(profile, dict):
+                continue
+            project_overrides = profile.get("project_overrides", {})
+            if isinstance(project_overrides, dict):
+                referenced.update(name for name in project_overrides if isinstance(name, str))
+            module_overrides = profile.get("module_overrides", {})
+            if isinstance(module_overrides, dict):
+                for override in module_overrides.values():
+                    if isinstance(override, dict) and isinstance(override.get("project"), str):
+                        referenced.add(override["project"])
+
+    return referenced
+
+
+def orphaned_registry_project_report(
+    registry: dict[str, Any],
+    *,
+    reserved: Iterable[str] = RESERVED_REGISTRY_PROJECT_NAMES,
+) -> OrphanedProjectReport:
+    """Return every packaged `projects` entry no module/profile resolves to.
+
+    Reports project records that would silently rot the way the pre-cleanup
+    `nsx-soc-hal` / `nsx-cmsis-core` / `nsx-cmsis-startup` / `nsx-core` /
+    `nsx-perf` / `nsx-uart` / `nsx-i2c` / `nsx-spi` / `nsx-audio` / `nsx-usb`
+    single-module-repo records did after their modules were repointed at the
+    unified `nsx-ambiq-sdk` monorepo (PR #113) without removing the now-dead
+    per-module project entries. Names in *reserved* are exempt (see
+    `RESERVED_REGISTRY_PROJECT_NAMES`); a reserved name no longer present in
+    `projects` at all is reported in `stale_reserved` (mirrors
+    `StableRegistryRefReport.unused_allowances` for the immutable-ref check
+    above: a reservation that stops applying must be removed, not left
+    behind as dead configuration).
+    """
+
+    reserved_set = frozenset(reserved)
+    projects = registry.get("projects", {})
+    project_names = set(projects) if isinstance(projects, dict) else set()
+    referenced = _referenced_project_names(registry)
+    orphaned = tuple(sorted(project_names - referenced - reserved_set))
+    used_reserved = tuple(sorted(reserved_set & project_names))
+    stale_reserved = tuple(sorted(reserved_set - project_names))
+    return OrphanedProjectReport(
+        orphaned=orphaned, reserved=used_reserved, stale_reserved=stale_reserved
+    )

@@ -59,6 +59,13 @@ Normal resolution order should remain:
 
 Do not reintroduce implicit sibling repo fallback as a default behavior.
 
+When a module's source is consolidated into a different `projects` entry
+(e.g. absorbed into a monorepo), repoint `modules.<name>.project` **and**
+delete the now-unreferenced old `projects.<name>` record in the same
+change — see "Project Record Lifecycle" in
+`docs/architecture/metadata-model.md` and
+`neuralspotx.registry_policy.orphaned_registry_project_report`.
+
 ### Library-First Direction
 
 The intended layering is:
