@@ -28,6 +28,22 @@ def _workflow() -> dict:
     return yaml.safe_load(_workflow_text())
 
 
+def _workflow_triggers(workflow: dict) -> dict:
+    """Return the workflow's `on:` trigger mapping, regardless of how the
+    YAML loader resolved that key.
+
+    PyYAML 1.1-style ``safe_load`` resolves the bare ``on:`` mapping key to
+    the boolean ``True`` rather than the string ``"on"``. ``pyproject.toml``
+    doesn't pin an upper bound on PyYAML, so a future loader/version change
+    that stops doing this (or a stricter YAML 1.2 parser) should not make
+    this test fail spuriously -- accept whichever key shape is present.
+    """
+    for key in (True, "on", "true", "True"):
+        if key in workflow:
+            return workflow[key]
+    raise AssertionError("workflow has no 'on:' trigger mapping under any expected key")
+
+
 def _job_block_text(job_name: str) -> str:
     """Return this job's raw source slice (from its `  <job_name>:` header up
     to the next top-level `  <name>:` job header, or EOF).
@@ -384,8 +400,7 @@ def test_lock_sync_push_cannot_trigger_a_release_workflow_loop() -> None:
     # release.yml only reacts to pushes on main; pushing to the release-please
     # branch (a different ref) cannot re-invoke it, and GITHUB_TOKEN pushes
     # don't fire other workflows' `push`/`pull_request` triggers either way.
-    # (PyYAML parses the bare `on:` mapping key as the boolean True.)
-    assert workflow[True]["push"]["branches"] == ["main"]
+    assert _workflow_triggers(workflow)["push"]["branches"] == ["main"]
     assert "GITHUB_TOKEN pushes do not trigger other" in text
 
     # No step re-runs release-please or opens another release PR after sync.
