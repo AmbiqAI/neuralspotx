@@ -18,10 +18,11 @@ _VERSION_TAG_RE: Final[re.Pattern[str]] = re.compile(
 # record must be deleted in the *same* change (see PR #113 / commit
 # c50d7e8, "chore(registry): drop dead module entries absorbed into unified
 # SDK"). If a future project record is ever kept on purpose as a documented
-# backward-compatible override anchor (e.g. so `module_registry.modules.<m>
-# .project: <name>` keeps working without an app needing to also supply a
-# `module_registry.projects.<name>` stanza), add its name here with a
-# comment explaining the contract instead of silently leaving it orphaned.
+# backward-compatible override anchor (e.g. so
+# `module_registry.modules.<m>.project: <name>` keeps working without an
+# app needing to also supply a `module_registry.projects.<name>` stanza),
+# add its name here with a comment explaining the contract instead of
+# silently leaving it orphaned.
 RESERVED_REGISTRY_PROJECT_NAMES: Final[frozenset[str]] = frozenset()
 
 

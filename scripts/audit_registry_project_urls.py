@@ -83,13 +83,16 @@ def _check_project(name: str, entry: dict[str, Any]) -> ProjectUrlCheck:
         )
 
     if not isinstance(url, str) or not url:
+        # Every packaged `projects` record is expected to carry a `url` (the
+        # audit's whole point is confirming that url is live); a missing one
+        # is a malformed registry entry, not something to silently pass over.
         return ProjectUrlCheck(
             project=name,
             url=url,
             revision=revision,
-            reachable=None,
-            skipped_reason="no url on record",
-            error=None,
+            reachable=False,
+            skipped_reason=None,
+            error="registry record has no 'url' to audit",
         )
 
     try:
