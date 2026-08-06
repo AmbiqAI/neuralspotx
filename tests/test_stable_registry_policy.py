@@ -6,9 +6,11 @@ import pytest
 
 from neuralspotx import load_registry
 from neuralspotx.registry_policy import (
+    RESERVED_REGISTRY_PROJECT_NAMES,
     TEMPORARY_STABLE_FLOATING_REF_ALLOWLIST,
     FloatingRefAllowance,
     StableRegistryRefPolicyError,
+    orphaned_registry_project_report,
     stable_registry_ref_report,
     validate_stable_registry_refs,
 )
@@ -49,6 +51,115 @@ def test_packaged_registry_release_projects_are_immutable() -> None:
         profile["project_overrides"]["nsx-ambiq-sdk"]["revision"]
         for profile in registry["starter_profiles"].values()
     } == {"v5.2.24"}
+
+
+def test_packaged_registry_has_no_orphaned_projects() -> None:
+    """Every packaged `projects` record must be reachable from the graph.
+
+    Guards against the exact regression this test was added to fix: modules
+    absorbed into `nsx-ambiq-sdk` (PR #113) repointed their
+    `modules.<name>.project` field but left the old single-module-repo
+    `projects.<name>` records (`nsx-soc-hal`, `nsx-cmsis-core`,
+    `nsx-cmsis-startup`, `nsx-core`, `nsx-perf`, `nsx-uart`, `nsx-i2c`,
+    `nsx-spi`, `nsx-audio`, `nsx-usb`) behind, dangling and unreferenced. A
+    future SDK-consolidation change that forgets the matching project-record
+    cleanup fails here instead of shipping silently.
+    """
+
+    report = orphaned_registry_project_report(load_registry())
+
+    assert report.orphaned == ()
+    assert report.stale_reserved == ()
+    assert report.is_valid
+
+
+def test_orphaned_registry_project_report_detects_dangling_records() -> None:
+    """Synthetic-registry unit test for the underlying policy function.
+
+    Exercises every way a project name may be considered "referenced" (a
+    module's `project`, a SoC family's `project` baseline — reachable even
+    before that family has any `board_profiles` entry to derive a starter
+    profile from, a profile's `project_overrides` key, and a profile's
+    `module_overrides.<module>.project`) plus the reserved-name escape hatch
+    and its `stale_reserved` counterpart, without depending on the shape of
+    the shipped registry.
+    """
+
+    registry = {
+        "projects": {
+            "used-by-module": {"revision": "v1"},
+            "used-by-family": {"revision": "v1"},
+            "used-by-profile-override": {"revision": "v1"},
+            "used-by-module-override": {"revision": "v1"},
+            "dangling": {"revision": "v1"},
+            "kept-on-purpose": {"revision": "v1"},
+        },
+        "modules": {
+            "some-module": {"project": "used-by-module", "revision": "v1"},
+        },
+        "soc_families": {
+            # No matching `board_profiles` entry below, so this family
+            # contributes no `starter_profiles` project_override; only the
+            # direct `soc_families.*.project` reachability path covers it.
+            "boardless_family": {"project": "used-by-family", "revision": "v1"},
+        },
+        "starter_profiles": {
+            "board_minimal": {
+                "project_overrides": {"used-by-profile-override": {"revision": "v1"}},
+                "module_overrides": {
+                    "other-module": {
+                        "project": "used-by-module-override",
+                        "revision": "v1",
+                    }
+                },
+            }
+        },
+    }
+
+    report = orphaned_registry_project_report(registry)
+    assert report.orphaned == ("dangling", "kept-on-purpose")
+    assert report.reserved == ()
+    assert report.stale_reserved == ()
+    assert not report.is_valid
+
+    report = orphaned_registry_project_report(registry, reserved={"kept-on-purpose"})
+    assert report.orphaned == ("dangling",)
+    assert report.reserved == ("kept-on-purpose",)
+    assert report.stale_reserved == ()
+    assert not report.is_valid
+
+
+def test_orphaned_registry_project_report_flags_stale_reservations() -> None:
+    """A reserved name that no longer exists in `projects` must be reported.
+
+    Mirrors `test_stale_allowance_must_be_removed_after_immutable_transition`
+    for the immutable-ref policy: once nothing needs a reservation anymore
+    (the project record itself was deleted), the reservation is dead
+    configuration and must be removed, not left dangling.
+    """
+
+    registry = {
+        "projects": {"still-here": {"revision": "v1"}},
+        "modules": {"m": {"project": "still-here", "revision": "v1"}},
+    }
+
+    report = orphaned_registry_project_report(registry, reserved={"long-gone"})
+    assert report.orphaned == ()
+    assert report.reserved == ()
+    assert report.stale_reserved == ("long-gone",)
+    assert not report.is_valid
+
+
+def test_reserved_registry_project_names_is_empty_today() -> None:
+    """No project is currently kept as a documented override-only anchor.
+
+    If this ever needs to change, add the name to
+    `RESERVED_REGISTRY_PROJECT_NAMES` together with a comment explaining the
+    backward-compatible override contract it exists for — don't just widen
+    this assertion.
+    """
+
+    assert RESERVED_REGISTRY_PROJECT_NAMES == frozenset()
 
 
 def test_new_floating_module_ref_is_reported_without_broad_exception() -> None:
