@@ -112,6 +112,38 @@ def test_release_publication_is_downstream_of_exact_commit_ci() -> None:
     assert "skip-existing: ${{ github.event_name == 'workflow_dispatch' && inputs.tag != '' }}" in text
 
 
+def test_custom_release_path_finalizes_release_please_bookkeeping() -> None:
+    workflow = _workflow()
+    job = workflow["jobs"]["finalize-release-please"]
+    text = _job_block_text("finalize-release-please")
+
+    assert job["needs"] == [
+        "release-context",
+        "create-release-tag",
+        "github-release",
+    ]
+    assert job["permissions"] == {
+        "contents": "read",
+        "issues": "write",
+        "pull-requests": "read",
+    }
+    assert "needs.github-release.result == 'success'" in job["if"]
+    assert "needs.create-release-tag.result == 'success'" in job["if"]
+    assert "needs.create-release-tag.result == 'skipped'" in job["if"]
+
+    assert 'git/ref/tags/$RELEASE_TAG' in text
+    assert 'if [[ "$MANUAL" != "true" ]]; then' in text
+    assert 'if [[ "$peeled_sha" != "$TARGET_SHA" ]]; then' in text
+    assert 'releases/tags/$RELEASE_TAG' in text
+    assert 'commits/$TARGET_SHA/pulls' in text
+    assert 'if [[ "$count" != "1" ]]; then' in text
+    assert "Manual rebuild has no unique merged release PR" in text
+    assert "Manual rebuild PR #$number has no Release Please lifecycle label" in text
+    assert '"autorelease: tagged"' in text
+    assert "autorelease%3A%20pending" in text
+    assert "Release Please labels did not converge" in text
+
+
 def test_new_tags_are_annotated_and_fail_closed() -> None:
     text = _workflow_text()
 

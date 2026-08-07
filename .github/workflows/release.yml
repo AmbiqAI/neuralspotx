@@ -750,3 +750,111 @@ jobs:
         uses: pypa/gh-action-pypi-publish@dc37677b2e1c63e2034f94d8a5b11f265b73ba33 # release/v1
         with:
           skip-existing: ${{ github.event_name == 'workflow_dispatch' && inputs.tag != '' }}
+
+  finalize-release-please:
+    needs:
+      - release-context
+      - create-release-tag
+      - github-release
+    if: ${{ always() && needs.github-release.result == 'success' && (needs.create-release-tag.result == 'success' || needs.create-release-tag.result == 'skipped') }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: read
+
+    steps:
+      - name: Mark the exact merged release PR as tagged
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ needs.release-context.outputs.release_tag }}
+          TARGET_SHA: ${{ needs.release-context.outputs.target_sha }}
+          MANUAL: ${{ needs.release-context.outputs.manual }}
+        run: |
+          set -euo pipefail
+
+          # `skip-github-release: true` keeps Release Please from performing
+          # its normal `autorelease: pending` -> `autorelease: tagged` label
+          # transition. The custom annotated-tag/GitHub-release path owns that
+          # bookkeeping, but only after verifying the exact published release.
+          tag_ref=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/$RELEASE_TAG")
+          tag_type=$(printf '%s' "$tag_ref" | jq -r '.object.type')
+          tag_object_sha=$(printf '%s' "$tag_ref" | jq -r '.object.sha')
+          case "$tag_type" in
+            tag)
+              peeled_sha=$(gh api "repos/${GITHUB_REPOSITORY}/git/tags/$tag_object_sha" --jq '.object.sha')
+              ;;
+            commit)
+              if [[ "$MANUAL" != "true" ]]; then
+                echo "New release tag $RELEASE_TAG is not annotated." >&2
+                exit 1
+              fi
+              peeled_sha="$tag_object_sha"
+              ;;
+            *)
+              echo "Release tag has unsupported object type: $tag_type" >&2
+              exit 1
+              ;;
+          esac
+          if [[ "$peeled_sha" != "$TARGET_SHA" ]]; then
+            echo "Release tag $RELEASE_TAG does not peel to $TARGET_SHA." >&2
+            exit 1
+          fi
+
+          published_tag=$(gh api "repos/${GITHUB_REPOSITORY}/releases/tags/$RELEASE_TAG" --jq '.tag_name')
+          if [[ "$published_tag" != "$RELEASE_TAG" ]]; then
+            echo "GitHub release does not match $RELEASE_TAG." >&2
+            exit 1
+          fi
+
+          pulls=$(gh api "repos/${GITHUB_REPOSITORY}/commits/$TARGET_SHA/pulls")
+          candidates=$(printf '%s' "$pulls" | jq \
+            --arg sha "$TARGET_SHA" \
+            '[.[] | select(
+              .state == "closed"
+              and .merged_at != null
+              and .merge_commit_sha == $sha
+              and .base.ref == "main"
+            )]')
+          count=$(printf '%s' "$candidates" | jq 'length')
+          if [[ "$count" != "1" ]]; then
+            if [[ "$MANUAL" == "true" ]]; then
+              echo "Manual rebuild has no unique merged release PR for $TARGET_SHA; no lifecycle label to reconcile."
+              exit 0
+            fi
+            echo "Expected one merged release PR for $TARGET_SHA, found $count." >&2
+            exit 1
+          fi
+          number=$(printf '%s' "$candidates" | jq -r '.[0].number')
+
+          labels=$(gh api "repos/${GITHUB_REPOSITORY}/issues/$number/labels" --jq '[.[].name]')
+          has_pending=$(printf '%s' "$labels" | jq 'index("autorelease: pending") != null')
+          has_tagged=$(printf '%s' "$labels" | jq 'index("autorelease: tagged") != null')
+
+          if [[ "$has_pending" != "true" && "$has_tagged" == "true" ]]; then
+            echo "Release PR #$number is already marked autorelease: tagged."
+            exit 0
+          fi
+          if [[ "$has_pending" != "true" ]]; then
+            if [[ "$MANUAL" == "true" ]]; then
+              echo "Manual rebuild PR #$number has no Release Please lifecycle label; nothing to reconcile."
+              exit 0
+            fi
+            echo "Release PR #$number has neither the expected pending state nor an idempotent tagged state." >&2
+            exit 1
+          fi
+
+          # Add the completed state before removing pending. If the second call
+          # fails, Release Please remains safely blocked until this job is
+          # retried rather than silently losing all lifecycle state.
+          printf '%s\n' '{"labels":["autorelease: tagged"]}' |
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/issues/$number/labels" --input - >/dev/null
+          gh api --method DELETE \
+            "repos/${GITHUB_REPOSITORY}/issues/$number/labels/autorelease%3A%20pending" >/dev/null
+
+          final_labels=$(gh api "repos/${GITHUB_REPOSITORY}/issues/$number/labels" --jq '[.[].name]')
+          if [[ "$(printf '%s' "$final_labels" | jq 'index("autorelease: pending") == null')" != "true" ||
+                "$(printf '%s' "$final_labels" | jq 'index("autorelease: tagged") != null')" != "true" ]]; then
+            echo "Release Please labels did not converge for PR #$number." >&2
+            exit 1
+          fi
