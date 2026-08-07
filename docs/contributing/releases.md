@@ -36,6 +36,22 @@ smoke-tests the installed wheel, attaches the artifacts and a matching
 PyPI. There is no follow-up PR: `uv.lock` is already in sync by the time the
 release PR merges (see [uv.lock Sync](#uvlock-sync)).
 
+Because Release Please is configured with `skip-github-release: true`, the
+custom publication path also owns Release Please's lifecycle bookkeeping.
+After the annotated tag and GitHub release are verified against the exact
+landing commit, the workflow finds that commit's single merged release PR and
+changes its label from `autorelease: pending` to `autorelease: tagged`. This
+step fails closed if the tag, release, merge commit, PR identity, or labels do
+not match. Without that transition, Release Please treats the already-published
+PR as an outstanding untagged release and refuses to create the next release
+PR.
+
+The same reconciliation also runs after a successful manual rebuild. This
+repairs the lifecycle state when initial tag creation succeeded but artifact or
+release publication failed before labels could be finalized. Historical manual
+rebuilds remain compatible with lightweight tags and releases that predate
+Release Please lifecycle labels; those have no pending state to reconcile.
+
 ## Version Source of Truth
 
 The package version in `pyproject.toml` is the version source of truth for the
