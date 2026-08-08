@@ -51,6 +51,9 @@ repairs the lifecycle state when initial tag creation succeeded but artifact or
 release publication failed before labels could be finalized. Historical manual
 rebuilds remain compatible with lightweight tags and releases that predate
 Release Please lifecycle labels; those have no pending state to reconcile.
+The finalizer requests pull-request write permission because GitHub authorizes
+label mutations on pull requests through the pull-request permission domain,
+even though the REST route uses the issues labels API.
 
 ## Version Source of Truth
 
