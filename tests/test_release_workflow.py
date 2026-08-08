@@ -104,8 +104,9 @@ def test_release_publication_is_downstream_of_exact_commit_ci() -> None:
     assert "exact-commit-ci" in workflow["jobs"]["github-release"]["needs"]
     assert "exact-commit-ci" in workflow["jobs"]["pypi-publish"]["needs"]
     assert 'ref="refs/heads/$CI_BRANCH"' in text
-    assert 'gh workflow run ci.yml --ref "$CI_BRANCH"' in text
-    assert 'gh api --method DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/$CI_BRANCH"' in text
+    assert 'gh workflow run ci.yml --ref "$dispatch_ref"' in text
+    assert 'cleanup_ref="repos/${GITHUB_REPOSITORY}/git/refs/heads/$CI_BRANCH"' in text
+    assert 'gh api --method DELETE "$cleanup_ref"' in text
     assert "No fresh CI run appeared for exact commit" in text
     assert 'required_jobs=$(printf \'%s\' "$jobs" |' in text
     assert 'needs.exact-commit-ci.result == \'success\'' in text
@@ -132,6 +133,16 @@ def test_tagged_manual_rebuild_overrides_release_please_skip_propagation() -> No
     assert "needs.create-release-tag.result == 'skipped'" in jobs["pypi-publish"]["if"]
     assert "always()" in jobs["finalize-release-please"]["if"]
     assert "needs.create-release-tag.result == 'skipped'" in jobs["finalize-release-please"]["if"]
+
+
+def test_tagged_manual_rebuild_dispatches_ci_on_the_immutable_tag() -> None:
+    text = _job_block_text("exact-commit-ci")
+
+    assert 'if [[ "$MANUAL" == "true" ]]; then' in text
+    assert 'dispatch_ref="$RELEASE_TAG"' in text
+    assert 'dispatch_ref="$CI_BRANCH"' in text
+    assert 'gh workflow run ci.yml --ref "$dispatch_ref"' in text
+    assert 'if [[ -n "$cleanup_ref" ]]; then' in text
 
 
 def test_github_release_notes_do_not_depend_on_skipped_release_please_output() -> None:
