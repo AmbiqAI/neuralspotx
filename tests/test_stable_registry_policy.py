@@ -46,8 +46,9 @@ def test_packaged_registry_release_projects_are_immutable() -> None:
     assert registry["modules"]["nsx-tflite-micro"]["revision"] == "v0.1.0"
     assert registry["modules"]["helia-dsp"]["revision"] == "v1.0.0"
     assert {
-        registry["modules"][module]["revision"]
-        for module in ("nsx-tileio-ble", "nsx-tileio-usb")
+        entry["revision"]
+        for entry in registry["modules"].values()
+        if entry["project"] == "nsx-tileio"
     } == {"v0.1.0"}
     assert {
         entry["revision"]
