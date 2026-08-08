@@ -60,7 +60,7 @@ projects:
   nsx-physiokit:
     name: nsx-physiokit
     url: https://github.com/AmbiqAI/nsx-physiokit.git
-    revision: 3a26f4c1f83adcca88b8fdaeb0e7e1c34afae1d2
+    revision: v0.1.0
     path: modules/nsx-physiokit
   nsx-tileio:
     name: nsx-tileio
@@ -70,7 +70,7 @@ projects:
   nsx-sensors:
     name: nsx-sensors
     url: https://github.com/AmbiqAI/nsx-sensors.git
-    revision: 9a73d590fee7b377011af0b998a7563571acc228
+    revision: v0.1.0
     path: modules/nsx-sensors
 
 modules:
@@ -228,7 +228,7 @@ modules:
     metadata: modules/helia-dsp/nsx-module.yaml
   nsx-physiokit:
     project: nsx-physiokit
-    revision: 3a26f4c1f83adcca88b8fdaeb0e7e1c34afae1d2
+    revision: v0.1.0
     metadata: modules/nsx-physiokit/nsx-module.yaml
   nsx-helia-rt:
     project: helia-rt
@@ -256,7 +256,7 @@ modules:
     metadata: modules/nsx-tileio-usb/nsx-module.yaml
   nsx-sensors:
     project: nsx-sensors
-    revision: 9a73d590fee7b377011af0b998a7563571acc228
+    revision: v0.1.0
     metadata: modules/nsx-sensors/nsx-module.yaml
   nsx-tooling:
     project: neuralspotx

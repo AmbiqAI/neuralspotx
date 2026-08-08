@@ -182,7 +182,7 @@ separate upstream repositories instead of the unified `nsx-ambiq-sdk` monorepo.
 | `nsx-helia-rt` | Helia runtime integration for NSX-managed inference applications. | Runtime support for Helia-based inference deployments. | [GitHub](https://github.com/AmbiqAI/helia-rt) |
 | `nsx-nanopb` | Vendored nanopb with NSX packaging metadata. | Protocol Buffers support for RPC and host/device message transport. | [GitHub](https://github.com/AmbiqAI/nsx-nanopb) |
 | `helia-dsp` | NSX-packaged helia-dsp fork of CMSIS-DSP, preserving upstream Source/ CMake as the single source of truth. Distribution `v1.0.0` carries the CMSIS-DSP `1.17.x` API/payload lineage. | Signal processing, feature extraction, and FFT/filtering kernels for embedded DSP workloads. | [helia-dsp](https://github.com/AmbiqAI/helia-dsp/tree/v1.0.0) |
-| `nsx-physiokit` | Physiologic signal-processing primitives for ECG, PPG, respiration, IMU, and HRV workflows, built on `helia-dsp`. | Wearable-vitals prototyping, heart-rate/respiration analytics, and embedded biosignal preprocessing. | [GitHub](https://github.com/AmbiqAI/nsx-physiokit) |
+| `nsx-physiokit` | Physiologic signal-processing primitives for ECG, PPG, respiration, IMU, and HRV workflows, built on `helia-dsp`. | Wearable-vitals prototyping, heart-rate/respiration analytics, and embedded biosignal preprocessing. | [nsx-physiokit](https://github.com/AmbiqAI/nsx-physiokit/tree/v0.1.0) |
 | `nsx-tileio-ble` | Tileio BLE transport wrapper on top of `nsx-ble`. | Stream Tileio slot data and UIO state over BLE GATT notifications. | [nsx-tileio](https://github.com/AmbiqAI/nsx-tileio/tree/v0.1.0) |
 | `nsx-tileio-usb` | Tileio USB transport wrapper on top of `nsx-usb`. | Stream Tileio slot data and UIO updates over a USB vendor transport. | [nsx-tileio](https://github.com/AmbiqAI/nsx-tileio/tree/v0.1.0) |
 
@@ -197,7 +197,7 @@ helpers into the baseline runtime core.
 | `nsx-i2c` | I2C wrapper and related helpers. | Sensor and peripheral bring-up over I2C. | [GitHub](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.24/modules/nsx-i2c) |
 | `nsx-spi` | SPI wrapper and related helpers. | SPI device bring-up and integration. | [GitHub](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.24/modules/nsx-spi) |
 | `nsx-uart` | UART wrapper and related helpers. | Serial communication, console, or bridge workflows. | [GitHub](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.24/modules/nsx-uart) |
-| `nsx-sensors` | External I2C/SPI-attached sensor and accessory drivers (MAX86150, MPU6050, ICM-45605, INA228, LED Stick) built on `nsx-i2c`/`nsx-spi` with a consistent context-based init pattern. | Bio-sensor capture, IMU bring-up, current/voltage monitoring, simple I2C accessory control. | [GitHub](https://github.com/AmbiqAI/nsx-sensors) |
+| `nsx-sensors` | External I2C/SPI-attached sensor and accessory drivers (MAX86150, MPU6050, ICM-45605, INA228, LED Stick) built on `nsx-i2c`/`nsx-spi` with a consistent context-based init pattern. | Bio-sensor capture, IMU bring-up, current/voltage monitoring, simple I2C accessory control. | [nsx-sensors](https://github.com/AmbiqAI/nsx-sensors/tree/v0.1.0) |
 
 Legacy `nsx-peripherals` is no longer a first-class packaged module. Its useful
 pieces were retired into focused unified surfaces such as `nsx-power`,
