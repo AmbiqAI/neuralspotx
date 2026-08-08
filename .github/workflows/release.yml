@@ -426,21 +426,35 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TARGET_SHA: ${{ needs.release-context.outputs.target_sha }}
+          RELEASE_TAG: ${{ needs.release-context.outputs.release_tag }}
+          MANUAL: ${{ needs.release-context.outputs.manual }}
           CI_BRANCH: release-ci-${{ github.run_id }}
         run: |
           set -euo pipefail
 
           workflow_runs="repos/${GITHUB_REPOSITORY}/actions/workflows/ci.yml/runs"
           before_ids=$(gh api "$workflow_runs?event=workflow_dispatch&head_sha=$TARGET_SHA&per_page=100" --jq '[.workflow_runs[].id]')
-          ref="refs/heads/$CI_BRANCH"
-          gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
-            --field "ref=$ref" \
-            --field "sha=$TARGET_SHA" >/dev/null
+          cleanup_ref=""
+          if [[ "$MANUAL" == "true" ]]; then
+            # The immutable tag already names the exact commit, so dispatch CI
+            # directly on it. GitHub may reject a workflow token creating a
+            # temporary branch that points behind current main.
+            dispatch_ref="$RELEASE_TAG"
+          else
+            ref="refs/heads/$CI_BRANCH"
+            gh api --method POST "repos/${GITHUB_REPOSITORY}/git/refs" \
+              --field "ref=$ref" \
+              --field "sha=$TARGET_SHA" >/dev/null
+            cleanup_ref="repos/${GITHUB_REPOSITORY}/git/refs/heads/$CI_BRANCH"
+            dispatch_ref="$CI_BRANCH"
+          fi
           cleanup() {
-            gh api --method DELETE "repos/${GITHUB_REPOSITORY}/git/refs/heads/$CI_BRANCH" >/dev/null
+            if [[ -n "$cleanup_ref" ]]; then
+              gh api --method DELETE "$cleanup_ref" >/dev/null
+            fi
           }
           trap cleanup EXIT
-          gh workflow run ci.yml --ref "$CI_BRANCH" --repo "$GITHUB_REPOSITORY"
+          gh workflow run ci.yml --ref "$dispatch_ref" --repo "$GITHUB_REPOSITORY"
 
           run_id=""
           for _ in {1..60}; do

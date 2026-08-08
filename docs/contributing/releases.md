@@ -100,6 +100,9 @@ The workflow explicitly overrides GitHub Actions' skipped-ancestor propagation:
 Release Please is intentionally skipped for a tagged rebuild, while
 `release-context` and `exact-commit-ci` use `always()` plus explicit result
 checks so the validated rebuild chain still runs.
+For a tagged rebuild, exact-commit CI dispatches directly on the existing
+immutable tag. New releases still use a temporary branch because their tag does
+not exist until exact-commit CI passes.
 GitHub release notes are regenerated from the exact tagged checkout's
 `CHANGELOG.md`, so a retry can recreate a missing GitHub Release without
 depending on outputs from the intentionally skipped Release Please job.
