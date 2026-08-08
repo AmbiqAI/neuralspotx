@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.7.13](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.12...neuralspotx-v0.7.13) (2026-08-08)
+
+
+### Bug Fixes
+
+* **registry:** promote DSP and TileIO releases ([#201](https://github.com/AmbiqAI/neuralspotx/issues/201)) ([309be9d](https://github.com/AmbiqAI/neuralspotx/commit/309be9d59fb29194777deb2519627116c40d94a3))
+* **registry:** remove orphaned project records ([6e6dad5](https://github.com/AmbiqAI/neuralspotx/commit/6e6dad5481746b2eecf9eef91c376d29e271b7d4))
+* **release:** finalize Release Please lifecycle labels ([#202](https://github.com/AmbiqAI/neuralspotx/issues/202)) ([b35bab0](https://github.com/AmbiqAI/neuralspotx/commit/b35bab0675da101ca80f25045a47bb24abba5f01))
+* **release:** sync uv.lock on release PR branches ([1d0d77c](https://github.com/AmbiqAI/neuralspotx/commit/1d0d77c4dd0daf6c5c7d654df479d58e34c35678))
+
 ## [0.7.12](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.11...neuralspotx-v0.7.12) (2026-08-05)
 
 ### Release highlights
