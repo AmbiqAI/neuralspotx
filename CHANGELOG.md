@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.14](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.13...neuralspotx-v0.7.14) (2026-08-08)
+
+
+### Bug Fixes
+
+* **registry:** promote Physiokit and Sensors releases ([#206](https://github.com/AmbiqAI/neuralspotx/issues/206)) ([602bbe3](https://github.com/AmbiqAI/neuralspotx/commit/602bbe3cd06f147eab674bbc5eeaaeaf689434f2))
+* **release:** authorize lifecycle finalizer labels ([#204](https://github.com/AmbiqAI/neuralspotx/issues/204)) ([642d6fa](https://github.com/AmbiqAI/neuralspotx/commit/642d6fad0eb07526a71236b7110c7d35d65d8970))
+
 ## [0.7.13](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.12...neuralspotx-v0.7.13) (2026-08-08)
 
 
