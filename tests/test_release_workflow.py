@@ -112,6 +112,45 @@ def test_release_publication_is_downstream_of_exact_commit_ci() -> None:
     assert "skip-existing: ${{ github.event_name == 'workflow_dispatch' && inputs.tag != '' }}" in text
 
 
+def test_tagged_manual_rebuild_overrides_release_please_skip_propagation() -> None:
+    workflow = _workflow()
+    jobs = workflow["jobs"]
+
+    assert (
+        jobs["release-context"]["if"]
+        == "${{ always() && ((github.event_name == 'workflow_dispatch' && inputs.tag != '') || (needs.release-please.result == 'success' && needs.release-please.outputs.release_created == 'true')) }}"
+    )
+    assert (
+        jobs["exact-commit-ci"]["if"]
+        == "${{ always() && needs.release-context.result == 'success' }}"
+    )
+    assert "always()" in jobs["build"]["if"]
+    assert "needs.create-release-tag.result == 'skipped'" in jobs["build"]["if"]
+    assert "always()" in jobs["github-release"]["if"]
+    assert "needs.create-release-tag.result == 'skipped'" in jobs["github-release"]["if"]
+    assert "always()" in jobs["pypi-publish"]["if"]
+    assert "needs.create-release-tag.result == 'skipped'" in jobs["pypi-publish"]["if"]
+    assert "always()" in jobs["finalize-release-please"]["if"]
+    assert "needs.create-release-tag.result == 'skipped'" in jobs["finalize-release-please"]["if"]
+
+
+def test_github_release_notes_do_not_depend_on_skipped_release_please_output() -> None:
+    workflow = _workflow()
+    job = workflow["jobs"]["github-release"]
+    text = _job_block_text("github-release")
+    release_step = next(
+        step
+        for step in job["steps"]
+        if step.get("name") == "Create GitHub release"
+    )
+
+    assert "Checkout the exact release source" in text
+    assert "Derive release notes from the tagged changelog" in text
+    assert 'Path("release-notes.md").write_text' in text
+    assert release_step["with"]["body_path"] == "release-notes.md"
+    assert "body" not in release_step["with"]
+
+
 def test_custom_release_path_finalizes_release_please_bookkeeping() -> None:
     workflow = _workflow()
     job = workflow["jobs"]["finalize-release-please"]
