@@ -125,7 +125,7 @@ def test_custom_release_path_finalizes_release_please_bookkeeping() -> None:
     assert job["permissions"] == {
         "contents": "read",
         "issues": "write",
-        "pull-requests": "read",
+        "pull-requests": "write",
     }
     assert "needs.github-release.result == 'success'" in job["if"]
     assert "needs.create-release-tag.result == 'success'" in job["if"]
