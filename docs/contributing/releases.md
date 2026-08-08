@@ -96,6 +96,13 @@ PR. It first runs fresh CI on the existing tag's peeled commit, then rebuilds
 artifacts for an existing release tag such as `neuralspotx-v0.6.3` or the
 legacy form `v0.6.3`. PyPI uses `skip-existing` for this retry-only path so a
 successful prior upload does not make an asset retry fail on duplicates.
+The workflow explicitly overrides GitHub Actions' skipped-ancestor propagation:
+Release Please is intentionally skipped for a tagged rebuild, while
+`release-context` and `exact-commit-ci` use `always()` plus explicit result
+checks so the validated rebuild chain still runs.
+GitHub release notes are regenerated from the exact tagged checkout's
+`CHANGELOG.md`, so a retry can recreate a missing GitHub Release without
+depending on outputs from the intentionally skipped Release Please job.
 
 ## PyPI Publishing
 

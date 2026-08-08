@@ -408,7 +408,11 @@ jobs:
 
   exact-commit-ci:
     needs: release-context
-    if: ${{ needs.release-context.result == 'success' }}
+    # `release-please` is intentionally skipped for a tagged manual rebuild.
+    # release-context overrides that skipped ancestor with `always()`; this job
+    # must do the same or GitHub propagates the ancestor skip through the rest
+    # of the rebuild graph even though release-context completed successfully.
+    if: ${{ always() && needs.release-context.result == 'success' }}
     runs-on: ubuntu-latest
     permissions:
       actions: write
@@ -663,6 +667,11 @@ jobs:
       RELEASE_TAG: ${{ needs.release-context.outputs.release_tag }}
 
     steps:
+      - name: Checkout the exact release source
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.release-context.outputs.target_sha }}
+
       - name: Verify release tag still peels to CI target
         env:
           GH_TOKEN: ${{ github.token }}
@@ -685,6 +694,33 @@ jobs:
             exit 1
           fi
 
+      - name: Derive release notes from the tagged changelog
+        run: |
+          python - <<'PY'
+          import re
+          from pathlib import Path
+
+          tag = "${{ env.RELEASE_TAG }}"
+          version = re.sub(r"^(?:neuralspotx-)?v", "", tag)
+          changelog = Path("CHANGELOG.md").read_text(encoding="utf-8")
+          heading = re.compile(
+              rf"^## \[{re.escape(version)}\].*$",
+              re.MULTILINE,
+          ).search(changelog)
+          if heading is None:
+              raise SystemExit(
+                  f"CHANGELOG.md has no release section for {version}."
+              )
+          next_heading = re.compile(r"^## \[", re.MULTILINE).search(
+              changelog,
+              heading.end(),
+          )
+          body = changelog[
+              heading.start() : next_heading.start() if next_heading else None
+          ].strip()
+          Path("release-notes.md").write_text(body + "\n", encoding="utf-8")
+          PY
+
       - name: Download release artifacts
         uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
         with:
@@ -701,7 +737,7 @@ jobs:
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2
         with:
           tag_name: ${{ env.RELEASE_TAG }}
-          body: ${{ needs.release-please.outputs.body }}
+          body_path: release-notes.md
           files: dist/*
 
   pypi-publish:
