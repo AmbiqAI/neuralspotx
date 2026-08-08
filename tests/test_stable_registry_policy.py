@@ -39,9 +39,17 @@ def test_packaged_registry_release_projects_are_immutable() -> None:
     assert registry["projects"]["nsx-pmu-armv8m"]["revision"] == "v0.2.0"
     assert registry["projects"]["arm-cmsis-nn"]["revision"] == "v0.1.0"
     assert registry["projects"]["nsx-tflite-micro"]["revision"] == "v0.1.0"
+    assert registry["projects"]["helia-dsp"]["revision"] == "v1.0.0"
+    assert registry["projects"]["nsx-tileio"]["revision"] == "v0.1.0"
     assert registry["modules"]["nsx-pmu-armv8m"]["revision"] == "v0.2.0"
     assert registry["modules"]["arm-cmsis-nn"]["revision"] == "v0.1.0"
     assert registry["modules"]["nsx-tflite-micro"]["revision"] == "v0.1.0"
+    assert registry["modules"]["helia-dsp"]["revision"] == "v1.0.0"
+    assert {
+        entry["revision"]
+        for entry in registry["modules"].values()
+        if entry["project"] == "nsx-tileio"
+    } == {"v0.1.0"}
     assert {
         entry["revision"]
         for entry in registry["modules"].values()

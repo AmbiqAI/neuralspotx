@@ -35,7 +35,7 @@ projects:
   helia-dsp:
     name: helia-dsp
     url: https://github.com/AmbiqAI/helia-dsp.git
-    revision: 78a36d99a8c9b519c2e6da4ad59124fd25c1dcb1
+    revision: v1.0.0
     path: modules/helia-dsp
   helia-rt:
     name: helia-rt
@@ -65,7 +65,7 @@ projects:
   nsx-tileio:
     name: nsx-tileio
     url: https://github.com/AmbiqAI/nsx-tileio.git
-    revision: 1c2257aeeeccb21badbcc04e342af38c63ccc8b0
+    revision: v0.1.0
     path: modules/nsx-tileio
   nsx-sensors:
     name: nsx-sensors
@@ -224,7 +224,7 @@ modules:
     metadata: modules/ns-cmsis-nn/nsx/nsx-module.yaml
   helia-dsp:
     project: helia-dsp
-    revision: 78a36d99a8c9b519c2e6da4ad59124fd25c1dcb1
+    revision: v1.0.0
     metadata: modules/helia-dsp/nsx-module.yaml
   nsx-physiokit:
     project: nsx-physiokit
@@ -248,11 +248,11 @@ modules:
     metadata: modules/nsx-tflite-micro/nsx-module.yaml
   nsx-tileio-ble:
     project: nsx-tileio
-    revision: 1c2257aeeeccb21badbcc04e342af38c63ccc8b0
+    revision: v0.1.0
     metadata: modules/nsx-tileio-ble/nsx-module.yaml
   nsx-tileio-usb:
     project: nsx-tileio
-    revision: 1c2257aeeeccb21badbcc04e342af38c63ccc8b0
+    revision: v0.1.0
     metadata: modules/nsx-tileio-usb/nsx-module.yaml
   nsx-sensors:
     project: nsx-sensors
