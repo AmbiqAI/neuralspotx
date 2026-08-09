@@ -534,7 +534,7 @@ wheels = [
 
 [[package]]
 name = "neuralspotx"
-version = "0.7.14"
+version = "0.7.15"
 source = { editable = "." }
 dependencies = [
     { name = "jinja2" },
