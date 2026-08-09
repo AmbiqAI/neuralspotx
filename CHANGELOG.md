@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.16](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.15...neuralspotx-v0.7.16) (2026-08-09)
+
+
+### Bug Fixes
+
+* **registry:** promote nsx-nanopb to v0.1.1 ([#215](https://github.com/AmbiqAI/neuralspotx/issues/215)) ([048ba2f](https://github.com/AmbiqAI/neuralspotx/commit/048ba2f0a13c6df2f41e32ae6d63154c07f7af7a)), closes [#214](https://github.com/AmbiqAI/neuralspotx/issues/214)
+
 ## [0.7.15](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.14...neuralspotx-v0.7.15) (2026-08-09)
 
 
