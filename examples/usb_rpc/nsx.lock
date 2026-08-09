@@ -8,7 +8,7 @@ targets:
       version: 0.7.10
     manifest:
       path: nsx.yml
-      hash: sha256:7859a4afbaf98a189ab608d4dca47bb28af1919a63303a58f1e09e1b448aa3a9
+      hash: sha256:0c015acfa55fe482fc90e9b3139fd61c443ec8ca6b9a66fadf660c8e18760e1b
     target:
       board: apollo510_evb
       soc: apollo510
@@ -167,21 +167,21 @@ targets:
       nsx-nanopb:
         project: nsx-nanopb
         kind: git
-        constraint: v0.1.0
+        constraint: v0.1.1
         resolved:
           url: https://github.com/AmbiqAI/nsx-nanopb.git
-          tag: v0.1.0
-          commit: 50e183616faf747d404e78e663e5d031b093a7b4
+          tag: v0.1.1
+          commit: 5e07fd0cee947edd6f047c3066378d88e1deaa42
           vendored_at: modules/nsx-nanopb
-          content_hash: sha256:d94f23d6f369434a4cf551c22abe72a8771a516331ddf2f4cdac9b3379f8e794
-          acquired_at: '2026-08-04T04:02:01+00:00'
+          content_hash: sha256:cb2a64028b26e6601c1c916f025ece404191c4f34236440b461f8cb5c4cbd984
+          acquired_at: '2026-08-09T18:59:09+00:00'
   apollo510b_evb:
     generated_at: '2026-08-04T04:02:01+00:00'
     nsx_tool:
       version: 0.7.10
     manifest:
       path: nsx.yml
-      hash: sha256:7859a4afbaf98a189ab608d4dca47bb28af1919a63303a58f1e09e1b448aa3a9
+      hash: sha256:0c015acfa55fe482fc90e9b3139fd61c443ec8ca6b9a66fadf660c8e18760e1b
     target:
       board: apollo510b_evb
       soc: apollo510b
@@ -340,21 +340,21 @@ targets:
       nsx-nanopb:
         project: nsx-nanopb
         kind: git
-        constraint: v0.1.0
+        constraint: v0.1.1
         resolved:
           url: https://github.com/AmbiqAI/nsx-nanopb.git
-          tag: v0.1.0
-          commit: 50e183616faf747d404e78e663e5d031b093a7b4
+          tag: v0.1.1
+          commit: 5e07fd0cee947edd6f047c3066378d88e1deaa42
           vendored_at: modules/nsx-nanopb
-          content_hash: sha256:d94f23d6f369434a4cf551c22abe72a8771a516331ddf2f4cdac9b3379f8e794
-          acquired_at: '2026-08-04T04:02:02+00:00'
+          content_hash: sha256:cb2a64028b26e6601c1c916f025ece404191c4f34236440b461f8cb5c4cbd984
+          acquired_at: '2026-08-09T18:59:09+00:00'
   apollo330mP_evb:
     generated_at: '2026-08-04T04:02:02+00:00'
     nsx_tool:
       version: 0.7.10
     manifest:
       path: nsx.yml
-      hash: sha256:7859a4afbaf98a189ab608d4dca47bb28af1919a63303a58f1e09e1b448aa3a9
+      hash: sha256:0c015acfa55fe482fc90e9b3139fd61c443ec8ca6b9a66fadf660c8e18760e1b
     target:
       board: apollo330mP_evb
       soc: apollo330P
@@ -513,21 +513,21 @@ targets:
       nsx-nanopb:
         project: nsx-nanopb
         kind: git
-        constraint: v0.1.0
+        constraint: v0.1.1
         resolved:
           url: https://github.com/AmbiqAI/nsx-nanopb.git
-          tag: v0.1.0
-          commit: 50e183616faf747d404e78e663e5d031b093a7b4
+          tag: v0.1.1
+          commit: 5e07fd0cee947edd6f047c3066378d88e1deaa42
           vendored_at: modules/nsx-nanopb
-          content_hash: sha256:d94f23d6f369434a4cf551c22abe72a8771a516331ddf2f4cdac9b3379f8e794
-          acquired_at: '2026-08-04T04:02:03+00:00'
+          content_hash: sha256:cb2a64028b26e6601c1c916f025ece404191c4f34236440b461f8cb5c4cbd984
+          acquired_at: '2026-08-09T18:59:09+00:00'
   apollo510dL_evb:
     generated_at: '2026-08-04T04:02:03+00:00'
     nsx_tool:
       version: 0.7.10
     manifest:
       path: nsx.yml
-      hash: sha256:7859a4afbaf98a189ab608d4dca47bb28af1919a63303a58f1e09e1b448aa3a9
+      hash: sha256:0c015acfa55fe482fc90e9b3139fd61c443ec8ca6b9a66fadf660c8e18760e1b
     target:
       board: apollo510dL_evb
       soc: apollo510L
@@ -686,11 +686,11 @@ targets:
       nsx-nanopb:
         project: nsx-nanopb
         kind: git
-        constraint: v0.1.0
+        constraint: v0.1.1
         resolved:
           url: https://github.com/AmbiqAI/nsx-nanopb.git
-          tag: v0.1.0
-          commit: 50e183616faf747d404e78e663e5d031b093a7b4
+          tag: v0.1.1
+          commit: 5e07fd0cee947edd6f047c3066378d88e1deaa42
           vendored_at: modules/nsx-nanopb
-          content_hash: sha256:d94f23d6f369434a4cf551c22abe72a8771a516331ddf2f4cdac9b3379f8e794
-          acquired_at: '2026-08-04T04:02:04+00:00'
+          content_hash: sha256:cb2a64028b26e6601c1c916f025ece404191c4f34236440b461f8cb5c4cbd984
+          acquired_at: '2026-08-09T18:59:09+00:00'
