@@ -360,6 +360,7 @@ jobs:
     outputs:
       release_tag: ${{ steps.context.outputs.release_tag }}
       target_sha: ${{ steps.context.outputs.target_sha }}
+      trusted_tooling_sha: ${{ steps.context.outputs.trusted_tooling_sha }}
       manual: ${{ steps.context.outputs.manual }}
 
     steps:
@@ -376,6 +377,8 @@ jobs:
           RELEASE_PLEASE_TAG: ${{ needs.release-please.outputs.tag_name }}
           EVENT_NAME: ${{ github.event_name }}
           LANDING_SHA: ${{ github.sha }}
+          GH_TOKEN: ${{ github.token }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           set -euo pipefail
 
@@ -401,9 +404,17 @@ jobs:
             echo "Release target is not a full commit SHA: $target_sha" >&2
             exit 1
           fi
+          trusted_tooling_sha=$(gh api \
+            "repos/${GITHUB_REPOSITORY}/git/ref/heads/${DEFAULT_BRANCH}" \
+            --jq '.object.sha')
+          if [[ ! "$trusted_tooling_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Trusted tooling ref is not a full commit SHA: $trusted_tooling_sha" >&2
+            exit 1
+          fi
 
           printf 'release_tag=%s\n' "$release_tag" >> "$GITHUB_OUTPUT"
           printf 'target_sha=%s\n' "$target_sha" >> "$GITHUB_OUTPUT"
+          printf 'trusted_tooling_sha=%s\n' "$trusted_tooling_sha" >> "$GITHUB_OUTPUT"
           printf 'manual=%s\n' "$manual" >> "$GITHUB_OUTPUT"
 
   exact-commit-ci:
@@ -583,7 +594,7 @@ jobs:
       - name: Checkout trusted release tooling
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ needs.release-context.outputs.trusted_tooling_sha }}
           path: .release-tools
           sparse-checkout: |
             tools/normalize_sdist.py

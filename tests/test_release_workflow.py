@@ -172,6 +172,12 @@ def test_release_build_is_reproducible_and_retries_preserve_pypi_bytes() -> None
     assert 'echo "SOURCE_DATE_EPOCH=$epoch" >> "$GITHUB_ENV"' in text
     assert text.count("umask 022") >= 2
     assert "Checkout trusted release tooling" in steps
+    assert (
+        steps["Checkout trusted release tooling"]["with"]["ref"]
+        == "${{ needs.release-context.outputs.trusted_tooling_sha }}"
+    )
+    assert "git/ref/heads/${DEFAULT_BRANCH}" in _job_block_text("release-context")
+    assert "trusted_tooling_sha" in _job_block_text("release-context")
     assert ".release-tools/tools/normalize_sdist.py" in text
     assert "Verify same-commit rebuild is byte-identical" in steps
     assert "dist-rebuild" in text
