@@ -30,7 +30,7 @@ projects:
   ns-cmsis-nn:
     name: ns-cmsis-nn
     url: https://github.com/AmbiqAI/ns-cmsis-nn.git
-    revision: v7.26.0
+    revision: v7.29.2
     path: modules/ns-cmsis-nn
   helia-dsp:
     name: helia-dsp
@@ -220,7 +220,7 @@ modules:
     metadata: modules/nsx-nanopb/nsx-module.yaml
   nsx-cmsis-nn:
     project: ns-cmsis-nn
-    revision: v7.26.0
+    revision: v7.29.2
     metadata: modules/ns-cmsis-nn/nsx/nsx-module.yaml
   helia-dsp:
     project: helia-dsp

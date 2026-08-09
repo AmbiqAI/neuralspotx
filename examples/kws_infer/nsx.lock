@@ -156,14 +156,14 @@ targets:
       nsx-cmsis-nn:
         project: ns-cmsis-nn
         kind: git
-        constraint: v7.26.0
+        constraint: v7.29.2
         resolved:
           url: https://github.com/AmbiqAI/ns-cmsis-nn.git
-          tag: v7.26.0
-          commit: 2bb81953a20518cf65613bd612352cc462dd7a5e
+          tag: v7.29.2
+          commit: 631726420b04860a5c4236956a3741ff5a96bd7f
           vendored_at: modules/ns-cmsis-nn
-          content_hash: sha256:9e99a00415678aaed59dde525eb51fc4f0e8f978139d72a876f93db38e238368
-          acquired_at: '2026-08-04T04:01:38+00:00'
+          content_hash: sha256:2003657c0004f3b49f80928118ded71e4d9e53dc1ad7e51b8afc3149c74804b8
+          acquired_at: '2026-08-09T17:55:47+00:00'
       nsx-helia-rt:
         project: helia-rt
         kind: git
@@ -329,14 +329,14 @@ targets:
       nsx-cmsis-nn:
         project: ns-cmsis-nn
         kind: git
-        constraint: v7.26.0
+        constraint: v7.29.2
         resolved:
           url: https://github.com/AmbiqAI/ns-cmsis-nn.git
-          tag: v7.26.0
-          commit: 2bb81953a20518cf65613bd612352cc462dd7a5e
+          tag: v7.29.2
+          commit: 631726420b04860a5c4236956a3741ff5a96bd7f
           vendored_at: modules/ns-cmsis-nn
-          content_hash: sha256:9e99a00415678aaed59dde525eb51fc4f0e8f978139d72a876f93db38e238368
-          acquired_at: '2026-08-04T04:01:40+00:00'
+          content_hash: sha256:2003657c0004f3b49f80928118ded71e4d9e53dc1ad7e51b8afc3149c74804b8
+          acquired_at: '2026-08-09T17:55:48+00:00'
       nsx-helia-rt:
         project: helia-rt
         kind: git
@@ -502,14 +502,14 @@ targets:
       nsx-cmsis-nn:
         project: ns-cmsis-nn
         kind: git
-        constraint: v7.26.0
+        constraint: v7.29.2
         resolved:
           url: https://github.com/AmbiqAI/ns-cmsis-nn.git
-          tag: v7.26.0
-          commit: 2bb81953a20518cf65613bd612352cc462dd7a5e
+          tag: v7.29.2
+          commit: 631726420b04860a5c4236956a3741ff5a96bd7f
           vendored_at: modules/ns-cmsis-nn
-          content_hash: sha256:9e99a00415678aaed59dde525eb51fc4f0e8f978139d72a876f93db38e238368
-          acquired_at: '2026-08-04T04:01:41+00:00'
+          content_hash: sha256:2003657c0004f3b49f80928118ded71e4d9e53dc1ad7e51b8afc3149c74804b8
+          acquired_at: '2026-08-09T17:55:48+00:00'
       nsx-helia-rt:
         project: helia-rt
         kind: git
