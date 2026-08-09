@@ -102,7 +102,8 @@ def test_reconcile_restores_hash_verified_canonical_bytes(
     def urlopen(url, timeout):
         if str(url).startswith("https://pypi.org/"):
             return Response(json.dumps(response).encode())
-        return Response(Path(str(url).removeprefix("file://")).read_bytes())
+        assert str(url) == canonical.as_uri()
+        return Response(canonical.read_bytes())
 
     monkeypatch.setattr("urllib.request.urlopen", urlopen)
 
