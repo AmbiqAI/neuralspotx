@@ -185,7 +185,7 @@ def test_kws_locks_use_recursive_ns_cmsis_nn_hash() -> None:
         Path(__file__).parents[1] / "examples" / "kws_infer" / "nsx.lock"
     ).read_text(encoding="utf-8")
     old_hash = "sha256:9e99a00415678aaed59dde525eb51fc4f0e8f978139d72a876f93db38e238368"
-    new_hash = "sha256:f5977cb5a973a139c23c4348c1c0dd9aa9edb659b15ec876197010a6b3f81311"
+    new_hash = "sha256:2003657c0004f3b49f80928118ded71e4d9e53dc1ad7e51b8afc3149c74804b8"
 
     assert old_hash not in lock_text
     assert lock_text.count(new_hash) == 3
