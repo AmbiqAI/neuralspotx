@@ -360,6 +360,7 @@ jobs:
     outputs:
       release_tag: ${{ steps.context.outputs.release_tag }}
       target_sha: ${{ steps.context.outputs.target_sha }}
+      trusted_tooling_sha: ${{ steps.context.outputs.trusted_tooling_sha }}
       manual: ${{ steps.context.outputs.manual }}
 
     steps:
@@ -376,6 +377,8 @@ jobs:
           RELEASE_PLEASE_TAG: ${{ needs.release-please.outputs.tag_name }}
           EVENT_NAME: ${{ github.event_name }}
           LANDING_SHA: ${{ github.sha }}
+          GH_TOKEN: ${{ github.token }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           set -euo pipefail
 
@@ -401,9 +404,17 @@ jobs:
             echo "Release target is not a full commit SHA: $target_sha" >&2
             exit 1
           fi
+          trusted_tooling_sha=$(gh api \
+            "repos/${GITHUB_REPOSITORY}/git/ref/heads/${DEFAULT_BRANCH}" \
+            --jq '.object.sha')
+          if [[ ! "$trusted_tooling_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "Trusted tooling ref is not a full commit SHA: $trusted_tooling_sha" >&2
+            exit 1
+          fi
 
           printf 'release_tag=%s\n' "$release_tag" >> "$GITHUB_OUTPUT"
           printf 'target_sha=%s\n' "$target_sha" >> "$GITHUB_OUTPUT"
+          printf 'trusted_tooling_sha=%s\n' "$trusted_tooling_sha" >> "$GITHUB_OUTPUT"
           printf 'manual=%s\n' "$manual" >> "$GITHUB_OUTPUT"
 
   exact-commit-ci:
@@ -572,12 +583,23 @@ jobs:
       contents: read
     env:
       RELEASE_TAG: ${{ needs.release-context.outputs.release_tag }}
+      MANUAL: ${{ needs.release-context.outputs.manual }}
 
     steps:
       - name: Checkout release tag
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
         with:
           ref: ${{ needs.release-context.outputs.target_sha }}
+
+      - name: Checkout trusted release tooling
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: ${{ needs.release-context.outputs.trusted_tooling_sha }}
+          path: .release-tools
+          sparse-checkout: |
+            tools/normalize_sdist.py
+            tools/reconcile_pypi_artifacts.py
+          persist-credentials: false
 
       - name: Verify release tag still peels to CI target
         env:
@@ -633,8 +655,67 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Set reproducible build epoch
+        env:
+          TARGET_SHA: ${{ needs.release-context.outputs.target_sha }}
+        run: |
+          set -euo pipefail
+          epoch=$(git show -s --format=%ct "$TARGET_SHA")
+          if [[ ! "$epoch" =~ ^[0-9]+$ ]]; then
+            echo "Release commit timestamp is not an integer: $epoch" >&2
+            exit 1
+          fi
+          echo "SOURCE_DATE_EPOCH=$epoch" >> "$GITHUB_ENV"
+
       - name: Build distributions
-        run: uv build
+        run: |
+          set -euo pipefail
+          umask 022
+          uv build
+          sdist=(dist/*.tar.gz)
+          if [[ "${#sdist[@]}" != "1" ]]; then
+            echo "Expected exactly one sdist under dist/." >&2
+            exit 1
+          fi
+          python .release-tools/tools/normalize_sdist.py \
+            "${sdist[0]}" --epoch "$SOURCE_DATE_EPOCH"
+
+      - name: Verify same-commit rebuild is byte-identical
+        run: |
+          set -euo pipefail
+          umask 022
+          uv build --out-dir dist-rebuild
+          sdist=(dist-rebuild/*.tar.gz)
+          if [[ "${#sdist[@]}" != "1" ]]; then
+            echo "Expected exactly one rebuilt sdist." >&2
+            exit 1
+          fi
+          python .release-tools/tools/normalize_sdist.py \
+            "${sdist[0]}" --epoch "$SOURCE_DATE_EPOCH"
+          (cd dist && sha256sum * | sort) > first-build.sha256
+          (cd dist-rebuild && sha256sum * | sort) > second-build.sha256
+          diff -u first-build.sha256 second-build.sha256
+
+      - name: Restore canonical PyPI bytes for a tagged retry
+        if: needs.release-context.outputs.manual == 'true'
+        run: |
+          set -euo pipefail
+          version=$(python -c '
+          import tomllib
+          print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])
+          ')
+          report="${RUNNER_TEMP}/retry-provenance.json"
+          python .release-tools/tools/reconcile_pypi_artifacts.py dist \
+            --project neuralspotx \
+            --version "$version" \
+            --report "$report"
+          {
+            echo '### Manual retry artifact reconciliation'
+            echo
+            echo '```json'
+            cat "$report"
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Validate distribution metadata
         run: uvx twine check dist/*
