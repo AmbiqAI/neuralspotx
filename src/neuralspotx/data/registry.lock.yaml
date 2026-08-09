@@ -25,7 +25,7 @@ projects:
   nsx-nanopb:
     name: nsx-nanopb
     url: https://github.com/AmbiqAI/nsx-nanopb.git
-    revision: v0.1.0
+    revision: v0.1.1
     path: modules/nsx-nanopb
   ns-cmsis-nn:
     name: ns-cmsis-nn
@@ -216,7 +216,7 @@ modules:
     metadata: modules/nsx-freertos/nsx-module.yaml
   nsx-nanopb:
     project: nsx-nanopb
-    revision: v0.1.0
+    revision: v0.1.1
     metadata: modules/nsx-nanopb/nsx-module.yaml
   nsx-cmsis-nn:
     project: ns-cmsis-nn

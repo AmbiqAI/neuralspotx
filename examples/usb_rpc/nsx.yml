@@ -18,9 +18,9 @@ module_registry:
   projects:
     nsx-nanopb:
       url: https://github.com/AmbiqAI/nsx-nanopb.git
-      revision: v0.1.0
+      revision: v0.1.1
   modules:
     nsx-nanopb:
       project: nsx-nanopb
-      revision: v0.1.0
+      revision: v0.1.1
       metadata: modules/nsx-nanopb/nsx-module.yaml
