@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.7.15](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.14...neuralspotx-v0.7.15) (2026-08-09)
+
+
+### Bug Fixes
+
+* **registry:** promote ns-cmsis-nn to v7.29.1 ([#213](https://github.com/AmbiqAI/neuralspotx/issues/213)) ([5449f53](https://github.com/AmbiqAI/neuralspotx/commit/5449f53f491fba07572430d6c957b0b78d8e3bc3))
+* **release:** dispatch rebuild CI on immutable tags ([#210](https://github.com/AmbiqAI/neuralspotx/issues/210)) ([5877ee1](https://github.com/AmbiqAI/neuralspotx/commit/5877ee1d084609e1a9d9aceb3be7bd2af1f84a21))
+* **release:** preserve reproducible canonical artifacts ([#212](https://github.com/AmbiqAI/neuralspotx/issues/212)) ([df9daa7](https://github.com/AmbiqAI/neuralspotx/commit/df9daa7b8da640bb5e933f8e3e67c6f90c5c7e9a))
+* **release:** restore tagged manual rebuilds ([#208](https://github.com/AmbiqAI/neuralspotx/issues/208)) ([7f720e9](https://github.com/AmbiqAI/neuralspotx/commit/7f720e93a61196178a652f24d2be7f2fe4d9152e))
+
 ## [0.7.14](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.13...neuralspotx-v0.7.14) (2026-08-08)
 
 
