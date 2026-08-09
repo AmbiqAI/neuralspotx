@@ -106,6 +106,19 @@ not exist until exact-commit CI passes.
 GitHub release notes are regenerated from the exact tagged checkout's
 `CHANGELOG.md`, so a retry can recreate a missing GitHub Release without
 depending on outputs from the intentionally skipped Release Please job.
+Distribution builds use the tagged commit timestamp as `SOURCE_DATE_EPOCH`.
+The PEP 517 backend toolchain is pinned in `pyproject.toml` so generated
+metadata does not change when setuptools, wheel, or packaging releases move.
+The workflow builds the wheel and normalized sdist twice and requires identical
+SHA-256 manifests before publication. For a tagged retry of a version that
+already exists on PyPI, rebuilt hashes are compared with PyPI's immutable file
+hashes. Any differing legacy build is replaced with the hash-verified PyPI bytes
+before GitHub release assets are updated, keeping both publication channels
+byte-identical without moving the tag or attempting to overwrite PyPI.
+If the tag exists but the version has not reached PyPI yet, a PyPI 404 is
+treated as "no canonical files to reconcile" and the verified deterministic
+rebuild proceeds to the normal publication jobs. Other API, network, filename,
+or hash mismatches still fail closed.
 
 ## PyPI Publishing
 

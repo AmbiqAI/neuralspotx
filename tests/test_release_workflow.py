@@ -162,6 +162,28 @@ def test_github_release_notes_do_not_depend_on_skipped_release_please_output() -
     assert "body" not in release_step["with"]
 
 
+def test_release_build_is_reproducible_and_retries_preserve_pypi_bytes() -> None:
+    workflow = _workflow()
+    job = workflow["jobs"]["build"]
+    text = _job_block_text("build")
+    steps = {step["name"]: step for step in job["steps"]}
+
+    assert "Set reproducible build epoch" in steps
+    assert 'echo "SOURCE_DATE_EPOCH=$epoch" >> "$GITHUB_ENV"' in text
+    assert text.count("umask 022") >= 2
+    assert "Checkout trusted release tooling" in steps
+    assert ".release-tools/tools/normalize_sdist.py" in text
+    assert "Verify same-commit rebuild is byte-identical" in steps
+    assert "dist-rebuild" in text
+    assert "diff -u first-build.sha256 second-build.sha256" in text
+
+    reconcile = steps["Restore canonical PyPI bytes for a tagged retry"]
+    assert reconcile["if"] == "needs.release-context.outputs.manual == 'true'"
+    assert ".release-tools/tools/reconcile_pypi_artifacts.py" in reconcile["run"]
+    assert "--project neuralspotx" in reconcile["run"]
+    assert "retry-provenance.json" in reconcile["run"]
+
+
 def test_custom_release_path_finalizes_release_please_bookkeeping() -> None:
     workflow = _workflow()
     job = workflow["jobs"]["finalize-release-please"]
