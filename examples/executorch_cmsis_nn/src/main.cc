@@ -5,7 +5,11 @@
 #include "model_pte.h"
 #include "nsx_core.h"
 #include "nsx_executorch.h"
-#include "validation_data.h"
+
+#ifndef NSX_EXECUTORCH_VALIDATION_HEADER
+#define NSX_EXECUTORCH_VALIDATION_HEADER "validation_data.h"
+#endif
+#include NSX_EXECUTORCH_VALIDATION_HEADER
 
 namespace validation = executorch_cmsis_nn_validation;
 
@@ -17,9 +21,9 @@ volatile std::uint32_t executorch_cmsis_nn_max_error_micro = 0;
 
 namespace {
 
-alignas(16) std::uint8_t method_arena[32 * 1024];
-alignas(16) std::uint8_t planned_arena[32 * 1024];
-alignas(16) std::uint8_t temporary_arena[8 * 1024];
+alignas(16) std::uint8_t method_arena[64 * 1024];
+alignas(16) std::uint8_t planned_arena[160 * 1024];
+alignas(16) std::uint8_t temporary_arena[32 * 1024];
 alignas(16) float input[validation::kInputElementCount];
 alignas(16) float output[validation::kOutputElementCount];
 

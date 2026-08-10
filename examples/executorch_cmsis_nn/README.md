@@ -1,80 +1,90 @@
-# ExecuTorch Cortex-M CMSIS-NN validation
+# ExecuTorch Cortex-M CMSIS-NN runner validation
 
-This application validates the complete ExecuTorch Cortex-M path on an Apollo510 EVB. It replaces the former portable `aten::add.out` smoke test.
+This application validates the NSX ExecuTorch runner on an Apollo510 EVB. It does not create, export, quantize, or lower a model. It consumes a prebuilt ExecuTorch PTE and packages that PTE into the board firmware.
 
-The test model is a deterministic `Conv2d(2, 4, 3, bias=False)` with float32 external input and output. Export inserts int8 quantization around the convolution and lowers the graph to exactly these operators:
+The included fixture is model/resnet8_cmsis_nn.pte, a 172 KB MLPerf Tiny-style ResNet-8 PTE for 32x32 RGB input and 10-class output. It is treated as an opaque runner input.
 
-- `cortex_m::quantize_per_tensor.out`
-- `cortex_m::quantized_conv2d.out`
-- `cortex_m::dequantize_per_tensor.out`
+## Responsibility boundary
 
-The middle operator calls upstream Arm CMSIS-NN's `arm_convolve_wrapper_s8`. ExecuTorch portable operators are disabled. The runtime links the standard `arm-cmsis-nn` NSX module, not Ambiq's API-modified `ns-cmsis-nn` Helia implementation.
+Before NSX:
 
-## What is validated
+1. A model owner creates a PTE using their chosen ExecuTorch export pipeline.
+2. The model owner supplies the PTE, its required operator list, and its input/output contract.
 
-The export script fails unless the transformed graph contains exactly the three Cortex-M operators above. It writes the `.pte`, physical channels-last input bytes, the host quantized reference output, and a tolerance derived from the output quantization scale.
+Inside NSX:
 
-On target, the application compares all 36 float output elements against that reference. Success is printed as:
+1. NSX resolves the ExecuTorch, board, CMSIS-NN, and CMSIS dependencies.
+2. CMake converts the supplied PTE bytes into a read-only C array stored in firmware flash. This packaging step does not modify or compile the PTE.
+3. Selective code generation registers the Cortex-M operators named by NSX_EXECUTORCH_CORTEX_M_SELECT_OPS_LIST and the portable ATen fallback operators named by NSX_EXECUTORCH_PORTABLE_SELECT_OPS_LIST.
+4. The linker combines the PTE, standard ExecuTorch runtime, selected portable kernels, Cortex-M operator implementations, upstream CMSIS-NN, and Apollo510 board support.
+5. main.cc passes the embedded PTE and caller-owned memory arenas to nsx::executorch::run_once.
 
-```text
-EXECUTORCH_CMSIS_NN_OK ...
-```
+The nsx-executorch module uses the standard ExecuTorch lifecycle: load Program, inspect the forward method, create MemoryManager objects, load the method, set inputs, execute, and retrieve outputs.
 
-The final link also fails unless the ELF contains both the ExecuTorch Cortex-M `quantized_conv2d_out` implementation and CMSIS-NN's `arm_convolve_wrapper_s8`. This prevents a portable fallback from accidentally passing the numerical test.
+## Supplied fixture contract
 
-For debugger automation, these RAM symbols are exported:
+The included PTE requires:
 
-- `executorch_cmsis_nn_status`: `0` while pending, `1` on success, high bit set on failure
-- `executorch_cmsis_nn_error`: ExecuTorch error code
-- `executorch_cmsis_nn_max_error_micro`: maximum absolute error multiplied by one million
+- cortex_m::quantize_per_tensor.out
+- cortex_m::quantized_conv2d.out
+- cortex_m::quantized_add.out
+- cortex_m::quantized_avg_pool2d.out
+- cortex_m::dequantize_per_tensor.out
 
-## Export the model
+Those Cortex-M operators call upstream Arm CMSIS-NN functions including arm_convolve_wrapper_s8, arm_elementwise_add_s8, and arm_avgpool_s8. This ResNet-8 PTE does not itself require portable operators. The example nevertheless prelinks the additional kernels found in a larger ResNet18 graph: the Cortex-M max-pool and transpose operators plus the portable aten::clamp.out and aten::addmm.out fallbacks. This validates that NSX can compose Cortex-M and portable kernels in one firmware image without enabling the entire portable operator library.
 
-The exporter requires the ExecuTorch v1.3.0 source's pinned PyTorch 2.12 and torchao environment, plus the Cortex-M requirements. Run it with the ExecuTorch source package visible on `PYTHONPATH`:
+The fixture-specific input and expected output live in src/validation_data.h. A different contract can be supplied with NSX_EXECUTORCH_VALIDATION_HEADER. The runner compares all 10 output logits against that supplied reference. These values are validation data, not model-export code.
 
-```bash
-PYTHONPATH=/path/to/executorch/src \
-python examples/executorch_cmsis_nn/model/export_model.py
-```
+The Apollo510 hardware run on 2026-08-10 returned status 1, ExecuTorch error 0, and maximum numerical error 0.
 
-PyTorch 2.12 emits an unused `_guards_fn` module in this environment. The exporter removes it only after proving it has no users, because the current ExecuTorch export-pass interpreter rejects `call_module` nodes.
+## Supply a different PTE
 
-Input and reference arrays are emitted in physical NHWC order. The logical tensor shapes remain PyTorch NCHW, but the Cortex-M convolution requires channels-last storage.
+NSX_EXECUTORCH_PTE is a CMake FILEPATH cache variable. It defaults to:
+
+~~~text
+model/resnet8_cmsis_nn.pte
+~~~
+
+To use another PTE, provide its path through that cache setting and also set:
+
+- NSX_EXECUTORCH_CORTEX_M_SELECT_OPS_LIST to match the PTE Cortex-M custom operators.
+- NSX_EXECUTORCH_PORTABLE_SELECT_OPS_LIST, as a comma-separated list, to match any portable ATen fallback operators in the PTE; leave it empty to disable portable kernels.
+- NSX_EXECUTORCH_VALIDATION_HEADER to a header that provides the input, expected output, sizes, and tolerance in the executorch_cmsis_nn_validation namespace.
+
+Increase the caller-owned arenas in src/main.cc if the PTE metadata reports a larger planned-memory requirement. The post-link check follows the configured operator lists and verifies the corresponding Cortex-M, portable, and CMSIS-NN symbols.
+
+The reusable nsx::executorch::run_once API itself is model-independent. The example application around it is necessarily model-aware because it owns the input and output buffers.
+
+
+### MobileNetV1-0.25 hardware validation
+
+The upstream ExecuTorch MobileNetV1-0.25 Cortex-M example was tested as an externally supplied 298,072-byte PTE with a 1x96x96x3 physical input and two outputs. Its exact selected operator set was quantize, Conv2D, depthwise Conv2D, average pool, linear, and dequantize; portable operators were disabled. The PTE reported a 138,240-byte planned arena requirement.
+
+On the Apollo510 EVB, the runner returned status 1, ExecuTorch error 0, and maximum absolute error 0 against the upstream-generated reference output. This validates runtime execution and CMSIS-NN kernel integration. The example model uses random weights, so this is not an application-accuracy measurement.
 
 ## Build through NSX
 
-This is currently a two-checkout development example: `nsx.yml` points to an adjacent `nsx-executorch` checkout containing the integration changes. A standalone NeuralSPOT-X checkout cannot resolve that local override until nsx-executorch is committed and published in the registry.
+This is currently a two-checkout development example: nsx.yml points to an adjacent nsx-executorch checkout. From the NeuralSPOT-X repository root:
 
-From the NeuralSPOT-X repository root:
-
-```bash
+~~~bash
 uv run nsx lock --app examples/executorch_cmsis_nn
 uv run nsx sync --app examples/executorch_cmsis_nn
-uv run nsx configure examples/executorch_cmsis_nn \
-  --board apollo510_evb \
-  --build-dir examples/executorch_cmsis_nn/build/cmsis_nn
-uv run nsx build examples/executorch_cmsis_nn \
-  --board apollo510_evb \
-  --build-dir examples/executorch_cmsis_nn/build/cmsis_nn
-```
+uv run nsx configure examples/executorch_cmsis_nn --board apollo510_evb --build-dir examples/executorch_cmsis_nn/build/resnet8
+uv run nsx build examples/executorch_cmsis_nn --board apollo510_evb --build-dir examples/executorch_cmsis_nn/build/resnet8
+~~~
 
-Configuration and compilation are offline after `nsx sync`. The app-local module closure includes upstream CMSIS-NN and CMSIS 6 through `arm-cmsis-nn`.
-
-The successful build reports:
-
-```text
-Verified ExecuTorch Cortex-M and CMSIS-NN Conv2D symbols in .../executorch_cmsis_nn
-```
+The successful build verifies that the final ELF contains the selected ExecuTorch Cortex-M and portable implementations plus the required CMSIS-NN functions. The additional kernels increase firmware text size but do not materially change the ResNet-8 runner arena requirements.
 
 ## Run on Apollo510 EVB
 
-With a SEGGER J-Link probe connected:
+~~~bash
+uv run nsx flash examples/executorch_cmsis_nn --board apollo510_evb --build-dir examples/executorch_cmsis_nn/build/resnet8 --target executorch_cmsis_nn
+~~~
 
-```bash
-uv run nsx flash examples/executorch_cmsis_nn \
-  --board apollo510_evb \
-  --build-dir examples/executorch_cmsis_nn/build/cmsis_nn \
-  --target executorch_cmsis_nn
-```
+The application exports these debugger-visible RAM symbols:
 
-Use SWO output to observe the pass/fail line, or read the three debugger status symbols above. Flashing cannot proceed when J-Link Commander reports that no probe is connected.
+- executorch_cmsis_nn_status: 0 while pending, 1 on success, high bit set on failure.
+- executorch_cmsis_nn_error: the ExecuTorch error code.
+- executorch_cmsis_nn_max_error_micro: maximum absolute output error multiplied by one million.
+
+If automatic probe selection fails, select the detected J-Link serial explicitly.
