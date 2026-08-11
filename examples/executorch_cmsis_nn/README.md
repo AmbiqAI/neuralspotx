@@ -16,7 +16,7 @@ Inside NSX:
 1. NSX resolves the ExecuTorch, board, CMSIS-NN, and CMSIS dependencies.
 2. CMake converts the supplied PTE bytes into a read-only C array stored in firmware flash. This packaging step does not modify or compile the PTE.
 3. Selective code generation registers the Cortex-M operators named by NSX_EXECUTORCH_CORTEX_M_SELECT_OPS_LIST and the portable ATen fallback operators named by NSX_EXECUTORCH_PORTABLE_SELECT_OPS_LIST.
-4. The linker combines the PTE, standard ExecuTorch runtime, selected portable kernels, Cortex-M operator implementations, upstream CMSIS-NN, and Apollo510 board support.
+4. The linker combines the PTE, standard ExecuTorch runtime, selected portable kernels, Cortex-M operator implementations, the selected CMSIS-NN provider, and Apollo510 board support.
 5. main.cc passes the embedded PTE and caller-owned memory arenas to nsx::executorch::run_once.
 
 The nsx-executorch module uses the standard ExecuTorch lifecycle: load Program, inspect the forward method, create MemoryManager objects, load the method, set inputs, execute, and retrieve outputs.
@@ -31,11 +31,33 @@ The included PTE requires:
 - cortex_m::quantized_avg_pool2d.out
 - cortex_m::dequantize_per_tensor.out
 
-Those Cortex-M operators call upstream Arm CMSIS-NN functions including arm_convolve_wrapper_s8, arm_elementwise_add_s8, and arm_avgpool_s8. This ResNet-8 PTE does not itself require portable operators. The example nevertheless prelinks the additional kernels found in a larger ResNet18 graph: the Cortex-M max-pool and transpose operators plus the portable aten::clamp.out and aten::addmm.out fallbacks. This validates that NSX can compose Cortex-M and portable kernels in one firmware image without enabling the entire portable operator library.
+Those Cortex-M operators call CMSIS-NN-compatible functions including arm_convolve_wrapper_s8, arm_elementwise_add_s8, and arm_avgpool_s8. The implementation of those functions comes from the selected CMSIS-NN provider. This ResNet-8 PTE does not itself require portable operators. The example nevertheless prelinks the additional kernels found in a larger ResNet18 graph: the Cortex-M max-pool and transpose operators plus the portable aten::clamp.out and aten::addmm.out fallbacks. This validates that NSX can compose Cortex-M and portable kernels in one firmware image without enabling the entire portable operator library.
 
 The fixture-specific input and expected output live in src/validation_data.h. A different contract can be supplied with NSX_EXECUTORCH_VALIDATION_HEADER. The runner compares all 10 output logits against that supplied reference. These values are validation data, not model-export code.
 
 The Apollo510 hardware run on 2026-08-10 returned status 1, ExecuTorch error 0, and maximum numerical error 0.
+
+## Select the CMSIS-NN provider
+
+`NSX_EXECUTORCH_CMSIS_NN_PROVIDER` is a CMake cache switch with two values:
+
+- `arm` (the default) links upstream Arm CMSIS-NN through `nsx::arm_cmsis_nn`.
+- `ns` links Ambiq's optimized ns-cmsis-nn through `nsx::cmsis_nn`.
+
+The supplied PTE, operator list, runner API, and application code do not change when the provider changes. For example, after NSX creates a build directory, select ns-cmsis-nn with:
+
+~~~bash
+uv run nsx configure examples/executorch_cmsis_nn \
+  --board apollo510_evb \
+  --build-dir examples/executorch_cmsis_nn/build/resnet8-ns
+cmake -S examples/executorch_cmsis_nn \
+  -B examples/executorch_cmsis_nn/build/resnet8-ns \
+  -DNSX_EXECUTORCH_CMSIS_NN_PROVIDER=ns
+~~~
+
+For ns-cmsis-nn, the Cortex-M adapter also allocates and computes the fork's required per-output-channel weight-sum context before convolution, depthwise convolution, and transposed convolution. This is a runtime API compatibility detail; it does not alter or regenerate the PTE.
+
+The post-link verifier checks the linker map, not only function names, so a build fails if the selected provider's archive was not actually linked. On 2026-08-11, both provider variants ran the included ResNet-8 on an Apollo510 EVB and returned status 1, ExecuTorch error 0, and maximum numerical error 0.
 
 ## Supply a different PTE
 
@@ -60,7 +82,7 @@ The reusable nsx::executorch::run_once API itself is model-independent. The exam
 
 The upstream ExecuTorch MobileNetV1-0.25 Cortex-M example was tested as an externally supplied 298,072-byte PTE with a 1x96x96x3 physical input and two outputs. Its exact selected operator set was quantize, Conv2D, depthwise Conv2D, average pool, linear, and dequantize; portable operators were disabled. The PTE reported a 138,240-byte planned arena requirement.
 
-On the Apollo510 EVB, the runner returned status 1, ExecuTorch error 0, and maximum absolute error 0 against the upstream-generated reference output. This validates runtime execution and CMSIS-NN kernel integration. The example model uses random weights, so this is not an application-accuracy measurement.
+On the Apollo510 EVB, the runner returned status 1, ExecuTorch error 0, and maximum absolute error 0 against the upstream-generated reference output. On 2026-08-11, the same supplied PTE and reference also passed with `NSX_EXECUTORCH_CMSIS_NN_PROVIDER=ns`, exercising ns-cmsis-nn's standard, depthwise, pooling, and fully connected paths. This validates runtime execution and CMSIS-NN kernel integration. The example model uses random weights, so this is not an application-accuracy measurement.
 
 ## Build through NSX
 

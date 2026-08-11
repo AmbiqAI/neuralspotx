@@ -1,5 +1,22 @@
-if(NOT DEFINED NM OR NOT DEFINED ELF)
-  message(FATAL_ERROR "NM and ELF are required")
+if(NOT DEFINED NM OR NOT DEFINED ELF OR NOT DEFINED MAP OR NOT DEFINED PROVIDER)
+  message(FATAL_ERROR "NM, ELF, MAP, and PROVIDER are required")
+endif()
+if(NOT EXISTS "${MAP}")
+  message(FATAL_ERROR "Linker map does not exist: ${MAP}")
+endif()
+
+file(READ "${MAP}" map_output)
+if(PROVIDER STREQUAL "arm")
+  set(provider_archive_marker "_nsx/arm_cmsis_nn/arm-cmsis-nn-src/libcmsis-nn.a")
+elseif(PROVIDER STREQUAL "ns")
+  set(provider_archive_marker "_nsx/nsx_cmsis_nn/libnsx_cmsis_nn.a")
+else()
+  message(FATAL_ERROR "Unknown CMSIS-NN provider: ${PROVIDER}")
+endif()
+string(FIND "${map_output}" "${provider_archive_marker}" provider_archive_index)
+if(provider_archive_index EQUAL -1)
+  message(FATAL_ERROR
+    "${ELF} did not link the ${PROVIDER} CMSIS-NN provider (${provider_archive_marker})")
 endif()
 
 execute_process(
@@ -67,4 +84,4 @@ require_portable_symbol("aten::clamp.out" "torch::executor::native::clamp_out(")
 require_portable_symbol("aten::addmm.out" "torch::executor::native::addmm_out(")
 
 message(STATUS
-  "Verified selected ExecuTorch Cortex-M, portable, and CMSIS-NN symbols in ${ELF}")
+  "Verified selected ExecuTorch Cortex-M, portable, and ${PROVIDER} CMSIS-NN symbols in ${ELF}")

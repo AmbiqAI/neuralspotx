@@ -2,6 +2,7 @@
 # Registry modules are re-acquired by `nsx sync`.
 arm-cmsis-nn/
 executorch/
+ns-cmsis-nn/
 nsx-ambiq-sdk/
 nsx-board-apollo510-evb/
 nsx-pmu-armv8m/

@@ -9,6 +9,7 @@ toolchain: arm-none-eabi-gcc
 channel: stable
 modules:
   - nsx-executorch
+  - nsx-cmsis-nn
 features: {}
 module_registry:
   projects:

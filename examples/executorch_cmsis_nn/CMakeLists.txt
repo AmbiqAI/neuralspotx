@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.24)
 project(executorch_cmsis_nn LANGUAGES C CXX ASM)
 
 set(NSX_BOARD "apollo510_evb" CACHE STRING "Target board")
+set(NSX_EXECUTORCH_CMSIS_NN_PROVIDER "arm" CACHE STRING
+    "CMSIS-NN provider for ExecuTorch Cortex-M kernels: arm or ns")
+set_property(CACHE NSX_EXECUTORCH_CMSIS_NN_PROVIDER PROPERTY STRINGS arm ns)
 set(NSX_EXECUTORCH_PTE
     "${CMAKE_CURRENT_LIST_DIR}/model/resnet8_cmsis_nn.pte"
     CACHE FILEPATH "Prebuilt ExecuTorch PTE to embed in the runner")
@@ -76,6 +79,8 @@ add_custom_command(TARGET executorch_cmsis_nn POST_BUILD
             -DELF=$<TARGET_FILE:executorch_cmsis_nn>
             -DCORTEX_M_OPS=${NSX_EXECUTORCH_VERIFY_CORTEX_M_OPS}
             -DPORTABLE_OPS=${NSX_EXECUTORCH_VERIFY_PORTABLE_OPS}
+            -DPROVIDER=${NSX_EXECUTORCH_CMSIS_NN_PROVIDER}
+            -DMAP=$<TARGET_FILE_DIR:executorch_cmsis_nn>/executorch_cmsis_nn.map
             -P "${CMAKE_CURRENT_LIST_DIR}/cmake/verify_cmsis_nn_symbols.cmake"
     VERBATIM
 )
