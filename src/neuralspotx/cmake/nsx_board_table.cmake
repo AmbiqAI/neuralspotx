@@ -23,6 +23,7 @@ set(_NSX_REGISTERED_BOARDS_LOWER
     "apollo510b_evb"
     "apollo330mp_evb"
     "apollo510dl_evb"
+    "atomiq110_fpga_turbo"
 )
 
 function(nsx_board_is_registered board_name out_var)

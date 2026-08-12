@@ -9,7 +9,9 @@ projects:
   neuralspotx:
     name: neuralspotx
     url: https://github.com/AmbiqAI/neuralspotx.git
-    revision: main
+    # atomiq110 board content only exists on this branch. Pin here until it
+    # merges to main, then restore the main pin.
+    revision: fix/atomiq110-dso-handle
     path: neuralspotx
   # Unified SDK: one repo covering all non-Atomiq SoCs.
   nsx-ambiq-sdk:
@@ -30,6 +32,8 @@ projects:
   ns-cmsis-nn:
     name: ns-cmsis-nn
     url: https://github.com/AmbiqAI/ns-cmsis-nn.git
+    # v7.29.2 — fix/atomiq110-compat merged upstream (wildcard board/SoC
+    # compatibility + requantize fix). Tag pin per registry policy.
     revision: v7.29.2
     path: modules/ns-cmsis-nn
   helia-dsp:
@@ -40,7 +44,10 @@ projects:
   helia-rt:
     name: helia-rt
     url: https://github.com/AmbiqAI/helia-rt.git
-    revision: helia-rt-v1.16.0
+    # Ethos-U wrapper plumbing + atomiq110 compatibility are still landing on
+    # helia-rt's open fix/atomiq110-compat branch. Pin there until the branch
+    # merges and a release tag (> v1.16.0) exists, then pin the tag.
+    revision: fix/atomiq110-compat
     path: modules/helia-rt
   helia-rt-source:
     name: helia-rt-source
@@ -166,6 +173,10 @@ modules:
     project: neuralspotx
     revision: main
     metadata: src/neuralspotx/boards/apollo4p_evb_disp_shield_rev2/nsx-module.yaml
+  nsx-board-atomiq110-fpga-turbo:
+    project: neuralspotx
+    revision: main
+    metadata: src/neuralspotx/boards/atomiq110_fpga_turbo/nsx-module.yaml
   nsx-core:
     project: nsx-ambiq-sdk
     revision: v5.2.24
@@ -182,6 +193,13 @@ modules:
     project: nsx-ambiq-sdk
     revision: v5.2.24
     metadata: modules/nsx-power/nsx-module.yaml
+  # nsx-npu only exists on nsx-ambiq-sdk's open feat/nsx-power-atomiq110
+  # branch. Pin the module there until that branch merges to main, then
+  # collapse this back to main like the other nsx-ambiq-sdk modules.
+  nsx-npu:
+    project: nsx-ambiq-sdk
+    revision: feat/nsx-power-atomiq110
+    metadata: modules/nsx-npu/nsx-module.yaml
   nsx-uart:
     project: nsx-ambiq-sdk
     revision: v5.2.24
@@ -220,6 +238,7 @@ modules:
     metadata: modules/nsx-nanopb/nsx-module.yaml
   nsx-cmsis-nn:
     project: ns-cmsis-nn
+    # v7.29.2 — fix/atomiq110-compat merged upstream; tag pin.
     revision: v7.29.2
     metadata: modules/ns-cmsis-nn/nsx/nsx-module.yaml
   helia-dsp:
@@ -232,7 +251,9 @@ modules:
     metadata: modules/nsx-physiokit/nsx-module.yaml
   nsx-helia-rt:
     project: helia-rt
-    revision: helia-rt-v1.16.0
+    # Pinned with the helia-rt project above; collapse to the next release
+    # tag once fix/atomiq110-compat merges.
+    revision: fix/atomiq110-compat
     metadata: modules/helia-rt/nsx/nsx-module.yaml
   helia-rt-source:
     project: helia-rt-source
@@ -397,6 +418,38 @@ soc_families:
   apollo510b: *fam_apollo5
   apollo510L: *fam_apollo5
   apollo330P: *fam_apollo5
+  # atomiq110 support is still landing on nsx-ambiq-sdk's open
+  # feat/nsx-power-atomiq110 branch (its own arch dir, CRM_TPIUCLKCFG
+  # bus-fault workarounds for the FPGA turbo board, rebuilt HAL/BSP libs).
+  # Pin this SoC there until that branch merges to main, then collapse this
+  # back to the *fam_apollo5 alias.
+  atomiq110:
+    <<: *fam_apollo5
+    revision: feat/nsx-power-atomiq110
+    # Same list as *fam_apollo5 plus nsx-npu (Ethos-U85 core-driver module,
+    # atomiq110-only). YAML merge keys replace rather than append, so the
+    # full list is restated here.
+    sdk_modules:
+      - nsx-ambiqsuite
+      - nsx-ambiq-hal
+      - nsx-ambiq-bsp
+      - nsx-ambiq-usb
+      - nsx-soc-hal
+      - nsx-cmsis-core
+      - nsx-cmsis-startup
+      - nsx-core
+      - nsx-audio
+      - nsx-gpio
+      - nsx-i2c
+      - nsx-interrupt
+      - nsx-npu
+      - nsx-perf
+      - nsx-power
+      - nsx-psram
+      - nsx-spi
+      - nsx-timer
+      - nsx-uart
+      - nsx-usb
 
 # Per-board profile registration. Order here defines starter-profile order.
 # 'channel' defaults to profile_defaults.channel when omitted.
@@ -417,3 +470,4 @@ board_profiles:
   apollo4p_blue_kbr_evb: {channel: preview}
   apollo4p_blue_kxr_evb: {channel: preview}
   apollo4p_evb_disp_shield_rev2: {channel: preview}
+  atomiq110_fpga_turbo: {channel: preview}

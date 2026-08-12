@@ -157,7 +157,7 @@ def test_flash_reconfigures_when_jlink_discovery_changes(
 
     _build.flash_app_impl(tmp_path)
 
-    assert configure_calls == [{"toolchain": None, "probe_serial": None}]
+    assert configure_calls == [{"toolchain": None, "probe_serial": None, "sdk_root": None}]
 
 
 def test_flash_reconfigures_to_clear_cached_probe_selection(
@@ -187,7 +187,7 @@ def test_flash_reconfigures_to_clear_cached_probe_selection(
 
     result = _build.flash_app_impl(tmp_path)
 
-    assert configure_calls == [{"toolchain": None, "probe_serial": None}]
+    assert configure_calls == [{"toolchain": None, "probe_serial": None, "sdk_root": None}]
     assert result.probe_serial is None
 
 

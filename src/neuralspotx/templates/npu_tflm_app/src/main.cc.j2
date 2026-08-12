@@ -1,0 +1,170 @@
+/* SPDX-License-Identifier: BSD-3-Clause */
+/* Copyright (c) 2026, Ambiq */
+/**
+ * @file main.cc
+ * @brief TFLite Micro inference on the Ethos-U85 NPU ({{ app_name }}).
+ *
+ * Runs the Vela-compiled int8 model embedded in src/model_data.h and prints
+ * output tensor values + DWT cycle timing over ITM/SWO.
+ *
+ * Bring your own model:
+ *   1) pip install ethos-u-vela
+ *   2) vela your_model.tflite --accelerator-config ethos-u85-256 \
+ *          --output-dir vela_out
+ *   3) python tools/tflite_to_header.py vela_out/your_model_vela.tflite \
+ *          src/model_data.h
+ *   4) nsx build --app-dir .
+ */
+
+#include <cstdint>
+#include <cstdio>
+#include <cstring>
+
+#include "am_mcu_apollo.h"
+
+#include "tensorflow/lite/micro/micro_interpreter.h"
+#include "tensorflow/lite/micro/micro_mutable_op_resolver.h"
+#include "tensorflow/lite/micro/system_setup.h"
+#include "tensorflow/lite/schema/schema_generated.h"
+
+#include "nsx_core.h"
+#include "nsx_npu.h"
+
+#include "model_data.h"
+
+static inline void dwt_init(void) {
+    CoreDebug->DEMCR |= CoreDebug_DEMCR_TRCENA_Msk;
+    DWT->CYCCNT = 0;
+    DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
+}
+static inline uint32_t dwt_cycles(void) { return DWT->CYCCNT; }
+
+// Vela graphs run as a single ethos-u custom op; the extra CPU kernels only
+// matter when Vela leaves ops on the CPU (partial offload). Extend as needed.
+static constexpr int kNumOps    = 6;
+static constexpr int kArenaSize = 512 * 1024;
+
+// Arena lives in SHARED_SRAM (.shared, NOLOAD): the Ethos-U85 is a bus
+// master and cannot access the core-private TCM. TFLM does not require a
+// zeroed arena.
+__attribute__((section(".shared"), aligned(16)))
+static uint8_t g_arena[kArenaSize];
+
+static tflite::MicroMutableOpResolver<kNumOps> &get_resolver() {
+    static tflite::MicroMutableOpResolver<kNumOps> resolver;
+    static bool initialized = false;
+    if (!initialized) {
+        resolver.AddEthosU();
+        resolver.AddConv2D();
+        resolver.AddDepthwiseConv2D();
+        resolver.AddAveragePool2D();
+        resolver.AddReshape();
+        resolver.AddSoftmax();
+        initialized = true;
+    }
+    return resolver;
+}
+
+// Deterministic pseudo-random test input (no test-vector header needed).
+static void fill_noise(int8_t *dst, size_t len, uint32_t seed) {
+    uint32_t state = seed;
+    for (size_t i = 0; i < len; i++) {
+        state = state * 1664525u + 1013904223u;  // LCG
+        dst[i] = (int8_t)(state >> 24);
+    }
+}
+
+static void run_case(tflite::MicroInterpreter &interp, const char *name) {
+    TfLiteTensor *output = interp.output(0);
+
+    uint32_t t0 = dwt_cycles();
+    TfLiteStatus status = interp.Invoke();
+    uint32_t dt = dwt_cycles() - t0;
+
+    if (status != kTfLiteOk) {
+        nsx_printf("[%s] ERROR: Invoke() failed\n", name);
+        return;
+    }
+
+    nsx_printf("[%-8s] %lu cycles  out:", name, (unsigned long)dt);
+    size_t n = output->bytes < 8 ? output->bytes : 8;
+    for (size_t i = 0; i < n; i++) {
+        nsx_printf(" %d", (int)output->data.int8[i]);
+    }
+    nsx_printf("%s\n", output->bytes > 8 ? " ..." : "");
+}
+
+int main(void) {
+    nsx_core_config_t cfg = { .api = &nsx_core_V1_0_0 };
+    (void)nsx_core_init(&cfg);
+    nsx_itm_printf_enable();
+    dwt_init();
+
+    nsx_printf("\n{{ app_name }}: TFLM on Ethos-U85 ({{ board }})\n");
+    nsx_printf("Model: %u bytes\n", g_model_data_len);
+
+#ifdef MODEL_DATA_IS_PLACEHOLDER
+    while (1) {
+        nsx_printf("No model embedded yet. Compile one with Vela and embed "
+                   "it:\n");
+        nsx_printf("  vela your_model.tflite --accelerator-config "
+                   "ethos-u85-256 --output-dir vela_out\n");
+        nsx_printf("  python tools/tflite_to_header.py "
+                   "vela_out/your_model_vela.tflite src/model_data.h\n");
+        nsx_delay_us(5000000);
+    }
+#endif
+
+    // perf_mode: HP works on both silicon and the NPU-enabled FPGA image
+    // (hardware-validated); set skip_perf_mode = true only if mode_select
+    // must be bypassed on a custom pre-silicon target.
+    nsx_npu_config_t npu_cfg = {
+        .perf_mode      = NSX_NPU_PERF_HIGH_PERFORMANCE,
+        .skip_perf_mode = false,
+    };
+    uint32_t npu_rc = nsx_npu_init(&npu_cfg);
+    if (npu_rc != 0) {
+        // Keep repeating so the message is visible whenever a viewer attaches.
+        while (1) {
+            nsx_printf("ERROR: nsx_npu_init failed (rc=%lu).\n",
+                       (unsigned long)npu_rc);
+            nsx_printf("Ethos-U85 init failed. On FPGA builds make sure the "
+                       "loaded bitstream generation matches the SDK payload "
+                       "and includes a working Ethos-U85.\n");
+            nsx_delay_us(5000000);
+        }
+    }
+    nsx_printf("Ethos-U85 driver initialized.\n");
+
+    tflite::InitializeTarget();
+
+    const tflite::Model *model = tflite::GetModel(g_model_data);
+    if (model->version() != TFLITE_SCHEMA_VERSION) {
+        nsx_printf("ERROR: schema %lu != %d\n",
+                   (unsigned long)model->version(), TFLITE_SCHEMA_VERSION);
+        while (1) {}
+    }
+
+    tflite::MicroInterpreter interpreter(model, get_resolver(), g_arena,
+                                         kArenaSize);
+    if (interpreter.AllocateTensors() != kTfLiteOk) {
+        nsx_printf("ERROR: AllocateTensors() failed (arena too small, or the "
+                   "model needs ops not in the resolver)\n");
+        while (1) {}
+    }
+    nsx_printf("Arena: %u / %u bytes\n",
+               (unsigned)interpreter.arena_used_bytes(), kArenaSize);
+
+    TfLiteTensor *input = interpreter.input(0);
+    nsx_printf("Input: %u bytes, Output: %u bytes\n\n",
+               (unsigned)input->bytes, (unsigned)interpreter.output(0)->bytes);
+
+    while (1) {
+        memset(input->data.int8, 0, input->bytes);
+        run_case(interpreter, "zeros");
+        fill_noise(input->data.int8, input->bytes, 0xC0FFEEu);
+        run_case(interpreter, "noise");
+        nsx_printf("---\n");
+        nsx_delay_us(3000000);
+    }
+}

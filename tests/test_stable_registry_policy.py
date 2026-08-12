@@ -19,17 +19,19 @@ from neuralspotx.registry_policy import (
 def test_packaged_registry_floating_refs_are_exactly_allowlisted() -> None:
     report = validate_stable_registry_refs(load_registry())
 
-    assert {
-        (use.project, use.revision) for use in report.approved_floating
-    } == {
+    expected = {
         ("neuralspotx", "main"),
+        # Temporary atomiq110 branch pins — collapse once the atomiq110
+        # support PRs merge and release tags exist.
+        ("neuralspotx", "fix/atomiq110-dso-handle"),
+        ("helia-rt", "fix/atomiq110-compat"),
+        ("nsx-ambiq-sdk", "feat/nsx-power-atomiq110"),
     }
+    assert {(use.project, use.revision) for use in report.approved_floating} == expected
     assert {
         (allowance.project, allowance.revision)
         for allowance in TEMPORARY_STABLE_FLOATING_REF_ALLOWLIST
-    } == {
-        ("neuralspotx", "main"),
-    }
+    } == expected
 
 
 def test_packaged_registry_release_projects_are_immutable() -> None:
@@ -62,11 +64,11 @@ def test_packaged_registry_release_projects_are_immutable() -> None:
         entry["revision"]
         for entry in registry["modules"].values()
         if entry["project"] == "nsx-ambiq-sdk"
-    } == {"v5.2.24"}
+    } == {"v5.2.24", "feat/nsx-power-atomiq110"}
     assert {
         profile["project_overrides"]["nsx-ambiq-sdk"]["revision"]
         for profile in registry["starter_profiles"].values()
-    } == {"v5.2.24"}
+    } == {"v5.2.24", "feat/nsx-power-atomiq110"}
 
 
 def test_packaged_registry_has_no_orphaned_projects() -> None:
