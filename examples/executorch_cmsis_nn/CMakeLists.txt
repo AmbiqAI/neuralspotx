@@ -12,7 +12,7 @@ set(NSX_EXECUTORCH_VALIDATION_HEADER
     "${CMAKE_CURRENT_LIST_DIR}/src/validation_data.h"
     CACHE FILEPATH "Validation input/output contract for the supplied PTE")
 set(NSX_EXECUTORCH_CORTEX_M_SELECT_OPS_LIST
-    "cortex_m::quantize_per_tensor.out;cortex_m::quantized_conv2d.out;cortex_m::quantized_add.out;cortex_m::quantized_max_pool2d.out;cortex_m::quantized_avg_pool2d.out;cortex_m::transpose.out;cortex_m::dequantize_per_tensor.out"
+    "cortex_m::quantize_per_tensor.out;cortex_m::quantized_conv2d.out;cortex_m::quantized_add.out;cortex_m::quantized_max_pool2d.out;cortex_m::quantized_avg_pool2d.out;cortex_m::quantized_linear.out;cortex_m::transpose.out;cortex_m::dequantize_per_tensor.out"
     CACHE STRING "Cortex-M operators required by the supplied PTE")
 set(NSX_EXECUTORCH_PORTABLE_SELECT_OPS_LIST
     "aten::clamp.out,aten::addmm.out"

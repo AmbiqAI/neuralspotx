@@ -6,7 +6,7 @@ namespace executorch_cmsis_nn_validation {
 
 inline constexpr std::size_t kInputElementCount = 3072;
 inline constexpr std::size_t kOutputElementCount = 10;
-inline constexpr float kTolerance = 0.00167507689F;
+inline constexpr float kTolerance = 0.001837038446F;
 
 inline constexpr float kInput[3072] = {
     -1.0F, -0.333116233F, 0.333767474F, -0.99934876F, -0.332464993F, 0.334418744F,
@@ -524,8 +524,8 @@ inline constexpr float kInput[3072] = {
 };
 
 inline constexpr float kExpectedOutput[10] = {
-    -0.0594297312F, 0.0510593466F, -0.0184148457F, -0.0527334213F, -0.118859462F, 0.00418519229F,
-    -0.0410148837F, 0.0150666917F, -0.0251111537F, 0.0945853442F,
+    -0.05942973122F, 0.05105934665F, -0.01841484569F, -0.05273342133F, -0.1188594624F, 0.004185192287F,
+    -0.04185192287F, 0.01506669167F, -0.02427411452F, 0.0945853442F,
 };
 
 }  // namespace executorch_cmsis_nn_validation
