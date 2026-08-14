@@ -13,7 +13,14 @@ from ..models import ResetResult
 from ..subprocess_utils import format_subprocess_error, run_capture
 from ..tooling import JLINK_NAMES, find_segger_tool
 
-_FLASH_CONFIRMATION = "flash download: total"
+# J-Link prints its "Flash download: Total ..." summary only when it actually
+# moves bytes. Re-flashing a byte-identical image reports "Skipped. Contents
+# already match" per bank and emits no summary line at all -- that is a
+# successful idempotent flash, so it confirms the image just as well.
+_FLASH_CONFIRMATIONS = (
+    "flash download: total",
+    "skipped. contents already match",
+)
 _LOAD_FILE_RE = re.compile(
     r'^\s*LoadFile\s+(?:"(?P<quoted>[^"]+)"|(?P<plain>.+?))\s*,\s*(?P<address>0x[0-9a-fA-F]+|[0-9]+)\s*$',
     re.IGNORECASE | re.MULTILINE,
@@ -26,6 +33,7 @@ _SWPOI_DISCONNECT_SIGNATURES = (
     "memory write failed",
 )
 _JLINK_FAIL_FAST = "ExitOnError 1\n"
+_FAIL_FAST_RE = re.compile(r"^\s*ExitOnError\s+1\s*$", re.IGNORECASE | re.MULTILINE)
 
 
 def validate_flash_recipe(build_dir: Path, target: str) -> tuple[Path, Path]:
@@ -56,6 +64,15 @@ def validate_flash_recipe(build_dir: Path, target: str) -> tuple[Path, Path]:
             f"J-Link flash recipe for target '{target}' loads {loaded}, "
             f"but the expected artifact is {artifact}. Re-run `nsx configure`."
         )
+    # `ExitOnError 1` is what makes JLinkExe's exit status trustworthy: without
+    # it J-Link reports a failed command and still exits zero, so a broken
+    # flash would reach the far weaker output-text check as its only gate.
+    if _FAIL_FAST_RE.search(text) is None:
+        raise NSXConfigError(
+            f"J-Link flash recipe for target '{target}' is missing `ExitOnError 1`: {recipe}. "
+            "Without it J-Link can fail a command and still exit successfully. "
+            "Re-run `nsx configure`."
+        )
     return artifact, recipe
 
 
@@ -70,9 +87,15 @@ def validate_flash_target_name(target: str) -> None:
 
 
 def flash_programming_verified(output: str) -> bool:
-    """Return whether J-Link explicitly confirmed a programming operation."""
+    """Return whether J-Link confirmed the target now holds the loaded image.
 
-    return _FLASH_CONFIRMATION in output.lower()
+    Both outcomes count: bytes programmed, and programming skipped because the
+    target already held a byte-identical image. This corroborates the recipe's
+    `ExitOnError 1` exit status; it is not the primary success gate.
+    """
+
+    lowered = output.lower()
+    return any(marker in lowered for marker in _FLASH_CONFIRMATIONS)
 
 
 def _jlink_command(

@@ -22,8 +22,15 @@ def _flash_build(tmp_path: Path, target: str) -> tuple[Path, Path]:
     artifact.write_bytes(b"firmware")
     recipe = build_dir / "jlink" / target / "flash_cmds.jlink"
     recipe.parent.mkdir(parents=True)
-    recipe.write_text(f'LoadFile "{artifact}", 0x00410000\n', encoding="utf-8")
+    recipe.write_text(_recipe_text(artifact), encoding="utf-8")
     return build_dir, artifact
+
+
+def _recipe_text(artifact: Path | str, *, fail_fast: bool = True) -> str:
+    """Mirror the shape of ``segger/templates/flash_cmds.jlink.in``."""
+
+    head = "ExitOnError 1\n" if fail_fast else ""
+    return f'{head}Reset\nLoadFile "{artifact}", 0x00410000\nReset\nGo\nExit\n'
 
 
 def _stub_build_context(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, build_dir: Path) -> None:
@@ -98,15 +105,77 @@ def test_captured_flash_output_can_be_quiet(
     assert capsys.readouterr() == ("", "")
 
 
+def test_reflashing_an_unchanged_image_succeeds(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    build_dir, _ = _flash_build(tmp_path, "primary")
+    _stub_build_context(monkeypatch, tmp_path, build_dir)
+    monkeypatch.setattr(
+        _build,
+        "run_capture",
+        lambda cmd, **_kwargs: subprocess.CompletedProcess(
+            cmd,
+            0,
+            stdout="J-Link: Flash download: Bank 0 @ 0x00018000: "
+            "Skipped. Contents already match\n",
+            stderr="",
+        ),
+    )
+    assert _build.flash_app_impl(tmp_path).programming_verified is True
+
+
 def test_connection_only_ok_is_rejected() -> None:
     assert not _hardware.flash_programming_verified("Connecting to J-Link via USB...O.K.")
+
+
+def test_programmed_flash_is_verified() -> None:
+    output = (
+        "J-Link: Flash download: Bank 0 @ 0x00018000: 2 ranges affected (110592 bytes)\n"
+        "J-Link: Flash download: Program & Verify speed: 181 KB/s\n"
+        "J-Link: Flash download: Total time needed: 0.719s "
+        "(Prepare: 0.081s, Compare: 0.020s, Erase: 0.000s, Program: 0.610s, "
+        "Verify: 0.000s, Restore: 0.006s)\n"
+        "O.K.\n"
+    )
+    assert _hardware.flash_programming_verified(output)
+
+
+def test_reflash_of_identical_image_is_verified() -> None:
+    """A skipped bank means the target already holds the image -- not a failure.
+
+    J-Link emits no ``Total:`` summary in this case, so matching only on that
+    line failed every idempotent re-flash of an unchanged binary.
+    """
+
+    output = (
+        "J-Link: Flash download: Bank 0 @ 0x00018000: Skipped. Contents already match\n"
+        "O.K.\n"
+    )
+    assert _hardware.flash_programming_verified(output)
+
+
+def test_failed_flash_is_not_verified() -> None:
+    output = (
+        "J-Link: Flash download: Bank 0 @ 0x00018000: 1 range affected (110592 bytes)\n"
+        "ERROR: Failed to erase sectors.\n"
+        "ERROR: Failed to download RAMCode.\n"
+    )
+    assert not _hardware.flash_programming_verified(output)
 
 
 def test_recipe_must_load_selected_artifact(tmp_path: Path) -> None:
     build_dir, _ = _flash_build(tmp_path, "secondary")
     recipe = build_dir / "jlink/secondary/flash_cmds.jlink"
-    recipe.write_text('LoadFile "wrong.bin", 0x00410000\n', encoding="utf-8")
+    recipe.write_text(_recipe_text("wrong.bin"), encoding="utf-8")
     with pytest.raises(NSXConfigError, match="expected artifact"):
+        _hardware.validate_flash_recipe(build_dir, "secondary")
+
+
+def test_recipe_without_fail_fast_is_rejected(tmp_path: Path) -> None:
+    build_dir, artifact = _flash_build(tmp_path, "secondary")
+    recipe = build_dir / "jlink/secondary/flash_cmds.jlink"
+    recipe.write_text(_recipe_text(artifact, fail_fast=False), encoding="utf-8")
+    with pytest.raises(NSXConfigError, match="ExitOnError 1"):
         _hardware.validate_flash_recipe(build_dir, "secondary")
 
 
@@ -115,7 +184,7 @@ def test_primary_flash_rejects_stale_recipe_before_programming(
 ) -> None:
     build_dir, _ = _flash_build(tmp_path, "primary")
     recipe = build_dir / "jlink/primary/flash_cmds.jlink"
-    recipe.write_text('LoadFile "other.bin", 0x00410000\n', encoding="utf-8")
+    recipe.write_text(_recipe_text("other.bin"), encoding="utf-8")
     _stub_build_context(monkeypatch, tmp_path, build_dir)
     calls: list[list[str]] = []
 
