@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.7.17](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.16...neuralspotx-v0.7.17) (2026-08-15)
+
+
+### Bug Fixes
+
+* accept skipped-identical J-Link flash as programming confirmation ([#220](https://github.com/AmbiqAI/neuralspotx/issues/220)) ([3fe74ee](https://github.com/AmbiqAI/neuralspotx/commit/3fe74ee84939f07b51386ef8913e48f46dbbd428))
+
 ## [0.7.16](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.15...neuralspotx-v0.7.16) (2026-08-09)
 
 
