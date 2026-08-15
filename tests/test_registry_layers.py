@@ -14,8 +14,18 @@ import pytest
 from neuralspotx._errors import NSXConfigError
 from neuralspotx.project_config import (
     _effective_registry,
+    _reset_pin_stomp_warnings,
     validate_app_module_alignment,
 )
+
+
+@pytest.fixture(autouse=True)
+def _fresh_stomp_warning_state() -> Iterator[None]:
+    """Isolate the process-wide stomp-warning dedup registry per test."""
+
+    _reset_pin_stomp_warnings()
+    yield
+    _reset_pin_stomp_warnings()
 
 
 def _base_registry() -> dict:
@@ -183,7 +193,12 @@ _PIN = "c219a2bc98c62f96819fae20ab6c8911fcea3e25"
 
 
 def _sensors_base_registry() -> dict:
-    """Packaged-shaped base: project and module both at the packaged default."""
+    """Packaged-shaped base: project and module both at one packaged default.
+
+    Synthetic registry frozen for these precedence scenarios — the v0.1.0 /
+    v3.0.0 values are fixture constants, not a mirror of the live packaged
+    ``registry.lock.yaml`` (whose nsx-sensors entry moves independently).
+    """
 
     return {
         "projects": {
@@ -447,6 +462,131 @@ def test_packaged_default_propagation_does_not_warn() -> None:
     assert not [r for r in recorder.records if "pinned module-level" in r.getMessage()]
 
 
+def test_stomp_warning_dedups_recomputations_but_not_new_stomps() -> None:
+    """A given stomp warns once per process; a different stomp still warns.
+
+    ``_effective_registry`` is recomputed at many call sites per command, so
+    an identical (module, old, new, layer) stomp must not repeat — while any
+    genuinely new stomp must never be suppressed.
+    """
+
+    stomp_a = {
+        "registry": {
+            "layers": [
+                {"inline": {"modules": {"nsx-sensors": {"revision": "overlay-a"}}}},
+            ]
+        },
+        "module_registry": {"projects": {"nsx-sensors": {"revision": _PIN}}},
+    }
+    # Same module and winning pin, different earlier revision -> distinct stomp.
+    stomp_b = copy.deepcopy(stomp_a)
+    stomp_b["registry"]["layers"][0]["inline"]["modules"]["nsx-sensors"]["revision"] = "overlay-b"
+
+    def _stomps(records: list[logging.LogRecord]) -> list[str]:
+        return [r.getMessage() for r in records if "pinned module-level" in r.getMessage()]
+
+    with _recorded_warnings() as recorder:
+        _effective_registry(_sensors_base_registry(), stomp_a)
+        _effective_registry(_sensors_base_registry(), stomp_a)  # recomputation
+        _effective_registry(_sensors_base_registry(), stomp_a)  # recomputation
+    assert len(_stomps(recorder.records)) == 1
+
+    with _recorded_warnings() as recorder:
+        _effective_registry(_sensors_base_registry(), stomp_b)
+    messages = _stomps(recorder.records)
+    assert len(messages) == 1
+    assert "overlay-b" in messages[0]
+
+
+def test_stomp_warning_quotes_pin_erased_by_same_layer() -> None:
+    """The warning quotes the true earlier pin even after a same-layer erasure.
+
+    A later layer that both blanks the module's revision (``revision: ""``)
+    and pins the project would otherwise leave ``''`` as the "earlier pinned"
+    value by the time propagation compares — the provenance map keeps the
+    real value.
+    """
+
+    nsx_cfg = {
+        "registry": {
+            "layers": [
+                {"inline": {"modules": {"nsx-sensors": {"revision": "fix/old-pin"}}}},
+            ]
+        },
+        "module_registry": {
+            "projects": {"nsx-sensors": {"revision": _PIN}},
+            "modules": {"nsx-sensors": {"revision": ""}},
+        },
+    }
+    with _recorded_warnings() as recorder:
+        out = _effective_registry(_sensors_base_registry(), nsx_cfg)
+
+    assert out["modules"]["nsx-sensors"]["revision"] == _PIN
+    stomps = [r.getMessage() for r in recorder.records if "pinned module-level" in r.getMessage()]
+    assert len(stomps) == 1
+    assert "'fix/old-pin'" in stomps[0]
+    assert "''" not in stomps[0]
+
+
+def test_repoint_without_revision_drops_propagated_pin() -> None:
+    """A propagated pin is project-scoped: it does not survive a re-point.
+
+    An earlier layer's project pin propagates onto the module; a later layer
+    that re-points the module to a different project without expressing a
+    revision falls back to the value propagation had replaced, instead of
+    leaking the old project's pin onto the new project.
+    """
+
+    nsx_cfg = {
+        "registry": {
+            "layers": [
+                {"inline": {"projects": {"nsx-sensors": {"revision": "old-project-pin"}}}},
+            ]
+        },
+        "module_registry": {
+            "modules": {"nsx-sensors": {"project": "other-proj"}},
+        },
+    }
+    out = _effective_registry(_sensors_base_registry(), nsx_cfg)
+    assert out["modules"]["nsx-sensors"]["project"] == "other-proj"
+    assert out["modules"]["nsx-sensors"]["revision"] == "v0.1.0"
+
+
+def test_repoint_with_same_layer_project_pin_follows_new_project() -> None:
+    nsx_cfg = {
+        "registry": {
+            "layers": [
+                {"inline": {"projects": {"nsx-sensors": {"revision": "old-project-pin"}}}},
+            ]
+        },
+        "module_registry": {
+            "projects": {"other-proj": {"revision": "new-project-pin"}},
+            "modules": {"nsx-sensors": {"project": "other-proj"}},
+        },
+    }
+    out = _effective_registry(_sensors_base_registry(), nsx_cfg)
+    assert out["modules"]["nsx-sensors"]["project"] == "other-proj"
+    assert out["modules"]["nsx-sensors"]["revision"] == "new-project-pin"
+
+
+def test_repoint_keeps_explicit_module_pin() -> None:
+    """Explicit module pins are module-scoped and survive a project re-point."""
+
+    nsx_cfg = {
+        "registry": {
+            "layers": [
+                {"inline": {"modules": {"nsx-sensors": {"revision": "explicit-pin"}}}},
+            ]
+        },
+        "module_registry": {
+            "modules": {"nsx-sensors": {"project": "other-proj"}},
+        },
+    }
+    out = _effective_registry(_sensors_base_registry(), nsx_cfg)
+    assert out["modules"]["nsx-sensors"]["project"] == "other-proj"
+    assert out["modules"]["nsx-sensors"]["revision"] == "explicit-pin"
+
+
 def test_app_project_pin_beats_profile_synthetic_module_pin() -> None:
     """Across sources: an app-layer project pin beats a profile module pin.
 
@@ -477,7 +617,8 @@ def test_non_string_project_revision_raises() -> None:
         _effective_registry(_sensors_base_registry(), nsx_cfg)
     assert "nsx-sensors" in str(exc.value)
     assert "2024" in str(exc.value)
-    assert exc.value.field == "projects.nsx-sensors.revision"
+    assert "Quote the value" in str(exc.value)
+    assert exc.value.field == "module_registry.projects.nsx-sensors.revision"
 
 
 def test_non_string_project_revision_in_layer_raises() -> None:
@@ -491,6 +632,22 @@ def test_non_string_project_revision_in_layer_raises() -> None:
     with pytest.raises(NSXConfigError) as exc:
         _effective_registry(_sensors_base_registry(), nsx_cfg)
     assert "registry.layers[0]" in str(exc.value)
+    assert exc.value.field == "registry.layers[0].projects.nsx-sensors.revision"
+
+
+def test_null_project_revision_gets_remove_key_remedy() -> None:
+    """A bare ``revision:`` (YAML null) gets remove-the-key advice, not quoting."""
+
+    nsx_cfg = {
+        "module_registry": {
+            "projects": {"nsx-sensors": {"revision": None}},
+        }
+    }
+    with pytest.raises(NSXConfigError) as exc:
+        _effective_registry(_sensors_base_registry(), nsx_cfg)
+    assert "Remove the empty 'revision:' key" in str(exc.value)
+    assert "Quote the value" not in str(exc.value)
+    assert exc.value.field == "module_registry.projects.nsx-sensors.revision"
 
 
 def test_workspace_layer_project_pin_propagates(tmp_path: Path) -> None:
