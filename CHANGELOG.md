@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.7.18](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.17...neuralspotx-v0.7.18) (2026-08-15)
+
+
+### Bug Fixes
+
+* **registry:** honor app project pins over packaged module revisions ([#223](https://github.com/AmbiqAI/neuralspotx/issues/223)) ([a07f152](https://github.com/AmbiqAI/neuralspotx/commit/a07f152a8910f09791f394f3309fd8ce81d74c4a))
+* **registry:** promote nsx-sensors to v0.3.0 ([#222](https://github.com/AmbiqAI/neuralspotx/issues/222)) ([e50e1f1](https://github.com/AmbiqAI/neuralspotx/commit/e50e1f14ea900a7d5462eb282dc5b21f1227a9c0))
+
 ## [0.7.17](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.16...neuralspotx-v0.7.17) (2026-08-15)
 
 
