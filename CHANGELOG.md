@@ -8,6 +8,25 @@
 * **registry:** honor app project pins over packaged module revisions ([#223](https://github.com/AmbiqAI/neuralspotx/issues/223)) ([a07f152](https://github.com/AmbiqAI/neuralspotx/commit/a07f152a8910f09791f394f3309fd8ce81d74c4a))
 * **registry:** promote nsx-sensors to v0.3.0 ([#222](https://github.com/AmbiqAI/neuralspotx/issues/222)) ([e50e1f1](https://github.com/AmbiqAI/neuralspotx/commit/e50e1f14ea900a7d5462eb282dc5b21f1227a9c0))
 
+### ⚠️ Breaking for `nsx-sensors` consumers
+
+The packaged registry's default `nsx-sensors` revision moves **v0.1.0 → v0.3.0**
+(#222). Apps that resolve `nsx-sensors` from the registry default rather than
+pinning a revision pick up a breaking INA228 driver API on their next
+`nsx lock` / `nsx sync`:
+
+* `ina228_alert_type_t` values all shift up one bit to match `DIAG_ALRT` —
+  recompile; do not mix objects built against 0.2.x headers.
+* `ina228_context_t` gains a `_calibrated` field (ABI change).
+* `ina228_set_shunt()` now returns errors on invalid input, `SHUNT_CAL > 32767`,
+  or readback mismatch, where it previously succeeded silently.
+
+Pin `nsx-sensors` explicitly to stay on the old revision. The promotion is
+deliberate: v0.1.0 predates a full INA228 datasheet audit (v0.2.0 fixed
+SHUNT_CAL scaling; v0.2.1 corrected ADCRANGE, DEVICE_ID, and CNVRF register
+access), so registry-default consumers were building against a driver with
+known register-map defects.
+
 ## [0.7.17](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.16...neuralspotx-v0.7.17) (2026-08-15)
 
 
