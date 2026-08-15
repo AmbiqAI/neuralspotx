@@ -105,7 +105,15 @@ reads only the merged `modules.<name>.revision` field
 (`registry_entry_for_module`), so this propagation
 (`project_config._propagate_layer_project_pins`) is what makes app project
 pins effective; without it a packaged module-level default would silently
-outrank an explicit app pin (issue #218).
+outrank an explicit app pin (issue #218). Between app-authored layers the
+later layer still wins, even against an earlier layer's explicit
+module-level pin — that stomp is logged as a warning (a specific pin losing
+to a general one is legal but never silent), while repinning
+packaged/profile-sourced module revisions stays silent because it is the
+propagation working as intended. A project-level `revision` that is not a
+string (an unquoted YAML scalar) raises `NSXConfigError` instead of being a
+silently dead pin, mirroring the loud failure module-level entries already
+get in `registry_entry_for_module`.
 
 The metadata model drives orchestration. CMake remains authoritative for the
 actual build graph.

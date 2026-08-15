@@ -5,6 +5,7 @@ from __future__ import annotations
 import argparse
 import copy
 import importlib.resources as resources
+import logging
 import os
 import re
 from importlib.metadata import PackageNotFoundError
@@ -20,6 +21,8 @@ from .metadata import load_registry_lock
 from .models import AppConfig, ModuleRegistryOverride, NsxProject, ProjectEntry
 from .subprocess_utils import run
 from .tooling import JLINK_NAMES, find_segger_tool
+
+_log = logging.getLogger(__name__)
 
 
 def _write_text_if_changed(path: Path, content: str) -> bool:
@@ -86,8 +89,8 @@ def _resolve_override_local_paths(
 
 def _iter_registry_layers(
     nsx_cfg: dict[str, Any], app_dir: Path | None
-) -> list[ModuleRegistryOverride]:
-    """Resolve the ordered ``registry.layers`` block into overrides.
+) -> list[tuple[str, ModuleRegistryOverride]]:
+    """Resolve the ordered ``registry.layers`` block into labeled overrides.
 
     Each layer is one of:
 
@@ -102,6 +105,10 @@ def _iter_registry_layers(
     Layers apply in declared order (last wins). The legacy top-level
     ``module_registry`` block, if present, is applied *after* all layers by
     the caller, preserving its historical highest precedence.
+
+    Returns ``(label, override)`` pairs; the label names the authoring
+    location (e.g. ``registry.layers[1] (workspace: ../x.yaml)``) for use in
+    diagnostics.
     """
 
     registry_cfg = nsx_cfg.get("registry")
@@ -114,7 +121,7 @@ def _iter_registry_layers(
         raise NSXConfigError("nsx.yml: 'registry.layers' must be a list")
 
     base_dir = app_dir if app_dir is not None else Path.cwd()
-    resolved: list[ModuleRegistryOverride] = []
+    resolved: list[tuple[str, ModuleRegistryOverride]] = []
     for index, layer in enumerate(layers):
         if isinstance(layer, str):
             if layer == "packaged":
@@ -136,16 +143,22 @@ def _iter_registry_layers(
         if kind == "workspace":
             overlay_path = (base_dir / str(value)).resolve()
             resolved.append(
-                _resolve_override_local_paths(
-                    ModuleRegistryOverride.from_mapping(_load_workspace_overlay(overlay_path)),
-                    base_dir=overlay_path.parent,
+                (
+                    f"registry.layers[{index}] (workspace: {value})",
+                    _resolve_override_local_paths(
+                        ModuleRegistryOverride.from_mapping(_load_workspace_overlay(overlay_path)),
+                        base_dir=overlay_path.parent,
+                    ),
                 )
             )
         elif kind == "inline":
             resolved.append(
-                _resolve_override_local_paths(
-                    ModuleRegistryOverride.from_mapping(value),
-                    base_dir=base_dir,
+                (
+                    f"registry.layers[{index}] (inline)",
+                    _resolve_override_local_paths(
+                        ModuleRegistryOverride.from_mapping(value),
+                        base_dir=base_dir,
+                    ),
                 )
             )
         else:
@@ -160,6 +173,9 @@ def _iter_registry_layers(
 def _propagate_layer_project_pins(
     merged: dict[str, Any],
     layer: ModuleRegistryOverride,
+    *,
+    layer_label: str,
+    app_pinned_modules: set[str],
 ) -> None:
     """Make *layer*'s project-level ``revision`` pins effective for its modules.
 
@@ -178,6 +194,23 @@ def _propagate_layer_project_pins(
       *same layer* pins with an explicit non-empty ``revision`` keeps that
       pin (starter-profile emissions and monorepo per-module pins rely on
       this).
+    * **Between app-authored layers** the later layer wins even against an
+      earlier layer's explicit module-level pin — but because that trades a
+      specific pin for a general one, the stomp is logged as a warning
+      naming the module, both revisions, and the winning layer.
+
+    ``app_pinned_modules`` is the caller-owned provenance set of modules
+    whose current merged revision came from an *explicit* module-level pin
+    in an app-authored layer. This function consumes it for the stomp
+    warning (silently overwriting packaged/profile-sourced revisions is the
+    fix working as intended), removes entries it overwrites, and finally
+    records this layer's own explicit module pins into it.
+
+    A project override that carries a ``revision`` key with a non-string
+    value raises :class:`NSXConfigError` — an unquoted YAML scalar such as
+    ``revision: 1.0`` would otherwise be a silently dead pin, the same
+    footgun class as issue #218 (module-level entries already fail loud in
+    ``registry_entry_for_module``).
 
     Only ``revision`` is propagated, and only onto modules whose (post-merge)
     ``project`` names the pinned project. Mutates *merged* in place; called
@@ -186,9 +219,16 @@ def _propagate_layer_project_pins(
 
     modules = merged.get("modules")
     if not isinstance(modules, dict):
-        return
+        modules = {}
     for project_name, project_override in layer.projects.items():
         revision = project_override.get("revision")
+        if "revision" in project_override and not isinstance(revision, str):
+            raise NSXConfigError(
+                f"{layer_label}: projects.{project_name}.revision must be a "
+                f"string, got {type(revision).__name__} ({revision!r}). Quote "
+                "the value in YAML so the pin is honored.",
+                field=f"projects.{project_name}.revision",
+            )
         if not isinstance(revision, str) or not revision:
             continue
         for module_name, module_entry in modules.items():
@@ -202,7 +242,29 @@ def _propagate_layer_project_pins(
                 if isinstance(layer_revision, str) and layer_revision:
                     # Same-source module-level pin outranks its project pin.
                     continue
+            current = module_entry.get("revision")
+            if module_name in app_pinned_modules and current != revision:
+                _log.warning(
+                    "module '%s': revision '%s' was pinned module-level by an "
+                    "earlier app-authored override layer, but %s pins project "
+                    "'%s' at '%s', which takes precedence (later app-authored "
+                    "layers outrank earlier ones). Add a module-level "
+                    "'modules.%s.revision' override to %s to keep a "
+                    "module-specific pin.",
+                    module_name,
+                    current,
+                    layer_label,
+                    project_name,
+                    revision,
+                    module_name,
+                    layer_label,
+                )
+                app_pinned_modules.discard(module_name)
             module_entry["revision"] = revision
+    for module_name, layer_module in layer.modules.items():
+        layer_revision = layer_module.get("revision")
+        if isinstance(layer_revision, str) and layer_revision:
+            app_pinned_modules.add(module_name)
 
 
 def _effective_registry(
@@ -223,24 +285,36 @@ def _effective_registry(
     block) additionally have their project-level ``revision`` pins propagated
     onto the project's modules (see :func:`_propagate_layer_project_pins`), so
     an explicit app pin cannot be silently outranked by a lower-precedence
-    source's module-level default. The synthetic profile defaults are derived
-    from the packaged registry — the same source — so they merge without
-    propagation and their explicit per-module pins keep their historical
-    meaning.
+    source's module-level default. When that propagation overrides a module
+    revision an *earlier* app-authored layer pinned explicitly, a warning is
+    logged (layer precedence beats specificity, but never silently). The
+    synthetic profile defaults are derived from the packaged registry — the
+    same source — so they merge without propagation and their explicit
+    per-module pins keep their historical meaning.
     """
 
     merged = ModuleRegistryOverride.from_mapping(nsx_cfg.get("_profile_registry")).merge_into(
         base_registry
     )
-    for layer in _iter_registry_layers(nsx_cfg, app_dir):
+    # Provenance of module-level revision pins across app-authored layers,
+    # threaded through propagation for the cross-layer stomp warning.
+    app_pinned_modules: set[str] = set()
+    for label, layer in _iter_registry_layers(nsx_cfg, app_dir):
         merged = layer.merge_into(merged)
-        _propagate_layer_project_pins(merged, layer)
+        _propagate_layer_project_pins(
+            merged, layer, layer_label=label, app_pinned_modules=app_pinned_modules
+        )
     app_override = _resolve_override_local_paths(
         ModuleRegistryOverride.from_mapping(nsx_cfg.get("module_registry")),
         base_dir=app_dir if app_dir is not None else Path.cwd(),
     )
     merged = app_override.merge_into(merged)
-    _propagate_layer_project_pins(merged, app_override)
+    _propagate_layer_project_pins(
+        merged,
+        app_override,
+        layer_label="module_registry",
+        app_pinned_modules=app_pinned_modules,
+    )
     return merged
 
 

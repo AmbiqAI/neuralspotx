@@ -53,25 +53,34 @@ module_registry:
       revision: bringup/customer-board
 ```
 
-Add a module-level `revision` only to diverge a specific module from its
-project's pin — within one override source, a module-level revision outranks
-the project-level one:
+Within one override source, a module-level `revision` outranks the
+project-level one — but every module of a project is vendored from a single
+shared clone, so **all modules of one project must resolve to one revision**.
+Pinning one module of a multi-module project (such as the `nsx-ambiq-sdk`
+modules) apart from its siblings makes two constraints claim the same
+vendored path, which `nsx sync` rejects as a content conflict. A module-level
+revision that differs from its project's pin is only coherent when the module
+lives in its own single-module repository:
 
 ```yaml
 module_registry:
   projects:
     nsx-ambiq-sdk:
-      revision: bringup/customer-board
+      revision: bringup/customer-board  # repins every nsx-ambiq-sdk module together
   modules:
-    nsx-ambiqsuite:
-      project: nsx-ambiq-sdk
-      revision: some-other-ref   # this module only; the rest follow the project pin
+    nsx-pmu-armv8m:
+      project: nsx-pmu-armv8m           # single-module repo: safe to pin on its own
+      revision: fix/pmu-counter
 ```
 
 Precedence is app-over-packaged first, module-over-project second: an
 app-authored pin (project- or module-level, in `module_registry` or a
 `registry.layers` entry) always beats the packaged registry's defaults, and
 module-level beats project-level only within the same override source.
+Between app-authored layers, the later layer wins even where an earlier
+layer pinned a module explicitly; because that trades a specific pin for a
+general one, `nsx` logs a warning naming the module, both revisions, and the
+winning layer.
 
 Regardless of mode, `nsx.lock` records exact resolved content: git refs resolve
 to a commit SHA plus content hash, while local projects record a content hash.

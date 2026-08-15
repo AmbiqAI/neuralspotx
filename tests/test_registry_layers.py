@@ -2,7 +2,11 @@
 
 from __future__ import annotations
 
+import contextlib
+import copy
+import logging
 import textwrap
+from collections.abc import Iterator
 from pathlib import Path
 
 import pytest
@@ -355,6 +359,181 @@ def test_empty_module_revision_in_same_layer_does_not_block_propagation() -> Non
     }
     out = _effective_registry(_sensors_base_registry(), nsx_cfg)
     assert out["modules"]["nsx-sensors"]["revision"] == _PIN
+
+
+_PROJECT_CONFIG_LOGGER = "neuralspotx.project_config"
+
+
+class _WarningRecorder(logging.Handler):
+    """Collects records emitted on the ``project_config`` logger."""
+
+    def __init__(self) -> None:
+        super().__init__(level=logging.WARNING)
+        self.records: list[logging.LogRecord] = []
+
+    def emit(self, record: logging.LogRecord) -> None:
+        self.records.append(record)
+
+
+@contextlib.contextmanager
+def _recorded_warnings() -> Iterator[_WarningRecorder]:
+    """Capture warnings directly on the module logger.
+
+    The CLI's ``configure_logging`` sets ``propagate = False`` on the
+    ``neuralspotx`` root logger (and may raise its level), so root-level
+    capture (``caplog``) misses these records once any CLI test has run.
+    Attaching the handler to the emitting logger itself is order-immune.
+    """
+
+    logger = logging.getLogger(_PROJECT_CONFIG_LOGGER)
+    recorder = _WarningRecorder()
+    old_level = logger.level
+    logger.setLevel(logging.WARNING)
+    logger.addHandler(recorder)
+    try:
+        yield recorder
+    finally:
+        logger.removeHandler(recorder)
+        logger.setLevel(old_level)
+
+
+def test_later_layer_project_pin_stomp_over_earlier_module_pin_warns() -> None:
+    """A cross-layer stomp of an explicit module pin is loud.
+
+    A bring-up overlay pins one module's revision; the manifest's
+    ``module_registry`` block (a *later* app-authored layer) pins the whole
+    project. Layer precedence wins — the project pin repins the module — but
+    a specific pin losing to a general one must be diagnosed, not silent.
+    """
+
+    nsx_cfg = {
+        "registry": {
+            "layers": [
+                {"inline": {"modules": {"nsx-sensors": {"revision": "fix/ble-crash"}}}},
+            ]
+        },
+        "module_registry": {"projects": {"nsx-sensors": {"revision": _PIN}}},
+    }
+    with _recorded_warnings() as recorder:
+        out = _effective_registry(_sensors_base_registry(), nsx_cfg)
+
+    assert out["modules"]["nsx-sensors"]["revision"] == _PIN
+    stomps = [r for r in recorder.records if "pinned module-level" in r.getMessage()]
+    assert len(stomps) == 1
+    message = stomps[0].getMessage()
+    assert "nsx-sensors" in message
+    assert "fix/ble-crash" in message
+    assert _PIN in message
+    assert "module_registry" in message
+
+
+def test_packaged_default_propagation_does_not_warn() -> None:
+    """Overriding a packaged/profile-sourced module revision is silent.
+
+    That overwrite is the fix working as intended; only explicit
+    app-authored module pins earn a stomp warning.
+    """
+
+    nsx_cfg = {
+        "_profile_registry": {
+            "modules": {"nsx-sensors": {"revision": "family-module-rev"}},
+        },
+        "module_registry": {"projects": {"nsx-sensors": {"revision": _PIN}}},
+    }
+    with _recorded_warnings() as recorder:
+        out = _effective_registry(_sensors_base_registry(), nsx_cfg)
+
+    assert out["modules"]["nsx-sensors"]["revision"] == _PIN
+    assert not [r for r in recorder.records if "pinned module-level" in r.getMessage()]
+
+
+def test_app_project_pin_beats_profile_synthetic_module_pin() -> None:
+    """Across sources: an app-layer project pin beats a profile module pin.
+
+    The synthetic profile defaults are packaged-derived, so an app-authored
+    project pin repins even modules the profile pinned module-level.
+    """
+
+    nsx_cfg = {
+        "_profile_registry": {
+            "projects": {"nsx-sensors": {"revision": "family-rev"}},
+            "modules": {"nsx-sensors": {"revision": "family-rev"}},
+        },
+        "module_registry": {"projects": {"nsx-sensors": {"revision": _PIN}}},
+    }
+    out = _effective_registry(_sensors_base_registry(), nsx_cfg)
+    assert out["modules"]["nsx-sensors"]["revision"] == _PIN
+
+
+def test_non_string_project_revision_raises() -> None:
+    """An unquoted YAML scalar project revision fails loud, not silently dead."""
+
+    nsx_cfg = {
+        "module_registry": {
+            "projects": {"nsx-sensors": {"revision": 2024}},
+        }
+    }
+    with pytest.raises(NSXConfigError) as exc:
+        _effective_registry(_sensors_base_registry(), nsx_cfg)
+    assert "nsx-sensors" in str(exc.value)
+    assert "2024" in str(exc.value)
+    assert exc.value.field == "projects.nsx-sensors.revision"
+
+
+def test_non_string_project_revision_in_layer_raises() -> None:
+    nsx_cfg = {
+        "registry": {
+            "layers": [
+                {"inline": {"projects": {"nsx-sensors": {"revision": 1.0}}}},
+            ]
+        }
+    }
+    with pytest.raises(NSXConfigError) as exc:
+        _effective_registry(_sensors_base_registry(), nsx_cfg)
+    assert "registry.layers[0]" in str(exc.value)
+
+
+def test_workspace_layer_project_pin_propagates(tmp_path: Path) -> None:
+    overlay = tmp_path / "bringup-registry.yaml"
+    overlay.write_text(
+        textwrap.dedent(
+            f"""
+            projects:
+              nsx-sensors:
+                revision: {_PIN}
+            """
+        ),
+        encoding="utf-8",
+    )
+    nsx_cfg = {"registry": {"layers": [{"workspace": "bringup-registry.yaml"}]}}
+    out = _effective_registry(_sensors_base_registry(), nsx_cfg, app_dir=tmp_path)
+    assert out["modules"]["nsx-sensors"]["revision"] == _PIN
+
+
+def test_effective_registry_is_idempotent_and_pure() -> None:
+    """Same inputs, same output — and the inputs are never mutated."""
+
+    base = _sensors_base_registry()
+    nsx_cfg = {
+        "_profile_registry": {
+            "projects": {"other-proj": {"revision": "family-rev"}},
+        },
+        "registry": {
+            "layers": [
+                {"inline": {"modules": {"nsx-sensors": {"revision": "overlay-pin"}}}},
+            ]
+        },
+        "module_registry": {"projects": {"nsx-sensors": {"revision": _PIN}}},
+    }
+    base_snapshot = copy.deepcopy(base)
+    cfg_snapshot = copy.deepcopy(nsx_cfg)
+
+    first = _effective_registry(base, nsx_cfg)
+    second = _effective_registry(base, nsx_cfg)
+
+    assert first == second
+    assert base == base_snapshot
+    assert nsx_cfg == cfg_snapshot
 
 
 # --- module/project alignment guard (partial-migration detection) ---------
