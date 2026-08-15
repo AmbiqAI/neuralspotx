@@ -224,7 +224,7 @@ helpers into the baseline runtime core.
 | `nsx-i2c` | I2C wrapper and related helpers. | Sensor and peripheral bring-up over I2C. | [GitHub](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.24/modules/nsx-i2c) |
 | `nsx-spi` | SPI wrapper and related helpers. | SPI device bring-up and integration. | [GitHub](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.24/modules/nsx-spi) |
 | `nsx-uart` | UART wrapper and related helpers. | Serial communication, console, or bridge workflows. | [GitHub](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.24/modules/nsx-uart) |
-| `nsx-sensors` | External I2C/SPI-attached sensor and accessory drivers (MAX86150, MPU6050, ICM-45605, INA228, LED Stick) built on `nsx-i2c`/`nsx-spi` with a consistent context-based init pattern. | Bio-sensor capture, IMU bring-up, current/voltage monitoring, simple I2C accessory control. | [nsx-sensors](https://github.com/AmbiqAI/nsx-sensors/tree/v0.1.0) |
+| `nsx-sensors` | External I2C/SPI-attached sensor and accessory drivers (MAX86150, MPU6050, ICM-45605, INA228, LED Stick) built on `nsx-i2c`/`nsx-spi` with a consistent context-based init pattern. | Bio-sensor capture, IMU bring-up, current/voltage monitoring, simple I2C accessory control. | [nsx-sensors](https://github.com/AmbiqAI/nsx-sensors/tree/v0.3.0) |
 
 Legacy `nsx-peripherals` is no longer a first-class packaged module. Its useful
 pieces were retired into focused unified surfaces such as `nsx-power`,
