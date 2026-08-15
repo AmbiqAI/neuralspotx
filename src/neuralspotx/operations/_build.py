@@ -277,7 +277,7 @@ def flash_app_impl(
             "recognized flash result: neither a 'Flash download: Total' summary nor a "
             "'Skipped. Contents already match' notice. The device was most likely "
             "programmed; this usually means the installed J-Link Commander words its "
-            "summary differently. Re-run with `-v` to see the raw J-Link output."
+            "summary differently. Inspect the echoed J-Link output for what actually happened."
         )
     return FlashResult(
         target=resolved_target,

@@ -9,7 +9,12 @@ from typing import Literal
 
 @dataclass(frozen=True, slots=True)
 class FlashResult:
-    """Outcome of programming one executable from an NSX app."""
+    """Outcome of flashing one executable from an NSX app.
+
+    ``programming_verified`` records that J-Link confirmed the target holds
+    the loaded image -- bytes freshly programmed, or programming skipped
+    because the contents already matched. It does not mean bytes moved.
+    """
 
     target: str
     artifact: Path

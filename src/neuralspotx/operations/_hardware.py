@@ -33,7 +33,8 @@ _SWPOI_DISCONNECT_SIGNATURES = (
     "memory write failed",
 )
 _JLINK_FAIL_FAST = "ExitOnError 1\n"
-_FAIL_FAST_RE = re.compile(r"^\s*ExitOnError\s+1\s*$", re.IGNORECASE | re.MULTILINE)
+# Tolerates J-Link Commander's `//` line comments after the directive.
+_FAIL_FAST_RE = re.compile(r"^\s*ExitOnError\s+1\s*(?://.*)?$", re.IGNORECASE | re.MULTILINE)
 
 
 def validate_flash_recipe(build_dir: Path, target: str) -> tuple[Path, Path]:

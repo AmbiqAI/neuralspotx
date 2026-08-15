@@ -124,6 +124,26 @@ def test_reflashing_an_unchanged_image_succeeds(
     assert _build.flash_app_impl(tmp_path).programming_verified is True
 
 
+def test_unrecognized_flash_output_still_raises(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A clean exit with neither marker must still fail, with the new message."""
+
+    build_dir, _ = _flash_build(tmp_path, "primary")
+    _stub_build_context(monkeypatch, tmp_path, build_dir)
+    monkeypatch.setattr(
+        _build,
+        "run_capture",
+        lambda cmd, **_kwargs: subprocess.CompletedProcess(
+            cmd, 0, stdout="Connecting to J-Link via USB...O.K.\n", stderr=""
+        ),
+    )
+    with using_emitter(lambda _event: None), pytest.raises(
+        NSXError, match="no recognized flash result"
+    ):
+        _build.flash_app_impl(tmp_path)
+
+
 def test_connection_only_ok_is_rejected() -> None:
     assert not _hardware.flash_programming_verified("Connecting to J-Link via USB...O.K.")
 
@@ -175,6 +195,29 @@ def test_recipe_without_fail_fast_is_rejected(tmp_path: Path) -> None:
     build_dir, artifact = _flash_build(tmp_path, "secondary")
     recipe = build_dir / "jlink/secondary/flash_cmds.jlink"
     recipe.write_text(_recipe_text(artifact, fail_fast=False), encoding="utf-8")
+    with pytest.raises(NSXConfigError, match="ExitOnError 1"):
+        _hardware.validate_flash_recipe(build_dir, "secondary")
+
+
+def test_recipe_fail_fast_tolerates_trailing_comment(tmp_path: Path) -> None:
+    """An annotated `ExitOnError 1 // ...` line is still fail-fast."""
+
+    build_dir, artifact = _flash_build(tmp_path, "secondary")
+    recipe = build_dir / "jlink/secondary/flash_cmds.jlink"
+    recipe.write_text(
+        f'ExitOnError 1 // fail fast\nReset\nLoadFile "{artifact}", 0x00410000\nReset\nGo\nExit\n',
+        encoding="utf-8",
+    )
+    assert _hardware.validate_flash_recipe(build_dir, "secondary") == (artifact, recipe)
+
+
+def test_recipe_with_commented_out_fail_fast_is_rejected(tmp_path: Path) -> None:
+    build_dir, artifact = _flash_build(tmp_path, "secondary")
+    recipe = build_dir / "jlink/secondary/flash_cmds.jlink"
+    recipe.write_text(
+        f'// ExitOnError 1\nReset\nLoadFile "{artifact}", 0x00410000\nReset\nGo\nExit\n',
+        encoding="utf-8",
+    )
     with pytest.raises(NSXConfigError, match="ExitOnError 1"):
         _hardware.validate_flash_recipe(build_dir, "secondary")
 
