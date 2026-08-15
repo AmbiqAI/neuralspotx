@@ -878,7 +878,10 @@ def test_flash_and_view_reconfigure_when_probe_serial_is_supplied(
         artifact.write_bytes(b"firmware")
         recipe = build_dir / "jlink" / "hello_probe" / "flash_cmds.jlink"
         recipe.parent.mkdir(parents=True, exist_ok=True)
-        recipe.write_text(f'LoadFile "{artifact}", 0x00410000\n', encoding="utf-8")
+        recipe.write_text(
+            f'ExitOnError 1\nReset\nLoadFile "{artifact}", 0x00410000\nReset\nGo\nExit\n',
+            encoding="utf-8",
+        )
         return subprocess.CompletedProcess(
             cmd, 0, stdout="Flash download: Total time needed: 0.123s\n", stderr=""
         )

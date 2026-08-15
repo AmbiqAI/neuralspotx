@@ -273,8 +273,11 @@ def flash_app_impl(
 
     if not flash_programming_verified(output):
         raise NSXError(
-            f"J-Link flash of target '{resolved_target}' produced no programming confirmation. "
-            "The image may not have been programmed; inspect the J-Link output and generated recipe."
+            f"J-Link exited successfully for target '{resolved_target}' but printed no "
+            "recognized flash result: neither a 'Flash download: Total' summary nor a "
+            "'Skipped. Contents already match' notice. The device was most likely "
+            "programmed; this usually means the installed J-Link Commander words its "
+            "summary differently. Inspect the echoed J-Link output for what actually happened."
         )
     return FlashResult(
         target=resolved_target,
