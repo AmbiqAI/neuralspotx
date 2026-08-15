@@ -94,5 +94,32 @@ is reported the same way a stale immutable-ref allowance is.
 6. copy or replace vendored `modules/` and `boards/` content inside the app
 7. update `nsx.yml` and generated `cmake/nsx/modules.cmake`
 
+Step 2 enforces a two-axis revision precedence: **across sources**, an
+app-authored override layer (a `registry.layers` entry or the
+`module_registry` block) beats the packaged registry and the synthetic
+starter-profile defaults — a layer that pins `projects.<p>.revision` repins
+every module of `<p>` in the effective registry; **within one source**,
+module-level beats project-level — a layer's own `modules.<name>.revision`
+outranks that same layer's project pin. Module revision selection itself
+reads only the merged `modules.<name>.revision` field
+(`registry_entry_for_module`), so this propagation
+(`project_config._propagate_layer_project_pins`) is what makes app project
+pins effective; without it a packaged module-level default would silently
+outrank an explicit app pin (issue #218). Between app-authored layers the
+later layer still wins, even against an earlier layer's explicit
+module-level pin — that stomp is logged as a warning (a specific pin losing
+to a general one is legal but never silent; identical warnings are
+deduplicated process-wide since the effective registry is recomputed many
+times per command), while repinning packaged/profile-sourced module
+revisions stays silent because it is the propagation working as intended.
+Propagated pins are project-scoped: a later layer that re-points a module
+to a different project without expressing a revision restores the value
+propagation had replaced, rather than leaking the old project's pin onto
+the new project (explicit module-level pins, being module-scoped, survive a
+re-point). A project-level `revision` that is not a string (an unquoted
+YAML scalar) raises `NSXConfigError` instead of being a silently dead pin,
+mirroring the loud failure module-level entries already get in
+`registry_entry_for_module`.
+
 The metadata model drives orchestration. CMake remains authoritative for the
 actual build graph.
