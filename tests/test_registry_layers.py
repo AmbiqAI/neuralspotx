@@ -172,6 +172,191 @@ def test_multi_key_layer_mapping_raises() -> None:
         _effective_registry(base, nsx_cfg)
 
 
+# --- app project pins vs packaged module revisions (issue #218) ------------
+
+
+_PIN = "c219a2bc98c62f96819fae20ab6c8911fcea3e25"
+
+
+def _sensors_base_registry() -> dict:
+    """Packaged-shaped base: project and module both at the packaged default."""
+
+    return {
+        "projects": {
+            "nsx-sensors": {
+                "name": "nsx-sensors",
+                "url": "https://github.com/AmbiqAI/nsx-sensors.git",
+                "revision": "v0.1.0",
+                "path": "modules/nsx-sensors",
+            },
+            "other-proj": {"name": "other-proj", "revision": "v3.0.0"},
+        },
+        "modules": {
+            "nsx-sensors": {
+                "project": "nsx-sensors",
+                "revision": "v0.1.0",
+                "metadata": "modules/nsx-sensors/nsx-module.yaml",
+            },
+            "other-mod": {
+                "project": "other-proj",
+                "revision": "v3.0.0",
+                "metadata": "modules/other-mod/nsx-module.yaml",
+            },
+        },
+    }
+
+
+def test_app_project_pin_beats_packaged_module_revision() -> None:
+    """An app-local project pin wins over the packaged module-level default.
+
+    Reproduces AmbiqAI/neuralspotx#218: the manifest pinned the project at a
+    commit while the packaged registry's module entry still said ``v0.1.0``,
+    and the module-level entry from the *lower-precedence* source silently
+    won.
+    """
+
+    from neuralspotx.metadata import registry_entry_for_module
+
+    nsx_cfg = {
+        "module_registry": {
+            "projects": {"nsx-sensors": {"revision": _PIN}},
+        }
+    }
+    out = _effective_registry(_sensors_base_registry(), nsx_cfg)
+    assert out["projects"]["nsx-sensors"]["revision"] == _PIN
+    assert out["modules"]["nsx-sensors"]["revision"] == _PIN
+    # Bind the assertion to the exact accessor the lock/acquire paths use.
+    assert registry_entry_for_module(out, "nsx-sensors").revision == _PIN
+    # Non-revision module fields survive propagation untouched.
+    assert out["modules"]["nsx-sensors"]["metadata"] == "modules/nsx-sensors/nsx-module.yaml"
+
+
+def test_app_project_pin_leaves_other_projects_modules_alone() -> None:
+    nsx_cfg = {
+        "module_registry": {
+            "projects": {"nsx-sensors": {"revision": _PIN}},
+        }
+    }
+    out = _effective_registry(_sensors_base_registry(), nsx_cfg)
+    assert out["modules"]["other-mod"]["revision"] == "v3.0.0"
+
+
+def test_same_source_module_pin_beats_its_own_project_pin() -> None:
+    """Within one source, a module-level pin outranks the project pin.
+
+    Starter-profile emissions (and monorepo per-module pins) write both a
+    project pin and explicit module pins into the same app block; the module
+    pins must keep winning.
+    """
+
+    nsx_cfg = {
+        "module_registry": {
+            "projects": {"nsx-sensors": {"revision": _PIN}},
+            "modules": {"nsx-sensors": {"revision": "module-pin"}},
+        }
+    }
+    out = _effective_registry(_sensors_base_registry(), nsx_cfg)
+    assert out["modules"]["nsx-sensors"]["revision"] == "module-pin"
+    assert out["projects"]["nsx-sensors"]["revision"] == _PIN
+
+
+def test_no_app_overrides_keeps_packaged_behavior() -> None:
+    out = _effective_registry(_sensors_base_registry(), {})
+    assert out["modules"]["nsx-sensors"]["revision"] == "v0.1.0"
+    assert out["projects"]["nsx-sensors"]["revision"] == "v0.1.0"
+
+
+def test_layer_project_pin_propagates_to_modules() -> None:
+    nsx_cfg = {
+        "registry": {
+            "layers": [
+                {"inline": {"projects": {"nsx-sensors": {"revision": "bringup/branch"}}}},
+            ]
+        }
+    }
+    out = _effective_registry(_sensors_base_registry(), nsx_cfg)
+    assert out["modules"]["nsx-sensors"]["revision"] == "bringup/branch"
+
+
+def test_higher_layer_project_pin_beats_lower_layer_module_pin() -> None:
+    """Across sources, the higher-precedence project pin wins."""
+
+    nsx_cfg = {
+        "registry": {
+            "layers": [
+                {
+                    "inline": {
+                        "modules": {
+                            "nsx-sensors": {"project": "nsx-sensors", "revision": "layer-module"}
+                        }
+                    }
+                },
+            ]
+        },
+        "module_registry": {
+            "projects": {"nsx-sensors": {"revision": _PIN}},
+        },
+    }
+    out = _effective_registry(_sensors_base_registry(), nsx_cfg)
+    assert out["modules"]["nsx-sensors"]["revision"] == _PIN
+
+
+def test_module_pin_in_later_layer_beats_earlier_project_pin() -> None:
+    nsx_cfg = {
+        "registry": {
+            "layers": [
+                {"inline": {"projects": {"nsx-sensors": {"revision": "layer-project"}}}},
+                {"inline": {"modules": {"nsx-sensors": {"revision": "later-module"}}}},
+            ]
+        },
+    }
+    out = _effective_registry(_sensors_base_registry(), nsx_cfg)
+    assert out["modules"]["nsx-sensors"]["revision"] == "later-module"
+
+
+def test_synthetic_profile_project_pin_does_not_propagate() -> None:
+    """Profile defaults are packaged-derived: same source, no propagation.
+
+    A family baseline expresses its module intent through explicit
+    ``module_overrides``; its project pin must not repin modules the family
+    deliberately left at their base-registry revisions.
+    """
+
+    nsx_cfg = {
+        "_profile_registry": {
+            "projects": {"nsx-sensors": {"revision": "family-rev"}},
+        }
+    }
+    out = _effective_registry(_sensors_base_registry(), nsx_cfg)
+    assert out["projects"]["nsx-sensors"]["revision"] == "family-rev"
+    assert out["modules"]["nsx-sensors"]["revision"] == "v0.1.0"
+
+
+def test_project_override_without_revision_does_not_touch_modules(tmp_path: Path) -> None:
+    """A ``local_path``-only project override expresses no revision opinion."""
+
+    nsx_cfg = {
+        "module_registry": {
+            "projects": {"nsx-sensors": {"local_path": str(tmp_path)}},
+        }
+    }
+    out = _effective_registry(_sensors_base_registry(), nsx_cfg)
+    assert out["modules"]["nsx-sensors"]["revision"] == "v0.1.0"
+
+
+def test_empty_module_revision_in_same_layer_does_not_block_propagation() -> None:
+    """A same-layer module override with an empty revision has no opinion."""
+
+    nsx_cfg = {
+        "module_registry": {
+            "projects": {"nsx-sensors": {"revision": _PIN}},
+            "modules": {"nsx-sensors": {"metadata": "modules/nsx-sensors/nsx-module.yaml"}},
+        }
+    }
+    out = _effective_registry(_sensors_base_registry(), nsx_cfg)
+    assert out["modules"]["nsx-sensors"]["revision"] == _PIN
+
+
 # --- module/project alignment guard (partial-migration detection) ---------
 
 

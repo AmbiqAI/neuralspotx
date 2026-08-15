@@ -157,6 +157,54 @@ def _iter_registry_layers(
     return resolved
 
 
+def _propagate_layer_project_pins(
+    merged: dict[str, Any],
+    layer: ModuleRegistryOverride,
+) -> None:
+    """Make *layer*'s project-level ``revision`` pins effective for its modules.
+
+    ``registry_entry_for_module`` selects revisions from the module-level
+    ``modules.<name>.revision`` field only, so without this step an
+    app-authored ``projects.<p>.revision`` pin is silently outranked by the
+    *packaged* registry's module-level defaults — a lower-precedence source
+    winning over an explicit app pin (issue #218).
+
+    Precedence contract:
+
+    * **Across sources** an app-authored layer beats the packaged registry
+      (and the synthetic profile defaults): a layer that pins a project's
+      revision repins every module of that project in the merged view.
+    * **Within one source** module-level beats project-level: a module the
+      *same layer* pins with an explicit non-empty ``revision`` keeps that
+      pin (starter-profile emissions and monorepo per-module pins rely on
+      this).
+
+    Only ``revision`` is propagated, and only onto modules whose (post-merge)
+    ``project`` names the pinned project. Mutates *merged* in place; called
+    once per app-authored layer, immediately after that layer merges.
+    """
+
+    modules = merged.get("modules")
+    if not isinstance(modules, dict):
+        return
+    for project_name, project_override in layer.projects.items():
+        revision = project_override.get("revision")
+        if not isinstance(revision, str) or not revision:
+            continue
+        for module_name, module_entry in modules.items():
+            if not isinstance(module_entry, dict):
+                continue
+            if module_entry.get("project") != project_name:
+                continue
+            layer_module = layer.modules.get(module_name)
+            if isinstance(layer_module, dict):
+                layer_revision = layer_module.get("revision")
+                if isinstance(layer_revision, str) and layer_revision:
+                    # Same-source module-level pin outranks its project pin.
+                    continue
+            module_entry["revision"] = revision
+
+
 def _effective_registry(
     base_registry: dict[str, Any],
     nsx_cfg: dict[str, Any],
@@ -170,6 +218,15 @@ def _effective_registry(
     ``module_registry`` block. This keeps explicit workspace/inline development
     layers above implicit profile defaults while preserving the historical
     highest precedence of authored app-local overrides.
+
+    App-authored layers (``registry.layers`` entries and the ``module_registry``
+    block) additionally have their project-level ``revision`` pins propagated
+    onto the project's modules (see :func:`_propagate_layer_project_pins`), so
+    an explicit app pin cannot be silently outranked by a lower-precedence
+    source's module-level default. The synthetic profile defaults are derived
+    from the packaged registry — the same source — so they merge without
+    propagation and their explicit per-module pins keep their historical
+    meaning.
     """
 
     merged = ModuleRegistryOverride.from_mapping(nsx_cfg.get("_profile_registry")).merge_into(
@@ -177,11 +234,14 @@ def _effective_registry(
     )
     for layer in _iter_registry_layers(nsx_cfg, app_dir):
         merged = layer.merge_into(merged)
+        _propagate_layer_project_pins(merged, layer)
     app_override = _resolve_override_local_paths(
         ModuleRegistryOverride.from_mapping(nsx_cfg.get("module_registry")),
         base_dir=app_dir if app_dir is not None else Path.cwd(),
     )
-    return app_override.merge_into(merged)
+    merged = app_override.merge_into(merged)
+    _propagate_layer_project_pins(merged, app_override)
+    return merged
 
 
 def validate_app_module_alignment(

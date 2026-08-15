@@ -42,8 +42,20 @@ workspace overlay file's directory, so shared overlays remain portable.
 
 An explicit `local_path` overrides the project's packaged git URL and produces
 a `local` lock entry with the source tree's content hash. For a branch or SHA
-override, set the project revision and each affected module revision so the
-module's requested constraint is unambiguous:
+override, pinning the project revision is enough — an app-authored project pin
+repins every module of that project, overriding the packaged registry's
+module-level defaults:
+
+```yaml
+module_registry:
+  projects:
+    nsx-ambiq-sdk:
+      revision: bringup/customer-board
+```
+
+Add a module-level `revision` only to diverge a specific module from its
+project's pin — within one override source, a module-level revision outranks
+the project-level one:
 
 ```yaml
 module_registry:
@@ -53,8 +65,13 @@ module_registry:
   modules:
     nsx-ambiqsuite:
       project: nsx-ambiq-sdk
-      revision: bringup/customer-board
+      revision: some-other-ref   # this module only; the rest follow the project pin
 ```
+
+Precedence is app-over-packaged first, module-over-project second: an
+app-authored pin (project- or module-level, in `module_registry` or a
+`registry.layers` entry) always beats the packaged registry's defaults, and
+module-level beats project-level only within the same override source.
 
 Regardless of mode, `nsx.lock` records exact resolved content: git refs resolve
 to a commit SHA plus content hash, while local projects record a content hash.

@@ -94,5 +94,18 @@ is reported the same way a stale immutable-ref allowance is.
 6. copy or replace vendored `modules/` and `boards/` content inside the app
 7. update `nsx.yml` and generated `cmake/nsx/modules.cmake`
 
+Step 2 enforces a two-axis revision precedence: **across sources**, an
+app-authored override layer (a `registry.layers` entry or the
+`module_registry` block) beats the packaged registry and the synthetic
+starter-profile defaults — a layer that pins `projects.<p>.revision` repins
+every module of `<p>` in the effective registry; **within one source**,
+module-level beats project-level — a layer's own `modules.<name>.revision`
+outranks that same layer's project pin. Module revision selection itself
+reads only the merged `modules.<name>.revision` field
+(`registry_entry_for_module`), so this propagation
+(`project_config._propagate_layer_project_pins`) is what makes app project
+pins effective; without it a packaged module-level default would silently
+outrank an explicit app pin (issue #218).
+
 The metadata model drives orchestration. CMake remains authoritative for the
 actual build graph.
