@@ -70,7 +70,7 @@ projects:
   nsx-sensors:
     name: nsx-sensors
     url: https://github.com/AmbiqAI/nsx-sensors.git
-    revision: v0.1.0
+    revision: v0.3.0
     path: modules/nsx-sensors
 
 modules:
@@ -256,7 +256,7 @@ modules:
     metadata: modules/nsx-tileio-usb/nsx-module.yaml
   nsx-sensors:
     project: nsx-sensors
-    revision: v0.1.0
+    revision: v0.3.0
     metadata: modules/nsx-sensors/nsx-module.yaml
   nsx-tooling:
     project: neuralspotx
