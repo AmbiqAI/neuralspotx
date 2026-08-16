@@ -1,6 +1,6 @@
 # Examples
 
-Ten ready-to-build example apps live in the
+Eleven ready-to-build example apps live in the
 [`examples/`](https://github.com/AmbiqAI/neuralspotx/tree/main/examples)
 directory of the `neuralspotx` repo. Each one is a self-contained NSX
 app — the same shape that `nsx create-app` produces — with its own
@@ -76,6 +76,12 @@ from the nearest `nsx.yml` automatically.
 
     TFLite Micro keyword-spotting inference with CMSIS-NN kernels.
 
+-   :material-brain:{ .lg .middle } __[executorch_cmsis_nn](executorch_cmsis_nn.md)__
+
+    ---
+
+    Stock ExecuTorch Cortex-M inference with total and per-operator cycle measurements.
+
 -   :material-bluetooth:{ .lg .middle } __[ble_webble](ble_webble.md)__
 
     ---
@@ -119,6 +125,7 @@ _Boards come from each `nsx.yml` `targets.supported`; ★ marks the default._
 | [pmu_profiling](pmu_profiling.md) | capabilities | `pmu`, `profiling` | **apollo510_evb** ★, apollo510b_evb, apollo330mP_evb, apollo510dL_evb | apollo510_evb | tested |
 | [power_benchmark](power_benchmark.md) | capabilities | `power`, `gpio`, `timer` | **apollo510_evb** ★, apollo510b_evb | — | builds |
 | [ble_webble](ble_webble.md) | integrations | `ble`, `cordio`, `freertos` | **apollo4p_blue_kxr_evb** ★, apollo3p_evb, apollo510b_evb | apollo3p_evb, apollo4p_blue_kxr_evb, apollo510b_evb | experimental |
+| [executorch_cmsis_nn](executorch_cmsis_nn.md) | integrations | `ml`, `executorch`, `cmsis-nn`, `profiling` | **apollo510_evb** ★ | apollo510_evb | tested |
 | [kws_infer](kws_infer.md) | integrations | `ml`, `tflite`, `cmsis-nn`, `helia-rt` | **apollo510_evb** ★, apollo510b_evb, apollo330mP_evb | apollo510_evb | tested |
 | [usb_rpc](usb_rpc.md) | integrations | `usb`, `rpc`, `nanopb` | **apollo510_evb** ★, apollo510b_evb, apollo330mP_evb, apollo510dL_evb | apollo510_evb | tested |
 

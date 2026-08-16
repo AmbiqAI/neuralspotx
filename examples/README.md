@@ -25,6 +25,7 @@ nsx view      --app-dir .        # (optional) SWO viewer
 | `power_benchmark` | `nsx-power`, `nsx-gpio`, `nsx-timer`, `nsx-interrupt` | Three-phase power measurement firmware |
 | `pmu_profiling` | `nsx-pmu-armv8m` | PMU cycle and event counting |
 | `kws_infer` | `nsx-power`, `nsx-pmu-armv8m`, `nsx-helia-rt` | Keyword-spotting TFLite Micro inference |
+| `executorch_cmsis_nn` | `nsx-executorch` | Private tagged ExecuTorch Cortex-M inference with total and per-operator cycles |
 | `audio_capture` | `nsx-audio` | PDM microphone capture and SWO statistics |
 | `ble_webble` | `nsx-freertos`, `nsx-cordio`, `nsx-ble` | Bluetooth LE peripheral with app-owned stack policy |
 | `usb_serial` | `nsx-ambiq-usb`, `nsx-usb`, `nsx-timer`, `nsx-interrupt` | USB CDC echo |

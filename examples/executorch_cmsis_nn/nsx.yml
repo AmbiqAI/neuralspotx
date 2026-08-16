@@ -1,0 +1,23 @@
+schema_version: 2
+project:
+  name: executorch_cmsis_nn
+targets:
+  default: apollo510_evb
+  supported:
+    - apollo510_evb
+toolchain: arm-none-eabi-gcc
+channel: stable
+modules:
+  - nsx-executorch
+features: {}
+module_registry:
+  projects:
+    nsx-executorch:
+      url: https://github.com/AmbiqAI/nsx-executorch.git
+      revision: v0.1.2
+      path: modules/nsx-executorch
+  modules:
+    nsx-executorch:
+      project: nsx-executorch
+      revision: v0.1.2
+      metadata: modules/nsx-executorch/nsx-module.yaml
