@@ -9,15 +9,28 @@ toolchain: arm-none-eabi-gcc
 channel: stable
 modules:
   - nsx-executorch
+  # Both stock CMSIS-NN providers nsx-executorch can consume are vendored
+  # here explicitly so the build-time NSX_EXECUTORCH_CMSIS_NN_PROVIDER
+  # toggle (see CMakeLists.txt) works without re-locking. Neither is a
+  # normal bootstrapped app dependency: CMakeLists.txt excludes both from
+  # the generic per-module add_subdirectory() loop and instead points
+  # nsx-executorch's own provider resolution straight at the vendored
+  # checkout it selects, so exactly one `cmsis-nn` CMake target is ever
+  # created. See README.md "CMSIS-NN provider selection".
+  - arm-cmsis-nn
+  - nsx-cmsis-nn
 features: {}
 module_registry:
   projects:
     nsx-executorch:
       url: https://github.com/AmbiqAI/nsx-executorch.git
-      revision: v0.1.2
+      # v0.1.3 (pending release): consumes arm-cmsis-nn / nsx-cmsis-nn as
+      # NSX module dependencies instead of vendoring CMSIS-NN / CMSIS_6 as
+      # git submodules. Bump once AmbiqAI/nsx-executorch tags this revision.
+      revision: v0.1.3
       path: modules/nsx-executorch
   modules:
     nsx-executorch:
       project: nsx-executorch
-      revision: v0.1.2
+      revision: v0.1.3
       metadata: modules/nsx-executorch/nsx-module.yaml

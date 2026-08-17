@@ -2,8 +2,12 @@ cmake_minimum_required(VERSION 3.24)
 project(executorch_cmsis_nn LANGUAGES C CXX ASM)
 
 set(NSX_BOARD "apollo510_evb" CACHE STRING "Target board")
+# NOT FORCEd: pass -DNSX_EXECUTORCH_CMSIS_NN_PROVIDER=ns at configure time to
+# switch providers without editing this file or re-running `nsx lock`/`nsx
+# sync` (both arm-cmsis-nn and nsx-cmsis-nn are already vendored below).
 set(NSX_EXECUTORCH_CMSIS_NN_PROVIDER "arm" CACHE STRING
-    "Stock CMSIS-NN provider for ExecuTorch Cortex-M kernels" FORCE)
+    "Stock CMSIS-NN provider for ExecuTorch Cortex-M kernels: arm or ns")
+set_property(CACHE NSX_EXECUTORCH_CMSIS_NN_PROVIDER PROPERTY STRINGS arm ns)
 set(NSX_EXECUTORCH_ENABLE_PROFILING ON CACHE BOOL
     "Enable total and per-operator ExecuTorch cycle measurements" FORCE)
 set(NSX_EXECUTORCH_PTE
@@ -30,10 +34,50 @@ endif()
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/nsx/modules.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/nsx/nsx_app_bootstrap.cmake)
 
+# --- CMSIS-NN provider selection --------------------------------------------
+# arm-cmsis-nn and nsx-cmsis-nn are listed in nsx.yml's `modules:` purely so
+# `nsx lock`/`nsx sync` vendor their pinned source under modules/; they are
+# NOT normal bootstrapped app dependencies. nsx-executorch resolves whichever
+# provider NSX_EXECUTORCH_CMSIS_NN_PROVIDER selects and points stock
+# ExecuTorch's own CMSIS_NN_LOCAL_PATH hook straight at it:
+#   - arm: <arm-cmsis-nn root>/external/CMSIS-NN (arm-cmsis-nn's own vendored
+#     upstream source; its own wrapper CMakeLists.txt, which creates
+#     nsx::arm_cmsis_nn, is never add_subdirectory()'d for this)
+#   - ns:  <ns-cmsis-nn root> itself (its upstream-compatible drop-in root)
+# Either way, stock ExecuTorch's cortex_m backend is the only thing that
+# add_subdirectory()s that path, creating the single `cmsis-nn` target it
+# expects. If the generic per-module bootstrap loop below also
+# add_subdirectory()d arm-cmsis-nn as a normal module, its wrapper would
+# create `cmsis-nn` a first time (via its own `if(NOT TARGET cmsis-nn)`
+# guard) before stock ExecuTorch tried to create it a second time from the
+# same source — a hard CMake duplicate-target error. So both provider
+# modules are excluded from the MODULES list passed to nsx_bootstrap_app().
+set(NSX_EXECUTORCH_CMSIS_NN_PROVIDER_MODULES arm-cmsis-nn nsx-cmsis-nn)
+set(NSX_APP_BOOTSTRAP_MODULES ${NSX_APP_MODULES})
+list(REMOVE_ITEM NSX_APP_BOOTSTRAP_MODULES ${NSX_EXECUTORCH_CMSIS_NN_PROVIDER_MODULES})
+
+# Point nsx-executorch straight at the vendored checkout for the selected
+# provider instead of relying on its NSX_ROOT/NSX_APP_MODULE_DIR_<module>
+# auto-discovery: the `nsx-cmsis-nn` module name intentionally resolves to
+# its `nsx/` NSX entry-point subdirectory (modules/ns-cmsis-nn/nsx), but
+# nsx-executorch needs the project's drop-in root (modules/ns-cmsis-nn)
+# instead, so an explicit override is the correct contract here.
+if(NSX_EXECUTORCH_CMSIS_NN_PROVIDER STREQUAL "arm")
+    set(NSX_EXECUTORCH_ARM_CMSIS_NN_ROOT
+        "${CMAKE_CURRENT_LIST_DIR}/modules/arm-cmsis-nn" CACHE PATH "" FORCE)
+elseif(NSX_EXECUTORCH_CMSIS_NN_PROVIDER STREQUAL "ns")
+    set(NSX_EXECUTORCH_NS_CMSIS_NN_ROOT
+        "${CMAKE_CURRENT_LIST_DIR}/modules/ns-cmsis-nn" CACHE PATH "" FORCE)
+else()
+    message(FATAL_ERROR
+        "NSX_EXECUTORCH_CMSIS_NN_PROVIDER must be arm or ns, got "
+        "'${NSX_EXECUTORCH_CMSIS_NN_PROVIDER}'")
+endif()
+
 nsx_bootstrap_app(
     APP_ROOT "${CMAKE_CURRENT_LIST_DIR}"
     BOARD "${NSX_BOARD}"
-    MODULES ${NSX_APP_MODULES}
+    MODULES ${NSX_APP_BOOTSTRAP_MODULES}
 )
 
 find_package(Python3 REQUIRED COMPONENTS Interpreter)

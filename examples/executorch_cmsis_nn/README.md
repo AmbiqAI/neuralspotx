@@ -13,14 +13,55 @@ Before NSX:
 
 Inside NSX:
 
-1. NSX authenticates to the private `nsx-executorch@v0.1.2` project and locks
+1. NSX authenticates to the private `nsx-executorch@v0.1.3` project and locks
    its exact source artifact.
-2. CMake converts the supplied PTE bytes into a read-only C array stored in firmware flash. This packaging step does not modify or compile the PTE.
+2. CMake converts the supplied PTE bytes into a read-only C array stored in flash. This packaging step does not modify or compile the PTE.
 3. Selective code generation registers the Cortex-M operators named by NSX_EXECUTORCH_CORTEX_M_SELECT_OPS_LIST and the portable ATen fallback operators named by NSX_EXECUTORCH_PORTABLE_SELECT_OPS_LIST.
-4. The linker combines the PTE, unmodified ExecuTorch runtime, selected portable kernels, stock Cortex-M operators, stock CMSIS-NN, and Apollo510 board support.
+4. The linker combines the PTE, unmodified ExecuTorch runtime, selected portable kernels, stock Cortex-M operators, stock CMSIS-NN (see "CMSIS-NN provider selection" below), and Apollo510 board support.
 5. main.cc passes the embedded PTE and caller-owned memory arenas to nsx::executorch::run_once_profiled.
 
 The nsx-executorch module uses the standard ExecuTorch lifecycle: load Program, inspect the forward method, create MemoryManager objects, load the method, set inputs, execute, and retrieve outputs.
+
+## CMSIS-NN provider selection
+
+nsx-executorch no longer vendors CMSIS-NN/CMSIS_6 as git submodules. Instead
+it consumes the CMSIS-NN source tree from one of two NSX modules, selected at
+CMake configure time by `NSX_EXECUTORCH_CMSIS_NN_PROVIDER` (default `arm`):
+
+| Provider | NSX module | Upstream project | Version |
+| --- | --- | --- | --- |
+| `arm` (default) | `arm-cmsis-nn` | AmbiqAI/arm-cmsis-nn | v0.1.0 |
+| `ns` | `nsx-cmsis-nn` | AmbiqAI/ns-cmsis-nn | v7.29.2 |
+
+Both modules are listed in `nsx.yml` so `nsx lock`/`nsx sync` vendor both
+providers' pinned sources under `modules/` up front — this lets the toggle be
+flipped at configure time (`-DNSX_EXECUTORCH_CMSIS_NN_PROVIDER=ns`) without
+re-locking. Neither module is bootstrapped as a normal app dependency, though:
+`CMakeLists.txt` excludes both from the generic per-module `add_subdirectory()`
+loop and instead sets `NSX_EXECUTORCH_ARM_CMSIS_NN_ROOT` /
+`NSX_EXECUTORCH_NS_CMSIS_NN_ROOT` to point nsx-executorch's own provider
+resolution directly at the vendored checkout for the selected provider.
+
+nsx-executorch points stock ExecuTorch's own `CMSIS_NN_LOCAL_PATH` hook at
+the selected provider's source: for `arm`, `<arm-cmsis-nn root>/external/CMSIS-NN`
+(arm-cmsis-nn's own vendored upstream checkout — its wrapper `CMakeLists.txt`,
+which creates `nsx::arm_cmsis_nn`, is never `add_subdirectory()`'d for this);
+for `ns`, `<ns-cmsis-nn root>` itself (its upstream-compatible drop-in root).
+Either way, stock ExecuTorch's Cortex-M backend is the only thing that
+`add_subdirectory()`s that path, creating the single `cmsis-nn` target it
+expects. Also bootstrapping `arm-cmsis-nn` as a normal app module would
+`add_subdirectory()` its wrapper `CMakeLists.txt`, which itself does
+`if(NOT TARGET cmsis-nn) add_subdirectory(external/CMSIS-NN)` — creating
+`cmsis-nn` a first time before stock ExecuTorch tried to create it a second
+time from the same source, a hard CMake duplicate-target configure error.
+Only ever one CMSIS-NN provider is materialized per build, regardless of
+which is selected.
+
+The `arm` provider is the one validated end to end (build + flash + the
+2026-08-16 hardware run below). The `ns` provider builds and vendors cleanly
+through the same NSX toggle but has not yet been run on hardware in this
+example; the post-link `verify_cmsis_nn_symbols.cmake` check below assumes the
+`arm` provider's symbol set and is not expected to pass unmodified against `ns`.
 
 ## Supplied fixture contract
 
