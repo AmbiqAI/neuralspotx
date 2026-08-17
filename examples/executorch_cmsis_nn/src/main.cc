@@ -6,6 +6,7 @@
 #include "model_pte.h"
 #include "nsx_core.h"
 #include "nsx_executorch.h"
+#include "nsx_system.h"
 
 #ifndef NSX_EXECUTORCH_VALIDATION_HEADER
 #define NSX_EXECUTORCH_VALIDATION_HEADER "validation_data.h"
@@ -60,9 +61,21 @@ void end_operator(void *, std::uint32_t handle) {
 } // namespace
 
 int main() {
-  nsx_core_config_t config = {.api = &nsx_core_V1_0_0};
-  (void)nsx_core_init(&config);
-  nsx_itm_printf_enable();
+  nsx_system_config_t config = {};
+  config.perf_mode = NSX_PERF_LOW;
+  config.enable_cache = true;
+  config.enable_sram = true;
+  config.debug.transport = NSX_DEBUG_ITM;
+  config.skip_bsp_init = false;
+  config.spot_mgr_profile = true;
+  const std::uint32_t initialization_status = nsx_system_init(&config);
+  if (initialization_status != NSX_STATUS_SUCCESS) {
+    executorch_cmsis_nn_error = initialization_status;
+    executorch_cmsis_nn_status = 0x80000200UL;
+    while (true) {
+      nsx_delay_us(1000000);
+    }
+  }
 
   for (std::size_t index = 0; index < validation::kInputElementCount; ++index) {
     input[index] = validation::kInput[index];

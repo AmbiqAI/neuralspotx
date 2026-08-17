@@ -47,33 +47,35 @@ index, and elapsed DWT cycles. These identifiers can be mapped to model export
 metadata by Helia Profiler.
 
 On Cortex-M55, DWT CYCCNT aliases the PMU cycle counter. The packaged runtime
-enables the Apollo510 debug clock, PMU, and cycle counter itself; measurements
-therefore do not depend on an attached debugger. After the timed region, the
-example cleans D-cache so J-Link reads the same completed arrays printed over
-ITM.
+enables the Apollo510 debug clock, PMU, and cycle counter itself. The example
+also performs the normal NSX system initialization, including BSP setup,
+I/D-cache enablement, LP mode at 96 MHz, and the SpotManager profiling
+configuration. Measurements therefore do not depend on an attached debugger.
+After the timed region, the example cleans D-cache so J-Link reads the same
+completed arrays printed over ITM.
 
 The standalone 2026-08-16 run, with J-Link disconnected during inference,
-reported 24,400,935 total cycles. The 16 operator intervals summed to
-24,377,623 cycles, leaving 23,312 cycles of executor and callback overhead:
+reported 5,178,609 total cycles. The 16 operator intervals summed to
+5,173,144 cycles, leaving 5,465 cycles of executor and callback overhead:
 
 | Instruction | ResNet-8 operation | Cycles |
 | ---: | --- | ---: |
-| 0 | input quantize | 33,909 |
-| 1 | entry conv | 2,731,114 |
-| 2 | stage 0 conv 1 | 4,677,130 |
-| 3 | stage 0 conv 2 | 4,677,130 |
-| 4 | stage 0 residual add | 620,999 |
-| 5 | stage 1 conv 1 | 2,074,587 |
-| 6 | stage 1 conv 2 | 3,530,653 |
-| 7 | stage 1 skip conv | 499,450 |
-| 8 | stage 1 residual add | 311,751 |
-| 9 | stage 2 conv 1 | 1,677,581 |
-| 10 | stage 2 conv 2 | 3,046,425 |
-| 11 | stage 2 skip conv | 311,386 |
-| 12 | stage 2 residual add | 157,127 |
-| 13 | global average pool | 19,898 |
-| 14 | classifier (lowered as Conv2D) | 6,285 |
-| 15 | output dequantize | 2,198 |
+| 0 | input quantize | 13,863 |
+| 1 | entry conv | 740,434 |
+| 2 | stage 0 conv 1 | 997,184 |
+| 3 | stage 0 conv 2 | 997,202 |
+| 4 | stage 0 residual add | 218,735 |
+| 5 | stage 1 conv 1 | 412,786 |
+| 6 | stage 1 conv 2 | 611,335 |
+| 7 | stage 1 skip conv | 156,055 |
+| 8 | stage 1 residual add | 109,311 |
+| 9 | stage 2 conv 1 | 282,488 |
+| 10 | stage 2 conv 2 | 473,574 |
+| 11 | stage 2 skip conv | 91,776 |
+| 12 | stage 2 residual add | 55,090 |
+| 13 | global average pool | 9,742 |
+| 14 | classifier (lowered as Conv2D) | 2,318 |
+| 15 | output dequantize | 1,251 |
 
 The post-link verifier checks that the firmware contains the EventTracer-backed
 profiling runner and stock CMSIS-NN archive. It also rejects the old
