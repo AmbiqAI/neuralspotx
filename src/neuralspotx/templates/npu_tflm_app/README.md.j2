@@ -3,7 +3,9 @@
 NSX app template for running a TFLite Micro model on the Arm Ethos-U85 NPU
 ({{ board }}). Ships with:
 
-- **nsx-npu** — NPU power-up + Ethos-U core-driver init (`nsx_npu_init`)
+- **nsx-npu** — NPU power-up + Ethos-U core-driver init (`nsx_npu_init`),
+  built on top of **nsx-ethos-u-driver** (the board/SoC-agnostic upstream
+  Ethos-U driver, pulled in automatically as a `nsx-npu` dependency)
 - **nsx-helia-rt** — TFLM runtime with the ethos-u custom-op kernel enabled
   (`NSX_HELIA_RT_ENABLE_ETHOSU=ON`, see `CMakeLists.txt`)
 - `src/main.cc` — inference harness (zeros + pseudo-random noise inputs,

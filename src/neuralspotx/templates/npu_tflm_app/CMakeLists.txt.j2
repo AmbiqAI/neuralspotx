@@ -10,6 +10,12 @@ set(NSX_BOARD "{{ board }}" CACHE STRING "Target board")
 set(NSX_HELIA_RT_ENABLE_ETHOSU ON CACHE BOOL
     "Enable heliaRT Ethos-U custom-op dispatch")
 
+# NSX_HELIA_RT_BACKEND=helia (heliaRT's default) requires ns-cmsis-nn's fp32
+# kernels. Must be set before nsx-cmsis-nn is added (see
+# modules/ns-cmsis-nn/nsx/CMakeLists.txt) — hence before nsx_bootstrap_app().
+set(NSX_CMSIS_NN_ENABLE_F32 ON CACHE BOOL
+    "Enable ns-cmsis-nn fp32 kernels required by heliaRT")
+
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/nsx/modules.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/nsx/nsx_app_bootstrap.cmake)
 

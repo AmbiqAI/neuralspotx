@@ -35,7 +35,8 @@ aligned).
 | --- | --- |
 | Vela (offline) | Compiles the TFLite graph into an Ethos-U command stream wrapped in an `ethos-u` custom op |
 | heliaRT (`nsx-helia-rt`) | TFLM runtime; its ethos-u kernel is compiled against the real driver when `NSX_HELIA_RT_ENABLE_ETHOSU=ON` (see this app's `CMakeLists.txt`) |
-| `nsx-npu` | Powers the NPU domain, initializes the Ethos-U core driver, wires `am_npu_isr` → `ethosu_irq_handler` |
+| `nsx-ethos-u-driver` | Pristine upstream Ethos-U core driver (cache-coherency hooks, IRQ/inference-begin-end probes). Board- and SoC-agnostic; pulled in automatically as a `nsx-npu` dependency — no `nsx.yml` entry needed |
+| `nsx-npu` | Atomiq110-specific glue on top of `nsx-ethos-u-driver`: NPU power-domain sequencing, `am_npu_isr` → `nsx_ethos_u_irq` wiring, performance-mode selection |
 | This app | Registers `AddEthosU()` in the op resolver and invokes the interpreter |
 
 ## Build
@@ -43,9 +44,18 @@ aligned).
 ```bash
 cd neuralspotx/examples/npu_person_detect
 nsx lock      --app-dir .
+nsx sync      --app-dir .   # vendor nsx-ambiq-sdk (nsx-npu) + nsx-ethos-u-driver
 nsx configure --app-dir .
 nsx build     --app-dir .
 ```
+
+`nsx sync` vendors `nsx-ethos-u-driver` as its own module directory
+(`modules/nsx-ethos-u-driver/`), separate from the `nsx-ambiq-sdk` clone that
+provides `nsx-npu` — the two are independent upstream repos wired together
+purely through `nsx-npu`'s `depends.required` on `nsx-ethos-u-driver`. If you
+already have an older vendored copy on disk (predating this split, where
+`nsx-npu` vendored its own copy of the Ethos-U driver), run `nsx sync --force`
+once to re-vendor cleanly before `nsx configure`.
 
 ## Flash & View Output
 

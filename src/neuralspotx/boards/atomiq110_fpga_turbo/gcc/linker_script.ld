@@ -74,6 +74,7 @@ SECTIONS
     .heap (NOLOAD):
     {
         __heap_start__ = .;
+        __HeapBase = .;
         end = __heap_start__;
         _end = end;
         __end = end;
