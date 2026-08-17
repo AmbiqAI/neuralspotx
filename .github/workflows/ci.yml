@@ -321,7 +321,6 @@ jobs:
           fail=0
           for app in examples/*/; do
             [ -f "$app/nsx.yml" ] || continue
-            [ -f "${app}.ci-private" ] && continue
             # Every app commits a single combined nsx.lock (with a
             # targets: map); skip apps that have not been locked yet.
             [ -f "${app}nsx.lock" ] || continue
@@ -345,7 +344,6 @@ jobs:
         continue-on-error: true
         run: |
           for app in examples/*/; do
-            [ -f "${app}.ci-private" ] && continue
             compgen -G "${app}nsx*.lock" >/dev/null || continue
             echo "::group::outdated $app"
             uv run --group test nsx outdated --json --app-dir "$app" || true
@@ -388,7 +386,6 @@ jobs:
         run: |
           for app in examples/*/; do
             [ -f "$app/nsx.yml" ] || continue
-            [ -f "${app}.ci-private" ] && continue
             # Every app commits a single combined nsx.lock (with a
             # targets: map); skip apps that have not been locked yet.
             [ -f "${app}nsx.lock" ] || continue

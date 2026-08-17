@@ -24,15 +24,11 @@ import pytest
 EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "examples"
 
 # Discover every sub-directory that contains an nsx.yml.
-# Skip examples with external build dependencies or private modules that the
-# public CI environment cannot authenticate to.
+# Skip examples with a .ci-skip marker (they have external dependencies).
 _EXAMPLE_NAMES = sorted(
     d.name
     for d in EXAMPLES_DIR.iterdir()
-    if d.is_dir()
-    and (d / "nsx.yml").exists()
-    and not (d / ".ci-skip").exists()
-    and not (d / ".ci-private").exists()
+    if d.is_dir() and (d / "nsx.yml").exists() and not (d / ".ci-skip").exists()
 )
 
 _TOOLCHAIN = os.environ.get("NSX_TEST_TOOLCHAIN", "arm-none-eabi-gcc")
