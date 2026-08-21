@@ -26,6 +26,7 @@ def test_packaged_registry_floating_refs_are_exactly_allowlisted() -> None:
         ("neuralspotx", "fix/atomiq110-dso-handle"),
         ("helia-rt", "fix/atomiq110-compat"),
         ("nsx-ambiq-sdk", "feat/nsx-power-atomiq110"),
+        ("nsx-ethos-u-driver", "feat/registry-ready"),
     }
     assert {(use.project, use.revision) for use in report.approved_floating} == expected
     assert {
