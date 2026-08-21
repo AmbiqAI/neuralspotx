@@ -13,7 +13,10 @@ projects:
     # merges to main, then restore the main pin.
     revision: fix/atomiq110-dso-handle
     path: neuralspotx
-  # Unified SDK: one repo covering all non-Atomiq SoCs.
+  # Unified SDK: one repo covering all supported SoC families. The v5.2.24
+  # pin predates atomiq110; atomiq110 support (nsx-ambiq-sdk PR #46) rides
+  # the feat/nsx-power-atomiq110 pins below until that PR merges and a new
+  # tag exists.
   nsx-ambiq-sdk:
     name: nsx-ambiq-sdk
     url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
@@ -41,6 +44,14 @@ projects:
     url: https://github.com/AmbiqAI/helia-dsp.git
     revision: v1.0.0
     path: modules/helia-dsp
+  nsx-ethos-u-driver:
+    name: nsx-ethos-u-driver
+    url: https://github.com/AmbiqAI/nsx-ethos-u-driver.git
+    # Registry-resolvable driver (plain-file vendoring, deinit/init_ex API
+    # required by nsx-npu) is landing on feat/registry-ready. Pin there
+    # until it merges and release-please tags it, then pin the tag.
+    revision: feat/registry-ready
+    path: modules/nsx-ethos-u-driver
   helia-rt:
     name: helia-rt
     url: https://github.com/AmbiqAI/helia-rt.git
@@ -193,6 +204,12 @@ modules:
     project: nsx-ambiq-sdk
     revision: v5.2.24
     metadata: modules/nsx-power/nsx-module.yaml
+  # nsx-npu's driver dependency; resolved from the standalone repo (the
+  # SDK deliberately does not vendor it -- see nsx-ambiq-sdk PR #46).
+  nsx-ethos-u-driver:
+    project: nsx-ethos-u-driver
+    revision: feat/registry-ready
+    metadata: modules/nsx-ethos-u-driver/nsx-module.yaml
   # nsx-npu only exists on nsx-ambiq-sdk's open feat/nsx-power-atomiq110
   # branch. Pin the module there until that branch merges to main, then
   # collapse this back to main like the other nsx-ambiq-sdk modules.
