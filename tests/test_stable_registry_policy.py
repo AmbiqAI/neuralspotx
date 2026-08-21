@@ -26,7 +26,6 @@ def test_packaged_registry_floating_refs_are_exactly_allowlisted() -> None:
         ("neuralspotx", "fix/atomiq110-dso-handle"),
         ("helia-rt", "fix/atomiq110-compat"),
         ("nsx-ambiq-sdk", "feat/nsx-power-atomiq110"),
-        ("nsx-ethos-u-driver", "feat/registry-ready"),
     }
     assert {(use.project, use.revision) for use in report.approved_floating} == expected
     assert {
@@ -40,6 +39,10 @@ def test_packaged_registry_release_projects_are_immutable() -> None:
 
     assert registry["projects"]["nsx-ambiq-sdk"]["revision"] == "v5.2.24"
     assert registry["projects"]["nsx-pmu-armv8m"]["revision"] == "v0.2.0"
+    assert (
+        registry["projects"]["nsx-ethos-u-driver"]["revision"]
+        == "nsx-ethos-u-driver-v0.1.1"
+    )
     assert registry["projects"]["arm-cmsis-nn"]["revision"] == "v0.1.0"
     assert registry["projects"]["nsx-tflite-micro"]["revision"] == "v0.1.0"
     assert registry["projects"]["ns-cmsis-nn"]["revision"] == "v7.29.2"

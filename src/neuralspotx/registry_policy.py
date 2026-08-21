@@ -102,12 +102,6 @@ TEMPORARY_STABLE_FLOATING_REF_ALLOWLIST: Final[tuple[FloatingRefAllowance, ...]]
         reason="atomiq110 platform support and the nsx-npu module are only on this open branch.",
         removal_condition="Re-pin to the next nsx-ambiq-sdk release tag (> v5.2.24) once merged.",
     ),
-    FloatingRefAllowance(
-        project="nsx-ethos-u-driver",
-        revision="feat/registry-ready",
-        reason="Registry-resolvable vendoring and the deinit/init_ex API required by nsx-npu are only on this open branch.",
-        removal_condition="Re-pin to the first nsx-ethos-u-driver release tag once it merges and release-please tags it.",
-    ),
 )
 
 
