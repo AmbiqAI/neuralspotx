@@ -84,7 +84,7 @@ the packaged board/tooling content that ships directly from `neuralspotx`.
 | `nsx-tflite-micro` | :material-brain: ML | Helia-RT TensorFlow Lite Micro runtime adapter with reference and standard Arm CMSIS-NN backends. | All |
 | `nsx-cmsis-nn` | :material-brain: ML | heliaCORE kernels and NSX integration for ML inference workloads. | Apollo5B, Apollo510, Apollo510B, Apollo510L |
 | `nsx-helia-rt` | :material-brain: ML | Helia runtime integration for NSX-managed inference applications. | Apollo5B, Apollo510, Apollo510B, Apollo510L |
-| `nsx-ethos-u-driver` | :material-brain: ML | NSX integration of Arm's Ethos-U core driver — wraps the vendored upstream `ethos-u-core-driver` with NSX build glue, CMSIS-based cache coherency hooks, a board-supplied IRQ shim, and inference begin/end probes. Runtime-agnostic. | All (board/SoC-agnostic; a board opts in by setting `NSX_HAS_NPU=1` and supplying the NPU base address and IRQ number) |
+| `nsx-ethos-u-driver` | :material-brain: ML | NSX integration of Arm's Ethos-U core driver — wraps the vendored upstream `ethos-u-core-driver` with NSX build glue, CMSIS-based cache coherency hooks, a driver-supplied IRQ trampoline that boards wire into their vector table, and inference begin/end probes. Runtime-agnostic. | All |
 | `nsx-npu` | :material-brain: ML | Atomiq110 glue for the Arm Ethos-U85 NPU — power-domain sequencing, IRQ wiring, and performance-mode selection on top of `nsx-ethos-u-driver`. | Atomiq110 |
 | `helia-dsp` | :material-function-variant: DSP | NSX-packaged helia-dsp fork of CMSIS-DSP — FFT, filtering, and statistics kernels. | All |
 | `nsx-physiokit` | :material-heart-pulse: Biosignals | Physiologic signal-processing primitives for ECG, PPG, respiration, IMU, and HRV workflows. | All |
@@ -197,23 +197,21 @@ repo, and the SoC-specific glue that lives in the `nsx-ambiq-sdk` monorepo.
 
 | Module | What it provides | Typical use | More info |
 | --- | --- | --- | --- |
-| `nsx-ethos-u-driver` | Runtime-agnostic wrapper around the vendored upstream `ethos-u-core-driver` (24.08), exposed as `nsx::ethos_u_driver`. Supplies NSX build glue plus weak overrides for CMSIS cache coherency (`ethosu_flush_dcache`/`ethosu_invalidate_dcache` via `SCB_CleanDCache_by_Addr`/`SCB_InvalidateDCache_by_Addr`), a board-supplied IRQ shim (`nsx_ethos_u_init()`/`nsx_ethos_u_irq()`), identity address remap, and default `ethosu_inference_begin`/`ethosu_inference_end` probes. Requires `nsx-cmsis-core`, `nsx-core`, and `nsx-soc-hal`. | Ethos-U55/U65/U85 dispatch from HeliaAOT, HeliaRT, TFLM, or a bespoke C runtime, on any board that sets `NSX_HAS_NPU=1` and supplies the NPU base address and IRQ number. | [nsx-ethos-u-driver](https://github.com/AmbiqAI/nsx-ethos-u-driver/tree/nsx-ethos-u-driver-v0.1.1) |
-| `nsx-npu` | Atomiq110 glue for the Arm Ethos-U85 NPU, exposed as `nsx::npu` and layered on `nsx::ethos_u_driver`. Powers the NPU domain via `am_hal_pwrctrl_periph_enable`/`am_hal_pwrctrl_periph_disable`, owns the `am_npu_isr` → `nsx_ethos_u_irq` interrupt glue on IRQ 117, and selects the NPU performance mode via `am_hal_pwrctrl_npu_mode_select` (skippable with `skip_perf_mode` for FPGA/pre-silicon bring-up). Public API is `nsx_npu_init()`, `nsx_npu_deinit()`, and `nsx_npu_driver()`. Cache maintenance and inference probes are not here — they live in `nsx-ethos-u-driver`. | Bringing up the Ethos-U85 NPU on Atomiq110 so TFLM runtimes can dispatch Vela-compiled command streams. | [nsx-ambiq-sdk](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.24/modules/nsx-npu) |
+| `nsx-ethos-u-driver` | Runtime-agnostic wrapper around the vendored upstream `ethos-u-core-driver` (24.08), exposed as `nsx::ethos_u_driver`. Supplies NSX build glue, CMSIS-based cache-coherency overrides, a driver-supplied IRQ trampoline (`nsx_ethos_u_irq()`) that boards wire into their vector table, identity address remap, and default inference begin/end probes; linking it defines `NSX_HAS_NPU=1` on its public interface. Requires `nsx-cmsis-core`, `nsx-core`, and `nsx-soc-hal`. | Ethos-U55/U65/U85 dispatch from HeliaAOT, HeliaRT, TFLM, or a bespoke C runtime; the integrating layer supplies the NPU base address and IRQ wiring. | [nsx-ethos-u-driver](https://github.com/AmbiqAI/nsx-ethos-u-driver/tree/nsx-ethos-u-driver-v0.1.1) |
+| `nsx-npu` | Atomiq110 glue for the Arm Ethos-U85 NPU, exposed as `nsx::npu` and layered on `nsx::ethos_u_driver`: NPU power-domain sequencing, the board ISR → driver-trampoline interrupt wiring, and NPU performance-mode selection (skippable for FPGA/pre-silicon bring-up). Public API is `nsx_npu_init()`, `nsx_npu_deinit()`, and `nsx_npu_driver()`. Cache maintenance and inference probes are not here — they live in `nsx-ethos-u-driver`. | Bringing up the Ethos-U85 NPU on Atomiq110 so TFLM runtimes can dispatch Vela-compiled command streams. | [nsx-ambiq-sdk](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/main/modules/nsx-npu) |
 
-#### Cross-repo module dependencies
+### Cross-repo module dependencies
 
 A module's `nsx-module.yaml` `depends.required` list can name a module that
-lives in a different repository than the module itself. `nsx-npu` is the
-current example: it ships from the `nsx-ambiq-sdk` monorepo but requires
-`nsx-ethos-u-driver`, which has its own standalone repo. The registry lockfile
-(`src/neuralspotx/data/registry.lock.yaml`) pins each module's source project
-and revision independently, so the two are resolved separately and then
-materialized side-by-side under `modules/` at workspace assembly time.
-
-[examples/npu_person_detect](https://github.com/AmbiqAI/neuralspotx/tree/main/examples/npu_person_detect)
-is the consuming example. Its `nsx.yml` lists only `nsx-helia-rt` and
-`nsx-npu`; `nsx-ethos-u-driver` is pulled in transitively as an `nsx-npu`
-dependency rather than being requested directly.
+lives in a different repository: the registry lockfile pins each module's
+source project and revision independently and materializes them side by side
+under `modules/` at workspace assembly time (see the
+[metadata model](../architecture/metadata-model.md) for the general
+mechanism). `nsx-npu` is the worked example — it ships from the
+`nsx-ambiq-sdk` monorepo but requires `nsx-ethos-u-driver` from its own
+standalone repo, so the [npu_person_detect example](../examples/npu_person_detect.md)
+lists only `nsx-helia-rt` and `nsx-npu` in its `nsx.yml`, and
+`nsx-ethos-u-driver` is pulled in transitively.
 
 ### Peripheral and Bus Modules
 
