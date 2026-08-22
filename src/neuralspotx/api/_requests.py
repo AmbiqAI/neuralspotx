@@ -25,6 +25,7 @@ class AppCreateRequest:
         soc: Optional SoC override. When omitted, NSX infers it from ``board``.
         force: Allow writing into a non-empty app directory.
         no_bootstrap: Skip starter-module initialization.
+        template: App template name (see ``operations.APP_TEMPLATES``).
     """
 
     app_dir: PathLike
@@ -32,6 +33,7 @@ class AppCreateRequest:
     soc: str | None = None
     force: bool = False
     no_bootstrap: bool = False
+    template: str = "default"
 
 
 @dataclass(slots=True)
@@ -60,6 +62,8 @@ class AppActionRequest:
         board: Optional board override.
         build_dir: Optional build directory override.
         toolchain: Optional toolchain override (``gcc``, ``armclang``).
+        sdk_root: Optional out-of-tree AmbiqSuite root passed through as
+            ``-DNSX_AMBIQSUITE_ROOT_OVERRIDE=...`` during CMake configure.
         frozen: When a module sync is needed (fresh workspace, or an
             existing build directory reconfiguring), verify ``modules/``
             against ``nsx.lock`` and raise instead of silently
@@ -86,6 +90,7 @@ class AppActionRequest:
     build_dir: PathLike | None = None
     toolchain: str | None = None
     probe_serial: str | None = None
+    sdk_root: PathLike | None = field(default=None, kw_only=True)
     frozen: bool = field(default=False, kw_only=True)
     timeout_s: float | None = field(default=None, kw_only=True)
 

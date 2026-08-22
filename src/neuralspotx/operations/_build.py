@@ -80,6 +80,7 @@ def configure_app_impl(
     build_dir: Path | None = None,
     toolchain: str | None = None,
     probe_serial: str | None = None,
+    sdk_root: Path | None = None,
     frozen: bool = False,
 ) -> Path:
     """Configure an app with CMake.
@@ -110,6 +111,7 @@ def configure_app_impl(
         resolved_board,
         toolchain=toolchain,
         probe_serial=probe_serial,
+        sdk_root=sdk_root,
     )
     info(f"Configured app at: {resolved_app_dir}")
     info(f"Build directory: {resolved_build_dir}")
@@ -124,6 +126,7 @@ def build_app_impl(
     toolchain: str | None = None,
     target: str | None = None,
     jobs: int = 8,
+    sdk_root: Path | None = None,
     frozen: bool = False,
     on_line: "Callable[[str], None] | None" = None,
 ) -> Path:
@@ -146,7 +149,11 @@ def build_app_impl(
     if not (resolved_build_dir / "build.ninja").exists():
         _ensure_app_modules(resolved_app_dir, resolved_board, frozen=frozen)
         _run_cmake_configure(
-            resolved_app_dir, resolved_build_dir, resolved_board, toolchain=toolchain
+            resolved_app_dir,
+            resolved_build_dir,
+            resolved_board,
+            toolchain=toolchain,
+            sdk_root=sdk_root,
         )
     resolved_target = target or app_name
     run(
@@ -165,6 +172,7 @@ def flash_app_impl(
     target: str | None = None,
     probe_serial: str | None = None,
     jobs: int = 8,
+    sdk_root: Path | None = None,
     frozen: bool = False,
     on_line: "Callable[[str], None] | None" = None,
 ) -> FlashResult:
@@ -209,6 +217,7 @@ def flash_app_impl(
             resolved_board,
             toolchain=toolchain,
             probe_serial=probe_serial,
+            sdk_root=sdk_root,
         )
     resolved_target = target or app_name
     validate_flash_target_name(resolved_target)
@@ -400,6 +409,7 @@ def view_app_impl(
     build_dir: Path | None = None,
     toolchain: str | None = None,
     probe_serial: str | None = None,
+    sdk_root: Path | None = None,
     frozen: bool = False,
     reset_on_open: bool | None = None,
     reset_delay_ms: int = 400,
@@ -442,6 +452,7 @@ def view_app_impl(
             resolved_board,
             toolchain=toolchain,
             probe_serial=probe_serial,
+            sdk_root=sdk_root,
         )
     target = f"{app_name}_view"
     view_cmd = extract_view_command(resolved_build_dir, target)

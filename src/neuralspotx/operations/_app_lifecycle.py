@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib.resources as resources
 import json
 import shutil
+from dataclasses import dataclass, field
 from pathlib import Path
 
 from .._errors import NSXConfigError, NSXModuleError
@@ -47,7 +48,13 @@ from ._common import (
 )
 
 
-def _save_lean_app_manifest(app_dir: Path, nsx_cfg: dict, *, baseline_none: bool = False) -> None:
+def _save_lean_app_manifest(
+    app_dir: Path,
+    nsx_cfg: dict,
+    *,
+    baseline_none: bool = False,
+    keep_modules: tuple[str, ...] = (),
+) -> None:
     """Persist a lean manifest: empty direct deps, no app-level registry.
 
     The board profile is the implicit baseline, so a freshly created app
@@ -59,13 +66,48 @@ def _save_lean_app_manifest(app_dir: Path, nsx_cfg: dict, *, baseline_none: bool
     also records ``baseline: none`` so the empty ``modules:`` list is the
     authoritative closure and ``nsx lock`` does *not* re-seed the board
     profile baseline.
+
+    *keep_modules* names direct dependencies that must survive in the lean
+    manifest (template-seeded modules the profile baseline does not imply).
     """
     lean = dict(nsx_cfg)
-    lean["modules"] = []
+    lean["modules"] = [{"name": name} for name in keep_modules]
     lean.pop("module_registry", None)
     if baseline_none:
         lean["baseline"] = "none"
     _save_app_cfg(app_dir, lean)
+
+
+@dataclass(frozen=True, slots=True)
+class AppTemplate:
+    """A packaged app-scaffold flavor selectable via ``create-app --template``.
+
+    Attributes:
+        template_dir: Directory name under ``neuralspotx/templates``.
+        modules: Direct-dependency module names seeded into the app's
+            ``nsx.yml`` in addition to the board-profile baseline.
+        description: One-line help text for CLI/docs.
+    """
+
+    template_dir: str
+    modules: tuple[str, ...] = field(default=())
+    description: str = ""
+
+
+APP_TEMPLATES: dict[str, AppTemplate] = {
+    "default": AppTemplate(
+        template_dir="external_app",
+        description="Minimal hello-world app (SWO printf loop).",
+    ),
+    "npu-tflm": AppTemplate(
+        template_dir="npu_tflm_app",
+        modules=("nsx-helia-rt", "nsx-npu"),
+        description=(
+            "TFLite Micro inference on the Ethos-U85 NPU "
+            "(Vela model harness, heliaRT ethos-u dispatch)."
+        ),
+    ),
+}
 
 
 def create_app_impl(
@@ -75,6 +117,7 @@ def create_app_impl(
     soc: str | None = None,
     force: bool = False,
     no_bootstrap: bool = False,
+    template: str = "default",
 ) -> Path:
     """Create a new NSX app and clone its starter modules.
 
@@ -84,10 +127,16 @@ def create_app_impl(
         soc: Optional SoC override.
         force: Allow writing into a non-empty app directory.
         no_bootstrap: Skip starter-module cloning.
+        template: App template name (see :data:`APP_TEMPLATES`).
 
     Returns:
         The created app directory.
     """
+
+    app_template = APP_TEMPLATES.get(template)
+    if app_template is None:
+        known = ", ".join(sorted(APP_TEMPLATES))
+        raise NSXConfigError(f"Unknown app template '{template}'. Known templates: {known}")
 
     base_registry = _load_registry()
     app_name = app_dir.name
@@ -99,7 +148,7 @@ def create_app_impl(
     if soc is None:
         raise NSXConfigError(f"Unable to infer --soc for board '{board}'. Pass --soc explicitly.")
 
-    template_root = resources.files("neuralspotx.templates").joinpath("external_app")
+    template_root = resources.files("neuralspotx.templates").joinpath(app_template.template_dir)
     with resources.as_file(template_root) as src_template:
         if not src_template.exists():
             raise NSXConfigError(f"Template directory not found: {src_template}")
@@ -128,6 +177,7 @@ def create_app_impl(
             soc=soc,
             base_registry=base_registry,
             no_bootstrap=no_bootstrap,
+            template_modules=app_template.modules,
         )
     except Exception:
         if created_fresh:
@@ -149,6 +199,7 @@ def _create_app_body(
     soc: str,
     base_registry: dict,
     no_bootstrap: bool,
+    template_modules: tuple[str, ...] = (),
 ) -> Path:
     """Inner body of create_app_impl, separated for rollback wrapping."""
 
@@ -167,9 +218,17 @@ def _create_app_body(
         nsx_version=current_nsx_version,
         nsx_major=current_nsx_major,
     )
+    # Template-selected direct dependencies join the profile baseline as
+    # additional closure seeds, and survive in the lean manifest below.
+    declared = _module_names_from_nsx(nsx_cfg)
+    nsx_cfg["modules"] = list(nsx_cfg.get("modules") or []) + [
+        {"name": name} for name in template_modules if name not in declared
+    ]
     if no_bootstrap:
-        _save_lean_app_manifest(app_dir, nsx_cfg, baseline_none=True)
-        nsx_cfg["modules"] = []
+        _save_lean_app_manifest(
+            app_dir, nsx_cfg, baseline_none=True, keep_modules=template_modules
+        )
+        nsx_cfg["modules"] = [{"name": name} for name in template_modules]
         _write_app_module_file(app_dir, nsx_cfg)
         _write_modules_gitignore(app_dir, nsx_cfg)
         info(f"Created app '{app_name}' at: {app_dir}")
@@ -202,7 +261,7 @@ def _create_app_body(
     # Acquire any transitive dependencies discovered during resolution.
     _acquire_modules_for_app(app_dir, starter_modules, registry)
     _write_modules_gitignore(app_dir, nsx_cfg)
-    _save_lean_app_manifest(app_dir, nsx_cfg)
+    _save_lean_app_manifest(app_dir, nsx_cfg, keep_modules=template_modules)
     if nsx_cfg.get("profile_status") == ProfileStatus.SCAFFOLD:
         warn(
             f"NOTE: profile '{nsx_cfg.get('profile')}' is scaffold-only. "

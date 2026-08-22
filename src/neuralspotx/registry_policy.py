@@ -84,6 +84,24 @@ TEMPORARY_STABLE_FLOATING_REF_ALLOWLIST: Final[tuple[FloatingRefAllowance, ...]]
         reason="Packaged board and tooling modules currently resolve from this release branch.",
         removal_condition="Replace packaged self-references with the released neuralspotx tag or SHA.",
     ),
+    FloatingRefAllowance(
+        project="neuralspotx",
+        revision="fix/atomiq110-dso-handle",
+        reason="atomiq110 board module only exists on this open branch.",
+        removal_condition="Collapse to main once the atomiq110 support PR merges.",
+    ),
+    FloatingRefAllowance(
+        project="helia-rt",
+        revision="fix/atomiq110-compat",
+        reason="Ethos-U wrapper plumbing + atomiq110 compatibility are only on this open branch.",
+        removal_condition="Re-pin to the next helia-rt release tag (> v1.16.0) once merged.",
+    ),
+    FloatingRefAllowance(
+        project="nsx-ambiq-sdk",
+        revision="feat/nsx-power-atomiq110",
+        reason="atomiq110 platform support and the nsx-npu module are only on this open branch.",
+        removal_condition="Re-pin to the next nsx-ambiq-sdk release tag (> v5.2.24) once merged.",
+    ),
 )
 
 

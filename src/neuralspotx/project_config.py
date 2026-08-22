@@ -1188,6 +1188,7 @@ def _run_cmake_configure(
     board: str,
     toolchain: str | None = None,
     probe_serial: str | None = None,
+    sdk_root: Path | None = None,
 ) -> None:
     from .constants import DEFAULT_TOOLCHAIN, EXPERIMENTAL_TOOLCHAINS, SUPPORTED_TOOLCHAINS
 
@@ -1232,6 +1233,8 @@ def _run_cmake_configure(
         "-DCMAKE_BUILD_TYPE=Release",
         f"-DNSX_BOARD={board}",
     ]
+    if sdk_root is not None:
+        cmd.append(f"-DNSX_AMBIQSUITE_ROOT_OVERRIDE={sdk_root}")
     # Always set the cache entry, including an empty value, so a caller can
     # return from explicit probe selection to CMake/J-Link auto-selection.
     cmd.append(f"-DNSX_JLINK_SERIAL={probe_serial or ''}")

@@ -1,0 +1,37 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026, Ambiq
+cmake_minimum_required(VERSION 3.24)
+project({{ app_name }} LANGUAGES C CXX ASM)
+
+set(NSX_BOARD "{{ board }}" CACHE STRING "Target board")
+
+# Compile heliaRT's ethos-u custom-op kernel against the real Ethos-U core
+# driver (provided by the nsx-npu module) instead of the null stub.
+set(NSX_HELIA_RT_ENABLE_ETHOSU ON CACHE BOOL
+    "Enable heliaRT Ethos-U custom-op dispatch")
+
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/nsx/modules.cmake)
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/nsx/nsx_app_bootstrap.cmake)
+
+nsx_bootstrap_app(
+    APP_ROOT "${CMAKE_CURRENT_LIST_DIR}"
+    BOARD "${NSX_BOARD}"
+    MODULES ${NSX_APP_MODULES}
+)
+
+add_executable({{ app_name }}
+    src/main.cc
+)
+
+target_include_directories({{ app_name }} PRIVATE
+    ${CMAKE_CURRENT_LIST_DIR}/src
+)
+
+target_link_libraries({{ app_name }} PRIVATE
+    nsx::board_{{ board }}
+    nsx::runtime_core
+    nsx::helia_rt
+    nsx::npu
+)
+
+nsx_finalize_app({{ app_name }})

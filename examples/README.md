@@ -25,10 +25,12 @@ nsx view      --app-dir .        # (optional) SWO viewer
 | `power_benchmark` | `nsx-power`, `nsx-gpio`, `nsx-timer`, `nsx-interrupt` | Three-phase power measurement firmware |
 | `pmu_profiling` | `nsx-pmu-armv8m` | PMU cycle and event counting |
 | `kws_infer` | `nsx-power`, `nsx-pmu-armv8m`, `nsx-helia-rt` | Keyword-spotting TFLite Micro inference |
+| `npu_person_detect` | `nsx-helia-rt`, `nsx-npu` | Person detection on the Ethos-U85 NPU (Vela) |
 | `audio_capture` | `nsx-audio` | PDM microphone capture and SWO statistics |
 | `ble_webble` | `nsx-freertos`, `nsx-cordio`, `nsx-ble` | Bluetooth LE peripheral with app-owned stack policy |
 | `usb_serial` | `nsx-ambiq-usb`, `nsx-usb`, `nsx-timer`, `nsx-interrupt` | USB CDC echo |
 | `usb_rpc` | `nsx-usb`, `nsx-nanopb` | USB RPC with protobuf serialization |
+
 
 Most examples default to the **Apollo510 EVB** (`apollo510_evb`). Each
 manifest's `targets.default` and `targets.supported` fields are the source of

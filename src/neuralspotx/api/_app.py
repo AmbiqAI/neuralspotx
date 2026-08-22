@@ -30,6 +30,7 @@ def create_app(
     soc: str | None = None,
     force: bool = False,
     no_bootstrap: bool = False,
+    template: str = "default",
     emit: Emitter | None = None,
 ) -> Path:
     """Create a new NSX app project.
@@ -40,6 +41,7 @@ def create_app(
         soc: Optional SoC override.
         force: Allow writing into a non-empty app directory.
         no_bootstrap: Skip starter-module initialization.
+        template: App template name (see ``operations.APP_TEMPLATES``).
 
     Returns:
         The resolved app-root :class:`pathlib.Path`. Suitable for
@@ -55,6 +57,7 @@ def create_app(
             soc=soc,
             force=force,
             no_bootstrap=no_bootstrap,
+            template=template,
         )
     )
     with using_emitter(emit):
@@ -64,6 +67,7 @@ def create_app(
             soc=request.soc,
             force=request.force,
             no_bootstrap=request.no_bootstrap,
+            template=request.template,
         )
 
 
@@ -88,6 +92,7 @@ def configure_app(
     build_dir: PathLike | None = None,
     toolchain: str | None = None,
     probe_serial: str | None = None,
+    sdk_root: PathLike | None = None,
     frozen: bool = False,
     timeout_s: float | None = None,
     emit: Emitter | None = None,
@@ -110,6 +115,7 @@ def configure_app(
             build_dir=build_dir,
             toolchain=toolchain,
             probe_serial=probe_serial,
+            sdk_root=sdk_root,
             frozen=frozen,
             timeout_s=timeout_s,
         )
@@ -121,6 +127,7 @@ def configure_app(
             build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
             toolchain=request.toolchain,
             probe_serial=request.probe_serial,
+            sdk_root=Path(request.sdk_root).expanduser().resolve() if request.sdk_root else None,
             frozen=request.frozen,
         )
 
@@ -133,6 +140,7 @@ def build_app(
     toolchain: str | None = None,
     target: str | None = None,
     jobs: int = 8,
+    sdk_root: PathLike | None = None,
     frozen: bool = False,
     timeout_s: float | None = None,
     emit: Emitter | None = None,
@@ -159,6 +167,7 @@ def build_app(
             toolchain=toolchain,
             target=target,
             jobs=jobs,
+            sdk_root=sdk_root,
             frozen=frozen,
             timeout_s=timeout_s,
         )
@@ -171,6 +180,7 @@ def build_app(
             toolchain=request.toolchain,
             target=request.target,
             jobs=request.jobs,
+            sdk_root=Path(request.sdk_root).expanduser().resolve() if request.sdk_root else None,
             frozen=request.frozen,
             on_line=on_line,
         )
@@ -185,6 +195,7 @@ def flash_app(
     target: str | None = None,
     probe_serial: str | None = None,
     jobs: int = 8,
+    sdk_root: PathLike | None = None,
     frozen: bool = False,
     timeout_s: float | None = None,
     emit: Emitter | None = None,
@@ -214,6 +225,7 @@ def flash_app(
             target=target,
             probe_serial=probe_serial,
             jobs=jobs,
+            sdk_root=sdk_root,
             frozen=frozen,
             timeout_s=timeout_s,
         )
@@ -227,6 +239,7 @@ def flash_app(
             target=request.target,
             probe_serial=request.probe_serial,
             jobs=request.jobs,
+            sdk_root=Path(request.sdk_root).expanduser().resolve() if request.sdk_root else None,
             frozen=request.frozen,
             on_line=on_line,
         )
@@ -269,6 +282,7 @@ def view_app(
     build_dir: PathLike | None = None,
     toolchain: str | None = None,
     probe_serial: str | None = None,
+    sdk_root: PathLike | None = None,
     frozen: bool = False,
     reset_on_open: bool | None = None,
     reset_delay_ms: int = 400,
@@ -294,6 +308,7 @@ def view_app(
             build_dir=build_dir,
             toolchain=toolchain,
             probe_serial=probe_serial,
+            sdk_root=sdk_root,
             frozen=frozen,
             reset_on_open=reset_on_open,
             reset_delay_ms=reset_delay_ms,
@@ -309,6 +324,7 @@ def view_app(
             build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
             toolchain=request.toolchain,
             probe_serial=request.probe_serial,
+            sdk_root=Path(request.sdk_root).expanduser().resolve() if request.sdk_root else None,
             frozen=request.frozen,
             reset_on_open=request.reset_on_open,
             reset_delay_ms=request.reset_delay_ms,
