@@ -54,8 +54,8 @@ modules across the `r3`, `r4`, and `r5` lines.
 Only a small set of first-class modules are currently sourced from separate
 repositories, notably `nsx-pmu-armv8m`, `arm-cmsis-nn`, `nsx-tflite-micro`,
 `nsx-cmsis-nn`, `nsx-helia-rt`, `nsx-nanopb`, `helia-dsp`, `nsx-physiokit`,
-`nsx-tileio-ble`, `nsx-tileio-usb`, `nsx-sensors`, and the packaged
-board/tooling content that ships directly from `neuralspotx`.
+`nsx-tileio-ble`, `nsx-tileio-usb`, `nsx-sensors`, `nsx-ethos-u-driver`, and
+the packaged board/tooling content that ships directly from `neuralspotx`.
 
 | Module | Category | Description | SoC Support |
 | --- | --- | --- | --- |
@@ -84,6 +84,8 @@ board/tooling content that ships directly from `neuralspotx`.
 | `nsx-tflite-micro` | :material-brain: ML | Helia-RT TensorFlow Lite Micro runtime adapter with reference and standard Arm CMSIS-NN backends. | All |
 | `nsx-cmsis-nn` | :material-brain: ML | heliaCORE kernels and NSX integration for ML inference workloads. | Apollo5B, Apollo510, Apollo510B, Apollo510L |
 | `nsx-helia-rt` | :material-brain: ML | Helia runtime integration for NSX-managed inference applications. | Apollo5B, Apollo510, Apollo510B, Apollo510L |
+| `nsx-ethos-u-driver` | :material-brain: ML | NSX integration of Arm's Ethos-U core driver — wraps the vendored upstream `ethos-u-core-driver` with NSX build glue, CMSIS-based cache coherency hooks, a board-supplied IRQ shim, and inference begin/end probes. Runtime-agnostic. | All (board/SoC-agnostic; a board opts in by setting `NSX_HAS_NPU=1` and supplying the NPU base address and IRQ number) |
+| `nsx-npu` | :material-brain: ML | Atomiq110 glue for the Arm Ethos-U85 NPU — power-domain sequencing, IRQ wiring, and performance-mode selection on top of `nsx-ethos-u-driver`. | Atomiq110 |
 | `helia-dsp` | :material-function-variant: DSP | NSX-packaged helia-dsp fork of CMSIS-DSP — FFT, filtering, and statistics kernels. | All |
 | `nsx-physiokit` | :material-heart-pulse: Biosignals | Physiologic signal-processing primitives for ECG, PPG, respiration, IMU, and HRV workflows. | All |
 | `nsx-tileio-ble` | :material-bluetooth: Wireless | Tileio BLE transport wrapper on top of `nsx-ble`. | Apollo3, 3P, 510B, 4P Blue |
@@ -185,6 +187,33 @@ separate upstream repositories instead of the unified `nsx-ambiq-sdk` monorepo.
 | `nsx-physiokit` | Physiologic signal-processing primitives for ECG, PPG, respiration, IMU, and HRV workflows, built on `helia-dsp`. | Wearable-vitals prototyping, heart-rate/respiration analytics, and embedded biosignal preprocessing. | [nsx-physiokit](https://github.com/AmbiqAI/nsx-physiokit/tree/v0.1.0) |
 | `nsx-tileio-ble` | Tileio BLE transport wrapper on top of `nsx-ble`. | Stream Tileio slot data and UIO state over BLE GATT notifications. | [nsx-tileio](https://github.com/AmbiqAI/nsx-tileio/tree/v0.1.0) |
 | `nsx-tileio-usb` | Tileio USB transport wrapper on top of `nsx-usb`. | Stream Tileio slot data and UIO updates over a USB vendor transport. | [nsx-tileio](https://github.com/AmbiqAI/nsx-tileio/tree/v0.1.0) |
+| `nsx-ethos-u-driver` | NSX integration of Arm's Ethos-U core driver, exposed as `nsx::ethos_u_driver`. | Ethos-U NPU dispatch for HeliaAOT, HeliaRT, TFLM, and bespoke C runtimes. | [nsx-ethos-u-driver](https://github.com/AmbiqAI/nsx-ethos-u-driver/tree/nsx-ethos-u-driver-v0.1.1) |
+
+### NPU / ML Acceleration Modules
+
+Ethos-U NPU support spans two modules that live in two different repositories:
+a runtime-agnostic core-driver integration sourced from its own standalone
+repo, and the SoC-specific glue that lives in the `nsx-ambiq-sdk` monorepo.
+
+| Module | What it provides | Typical use | More info |
+| --- | --- | --- | --- |
+| `nsx-ethos-u-driver` | Runtime-agnostic wrapper around the vendored upstream `ethos-u-core-driver` (24.08), exposed as `nsx::ethos_u_driver`. Supplies NSX build glue plus weak overrides for CMSIS cache coherency (`ethosu_flush_dcache`/`ethosu_invalidate_dcache` via `SCB_CleanDCache_by_Addr`/`SCB_InvalidateDCache_by_Addr`), a board-supplied IRQ shim (`nsx_ethos_u_init()`/`nsx_ethos_u_irq()`), identity address remap, and default `ethosu_inference_begin`/`ethosu_inference_end` probes. Requires `nsx-cmsis-core`, `nsx-core`, and `nsx-soc-hal`. | Ethos-U55/U65/U85 dispatch from HeliaAOT, HeliaRT, TFLM, or a bespoke C runtime, on any board that sets `NSX_HAS_NPU=1` and supplies the NPU base address and IRQ number. | [nsx-ethos-u-driver](https://github.com/AmbiqAI/nsx-ethos-u-driver/tree/nsx-ethos-u-driver-v0.1.1) |
+| `nsx-npu` | Atomiq110 glue for the Arm Ethos-U85 NPU, exposed as `nsx::npu` and layered on `nsx::ethos_u_driver`. Powers the NPU domain via `am_hal_pwrctrl_periph_enable`/`am_hal_pwrctrl_periph_disable`, owns the `am_npu_isr` → `nsx_ethos_u_irq` interrupt glue on IRQ 117, and selects the NPU performance mode via `am_hal_pwrctrl_npu_mode_select` (skippable with `skip_perf_mode` for FPGA/pre-silicon bring-up). Public API is `nsx_npu_init()`, `nsx_npu_deinit()`, and `nsx_npu_driver()`. Cache maintenance and inference probes are not here — they live in `nsx-ethos-u-driver`. | Bringing up the Ethos-U85 NPU on Atomiq110 so TFLM runtimes can dispatch Vela-compiled command streams. | [nsx-ambiq-sdk](https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.24/modules/nsx-npu) |
+
+#### Cross-repo module dependencies
+
+A module's `nsx-module.yaml` `depends.required` list can name a module that
+lives in a different repository than the module itself. `nsx-npu` is the
+current example: it ships from the `nsx-ambiq-sdk` monorepo but requires
+`nsx-ethos-u-driver`, which has its own standalone repo. The registry lockfile
+(`src/neuralspotx/data/registry.lock.yaml`) pins each module's source project
+and revision independently, so the two are resolved separately and then
+materialized side-by-side under `modules/` at workspace assembly time.
+
+[examples/npu_person_detect](https://github.com/AmbiqAI/neuralspotx/tree/main/examples/npu_person_detect)
+is the consuming example. Its `nsx.yml` lists only `nsx-helia-rt` and
+`nsx-npu`; `nsx-ethos-u-driver` is pulled in transitively as an `nsx-npu`
+dependency rather than being requested directly.
 
 ### Peripheral and Bus Modules
 
