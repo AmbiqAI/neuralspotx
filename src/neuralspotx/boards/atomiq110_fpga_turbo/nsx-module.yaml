@@ -34,3 +34,5 @@ compatibility:
     - atomiq110
   toolchains:
     - arm-none-eabi-gcc
+    - atfe
+    - armclang
