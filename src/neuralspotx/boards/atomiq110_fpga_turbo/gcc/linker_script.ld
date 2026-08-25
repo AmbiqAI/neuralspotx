@@ -9,7 +9,7 @@ MEMORY
 {
     MCU_MRAM     (rx)  : ORIGIN = 0x22000000, LENGTH = 4194304
     MCU_TCM      (rwx) : ORIGIN = 0x20000000, LENGTH = 507904
-    SHARED_SRAM  (rwx) : ORIGIN = 0x21000000, LENGTH = 4194304
+    SHARED_SRAM  (rwx) : ORIGIN = 0x21000000, LENGTH = 3145728 /* 3 MB powered SSRAM (3x1MB blocks, PWRENSSRAM=7); upper 1 MB of the 4 MB aperture is unpopulated */
     STACK        (rw)  : ORIGIN = 0x2007D000, LENGTH = 12288
     HEAP         (rw)  : ORIGIN = 0x2007C000, LENGTH = 4096
 }
