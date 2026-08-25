@@ -2,13 +2,19 @@
 
 from __future__ import annotations
 
+import glob
+import tomllib
 from pathlib import Path
 
 import pytest
 import yaml
 
+import neuralspotx
 from neuralspotx._errors import NSXConfigError
 from neuralspotx.operations import APP_TEMPLATES, create_app_impl
+
+REPO_ROOT = Path(__file__).resolve().parent.parent
+PACKAGE_DIR = Path(neuralspotx.__file__).resolve().parent
 
 
 def test_app_templates_registry_shape() -> None:
@@ -16,6 +22,56 @@ def test_app_templates_registry_shape() -> None:
     assert "npu-tflm" in APP_TEMPLATES
     assert APP_TEMPLATES["default"].modules == ()
     assert APP_TEMPLATES["npu-tflm"].modules == ("nsx-helia-rt", "nsx-npu")
+
+
+def _package_data_files() -> set[Path]:
+    """Every package-relative file the ``neuralspotx`` package-data globs select.
+
+    Mirrors setuptools' ``build_py.find_data_files``, which expands each
+    ``[tool.setuptools.package-data]`` pattern with
+    ``glob.glob(..., recursive=True)`` relative to the package directory.
+    Using ``glob`` itself (rather than ``fnmatch``) keeps the exact quirks:
+    ``**`` spans zero or more directories, and a ``*`` never matches a
+    leading-dot name, so dotfiles need their own pattern.
+    """
+
+    pyproject = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    patterns = pyproject["tool"]["setuptools"]["package-data"]["neuralspotx"]
+    matched: set[Path] = set()
+    for pattern in patterns:
+        for hit in glob.glob(pattern, root_dir=PACKAGE_DIR, recursive=True):
+            if (PACKAGE_DIR / hit).is_file():
+                matched.add(Path(hit))
+    return matched
+
+
+def test_app_template_files_are_packaged() -> None:
+    """Every file of every ``APP_TEMPLATES`` entry must ship in the wheel.
+
+    A template directory that is on disk in a checkout but missing from
+    ``package-data`` renders fine under ``pip install -e`` and then fails for
+    every ``pipx`` user, so the packaging contract is asserted here without
+    building a wheel.
+    """
+
+    packaged = _package_data_files()
+    missing: list[str] = []
+    for name, template in APP_TEMPLATES.items():
+        template_dir = PACKAGE_DIR / "templates" / template.template_dir
+        assert template_dir.is_dir(), f"{name}: {template_dir} is not a directory"
+        files = sorted(
+            path.relative_to(PACKAGE_DIR)
+            for path in template_dir.rglob("*")
+            if path.is_file()
+        )
+        assert files, f"{name}: template directory {template_dir} is empty"
+        missing.extend(
+            f"{name}: {rel.as_posix()}" for rel in files if rel not in packaged
+        )
+    assert not missing, (
+        "Template files not selected by any [tool.setuptools.package-data] glob "
+        "in pyproject.toml:\n  " + "\n  ".join(missing)
+    )
 
 
 def test_unknown_template_is_rejected(tmp_path: Path) -> None:

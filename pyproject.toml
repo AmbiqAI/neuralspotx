@@ -81,6 +81,11 @@ neuralspotx = [
     "py.typed",
     "templates/external_app/**/*",
     "templates/module_skeleton/**/*",
+    "templates/npu_tflm_app/**/*",
+    # setuptools expands these with glob(recursive=True), which never matches
+    # dotfiles under `**/*`; the app-template .gitignore needs its own entry.
+    # Guarded by tests/test_app_templates.py::test_app_template_files_are_packaged.
+    "templates/*/.gitignore",
     "cmake/**/*",
     "boards/**/*",
 ]

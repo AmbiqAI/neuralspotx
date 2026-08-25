@@ -1,8 +1,10 @@
 ## CALLS
 nsx_load_soc_facts: atomiq110
 nsx_soc_flags_target: nsx_soc_atomiq110_flags
-nsx_assert_file_exists: /stub/app/boards/atomiq110_fpga_turbo/gcc/linker_script.ld
-nsx_assert_file_exists: /stub/app/boards/atomiq110_fpga_turbo/gcc/startup_gcc.c
+nsx_module_dir_for_name: _nsx_core_module_dir;nsx-core
+nsx_select_linker_script: DEFAULT;/stub/app/modules/nsx-core/src/atomiq110/gcc/linker_script_nbl.ld;ITCM;/stub/app/modules/nsx-core/src/atomiq110/gcc/linker_script_itcm_nbl.ld
+nsx_assert_file_exists: /stub/app/modules/nsx-core/src/atomiq110/gcc/linker_script_nbl.ld
+nsx_assert_file_exists: /stub/app/modules/nsx-core/src/atomiq110/gcc/startup_gcc.c
 nsx_assert_file_exists: /stub/ambiqsuite/CMSIS/AmbiqMicro/Source/system_atomiq110.c
 add_library: nsx_board_atomiq110_fpga_turbo;INTERFACE
 add_library: nsx_board_atomiq110_fpga_turbo_flags;INTERFACE
@@ -32,10 +34,11 @@ NSX_BOARD_FLAGS_TARGET_EXPORT_NAME=board_flags_atomiq110_fpga_turbo
 NSX_BOARD_HAS_BUTTONS=FALSE
 NSX_BOARD_TARGET=nsx_board_atomiq110_fpga_turbo
 NSX_BOARD_TARGET_EXPORT_NAME=board_atomiq110_fpga_turbo
+NSX_CORE_DIR=/stub/app/modules/nsx-core
 NSX_CPU=stub-cpu
 NSX_FLOAT_ABI=stub-float-abi
 NSX_FPU=stub-fpu
-NSX_LINKER_SCRIPT=/stub/app/boards/atomiq110_fpga_turbo/gcc/linker_script.ld
+NSX_LINKER_SCRIPT=/stub/app/modules/nsx-core/src/atomiq110/gcc/linker_script_nbl.ld
 NSX_ROOT=/stub/app
 NSX_SDK_PROVIDER=ambiqsuite
 NSX_SEGGER_CPUFREQ=48000000
@@ -44,7 +47,7 @@ NSX_SEGGER_SWOFREQ=1920000
 NSX_SOC_FLAGS_TARGET=nsx_soc_atomiq110_flags
 NSX_SOC_NAME=atomiq110
 NSX_SOC_TARGET_EXPORT_NAME=soc_hal_atomiq110
-NSX_STARTUP_SOURCE=/stub/app/boards/atomiq110_fpga_turbo/gcc/startup_gcc.c
+NSX_STARTUP_SOURCE=/stub/app/modules/nsx-core/src/atomiq110/gcc/startup_gcc.c
 NSX_STARTUP_TARGET_EXPORT_NAME=startup_atomiq110
 NSX_SYSTEM_SOURCE=/stub/ambiqsuite/CMSIS/AmbiqMicro/Source/system_atomiq110.c
 NSX_TOOLCHAIN_FAMILY=gcc

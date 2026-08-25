@@ -9,9 +9,7 @@ projects:
   neuralspotx:
     name: neuralspotx
     url: https://github.com/AmbiqAI/neuralspotx.git
-    # atomiq110 board content only exists on this branch. Pin here until it
-    # merges to main, then restore the main pin.
-    revision: fix/atomiq110-dso-handle
+    revision: main
     path: neuralspotx
   # Unified SDK: one repo covering all supported SoC families. The v5.2.24
   # pin predates atomiq110; atomiq110 support (nsx-ambiq-sdk PR #46) rides
@@ -183,10 +181,7 @@ modules:
     metadata: src/neuralspotx/boards/apollo4p_evb_disp_shield_rev2/nsx-module.yaml
   nsx-board-atomiq110-fpga-turbo:
     project: neuralspotx
-    # atomiq110 board content only exists on fix/atomiq110-dso-handle so far
-    # (see the neuralspotx project pin above); pin here in lockstep until it
-    # merges to main, then restore the main pin alongside the other boards.
-    revision: fix/atomiq110-dso-handle
+    revision: main
     metadata: src/neuralspotx/boards/atomiq110_fpga_turbo/nsx-module.yaml
   nsx-core:
     project: nsx-ambiq-sdk

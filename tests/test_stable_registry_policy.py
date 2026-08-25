@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from datetime import date, timedelta
+
 import pytest
 
 from neuralspotx import load_registry
@@ -23,7 +25,6 @@ def test_packaged_registry_floating_refs_are_exactly_allowlisted() -> None:
         ("neuralspotx", "main"),
         # Temporary atomiq110 branch pins — collapse once the atomiq110
         # support PRs merge and release tags exist.
-        ("neuralspotx", "fix/atomiq110-dso-handle"),
         ("helia-rt", "fix/atomiq110-compat"),
         ("nsx-ambiq-sdk", "feat/nsx-power-atomiq110"),
     }
@@ -32,6 +33,33 @@ def test_packaged_registry_floating_refs_are_exactly_allowlisted() -> None:
         (allowance.project, allowance.revision)
         for allowance in TEMPORARY_STABLE_FLOATING_REF_ALLOWLIST
     } == expected
+    # Only the packaged self-reference may be permanent; every branch pin
+    # must carry an expiry so it cannot silently outlive its upstream PR.
+    assert {
+        (allowance.project, allowance.revision)
+        for allowance in TEMPORARY_STABLE_FLOATING_REF_ALLOWLIST
+        if allowance.is_permanent
+    } == {("neuralspotx", "main")}
+
+
+def test_temporary_allowances_have_not_expired() -> None:
+    """A branch pin past its ``expires_on`` date must be re-pinned, not kept.
+
+    Fails with the exact ``project@revision`` and the recorded
+    ``removal_condition`` so the fix is actionable from the failure alone.
+    """
+
+    report = stable_registry_ref_report(load_registry())
+
+    expired = [
+        f"{allowance.project}@{allowance.revision} expired on "
+        f"{allowance.expires_on}: {allowance.removal_condition}"
+        for allowance in report.expired_allowances
+    ]
+    assert not expired, (
+        "Temporary floating-ref allowances have expired; re-pin the registry and "
+        "drop the allowance:\n  " + "\n  ".join(expired)
+    )
 
 
 def test_packaged_registry_release_projects_are_immutable() -> None:
@@ -64,15 +92,30 @@ def test_packaged_registry_release_projects_are_immutable() -> None:
         for entry in registry["modules"].values()
         if entry["project"] == "nsx-tileio"
     } == {"v0.1.0"}
-    assert {
+    # Every nsx-ambiq-sdk ref is either the release tag or an explicitly
+    # allowlisted floating ref. Derived from the allowlist (rather than
+    # spelling the branch here) so this test never *requires* a branch pin
+    # to be present: collapsing a temporary pin back to the tag must not
+    # break it.
+    sdk_release_tag = "v5.2.24"
+    allowed_sdk_refs = {sdk_release_tag} | {
+        allowance.revision
+        for allowance in TEMPORARY_STABLE_FLOATING_REF_ALLOWLIST
+        if allowance.project == "nsx-ambiq-sdk"
+    }
+    sdk_module_refs = {
         entry["revision"]
         for entry in registry["modules"].values()
         if entry["project"] == "nsx-ambiq-sdk"
-    } == {"v5.2.24", "feat/nsx-power-atomiq110"}
-    assert {
+    }
+    assert sdk_release_tag in sdk_module_refs
+    assert sdk_module_refs <= allowed_sdk_refs
+    sdk_profile_refs = {
         profile["project_overrides"]["nsx-ambiq-sdk"]["revision"]
         for profile in registry["starter_profiles"].values()
-    } == {"v5.2.24", "feat/nsx-power-atomiq110"}
+    }
+    assert sdk_release_tag in sdk_profile_refs
+    assert sdk_profile_refs <= allowed_sdk_refs
 
 
 def test_packaged_registry_has_no_orphaned_projects() -> None:
@@ -239,6 +282,7 @@ def test_stale_allowance_must_be_removed_after_immutable_transition() -> None:
         revision="main",
         reason="temporary",
         removal_condition="tag release",
+        expires_on=date(2099, 1, 1),
     )
 
     report = stable_registry_ref_report(registry, allowances=(allowance,))
@@ -246,3 +290,61 @@ def test_stale_allowance_must_be_removed_after_immutable_transition() -> None:
     assert report.unused_allowances == (allowance,)
     with pytest.raises(StableRegistryRefPolicyError):
         validate_stable_registry_refs(registry, allowances=(allowance,))
+
+
+def test_expired_allowance_is_reported_with_removal_condition() -> None:
+    """An allowance past ``expires_on`` is a policy violation naming its fix.
+
+    Uses an injected *today* so the assertion is deterministic; the shipped
+    allowlist is checked against the real clock by
+    ``test_temporary_allowances_have_not_expired``.
+    """
+
+    registry = {
+        "projects": {"sdk": {"revision": "feat/bringup"}},
+        "modules": {},
+        "starter_profiles": {},
+    }
+    expiry = date(2026, 10, 15)
+    temporary = FloatingRefAllowance(
+        project="sdk",
+        revision="feat/bringup",
+        reason="bring-up branch",
+        removal_condition="Re-pin to the next sdk release tag.",
+        expires_on=expiry,
+    )
+    permanent = FloatingRefAllowance(
+        project="self",
+        revision="main",
+        reason="packaged self-reference",
+        removal_condition="never",
+        expires_on=None,
+    )
+    registry["projects"]["self"] = {"revision": "main"}
+
+    # On and before the expiry date the allowance still applies.
+    on_time = stable_registry_ref_report(
+        registry, allowances=(temporary, permanent), today=expiry
+    )
+    assert on_time.expired_allowances == ()
+    assert on_time.is_valid
+
+    late = stable_registry_ref_report(
+        registry,
+        allowances=(temporary, permanent),
+        today=expiry + timedelta(days=1),
+    )
+    assert late.expired_allowances == (temporary,)
+    assert not late.is_valid
+    assert permanent.is_permanent and not permanent.is_expired(date.max)
+
+    with pytest.raises(StableRegistryRefPolicyError) as excinfo:
+        validate_stable_registry_refs(
+            registry,
+            allowances=(temporary, permanent),
+            today=expiry + timedelta(days=1),
+        )
+    message = str(excinfo.value)
+    assert "sdk@feat/bringup" in message
+    assert "Re-pin to the next sdk release tag." in message
+    assert "2026-10-15" in message
