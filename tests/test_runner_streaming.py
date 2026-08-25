@@ -14,7 +14,7 @@ import sys
 
 import pytest
 
-from neuralspotx.subprocess_utils import run
+from neuralspotx.subprocess_utils import run, run_capture
 from neuralspotx.subprocess_utils._runner import _split_emitted_lines
 
 
@@ -127,3 +127,31 @@ class TestStreamingRun:
                 on_line=lambda _line: None,
                 timeout=1.0,
             )
+
+
+class TestTimeoutBudgetReporting:
+    """``TimeoutExpired.timeout`` must report the caller's full budget.
+
+    The streaming loop hands ``proc.wait`` only the *remaining* budget once
+    stdout hits EOF, so the re-raised error must not leak that remainder.
+    """
+
+    _EOF_THEN_HANG = (
+        "import os, sys, time; sys.stdout.write('x\\n'); sys.stdout.flush(); "
+        "os.close(1); time.sleep(30)"
+    )
+
+    def test_run_reports_full_budget_after_stdout_eof(self) -> None:
+        with pytest.raises(subprocess.TimeoutExpired) as excinfo:
+            run(
+                [sys.executable, "-c", self._EOF_THEN_HANG],
+                on_line=lambda _line: None,
+                timeout=1.0,
+            )
+        assert excinfo.value.timeout == 1.0
+        assert excinfo.value.cmd[0] == sys.executable
+
+    def test_run_capture_reports_full_budget(self) -> None:
+        with pytest.raises(subprocess.TimeoutExpired) as excinfo:
+            run_capture([sys.executable, "-c", "import time; time.sleep(30)"], timeout=1.0)
+        assert excinfo.value.timeout == 1.0

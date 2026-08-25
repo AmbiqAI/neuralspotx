@@ -7,7 +7,9 @@ import io
 import json
 import tarfile
 import urllib.error
+from email.message import Message
 from pathlib import Path
+from types import TracebackType
 
 import pytest
 
@@ -93,10 +95,15 @@ def test_reconcile_restores_hash_verified_canonical_bytes(
     }
 
     class Response(io.BytesIO):
-        def __enter__(self):
+        def __enter__(self) -> Response:
             return self
 
-        def __exit__(self, *_args):
+        def __exit__(
+            self,
+            exc_type: type[BaseException] | None,
+            exc_val: BaseException | None,
+            exc_tb: TracebackType | None,
+        ) -> None:
             return None
 
     def urlopen(url, timeout):
@@ -134,10 +141,15 @@ def test_reconcile_rejects_missing_canonical_artifact(tmp_path: Path, monkeypatc
     }
 
     class Response(io.BytesIO):
-        def __enter__(self):
+        def __enter__(self) -> Response:
             return self
 
-        def __exit__(self, *_args):
+        def __exit__(
+            self,
+            exc_type: type[BaseException] | None,
+            exc_val: BaseException | None,
+            exc_tb: TracebackType | None,
+        ) -> None:
             return None
 
     monkeypatch.setattr(
@@ -162,7 +174,7 @@ def test_reconcile_allows_retry_before_pypi_publication(
             "https://pypi.org/pypi/demo/1.0/json",
             404,
             "Not Found",
-            {},
+            Message(),
             None,
         )
 

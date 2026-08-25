@@ -220,7 +220,7 @@ class TestGenerateSbomErrors:
 
     def test_unsupported_format_raises(self, app_with_lock: Path) -> None:
         with pytest.raises(NSXConfigError) as exc:
-            generate_sbom(app_with_lock, format="xml")  # type: ignore[arg-type]
+            generate_sbom(app_with_lock, format="xml")
         assert "format" in str(exc.value).lower()
 
 

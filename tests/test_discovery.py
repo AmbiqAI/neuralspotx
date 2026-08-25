@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
@@ -181,10 +182,12 @@ class TestResolveTargetContext:
 
 
 class TestCompatibilityMatches:
-    def _record(self, **kwargs: object) -> DiscoveryRecord:
-        defaults = dict(name="test", project="test", revision="main", metadata=None, enabled=False)
-        defaults.update(kwargs)
-        return DiscoveryRecord(**defaults)  # type: ignore[arg-type]
+    _BASE = DiscoveryRecord(
+        name="test", project="test", revision="main", metadata=None, enabled=False
+    )
+
+    def _record(self, **overrides: object) -> DiscoveryRecord:
+        return replace(self._BASE, **overrides)
 
     def test_returns_none_without_metadata(self) -> None:
         record = self._record(metadata_available=False)

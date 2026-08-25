@@ -72,7 +72,7 @@ def test_lock_app_emits_via_active_emitter(tmp_path, monkeypatch: pytest.MonkeyP
     captured: list[Event] = []
 
     # Patch the operations.lock_app_impl to just emit and return a sentinel.
-    def fake_lock(app_dir, *, update=False, modules=None, check=False, quiet=False):  # type: ignore[no-untyped-def]
+    def fake_lock(app_dir, *, update=False, modules=None, check=False, quiet=False):
         from neuralspotx._io import info as _info
 
         _info("locking", app=str(app_dir))

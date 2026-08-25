@@ -18,7 +18,7 @@ from pathlib import Path
 _log = logging.getLogger(__name__)
 
 
-def _run(cmd, **kwargs):  # type: ignore[no-untyped-def]
+def _run(cmd, **kwargs):
     # Look ``run`` up on the facade module so monkeypatches such as
     # ``monkeypatch.setattr(subprocess_utils, "run", fake_run)`` continue
     # to intercept git helpers after the package was split.
@@ -27,7 +27,7 @@ def _run(cmd, **kwargs):  # type: ignore[no-untyped-def]
     return _facade_run(cmd, **kwargs)
 
 
-def _run_capture(cmd, **kwargs):  # type: ignore[no-untyped-def]
+def _run_capture(cmd, **kwargs):
     from . import run_capture as _facade_run_capture
 
     return _facade_run_capture(cmd, **kwargs)
@@ -382,7 +382,7 @@ def _is_transient_git_error(exc: BaseException) -> bool:
     return any(pat in text for pat in _TRANSIENT_GIT_ERROR_PATTERNS)
 
 
-def _git_network_retry(operation, *, label, before_retry=None):  # type: ignore[no-untyped-def]
+def _git_network_retry(operation, *, label, before_retry=None):
     """Run *operation* (a no-arg callable), retrying transient failures.
 
     *operation* performs a single git network invocation and must raise
@@ -453,7 +453,7 @@ def _robust_rmtree(path: Path) -> None:
         shutil.rmtree(path, onerror=_on_rm_error)
 
 
-def _run_net(cmd, cwd=None):  # type: ignore[no-untyped-def]
+def _run_net(cmd, cwd=None):
     """Run a streaming git network command, capturing its output so a
     transient failure can be classified while still echoing live output.
 

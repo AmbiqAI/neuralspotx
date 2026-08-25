@@ -34,7 +34,7 @@ def command_hint(
 
     def decorator(func):
         _COMMAND_GRAPH_HINTS[path] = hint
-        func._nsx_hint = hint  # type: ignore[attr-defined]
+        func._nsx_hint = hint
         return func
 
     return decorator

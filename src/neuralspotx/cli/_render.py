@@ -42,8 +42,9 @@ def _argument_record(action: argparse.Action) -> dict[str, Any]:
         record["help"] = action.help
     if getattr(action, "metavar", None) is not None:
         record["metavar"] = _json_safe(action.metavar)
-    if getattr(action, "choices", None) is not None:
-        record["choices"] = _json_safe(list(action.choices))
+    choices = action.choices
+    if choices is not None:
+        record["choices"] = _json_safe(list(choices))
     if getattr(action, "default", argparse.SUPPRESS) is not argparse.SUPPRESS:
         record["default"] = _json_safe(action.default)
     if getattr(action, "nargs", None) is not None:

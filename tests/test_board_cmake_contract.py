@@ -46,6 +46,13 @@ CMAKE = shutil.which("cmake")
 
 pytestmark = pytest.mark.skipif(CMAKE is None, reason="cmake not available")
 
+
+def _cmake() -> str:
+    """The cmake executable; the module-level skip guarantees it is present."""
+    if CMAKE is None:
+        pytest.skip("cmake not available")
+    return CMAKE
+
 GOLDEN_DIR = Path(__file__).parent / "data" / "board_contract"
 TOOLCHAIN_FAMILIES = ("gcc", "armclang")
 
@@ -200,7 +207,7 @@ def _capture(
     )
 
     result = subprocess.run(
-        [CMAKE, "-P", str(harness)],
+        [_cmake(), "-P", str(harness)],
         capture_output=True,
         text=True,
     )
