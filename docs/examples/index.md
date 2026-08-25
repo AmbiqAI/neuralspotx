@@ -126,7 +126,7 @@ _Boards come from each `nsx.yml` `targets.supported`; ★ marks the default._
 | [power_benchmark](power_benchmark.md) | capabilities | `power`, `gpio`, `timer` | **apollo510_evb** ★, apollo510b_evb | — | builds |
 | [ble_webble](ble_webble.md) | integrations | `ble`, `cordio`, `freertos` | **apollo4p_blue_kxr_evb** ★, apollo3p_evb, apollo510b_evb | apollo3p_evb, apollo4p_blue_kxr_evb, apollo510b_evb | experimental |
 | [kws_infer](kws_infer.md) | integrations | `ml`, `tflite`, `cmsis-nn`, `helia-rt` | **apollo510_evb** ★, apollo510b_evb, apollo330mP_evb | apollo510_evb | tested |
-| [npu_person_detect](npu_person_detect.md) | integrations | `ml`, `tflite`, `ethos-u`, `npu`, `helia-rt` | **atomiq110_fpga_turbo** ★ | — | experimental |
+| [npu_person_detect](npu_person_detect.md) | integrations | `ml`, `tflite`, `ethos-u`, `npu`, `helia-rt` | **atomiq110_fpga_turbo** ★ | atomiq110_fpga_turbo | tested |
 | [usb_rpc](usb_rpc.md) | integrations | `usb`, `rpc`, `nanopb` | **apollo510_evb** ★, apollo510b_evb, apollo330mP_evb, apollo510dL_evb | apollo510_evb | tested |
 
 <!-- END GENERATED EXAMPLE MATRIX -->

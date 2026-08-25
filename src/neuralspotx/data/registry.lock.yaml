@@ -188,7 +188,10 @@ modules:
     metadata: src/neuralspotx/boards/apollo4p_evb_disp_shield_rev2/nsx-module.yaml
   nsx-board-atomiq110-fpga-turbo:
     project: neuralspotx
-    revision: main
+    # atomiq110 board content only exists on fix/atomiq110-dso-handle so far
+    # (see the neuralspotx project pin above); pin here in lockstep until it
+    # merges to main, then restore the main pin alongside the other boards.
+    revision: fix/atomiq110-dso-handle
     metadata: src/neuralspotx/boards/atomiq110_fpga_turbo/nsx-module.yaml
   nsx-core:
     project: nsx-ambiq-sdk
