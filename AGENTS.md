@@ -103,6 +103,14 @@ Use dataclasses for:
 
 Avoid spreading nested `.get(...)` chains when a typed model is practical.
 
+`ty` (Astral's type checker, pinned exactly in the `lint` group) runs in CI
+over `src/neuralspotx` and `tests` and must stay at zero diagnostics. Fix
+the type at its source rather than weakening it to `Any`; a `# ty: ignore`
+must carry a reason comment; mypy-style `# type: ignore` is not honored by
+ty and must not be used. The check runs with `python-platform = "all"` so
+Windows-only branches are checked on Linux, and warnings are errors.
+Minimum supported Python is 3.11; the CI matrix exercises 3.11 and 3.13.
+
 ### Jinja-Based Templating
 
 Generated app content should use Jinja templates where NSX owns the files.
@@ -243,6 +251,7 @@ Before sending or merging changes, run the relevant checks from repo root:
 
 ```bash
 uv run --group lint ruff check .
+uv run --group lint --group test ty check --error-on-warning src/neuralspotx tests
 uv run --group test pytest -q
 uv run --group docs zensical build
 ```

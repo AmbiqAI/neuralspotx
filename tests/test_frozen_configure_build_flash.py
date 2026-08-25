@@ -214,7 +214,7 @@ class TestRequestPositionalCompat:
         assert f.frozen is False
 
         with pytest.raises(TypeError):
-            AppFlashRequest("app", None, None, None, None, 2, "secondary")
+            AppFlashRequest("app", None, None, None, None, 2, "secondary")  # ty: ignore[too-many-positional-arguments]  # deliberately invalid call; asserts the runtime TypeError
 
         with pytest.raises(TypeError):
-            AppFlashRequest("app", None, None, None, None, 2, True)  # no 7th positional
+            AppFlashRequest("app", None, None, None, None, 2, True)  # ty: ignore[too-many-positional-arguments]  # deliberately invalid call; no 7th positional

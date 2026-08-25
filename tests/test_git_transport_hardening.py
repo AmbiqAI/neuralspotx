@@ -92,7 +92,7 @@ class TestProtocolAllowListFlags:
     ) -> None:
         invocations: list[list[str]] = []
 
-        def fake_run(cmd, *args, **kwargs):  # type: ignore[no-untyped-def]
+        def fake_run(cmd, *args, **kwargs):
             invocations.append(list(cmd))
 
         monkeypatch.setattr(subprocess_utils, "run", fake_run)
@@ -111,7 +111,7 @@ class TestProtocolAllowListFlags:
     ) -> None:
         invocations: list[list[str]] = []
 
-        def fake_run(cmd, *args, **kwargs):  # type: ignore[no-untyped-def]
+        def fake_run(cmd, *args, **kwargs):
             invocations.append(list(cmd))
 
         monkeypatch.setattr(subprocess_utils, "run", fake_run)
@@ -127,7 +127,7 @@ class TestProtocolAllowListFlags:
     ) -> None:
         invocations: list[list[str]] = []
 
-        def fake_run(cmd, *args, **kwargs):  # type: ignore[no-untyped-def]
+        def fake_run(cmd, *args, **kwargs):
             invocations.append(list(cmd))
 
         monkeypatch.setattr(subprocess_utils, "run", fake_run)
@@ -170,7 +170,7 @@ class TestGitLsRemote:
         class _FakeResult:
             stdout = ""
 
-        def fake_run_capture(cmd, *args, **kwargs):  # type: ignore[no-untyped-def]
+        def fake_run_capture(cmd, *args, **kwargs):
             invocations.append(list(cmd))
             return _FakeResult()
 
@@ -284,7 +284,7 @@ class TestNetworkRetry:
         class _Result:
             stdout = "deadbeef\trefs/heads/main\n"
 
-        def fake_run_capture(cmd, *args, **kwargs):  # type: ignore[no-untyped-def]
+        def fake_run_capture(cmd, *args, **kwargs):
             calls["n"] += 1
             if calls["n"] < 3:
                 raise subprocess.CalledProcessError(
@@ -305,7 +305,7 @@ class TestNetworkRetry:
     ) -> None:
         calls = {"n": 0}
 
-        def fake_run_capture(cmd, *args, **kwargs):  # type: ignore[no-untyped-def]
+        def fake_run_capture(cmd, *args, **kwargs):
             calls["n"] += 1
             raise subprocess.CalledProcessError(
                 128, list(cmd), stderr="fatal: Authentication failed"
@@ -322,7 +322,7 @@ class TestNetworkRetry:
     ) -> None:
         calls = {"n": 0}
 
-        def fake_run_capture(cmd, *args, **kwargs):  # type: ignore[no-untyped-def]
+        def fake_run_capture(cmd, *args, **kwargs):
             calls["n"] += 1
             raise subprocess.CalledProcessError(
                 128, list(cmd), stderr="fatal: Connection timed out"
@@ -338,7 +338,7 @@ class TestNetworkRetry:
         monkeypatch.setenv("NSX_GIT_RETRIES", "1")
         calls = {"n": 0}
 
-        def fake_run_capture(cmd, *args, **kwargs):  # type: ignore[no-untyped-def]
+        def fake_run_capture(cmd, *args, **kwargs):
             calls["n"] += 1
             raise subprocess.CalledProcessError(
                 128, list(cmd), stderr="fatal: Connection reset by peer"
@@ -356,7 +356,7 @@ class TestNetworkRetry:
         dest = tmp_path / "clone"
         calls = {"n": 0}
 
-        def fake_run(cmd, cwd=None, *, on_line=None, **kwargs):  # type: ignore[no-untyped-def]
+        def fake_run(cmd, cwd=None, *, on_line=None, **kwargs):
             calls["n"] += 1
             if on_line is not None:
                 on_line("Cloning into 'clone'...")
@@ -388,7 +388,7 @@ class TestNetworkRetry:
         delays: list[float] = []
         monkeypatch.setattr(_git, "_sleep", delays.append)
 
-        def fake_run_capture(cmd, *args, **kwargs):  # type: ignore[no-untyped-def]
+        def fake_run_capture(cmd, *args, **kwargs):
             raise subprocess.CalledProcessError(
                 128, list(cmd), stderr="fatal: Connection timed out"
             )
@@ -410,7 +410,7 @@ class TestNetworkRetry:
         dest = tmp_path / "clone"
         calls = {"n": 0}
 
-        def fake_run(cmd, cwd=None, *, on_line=None, **kwargs):  # type: ignore[no-untyped-def]
+        def fake_run(cmd, cwd=None, *, on_line=None, **kwargs):
             calls["n"] += 1
             if calls["n"] < 2:
                 raise subprocess.CalledProcessError(128, list(cmd))
@@ -462,7 +462,7 @@ class TestLowSpeedGuard:
         class _FakeResult:
             stdout = ""
 
-        def fake_run_capture(cmd, *args, **kwargs):  # type: ignore[no-untyped-def]
+        def fake_run_capture(cmd, *args, **kwargs):
             invocations.append(list(cmd))
             return _FakeResult()
 
@@ -483,7 +483,7 @@ class TestLowSpeedGuard:
     ) -> None:
         invocations: list[list[str]] = []
 
-        def fake_run(cmd, *args, **kwargs):  # type: ignore[no-untyped-def]
+        def fake_run(cmd, *args, **kwargs):
             invocations.append(list(cmd))
 
         monkeypatch.setattr(subprocess_utils, "run", fake_run)
@@ -527,7 +527,7 @@ class TestNetworkTimeout:
         class _FakeResult:
             stdout = ""
 
-        def fake_run_capture(cmd, *args, timeout=None, **kwargs):  # type: ignore[no-untyped-def]
+        def fake_run_capture(cmd, *args, timeout=None, **kwargs):
             seen["timeout"] = timeout
             return _FakeResult()
 
@@ -547,7 +547,7 @@ class TestNetworkTimeout:
         class _FakeResult:
             stdout = ""
 
-        def fake_run_capture(cmd, *args, timeout=None, **kwargs):  # type: ignore[no-untyped-def]
+        def fake_run_capture(cmd, *args, timeout=None, **kwargs):
             seen["timeout"] = timeout
             return _FakeResult()
 

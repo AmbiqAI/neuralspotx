@@ -20,7 +20,7 @@ import pytest
 
 from neuralspotx import NSXError
 from neuralspotx.file_lock import AppLockBusyError, app_lock, app_lock_path
-from neuralspotx.nsx_lock import NsxLock, ResolvedModule, write_lock
+from neuralspotx.nsx_lock import LockKind, NsxLock, ResolvedModule, write_lock
 
 # ---------------------------------------------------------------------------
 # write_lock — atomicity
@@ -38,7 +38,7 @@ class TestWriteLockAtomic:
             modules={
                 "fake": ResolvedModule(
                     project="fake",
-                    kind="vendored",
+                    kind=LockKind.VENDORED,
                     constraint="vendored",
                     vendored_at="modules/fake",
                     content_hash="sha256:" + "a" * 64,

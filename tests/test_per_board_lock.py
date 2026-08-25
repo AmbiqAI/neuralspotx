@@ -10,6 +10,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+
+from neuralspotx._errors import NSXConfigError
 from neuralspotx.models import AppConfig, ResolvedTarget
 from neuralspotx.nsx_lock import (
     LockFile,
@@ -140,6 +143,7 @@ def test_write_lock_preserves_sibling_targets(tmp_path: Path) -> None:
     # Re-locking one board must not drop the other's section.
     write_lock(tmp_path, _empty_lock(), "apollo510_evb")
     lock_file = read_lock_file(tmp_path)
+    assert lock_file is not None
     assert set(lock_file.targets) == {"apollo510_evb", "apollo510b_evb"}
 
 
@@ -154,6 +158,7 @@ def test_prune_lock_targets_drops_orphans(tmp_path: Path) -> None:
     write_lock(tmp_path, _empty_lock(), "apollo510b_evb")
     prune_lock_targets(tmp_path, {"apollo510_evb"})
     lock_file = read_lock_file(tmp_path)
+    assert lock_file is not None
     assert set(lock_file.targets) == {"apollo510_evb"}
 
 
@@ -178,6 +183,15 @@ def test_lock_boards_for_single_target_is_default_board(tmp_path: Path) -> None:
     )
     # Single-target -> one entry keyed by its default board.
     assert _lock_boards_for(tmp_path, None) == ["apollo510_evb"]
+
+
+def test_lock_boards_for_without_default_board_raises(tmp_path: Path) -> None:
+    (tmp_path / "nsx.yml").write_text(
+        "schema_version: 2\nproject:\n  name: demo\n", encoding="utf-8"
+    )
+    with pytest.raises(NSXConfigError, match=r"Unable to determine target board") as excinfo:
+        _lock_boards_for(tmp_path, None)
+    assert excinfo.value.field == "target"
 
 
 def test_lock_boards_for_multi_target_lists_all_default_first(tmp_path: Path) -> None:

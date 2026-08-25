@@ -16,7 +16,7 @@ Install these host tools first:
 
 | Tool | Version | Purpose |
 |---|---|---|
-| **Python** | 3.10+ | Runs the NSX CLI and module resolver |
+| **Python** | 3.11+ | Runs the NSX CLI and module resolver |
 | **uv** | latest | Fast Python dependency management |
 | **CMake** | 3.24+ | Build-system generator |
 | **Ninja** | any | Parallel build backend |

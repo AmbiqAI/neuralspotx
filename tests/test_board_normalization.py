@@ -25,6 +25,7 @@ from __future__ import annotations
 import re
 from importlib import resources
 from pathlib import Path
+from typing import assert_type
 
 import pytest
 
@@ -151,3 +152,11 @@ def test_validate_board_registry_reports_casefold_collision(monkeypatch) -> None
     )
     problems = constants.validate_board_registry()
     assert any("collide under case-folding" in p for p in problems), problems
+
+
+def test_normalize_overloads_narrow_at_type_check_time() -> None:
+    # Checked by ty (tests/ is in the gate): a str in yields str, None yields None.
+    assert_type(normalize_board("APOLLO510_EVB"), str)
+    assert_type(normalize_board(None), None)
+    assert_type(normalize_soc("APOLLO510"), str)
+    assert_type(normalize_soc(None), None)

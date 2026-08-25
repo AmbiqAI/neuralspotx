@@ -229,7 +229,7 @@ class TestLockKindEnum:
     def test_resolved_module_str_kind_round_trips_through_yaml(self) -> None:
         m = nsx_lock.ResolvedModule(
             project="x",
-            kind="git",
+            kind=nsx_lock.LockKind("git"),
             constraint="main",
             vendored_at="modules/x",
             content_hash="sha256:" + "a" * 64,

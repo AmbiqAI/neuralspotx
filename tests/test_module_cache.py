@@ -725,10 +725,10 @@ class TestPublicCacheApi:
         removable.write_text("remove", encoding="utf-8")
         original_unlink = Path.unlink
 
-        def selective_unlink(path: Path, *args: object, **kwargs: object) -> None:
+        def selective_unlink(path: Path, missing_ok: bool = False) -> None:
             if path == blocked:
                 raise PermissionError("simulated")
-            original_unlink(path, *args, **kwargs)
+            original_unlink(path, missing_ok=missing_ok)
 
         monkeypatch.setattr(Path, "unlink", selective_unlink)
         result = api.clean_cache()

@@ -56,7 +56,7 @@ platform-specific install commands.
 
 | Requirement | Why |
 |---|---|
-| **Python 3.10+** | NSX CLI and module resolution run on Python |
+| **Python 3.11+** | NSX CLI and module resolution run on Python |
 | **uv** | Fast dependency manager used by the project |
 | **CMake + Ninja** | Build system underneath every generated app |
 | **Arm GNU Toolchain** | Default cross-compiler for Cortex-M targets |
