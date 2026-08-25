@@ -1,4 +1,0 @@
-This example targets the atomiq110 (Ethos-U85) preview board and depends on
-module revisions still landing on open branches (nsx-ambiq-sdk
-feat/nsx-power-atomiq110, helia-rt fix/atomiq110-compat), so it cannot be
-built in standalone CI yet.

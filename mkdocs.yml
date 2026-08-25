@@ -143,7 +143,6 @@ nav:
       - power_benchmark: examples/power_benchmark.md
       - pmu_profiling: examples/pmu_profiling.md
       - kws_infer: examples/kws_infer.md
-      - npu_person_detect: examples/npu_person_detect.md
       - ble_webble: examples/ble_webble.md
       - audio_capture: examples/audio_capture.md
       - usb_serial: examples/usb_serial.md

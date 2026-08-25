@@ -209,9 +209,9 @@ under `modules/` at workspace assembly time (see the
 [metadata model](../architecture/metadata-model.md) for the general
 mechanism). `nsx-npu` is the worked example — it ships from the
 `nsx-ambiq-sdk` monorepo but requires `nsx-ethos-u-driver` from its own
-standalone repo, so the [npu_person_detect example](../examples/npu_person_detect.md)
-lists only `nsx-helia-rt` and `nsx-npu` in its `nsx.yml`, and
-`nsx-ethos-u-driver` is pulled in transitively.
+standalone repo, so an app created from the `npu_tflm_app` template
+(`nsx create-app`) lists only `nsx-helia-rt` and `nsx-npu` in its
+`nsx.yml`, and `nsx-ethos-u-driver` is pulled in transitively.
 
 ### Peripheral and Bus Modules
 
