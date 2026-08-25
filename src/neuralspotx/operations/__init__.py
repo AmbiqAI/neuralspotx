@@ -73,7 +73,7 @@ from ._modules import (
     remove_module_impl,
     update_modules_impl,
 )
-from ._sbom import generate_sbom_impl
+from ._sbom import coerce_sbom_format, generate_sbom_impl
 from ._sync import sync_app_impl, update_app_impl
 
 __all__ = [
@@ -111,6 +111,7 @@ __all__ = [
     "remove_module_impl",
     "update_modules_impl",
     # SBOM
+    "coerce_sbom_format",
     "generate_sbom_impl",
     # Verbosity
     "get_verbosity",

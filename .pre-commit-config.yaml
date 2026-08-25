@@ -18,7 +18,7 @@ repos:
       - id: ruff-format
 
   - repo: https://github.com/astral-sh/uv-pre-commit
-    rev: 0.7.2
+    rev: 0.12.6
     hooks:
       - id: uv-lock
 
@@ -28,7 +28,7 @@ repos:
       # pyproject.toml) so pre-commit and CI check with the same version.
       - id: ty
         name: ty type check
-        entry: uv run --no-sync ty check src/neuralspotx tests
+        entry: uv run --group lint --group test ty check --error-on-warning src/neuralspotx tests
         language: system
         pass_filenames: false
-        types: [python]
+        types_or: [python, pyi, toml]

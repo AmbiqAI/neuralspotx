@@ -783,7 +783,8 @@ def _lock_boards_for(app_dir: Path, board: str | None) -> list[str]:
     default = app_cfg.default_board()
     if default is None:
         raise NSXConfigError(
-            f"Unable to determine target board from nsx.yml in {app_dir}; cannot lock."
+            f"Unable to determine target board from nsx.yml in {app_dir}; cannot lock.",
+            field="target",
         )
     if app_cfg.is_multi_target():
         boards = list(app_cfg.targets())

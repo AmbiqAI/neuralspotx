@@ -15,6 +15,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Build Tools",
     "Topic :: Software Development :: Embedded Systems",
     "Typing :: Typed",
@@ -87,6 +88,13 @@ neuralspotx = [
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+
+[tool.ty.environment]
+# Check every platform branch. ty defaults to the host platform and
+# treats the other `os.name` / `sys.platform` branches as unreachable,
+# which left the Windows Job Object path in subprocess_utils/_winjob.py
+# unchecked on Linux CI.
+python-platform = "all"
 
 [tool.ruff]
 line-length = 100

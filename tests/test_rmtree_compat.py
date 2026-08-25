@@ -1,5 +1,5 @@
 """Regression tests for the M2 remediation item: ``shutil.rmtree`` callback
-compatibility across Python 3.10/3.11 (``onerror=``) and 3.12+ (``onexc=``).
+compatibility across Python 3.11 (``onerror=``) and 3.12+ (``onexc=``).
 
 Python 3.12 deprecated ``onerror=`` in favour of ``onexc=`` and 3.14 will
 remove it.  The ``_rmtree`` helpers in ``module_registry``, ``module_cache``
@@ -8,7 +8,7 @@ and ``subprocess_utils`` must:
 * clean up trees containing read-only files (the original Windows-pack-file
   motivation),
 * not emit a ``DeprecationWarning`` on Python 3.12+,
-* still work on Python 3.10/3.11 where ``onexc=`` does not exist.
+* still work on Python 3.11 where ``onexc=`` does not exist.
 """
 
 from __future__ import annotations

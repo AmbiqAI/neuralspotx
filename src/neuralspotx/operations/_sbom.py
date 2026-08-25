@@ -19,18 +19,38 @@ import hashlib
 import json
 import uuid
 from pathlib import Path
-from typing import Any, Final
+from typing import Any, Final, Literal, TypeGuard
 
 from .._errors import NSXConfigError
 from ..nsx_lock import LockKind, NsxLock, lock_path, read_lock
 from ..project_config import _board_key_for_app
 
+SBOMFormat = Literal["spdx", "cyclonedx"]
+
 _SUPPORTED_FORMATS: Final[frozenset[str]] = frozenset({"spdx", "cyclonedx"})
+
+
+def _is_sbom_format(value: str) -> TypeGuard[SBOMFormat]:
+    return value in _SUPPORTED_FORMATS
+
+
+def coerce_sbom_format(value: str) -> SBOMFormat:
+    """Narrow a user-supplied format string to :data:`SBOMFormat`.
+
+    Raises ``NSXConfigError`` (``field="format"``) for anything else.
+    """
+
+    if not _is_sbom_format(value):
+        raise NSXConfigError(
+            f"Unsupported SBOM format {value!r}. Supported: {sorted(_SUPPORTED_FORMATS)}.",
+            field="format",
+        )
+    return value
 
 _SPDX_NOASSERTION: Final[str] = "NOASSERTION"
 
 
-def generate_sbom_impl(app_dir: Path, *, format: str = "spdx") -> str:
+def generate_sbom_impl(app_dir: Path, *, format: SBOMFormat = "spdx") -> str:
     """Return a serialized SBOM for the app at *app_dir*.
 
     Args:
@@ -39,18 +59,12 @@ def generate_sbom_impl(app_dir: Path, *, format: str = "spdx") -> str:
             ``"cyclonedx"`` for CycloneDX 1.5 JSON.
 
     Raises:
-        NSXConfigError: ``nsx.lock`` is missing, or *format* is not in
-            ``{"spdx", "cyclonedx"}``.
+        NSXConfigError: ``nsx.lock`` is missing. Callers narrow *format*
+            with :func:`coerce_sbom_format` first.
 
     The returned string is a complete JSON document, ready to write to
     disk or pipe into another SBOM tool.
     """
-
-    if format not in _SUPPORTED_FORMATS:
-        raise NSXConfigError(
-            f"Unsupported SBOM format {format!r}. Supported: {sorted(_SUPPORTED_FORMATS)}.",
-            field="format",
-        )
 
     board_key = _board_key_for_app(app_dir)
     lock = read_lock(app_dir, board_key)
@@ -278,7 +292,7 @@ def _cyclonedx_hashes_for_entry(content_hash: str):
     }
 
 
-def _purl_for_entry(name: str, entry) -> str:  # type: ignore[no-untyped-def]
+def _purl_for_entry(name: str, entry) -> str:
     """Build a best-effort Package URL (purl) for a lock entry."""
 
     if entry.kind in (LockKind.GIT, LockKind.UNRESOLVED) and entry.url:

@@ -33,5 +33,5 @@ def generate_sbom(
 
     return operations.generate_sbom_impl(
         Path(app_dir).expanduser().resolve(),
-        format=format,
+        format=operations.coerce_sbom_format(format),
     )

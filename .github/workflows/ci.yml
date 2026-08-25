@@ -34,14 +34,14 @@ jobs:
       - name: Install lint dependencies
         # The test group is included so `ty check tests` resolves
         # pytest/hypothesis imports in the check environment.
-        run: uv sync --group lint --group test
+        run: uv sync --locked --group lint --group test
 
       - name: Run ruff
         run: uv run --no-sync ruff check .
 
       - name: Run ty type check
         # --no-sync: the environment was fully built by the sync step above.
-        run: uv run --no-sync ty check src/neuralspotx tests
+        run: uv run --no-sync ty check --error-on-warning src/neuralspotx tests
 
   # ---------------------------------------------------------------
   # Distribution smoke test — exercise the installed wheel rather
@@ -64,7 +64,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install runtime dependencies
-        run: uv sync --no-install-project
+        run: uv sync --locked --no-install-project
 
       - name: Build wheel
         run: uv build --wheel
@@ -90,7 +90,7 @@ jobs:
       fail-fast: false
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
-        python-version: ["3.11"]
+        python-version: ["3.11", "3.13"]
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -108,7 +108,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
 
       - name: Install test dependencies
-        run: uv sync --group test
+        run: uv sync --locked --group test
 
       - name: Run pytest (unit tests only)
         run: >-
@@ -153,7 +153,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install test dependencies
-        run: uv sync --group test
+        run: uv sync --locked --group test
 
       - name: Show effective locale
         run: |
@@ -232,7 +232,7 @@ jobs:
           ninja --version
 
       - name: Install neuralspotx
-        run: uv sync --group test
+        run: uv sync --locked --group test
 
       - name: Run example build tests
         run: >-
@@ -288,7 +288,7 @@ jobs:
           ninja --version
 
       - name: Install neuralspotx
-        run: uv sync --group test
+        run: uv sync --locked --group test
 
       - name: Run example build tests (armclang)
         env:
@@ -320,7 +320,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install neuralspotx
-        run: uv sync --group test
+        run: uv sync --locked --group test
 
       - name: Verify lock integrity for every example
         run: |
@@ -386,7 +386,7 @@ jobs:
           python-version: "3.11"
 
       - name: Install neuralspotx
-        run: uv sync --group test
+        run: uv sync --locked --group test
 
       - name: Materialize vendored cmake/nsx trees
         run: |

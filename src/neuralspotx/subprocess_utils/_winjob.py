@@ -36,12 +36,15 @@ class _ProcessContainer:
     def __init__(self) -> None:
         self._job_handle: int | None = None
 
-    def attach(self, proc: subprocess.Popen) -> None:  # type: ignore[type-arg]
+    def attach(self, proc: subprocess.Popen) -> None:
         if os.name != "nt":
             return
         try:
             self._job_handle = _create_kill_on_close_job()
-            _assign_process_to_job(self._job_handle, int(proc._handle))  # type: ignore[attr-defined]
+            _assign_process_to_job(
+                self._job_handle,
+                int(proc._handle),  # ty: ignore[unresolved-attribute]  # CPython-private Win32 HANDLE; no public accessor
+            )
         except OSError:
             # Best-effort: if Job Object creation/assignment fails (rare —
             # nested jobs on pre-Win8, restricted desktops), fall back to
@@ -49,7 +52,7 @@ class _ProcessContainer:
             # we would mask the user's command.
             self._close_handle()
 
-    def terminate(self, proc: subprocess.Popen) -> None:  # type: ignore[type-arg]
+    def terminate(self, proc: subprocess.Popen) -> None:
         """Kill the entire tree rooted at *proc*."""
         if proc.poll() is not None:
             self._close_handle()
@@ -94,7 +97,7 @@ class _ProcessContainer:
 
 
 if os.name == "nt":  # pragma: no cover - exercised on the Windows CI lane
-    _kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)  # type: ignore[attr-defined]
+    _kernel32 = ctypes.WinDLL("kernel32", use_last_error=True)
 
     # JobObjectExtendedLimitInformation = 9
     _JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x00002000
@@ -135,7 +138,7 @@ if os.name == "nt":  # pragma: no cover - exercised on the Windows CI lane
     def _create_kill_on_close_job() -> int:
         handle = _kernel32.CreateJobObjectW(None, None)
         if not handle:
-            raise ctypes.WinError(ctypes.get_last_error())  # type: ignore[attr-defined]
+            raise ctypes.WinError(ctypes.get_last_error())
         info = _JOBOBJECT_EXTENDED_LIMIT_INFORMATION()
         info.BasicLimitInformation.LimitFlags = _JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE
         ok = _kernel32.SetInformationJobObject(
@@ -147,20 +150,20 @@ if os.name == "nt":  # pragma: no cover - exercised on the Windows CI lane
         if not ok:
             err = ctypes.get_last_error()
             _kernel32.CloseHandle(handle)
-            raise ctypes.WinError(err)  # type: ignore[attr-defined]
+            raise ctypes.WinError(err)
         return int(handle)
 
     def _assign_process_to_job(job_handle: int, process_handle: int) -> None:
         if not _kernel32.AssignProcessToJobObject(job_handle, process_handle):
-            raise ctypes.WinError(ctypes.get_last_error())  # type: ignore[attr-defined]
+            raise ctypes.WinError(ctypes.get_last_error())
 
     def _terminate_job(job_handle: int) -> None:
         if not _kernel32.TerminateJobObject(job_handle, 1):
-            raise ctypes.WinError(ctypes.get_last_error())  # type: ignore[attr-defined]
+            raise ctypes.WinError(ctypes.get_last_error())
 
     def _close_handle(handle: int) -> None:
         if not _kernel32.CloseHandle(handle):
-            raise ctypes.WinError(ctypes.get_last_error())  # type: ignore[attr-defined]
+            raise ctypes.WinError(ctypes.get_last_error())
 
 else:
 

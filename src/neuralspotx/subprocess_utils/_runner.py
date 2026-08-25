@@ -16,7 +16,7 @@ from ._verbosity import _VERBOSITY, _effective_timeout
 from ._winjob import _ProcessContainer
 
 
-def _popen(cmd: list[str], **kwargs: Any) -> subprocess.Popen:  # type: ignore[type-arg]
+def _popen(cmd: list[str], **kwargs: Any) -> subprocess.Popen:
     """Spawn *cmd*, translating a missing executable into a typed error.
 
     ``subprocess.Popen`` raises a raw ``FileNotFoundError`` (an
