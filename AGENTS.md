@@ -59,6 +59,17 @@ Normal resolution order should remain:
 
 Do not reintroduce implicit sibling repo fallback as a default behavior.
 
+Stable registry revisions must be immutable (version tag or full SHA;
+`registry_policy.is_immutable_registry_revision`). The packaged
+`neuralspotx@main` self-reference is the sole *permanent* floating-ref
+allowance (`PERMANENT_FLOATING_REF_KEYS`). Any other floating stable ref is a
+temporary branch pin and must be added to
+`TEMPORARY_STABLE_FLOATING_REF_ALLOWLIST` with an `expires_on` date
+(`FloatingRefAllowance` refuses a permanent entry for anything else). Once
+that date passes, `test_temporary_allowances_have_not_expired` fails the
+unit-test jobs repo-wide **by design** — the fix is to collapse the pin to a
+tag/SHA and delete the allowance, never to extend the date silently.
+
 When a module's source is consolidated into a different `projects` entry
 (e.g. absorbed into a monorepo), repoint `modules.<name>.project` **and**
 delete the now-unreferenced old `projects.<name>` record in the same
@@ -118,6 +129,16 @@ Generated app content should use Jinja templates where NSX owns the files.
 - Template rendering lives in `src/neuralspotx/templating.py`
 - App templates live under `src/neuralspotx/templates/`
 - Prefer `.j2` templates for files with app/board/SoC substitutions
+- App templates are registered in `operations.APP_TEMPLATES` (`AppTemplate`:
+  template dir, seeded modules, description, optional `socs` gate)
+
+New template directories are shipped by the `templates/**/*` package-data
+glob in `pyproject.toml`, but setuptools expands it with `glob(recursive=True)`
+and `**/*` never matches dotfiles — a template's `.gitignore` (or any other
+dotfile) needs its own package-data entry (`templates/*/.gitignore` today).
+`tests/test_app_templates.py::test_app_template_files_are_packaged` walks every
+directory under `src/neuralspotx/templates/` and fails on any file no glob
+selects; the `distribution-smoke` CI job proves the same against a built wheel.
 
 Do not add long post-copy string-rewrite logic when templating is a better fit.
 
@@ -191,6 +212,7 @@ safety check, so any new one must be added here and justified in its PR.
 | --- | --- | --- |
 | `NSX_SKIP_COMPAT_CHECK` | Truthy (`1`/`true`/`yes`/`on`) skips the per-target module↔board/SoC compatibility gate during closure resolution. | `module_registry/_closure.py` (single gate) |
 | `NSX_ALLOW_VERSION_MISMATCH` | Truthy bypasses the `nsx.lock` ↔ tool major-version compatibility check. | `project_config._check_nsx_version_compatibility` |
+| `--sdk-root` / `AppActionRequest.sdk_root` (CMake `NSX_AMBIQSUITE_ROOT_OVERRIDE`) | Builds against an out-of-tree AmbiqSuite instead of the vendored `nsx-ambiqsuite` recorded in `nsx.lock`; lock/SBOM/`--frozen` no longer describe the binary. Not an env var, but the same class of bypass. | `project_config._run_cmake_configure` (single emit site; always emitted, empty clears a cached override) + `operations._build._check_sdk_root` (must be a directory, warns, refused with `--frozen`) |
 
 **Runtime tuning (safe to set; never weaken integrity):**
 

@@ -79,9 +79,8 @@ include = ["neuralspotx", "neuralspotx.*"]
 [tool.setuptools.package-data]
 neuralspotx = [
     "py.typed",
-    "templates/external_app/**/*",
-    "templates/module_skeleton/**/*",
-    "templates/npu_tflm_app/**/*",
+    # Every template directory ships; adding a template is data-only.
+    "templates/**/*",
     # setuptools expands these with glob(recursive=True), which never matches
     # dotfiles under `**/*`; the app-template .gitignore needs its own entry.
     # Guarded by tests/test_app_templates.py::test_app_template_files_are_packaged.
@@ -90,6 +89,14 @@ neuralspotx = [
     "boards/**/*",
 ]
 "neuralspotx.data" = ["*.yaml"]
+
+[tool.setuptools.exclude-package-data]
+# `templates/**/*` would otherwise sweep a checkout's stale
+# templates/__pycache__/*.pyc into the wheel. Keyed on "*" because setuptools
+# filters per (sub)package root and matches with fnmatch (a `*` spans `/`):
+# the first pattern covers `neuralspotx`, the second `neuralspotx.templates`.
+# Guarded by tests/test_app_templates.py::test_app_template_files_are_packaged.
+"*" = ["*/__pycache__/*", "__pycache__/*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

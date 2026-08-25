@@ -16,9 +16,12 @@ fail on drift instead of correcting it.
 The packaged `stable` registry is the release default. Its project and module
 revisions are expected to move to immutable version tags or full commit SHAs.
 The SDK defaults are pinned to immutable releases (`nsx-ambiq-sdk@v5.2.24` and
-`nsx-pmu-armv8m@v0.2.0`). The packaged `neuralspotx@main` self-reference remains
-the single narrow temporary exception; adding another floating stable ref fails
-the registry policy test.
+`nsx-pmu-armv8m@v0.2.0`). The packaged `neuralspotx@main` self-reference is the
+sole *permanent* floating-ref allowance. Any other floating stable ref must be
+a temporary branch pin that carries an `expires_on` date in the registry
+policy allowlist; adding one without a date is rejected, and once the date
+passes `test_temporary_allowances_have_not_expired` fails until the pin is
+collapsed to a tag or full SHA.
 
 Internal target bring-up remains explicit and app-local. Use ordered
 `registry.layers` (`workspace` or `inline`) for shared overlays, then

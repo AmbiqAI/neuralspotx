@@ -537,49 +537,40 @@ def _build_parser() -> argparse.ArgumentParser:
             help="App name or directory (overrides --app-dir; resolved under ./ and ./examples)",
         )
 
+    def _add_create_app_arguments(p: argparse.ArgumentParser) -> None:
+        # Shared by ``create-app`` and its ``new`` alias so the two parsers
+        # cannot drift; ``--template`` help is built from the registry so a
+        # new AppTemplate entry documents itself.
+        p.add_argument("app_dir", help="App directory to create")
+        p.add_argument("--board", default=DEFAULT_BOARD, help="Target board package suffix")
+        p.add_argument(
+            "--soc", default=None, help="Target SoC package suffix (default inferred from board)"
+        )
+        p.add_argument(
+            "--force", action="store_true", help="Allow writing into a non-empty app directory"
+        )
+        p.add_argument(
+            "--no-bootstrap",
+            action="store_true",
+            help="Create the app without initializing starter modules",
+        )
+        template_help = "; ".join(
+            f"{name}: {template.description.rstrip('.')}"
+            for name, template in sorted(operations.APP_TEMPLATES.items())
+        )
+        p.add_argument(
+            "--template",
+            default="default",
+            choices=sorted(operations.APP_TEMPLATES),
+            help=f"App template ({template_help})",
+        )
+        p.set_defaults(func=cmd_create_app)
+
     p_new = sub.add_parser("create-app", help="Create a new standalone NSX app project")
-    p_new.add_argument("app_dir", help="App directory to create")
-    p_new.add_argument("--board", default=DEFAULT_BOARD, help="Target board package suffix")
-    p_new.add_argument(
-        "--soc", default=None, help="Target SoC package suffix (default inferred from board)"
-    )
-    p_new.add_argument(
-        "--force", action="store_true", help="Allow writing into a non-empty app directory"
-    )
-    p_new.add_argument(
-        "--no-bootstrap",
-        action="store_true",
-        help="Create the app without initializing starter modules",
-    )
-    p_new.add_argument(
-        "--template",
-        default="default",
-        choices=sorted(operations.APP_TEMPLATES),
-        help="App template (default: minimal hello-world; npu-tflm: Ethos-U TFLM app)",
-    )
-    p_new.set_defaults(func=cmd_create_app)
+    _add_create_app_arguments(p_new)
 
     p_new_alias = sub.add_parser("new", help="Alias for create-app")
-    p_new_alias.add_argument("app_dir", help="App directory to create")
-    p_new_alias.add_argument("--board", default=DEFAULT_BOARD, help="Target board package suffix")
-    p_new_alias.add_argument(
-        "--soc", default=None, help="Target SoC package suffix (default inferred from board)"
-    )
-    p_new_alias.add_argument(
-        "--force", action="store_true", help="Allow writing into a non-empty app directory"
-    )
-    p_new_alias.add_argument(
-        "--no-bootstrap",
-        action="store_true",
-        help="Create the app without initializing starter modules",
-    )
-    p_new_alias.add_argument(
-        "--template",
-        default="default",
-        choices=sorted(operations.APP_TEMPLATES),
-        help="App template (default: minimal hello-world; npu-tflm: Ethos-U TFLM app)",
-    )
-    p_new_alias.set_defaults(func=cmd_create_app)
+    _add_create_app_arguments(p_new_alias)
 
     p_doctor = sub.add_parser("doctor", help="Check the local NSX toolchain environment")
     p_doctor.add_argument(

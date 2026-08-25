@@ -26,6 +26,16 @@ _VERSION_TAG_RE: Final[re.Pattern[str]] = re.compile(
 # silently leaving it orphaned.
 RESERVED_REGISTRY_PROJECT_NAMES: Final[frozenset[str]] = frozenset()
 
+# The only ``(project, revision)`` pairs that may be allowlisted *without* an
+# expiry date. Today that is exactly the packaged ``neuralspotx@main``
+# self-reference (board/tooling modules resolve from the release branch of
+# this very package). Every other floating stable ref is a temporary branch
+# pin and must carry ``expires_on`` so it cannot silently outlive the
+# upstream PR it tracks; see ``FloatingRefAllowance.__post_init__``.
+PERMANENT_FLOATING_REF_KEYS: Final[frozenset[tuple[str, str]]] = frozenset(
+    {("neuralspotx", "main")}
+)
+
 
 @dataclass(frozen=True, slots=True, kw_only=True)
 class FloatingRefAllowance:
@@ -35,8 +45,9 @@ class FloatingRefAllowance:
     ``today > expires_on`` the ref must have been re-pinned per
     ``removal_condition`` and the allowance deleted, otherwise the policy
     reports it as expired. ``None`` marks a *permanent* allowance; permanent
-    allowances are reserved for the packaged ``neuralspotx@main``
-    self-reference and every other entry must carry a real expiry date.
+    allowances are reserved for the keys in ``PERMANENT_FLOATING_REF_KEYS``
+    (the packaged ``neuralspotx@main`` self-reference) and constructing one
+    for any other ref raises ``ValueError``.
     """
 
     project: str
@@ -44,6 +55,16 @@ class FloatingRefAllowance:
     reason: str
     removal_condition: str
     expires_on: date | None
+
+    def __post_init__(self) -> None:
+        if self.expires_on is None and (self.project, self.revision) not in (
+            PERMANENT_FLOATING_REF_KEYS
+        ):
+            raise ValueError(
+                f"Floating-ref allowance {self.project}@{self.revision} has no "
+                "expires_on; only the packaged self-reference may be permanent. "
+                "Set expires_on to the date by which the ref must be re-pinned."
+            )
 
     @property
     def is_permanent(self) -> bool:
@@ -116,20 +137,10 @@ TEMPORARY_STABLE_FLOATING_REF_ALLOWLIST: Final[tuple[FloatingRefAllowance, ...]]
         # does not track an open upstream branch.
         expires_on=None,
     ),
-    FloatingRefAllowance(
-        project="helia-rt",
-        revision="fix/atomiq110-compat",
-        reason="Ethos-U wrapper plumbing + atomiq110 compatibility are only on this open branch.",
-        removal_condition="Re-pin to helia-rt-v1.18.0 (the first tag after PR #191) once merged.",
-        expires_on=date(2026, 10, 15),
-    ),
-    FloatingRefAllowance(
-        project="nsx-ambiq-sdk",
-        revision="feat/nsx-power-atomiq110",
-        reason="atomiq110 platform support and the nsx-npu module are only on this open branch.",
-        removal_condition="Re-pin to the next nsx-ambiq-sdk release tag (> v5.2.24) once merged.",
-        expires_on=date(2026, 10, 15),
-    ),
+    # Temporary branch pins go here with a real ``expires_on``. Once that
+    # date passes, ``tests/test_stable_registry_policy.py::
+    # test_temporary_allowances_have_not_expired`` fails repo-wide by design:
+    # collapse the pin to a tag/SHA and delete the entry.
 )
 
 

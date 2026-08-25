@@ -290,7 +290,27 @@ def test_configure_passes_sdk_root_override(tmp_path, monkeypatch: pytest.Monkey
         sdk_root=sdk_root,
     )
 
-    assert f"-DNSX_AMBIQSUITE_ROOT_OVERRIDE={sdk_root}" in captured["cmd"]
+    assert f"-DNSX_AMBIQSUITE_ROOT_OVERRIDE={sdk_root.resolve()}" in captured["cmd"]
+
+
+def test_configure_clears_sdk_root_override_when_unset(
+    tmp_path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Omitting ``sdk_root`` must emit an *empty* override, not skip it.
+
+    CMake caches ``NSX_AMBIQSUITE_ROOT_OVERRIDE``; only an explicit empty
+    value returns a previously overridden build tree to the vendored
+    ``nsx-ambiqsuite`` module (same pattern as ``NSX_JLINK_SERIAL``).
+    """
+    from neuralspotx import project_config
+
+    captured: dict[str, list[str]] = {}
+    monkeypatch.setattr(project_config, "run", lambda cmd: captured.setdefault("cmd", cmd))
+
+    project_config._run_cmake_configure(tmp_path, tmp_path / "build", "apollo510_evb")
+
+    overrides = [a for a in captured["cmd"] if a.startswith("-DNSX_AMBIQSUITE_ROOT_OVERRIDE=")]
+    assert overrides == ["-DNSX_AMBIQSUITE_ROOT_OVERRIDE="]
 
 
 def test_cmake_configure_propagates_jlink_path_override(

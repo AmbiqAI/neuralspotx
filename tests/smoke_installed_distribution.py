@@ -5,15 +5,72 @@ from __future__ import annotations
 import argparse
 import json
 import sys
+import tempfile
+from collections.abc import Callable
 from pathlib import Path
+
+# Files every ``create-app --no-bootstrap`` scaffold must ship, per template.
+# The npu-tflm entries guard the wheel-level package-data contract: the
+# template renders fine from a checkout (``pip install -e``) even when a file
+# is missing from ``[tool.setuptools.package-data]``, so only a real wheel
+# proves it. ``.gitignore`` is the canary for the dotfile glob (``**/*``
+# never matches leading-dot names).
+_EXPECTED_APP_FILES: dict[str, tuple[str, ...]] = {
+    "default": (".gitignore",),
+    "npu-tflm": (
+        ".gitignore",
+        "src/main.cc",
+        "src/model_data.h",
+        "tools/tflite_to_header.py",
+        "cmake/presets/CMakePresets.json",
+        "nsx.yml",
+    ),
+}
+_TEMPLATE_BOARDS: dict[str, str] = {
+    "default": "apollo510_evb",
+    "npu-tflm": "atomiq110_fpga_turbo",
+}
+
+
+def _smoke_create_app(
+    nsx_main: Callable[[list[str]], int], work_dir: Path, template: str
+) -> None:
+    """Scaffold *template* with ``--no-bootstrap`` and check its shipped files."""
+
+    app_dir = work_dir / f"wheel-smoke-app-{template}"
+    result = nsx_main(
+        [
+            "create-app",
+            str(app_dir),
+            "--board",
+            _TEMPLATE_BOARDS[template],
+            "--template",
+            template,
+            "--no-bootstrap",
+        ]
+    )
+    if result != 0:
+        raise RuntimeError(f"nsx create-app --template {template} failed with exit code {result}")
+    missing = [rel for rel in _EXPECTED_APP_FILES[template] if not (app_dir / rel).is_file()]
+    if missing:
+        raise RuntimeError(
+            f"create-app --template {template} scaffold is missing packaged template files: "
+            + json.dumps(missing)
+        )
 
 
 def main() -> int:
-    """Scaffold and validate a module using only the installed distribution."""
+    """Scaffold and validate a module and app templates using only the installed distribution."""
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--install-root", type=Path, required=True)
     parser.add_argument("--module-dir", type=Path, required=True)
+    parser.add_argument(
+        "--app-work-dir",
+        type=Path,
+        default=None,
+        help="Directory to scaffold the create-app smoke apps into (default: a temp dir)",
+    )
     args = parser.parse_args()
 
     import neuralspotx
@@ -68,6 +125,18 @@ def main() -> int:
                 sort_keys=True,
             )
         )
+
+    # App templates: no-network (--no-bootstrap) scaffold of every packaged
+    # template against the wheel, so a template file dropped by package-data
+    # fails here instead of for every pipx user.
+    if args.app_work_dir is not None:
+        args.app_work_dir.mkdir(parents=True, exist_ok=True)
+        for template in _EXPECTED_APP_FILES:
+            _smoke_create_app(nsx_main, args.app_work_dir, template)
+    else:
+        with tempfile.TemporaryDirectory(prefix="nsx-wheel-apps-") as tmp:
+            for template in _EXPECTED_APP_FILES:
+                _smoke_create_app(nsx_main, Path(tmp), template)
     return 0
 
 

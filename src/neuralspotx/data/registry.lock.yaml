@@ -12,9 +12,10 @@ projects:
     revision: main
     path: neuralspotx
   # Unified SDK: one repo covering all supported SoC families. The v5.2.24
-  # pin predates atomiq110; atomiq110 support (nsx-ambiq-sdk PR #46) rides
-  # the feat/nsx-power-atomiq110 pins below until that PR merges and a new
-  # tag exists.
+  # pin predates atomiq110; atomiq110 support (nsx-ambiq-sdk PR #46, merged
+  # to main) is pinned below to the hardware-validated SHA
+  # deda37552e790ad2ebf6fd5a27f0628ac6fcf44f. Collapse those pins to the
+  # first nsx-ambiq-sdk tag > v5.2.24 when it exists.
   nsx-ambiq-sdk:
     name: nsx-ambiq-sdk
     url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
@@ -50,10 +51,9 @@ projects:
   helia-rt:
     name: helia-rt
     url: https://github.com/AmbiqAI/helia-rt.git
-    # Ethos-U wrapper plumbing + atomiq110 compatibility are still landing on
-    # helia-rt's open fix/atomiq110-compat branch. Pin there until the branch
-    # merges and a release tag (> v1.16.0) exists, then pin the tag.
-    revision: fix/atomiq110-compat
+    # helia-rt-v1.18.0 is the first release after PR #191 (Ethos-U wrapper
+    # plumbing + atomiq110 compatibility; nsx-module.yaml declares socs: ['*']).
+    revision: helia-rt-v1.18.0
     path: modules/helia-rt
   helia-rt-source:
     name: helia-rt-source
@@ -205,13 +205,13 @@ modules:
     project: nsx-ethos-u-driver
     revision: nsx-ethos-u-driver-v0.1.2
     metadata: modules/nsx-ethos-u-driver/nsx-module.yaml
-  # nsx-npu awaits the first SDK tag > v5.2.24. The feat/nsx-power-atomiq110
-  # branch is already an ancestor of nsx-ambiq-sdk main, so this pin exists
-  # only because no release tag yet contains the module; collapse it to that
-  # tag like the other nsx-ambiq-sdk modules once it ships.
+  # nsx-npu is not in any SDK release tag yet (first shipped by PR #46, now
+  # on nsx-ambiq-sdk main). Pinned to the hardware-validated SHA; collapse it
+  # to the first nsx-ambiq-sdk tag > v5.2.24 like the other nsx-ambiq-sdk
+  # modules once that tag exists.
   nsx-npu:
     project: nsx-ambiq-sdk
-    revision: feat/nsx-power-atomiq110
+    revision: deda37552e790ad2ebf6fd5a27f0628ac6fcf44f
     metadata: modules/nsx-npu/nsx-module.yaml
   nsx-uart:
     project: nsx-ambiq-sdk
@@ -264,9 +264,8 @@ modules:
     metadata: modules/nsx-physiokit/nsx-module.yaml
   nsx-helia-rt:
     project: helia-rt
-    # Pinned with the helia-rt project above; collapse to the next release
-    # tag once fix/atomiq110-compat merges.
-    revision: fix/atomiq110-compat
+    # Tracks the helia-rt project pin above (first release after PR #191).
+    revision: helia-rt-v1.18.0
     metadata: modules/helia-rt/nsx/nsx-module.yaml
   helia-rt-source:
     project: helia-rt-source
@@ -431,14 +430,15 @@ soc_families:
   apollo510b: *fam_apollo5
   apollo510L: *fam_apollo5
   apollo330P: *fam_apollo5
-  # atomiq110 support is still landing on nsx-ambiq-sdk's open
-  # feat/nsx-power-atomiq110 branch (its own arch dir, CRM_TPIUCLKCFG
-  # bus-fault workarounds for the FPGA turbo board, rebuilt HAL/BSP libs).
-  # Pin this SoC there until that branch merges to main, then collapse this
-  # back to the *fam_apollo5 alias.
+  # atomiq110 support (its own arch dir, CRM_TPIUCLKCFG bus-fault
+  # workarounds for the FPGA turbo board, rebuilt HAL/BSP libs) landed on
+  # nsx-ambiq-sdk main via PR #46 but is not in any release tag yet. Pinned
+  # to the hardware-validated SHA; collapse this back to the *fam_apollo5
+  # alias once the first nsx-ambiq-sdk tag > v5.2.24 exists and *fam_apollo5
+  # moves to it.
   atomiq110:
     <<: *fam_apollo5
-    revision: feat/nsx-power-atomiq110
+    revision: deda37552e790ad2ebf6fd5a27f0628ac6fcf44f
     # Same list as *fam_apollo5 plus nsx-npu (Ethos-U85 core-driver module,
     # atomiq110-only). YAML merge keys replace rather than append, so the
     # full list is restated here.

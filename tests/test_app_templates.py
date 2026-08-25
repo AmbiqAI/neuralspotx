@@ -45,24 +45,49 @@ def _package_data_files() -> set[Path]:
     return matched
 
 
+def _template_dirs() -> list[Path]:
+    """Every template directory under the package, not just ``APP_TEMPLATES``.
+
+    Module skeletons and any template added later are covered too, so a new
+    directory is checked the moment it exists on disk.
+    """
+
+    return sorted(
+        path
+        for path in (PACKAGE_DIR / "templates").iterdir()
+        if path.is_dir() and path.name != "__pycache__"
+    )
+
+
 def test_app_template_files_are_packaged() -> None:
-    """Every file of every ``APP_TEMPLATES`` entry must ship in the wheel.
+    """Every file of every template directory must ship in the wheel.
 
     A template directory that is on disk in a checkout but missing from
     ``package-data`` renders fine under ``pip install -e`` and then fails for
     every ``pipx`` user, so the packaging contract is asserted here without
-    building a wheel.
+    building a wheel. ``templates/**/*`` covers new directories, but ``**/*``
+    never matches dotfiles: a template's ``.gitignore`` relies on the
+    separate ``templates/*/.gitignore`` entry, which this test also proves.
     """
+
+    template_dirs = _template_dirs()
+    for template in APP_TEMPLATES.values():
+        assert PACKAGE_DIR / "templates" / template.template_dir in template_dirs
+
+    # ``templates/**/*`` also matches a checkout's stale
+    # ``templates/__pycache__/*.pyc``; the wheel must exclude those.
+    pyproject = tomllib.loads((REPO_ROOT / "pyproject.toml").read_text(encoding="utf-8"))
+    excludes = pyproject["tool"]["setuptools"]["exclude-package-data"]["*"]
+    assert any("__pycache__" in pattern for pattern in excludes), excludes
 
     packaged = _package_data_files()
     missing: list[str] = []
-    for name, template in APP_TEMPLATES.items():
-        template_dir = PACKAGE_DIR / "templates" / template.template_dir
-        assert template_dir.is_dir(), f"{name}: {template_dir} is not a directory"
+    for template_dir in template_dirs:
+        name = template_dir.name
         files = sorted(
             path.relative_to(PACKAGE_DIR)
             for path in template_dir.rglob("*")
-            if path.is_file()
+            if path.is_file() and "__pycache__" not in path.parts
         )
         assert files, f"{name}: template directory {template_dir} is empty"
         missing.extend(
@@ -77,6 +102,33 @@ def test_app_template_files_are_packaged() -> None:
 def test_unknown_template_is_rejected(tmp_path: Path) -> None:
     with pytest.raises(NSXConfigError, match="Unknown app template"):
         create_app_impl(tmp_path / "app", template="does-not-exist")
+
+
+def test_npu_template_refuses_non_npu_board_before_any_write(tmp_path: Path) -> None:
+    """``npu-tflm`` on a non-atomiq110 board fails before touching the disk.
+
+    The gate runs right after SoC inference and ahead of template rendering
+    and module acquisition, so the app directory must not exist afterwards
+    (nothing to roll back) and no network is involved.
+    """
+
+    assert APP_TEMPLATES["npu-tflm"].socs == ("atomiq110",)
+    assert APP_TEMPLATES["default"].socs == ()
+
+    app_dir = tmp_path / "wrong_board"
+    with pytest.raises(NSXConfigError) as excinfo:
+        create_app_impl(
+            app_dir,
+            board="apollo510_evb",
+            no_bootstrap=True,
+            template="npu-tflm",
+        )
+    message = str(excinfo.value)
+    assert "Template 'npu-tflm' targets SoCs [atomiq110]" in message
+    assert "board 'apollo510_evb' is apollo510" in message
+    assert "--template default" in message
+    assert not app_dir.exists()
+    assert list(tmp_path.iterdir()) == []
 
 
 def test_default_template_renders_hello_world(tmp_path: Path) -> None:

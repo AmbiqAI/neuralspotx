@@ -83,7 +83,7 @@ the packaged board/tooling content that ships directly from `neuralspotx`.
 | `arm-cmsis-nn` | :material-brain: ML | Standard Arm CMSIS-NN kernels exposed as an NSX CMake target for TFLM consumers. | All |
 | `nsx-tflite-micro` | :material-brain: ML | Helia-RT TensorFlow Lite Micro runtime adapter with reference and standard Arm CMSIS-NN backends. | All |
 | `nsx-cmsis-nn` | :material-brain: ML | heliaCORE kernels and NSX integration for ML inference workloads. | Apollo5B, Apollo510, Apollo510B, Apollo510L |
-| `nsx-helia-rt` | :material-brain: ML | Helia runtime integration for NSX-managed inference applications. | Apollo5B, Apollo510, Apollo510B, Apollo510L |
+| `nsx-helia-rt` | :material-brain: ML | Helia runtime integration for NSX-managed inference applications (Ethos-U dispatch on Atomiq110 via `NSX_HELIA_RT_ENABLE_ETHOSU`). | All (`helia-rt-v1.18.0` declares `socs: ['*']`) |
 | `nsx-ethos-u-driver` | :material-brain: ML | NSX integration of Arm's Ethos-U core driver — wraps the vendored upstream `ethos-u-core-driver` with NSX build glue, CMSIS-based cache coherency hooks, a driver-supplied IRQ trampoline that boards wire into their vector table, and inference begin/end probes. Runtime-agnostic. | All |
 | `nsx-npu` | :material-brain: ML | Atomiq110 glue for the Arm Ethos-U85 NPU — power-domain sequencing, IRQ wiring, and performance-mode selection on top of `nsx-ethos-u-driver`. | Atomiq110 |
 | `helia-dsp` | :material-function-variant: DSP | NSX-packaged helia-dsp fork of CMSIS-DSP — FFT, filtering, and statistics kernels. | All |
@@ -209,8 +209,8 @@ under `modules/` at workspace assembly time (see the
 [metadata model](../architecture/metadata-model.md) for the general
 mechanism). `nsx-npu` is the worked example — it ships from the
 `nsx-ambiq-sdk` monorepo but requires `nsx-ethos-u-driver` from its own
-standalone repo, so an app created from the `npu_tflm_app` template
-(`nsx create-app`) lists only `nsx-helia-rt` and `nsx-npu` in its
+standalone repo, so an app created with `nsx create-app --template npu-tflm`
+lists only `nsx-helia-rt` and `nsx-npu` in its
 `nsx.yml`, and `nsx-ethos-u-driver` is pulled in transitively.
 
 ### Peripheral and Bus Modules

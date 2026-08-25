@@ -7,7 +7,8 @@ Builds and flashes a generated NSX app.
 ```text
 nsx flash [--app-dir APP_DIR] [--board BOARD]
           [--build-dir BUILD_DIR] [--toolchain TOOLCHAIN]
-          [--target TARGET] [--probe-serial PROBE_SERIAL] [--jobs JOBS]
+          [--sdk-root SDK_ROOT] [--target TARGET]
+          [--probe-serial PROBE_SERIAL] [--jobs JOBS]
           [--update] [--frozen] [--timeout SECONDS] [app]
 ```
 
@@ -18,6 +19,7 @@ nsx flash [--app-dir APP_DIR] [--board BOARD]
 - `--board`: select a board from the app's supported targets instead of `targets.default`
 - `--build-dir`: build directory override
 - `--toolchain`: toolchain override (`gcc`, `armclang`, `atfe`). Defaults to `nsx.yml` → `arm-none-eabi-gcc`
+- `--sdk-root`: escape hatch — build against an out-of-tree AmbiqSuite root (`NSX_AMBIQSUITE_ROOT_OVERRIDE`); warns that `nsx.lock`/SBOM no longer describe the flashed binary, cannot be combined with `--frozen`, and forces a reconfigure when it differs from the cached override. See [SDK provider selection](../user-guide/sdk-provider-selection.md#out-of-tree-sdk-sdk-root)
 - `--target`: optional executable target to flash; omitted selects the app's primary executable
 - `--probe-serial`: select one J-Link explicitly when multiple probes are attached
 - `--jobs`: parallel build jobs

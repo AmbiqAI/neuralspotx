@@ -87,11 +87,15 @@ class AppTemplate:
         modules: Direct-dependency module names seeded into the app's
             ``nsx.yml`` in addition to the board-profile baseline.
         description: One-line help text for CLI/docs.
+        socs: SoCs the template's generated code targets; empty means any
+            board. A non-empty tuple makes ``create_app_impl`` refuse other
+            boards before any files are written or modules fetched.
     """
 
     template_dir: str
     modules: tuple[str, ...] = field(default=())
     description: str = ""
+    socs: tuple[str, ...] = field(default=())
 
 
 APP_TEMPLATES: dict[str, AppTemplate] = {
@@ -106,8 +110,24 @@ APP_TEMPLATES: dict[str, AppTemplate] = {
             "TFLite Micro inference on the Ethos-U85 NPU "
             "(Vela model harness, heliaRT ethos-u dispatch)."
         ),
+        # The harness calls nsx_npu_init / AddEthosU and places its arena
+        # for the U85 bus master; nsx-npu itself is atomiq110-only.
+        socs=("atomiq110",),
     ),
 }
+
+
+def _check_template_supports_soc(
+    template: str, app_template: AppTemplate, *, board: str, soc: str
+) -> None:
+    """Refuse a SoC-specific template on a board outside its ``socs``."""
+
+    if app_template.socs and soc not in app_template.socs:
+        targets = ", ".join(app_template.socs)
+        raise NSXConfigError(
+            f"Template '{template}' targets SoCs [{targets}]; board '{board}' is {soc}. "
+            "Use --template default or an NPU board."
+        )
 
 
 def create_app_impl(
@@ -147,6 +167,9 @@ def create_app_impl(
     soc = normalize_soc(soc) or DEFAULT_SOC_FOR_BOARD.get(board)
     if soc is None:
         raise NSXConfigError(f"Unable to infer --soc for board '{board}'. Pass --soc explicitly.")
+    # Gate before any filesystem write or module acquisition so a wrong
+    # board fails instantly and leaves nothing behind.
+    _check_template_supports_soc(template, app_template, board=board, soc=soc)
 
     template_root = resources.files("neuralspotx.templates").joinpath(app_template.template_dir)
     with resources.as_file(template_root) as src_template:

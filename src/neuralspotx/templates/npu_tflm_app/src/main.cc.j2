@@ -154,7 +154,7 @@ int main(void) {
         while (1) {}
     }
     nsx_printf("Arena: %u / %u bytes\n",
-               (unsigned)interpreter.arena_used_bytes(), kArenaSize);
+               (unsigned)interpreter.arena_used_bytes(), (unsigned)kArenaSize);
 
     TfLiteTensor *input = interpreter.input(0);
     nsx_printf("Input: %u bytes, Output: %u bytes\n\n",

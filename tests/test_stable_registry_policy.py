@@ -8,6 +8,7 @@ import pytest
 
 from neuralspotx import load_registry
 from neuralspotx.registry_policy import (
+    PERMANENT_FLOATING_REF_KEYS,
     RESERVED_REGISTRY_PROJECT_NAMES,
     TEMPORARY_STABLE_FLOATING_REF_ALLOWLIST,
     FloatingRefAllowance,
@@ -17,17 +18,18 @@ from neuralspotx.registry_policy import (
     validate_stable_registry_refs,
 )
 
+# The validated nsx-ambiq-sdk commit the atomiq110 family + nsx-npu are pinned
+# to until the first SDK tag > v5.2.24 exists (see registry.lock.yaml).
+_ATOMIQ110_SDK_SHA = "deda37552e790ad2ebf6fd5a27f0628ac6fcf44f"
+
 
 def test_packaged_registry_floating_refs_are_exactly_allowlisted() -> None:
     report = validate_stable_registry_refs(load_registry())
 
-    expected = {
-        ("neuralspotx", "main"),
-        # Temporary atomiq110 branch pins — collapse once the atomiq110
-        # support PRs merge and release tags exist.
-        ("helia-rt", "fix/atomiq110-compat"),
-        ("nsx-ambiq-sdk", "feat/nsx-power-atomiq110"),
-    }
+    # The packaged self-reference is the sole floating ref today. A temporary
+    # branch pin added here must also appear in the shipped allowlist with an
+    # ``expires_on`` date, and be removed again once collapsed to a tag/SHA.
+    expected = {("neuralspotx", "main")}
     assert {(use.project, use.revision) for use in report.approved_floating} == expected
     assert {
         (allowance.project, allowance.revision)
@@ -39,13 +41,51 @@ def test_packaged_registry_floating_refs_are_exactly_allowlisted() -> None:
         (allowance.project, allowance.revision)
         for allowance in TEMPORARY_STABLE_FLOATING_REF_ALLOWLIST
         if allowance.is_permanent
-    } == {("neuralspotx", "main")}
+    } == set(PERMANENT_FLOATING_REF_KEYS) == {("neuralspotx", "main")}
+
+
+def test_permanent_allowance_rejected_for_non_self_reference() -> None:
+    """``expires_on=None`` is only legal for ``PERMANENT_FLOATING_REF_KEYS``.
+
+    Enforced at construction so a contributor cannot add a permanent branch
+    pin to the shipped allowlist by omission; the error names the ref and
+    the fix.
+    """
+
+    with pytest.raises(ValueError, match=r"sdk@feat/bringup.*expires_on"):
+        FloatingRefAllowance(
+            project="sdk",
+            revision="feat/bringup",
+            reason="bring-up branch",
+            removal_condition="Re-pin to the next sdk release tag.",
+            expires_on=None,
+        )
+
+    # The self-reference and any dated allowance remain constructible.
+    permanent = FloatingRefAllowance(
+        project="neuralspotx",
+        revision="main",
+        reason="packaged self-reference",
+        removal_condition="never",
+        expires_on=None,
+    )
+    assert permanent.is_permanent
+    dated = FloatingRefAllowance(
+        project="sdk",
+        revision="feat/bringup",
+        reason="bring-up branch",
+        removal_condition="Re-pin to the next sdk release tag.",
+        expires_on=date(2099, 1, 1),
+    )
+    assert not dated.is_permanent
 
 
 def test_temporary_allowances_have_not_expired() -> None:
     """A branch pin past its ``expires_on`` date must be re-pinned, not kept.
 
-    Fails with the exact ``project@revision`` and the recorded
+    Trivially passes while the shipped allowlist holds no temporary entry;
+    kept so any future branch pin is covered against the real clock. Fails
+    with the exact ``project@revision`` and the recorded
     ``removal_condition`` so the fix is actionable from the failure alone.
     """
 
@@ -92,17 +132,14 @@ def test_packaged_registry_release_projects_are_immutable() -> None:
         for entry in registry["modules"].values()
         if entry["project"] == "nsx-tileio"
     } == {"v0.1.0"}
-    # Every nsx-ambiq-sdk ref is either the release tag or an explicitly
-    # allowlisted floating ref. Derived from the allowlist (rather than
-    # spelling the branch here) so this test never *requires* a branch pin
-    # to be present: collapsing a temporary pin back to the tag must not
-    # break it.
+    assert registry["projects"]["helia-rt"]["revision"] == "helia-rt-v1.18.0"
+    assert registry["modules"]["nsx-helia-rt"]["revision"] == "helia-rt-v1.18.0"
+    # Every nsx-ambiq-sdk ref is either the release tag or the validated
+    # atomiq110 SHA (an immutable pin, so no allowance is involved). Only the
+    # tag is *required*: collapsing the SHA back to a newer tag must not break
+    # this test.
     sdk_release_tag = "v5.2.24"
-    allowed_sdk_refs = {sdk_release_tag} | {
-        allowance.revision
-        for allowance in TEMPORARY_STABLE_FLOATING_REF_ALLOWLIST
-        if allowance.project == "nsx-ambiq-sdk"
-    }
+    allowed_sdk_refs = {sdk_release_tag, _ATOMIQ110_SDK_SHA}
     sdk_module_refs = {
         entry["revision"]
         for entry in registry["modules"].values()
@@ -313,14 +350,16 @@ def test_expired_allowance_is_reported_with_removal_condition() -> None:
         removal_condition="Re-pin to the next sdk release tag.",
         expires_on=expiry,
     )
+    # Only the packaged self-reference key may be permanent (see
+    # ``test_permanent_allowance_rejected_for_non_self_reference``).
     permanent = FloatingRefAllowance(
-        project="self",
+        project="neuralspotx",
         revision="main",
         reason="packaged self-reference",
         removal_condition="never",
         expires_on=None,
     )
-    registry["projects"]["self"] = {"revision": "main"}
+    registry["projects"]["neuralspotx"] = {"revision": "main"}
 
     # On and before the expiry date the allowance still applies.
     on_time = stable_registry_ref_report(

@@ -29,8 +29,8 @@ the generated-app flow. Run `nsx board list --registered-only` for the
 authoritative list in the installed version, or add `--json` for structured
 board, SoC, provider, CPU, and toolchain data. Boards marked *preview* are
 published on the registry's `preview` channel (`board_profiles` in
-`registry.lock.yaml`) and track in-flight SDK bring-up rather than a
-released SDK tag.
+`registry.lock.yaml`); preview boards may track in-flight bring-up, and no
+additional gating is applied by `nsx create-app`.
 
 ## Implementation Notes
 
