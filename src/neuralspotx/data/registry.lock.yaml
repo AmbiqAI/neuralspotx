@@ -35,8 +35,8 @@ projects:
   ns-cmsis-nn:
     name: ns-cmsis-nn
     url: https://github.com/AmbiqAI/ns-cmsis-nn.git
-    # v7.29.2 — fix/atomiq110-compat merged upstream (wildcard board/SoC
-    # compatibility + requantize fix). Tag pin per registry policy.
+    # v7.29.2 declares socs: ['*'], which passes the compat gate (wildcard
+    # board/SoC compatibility + requantize fix). Tag pin per registry policy.
     revision: v7.29.2
     path: modules/ns-cmsis-nn
   helia-dsp:
@@ -207,9 +207,10 @@ modules:
     project: nsx-ethos-u-driver
     revision: nsx-ethos-u-driver-v0.1.2
     metadata: modules/nsx-ethos-u-driver/nsx-module.yaml
-  # nsx-npu only exists on nsx-ambiq-sdk's open feat/nsx-power-atomiq110
-  # branch. Pin the module there until that branch merges to main, then
-  # collapse this back to main like the other nsx-ambiq-sdk modules.
+  # nsx-npu awaits the first SDK tag > v5.2.24. The feat/nsx-power-atomiq110
+  # branch is already an ancestor of nsx-ambiq-sdk main, so this pin exists
+  # only because no release tag yet contains the module; collapse it to that
+  # tag like the other nsx-ambiq-sdk modules once it ships.
   nsx-npu:
     project: nsx-ambiq-sdk
     revision: feat/nsx-power-atomiq110
@@ -252,7 +253,7 @@ modules:
     metadata: modules/nsx-nanopb/nsx-module.yaml
   nsx-cmsis-nn:
     project: ns-cmsis-nn
-    # v7.29.2 — fix/atomiq110-compat merged upstream; tag pin.
+    # v7.29.2 declares socs: ['*'], which passes the compat gate; tag pin.
     revision: v7.29.2
     metadata: modules/ns-cmsis-nn/nsx/nsx-module.yaml
   helia-dsp:

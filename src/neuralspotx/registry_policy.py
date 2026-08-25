@@ -94,7 +94,7 @@ TEMPORARY_STABLE_FLOATING_REF_ALLOWLIST: Final[tuple[FloatingRefAllowance, ...]]
         project="helia-rt",
         revision="fix/atomiq110-compat",
         reason="Ethos-U wrapper plumbing + atomiq110 compatibility are only on this open branch.",
-        removal_condition="Re-pin to the next helia-rt release tag (> v1.16.0) once merged.",
+        removal_condition="Re-pin to helia-rt-v1.18.0 (the first tag after PR #191) once merged.",
     ),
     FloatingRefAllowance(
         project="nsx-ambiq-sdk",
