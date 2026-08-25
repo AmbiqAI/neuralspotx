@@ -16,3 +16,5 @@ cpu:
   abi: thumbv8.1m-fpv5-hard
 toolchains:
   - arm-none-eabi-gcc
+  - armclang
+  - atfe

@@ -44,10 +44,11 @@ static inline uint32_t dwt_cycles(void) { return DWT->CYCCNT; }
 static constexpr int kNumOps    = 6;
 static constexpr int kArenaSize = 512 * 1024;
 
-// Arena lives in SHARED_SRAM (.shared, NOLOAD): the Ethos-U85 is a bus
+// Arena lives in SHARED_SRAM (.sram_bss, NOLOAD): the Ethos-U85 is a bus
 // master and cannot access the core-private TCM. TFLM does not require a
-// zeroed arena.
-__attribute__((section(".shared"), aligned(16)))
+// zeroed arena, so keep it out of the loadable .shared section (which the
+// startup code copy-initializes from MRAM) to avoid bloating the image.
+__attribute__((section(".sram_bss"), aligned(16)))
 static uint8_t g_arena[kArenaSize];
 
 static tflite::MicroMutableOpResolver<kNumOps> &get_resolver() {

@@ -47,7 +47,7 @@ def test_npu_tflm_template_renders_and_seeds_modules(tmp_path: Path) -> None:
     main = (app_dir / "src" / "main.cc").read_text(encoding="utf-8")
     assert "nsx_npu_init" in main
     assert "AddEthosU" in main
-    assert 'section(".shared")' in main
+    assert 'section(".sram_bss")' in main
 
     cmake = (app_dir / "CMakeLists.txt").read_text(encoding="utf-8")
     assert "NSX_HELIA_RT_ENABLE_ETHOSU" in cmake
