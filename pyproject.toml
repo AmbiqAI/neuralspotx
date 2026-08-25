@@ -2,7 +2,7 @@
 name = "neuralspotx"
 version = "0.7.17"
 description = "Python tooling and app bootstrap for neuralspotx"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = "BSD-3-Clause"
 license-files = ["LICENSE", "NOTICE"]
 readme = "README.md"
@@ -13,7 +13,6 @@ keywords = ["embedded", "firmware", "ambiq", "neuralspot", "build-system"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Topic :: Software Development :: Build Tools",
@@ -42,6 +41,9 @@ docs = [
 ]
 lint = [
     "ruff>=0.11.0",
+    # Pinned exactly: ty is pre-1.0 and its rule behavior moves between
+    # releases -- upgrades are deliberate, with a re-triage of diagnostics.
+    "ty==0.0.74",
 ]
 test = [
     "hypothesis>=6.0",
@@ -88,7 +90,7 @@ testpaths = ["tests"]
 
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py311"
 preview = true
 
 [tool.ruff.lint]

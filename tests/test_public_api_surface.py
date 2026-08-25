@@ -11,6 +11,7 @@ Covers:
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -502,9 +503,9 @@ class TestCliApiParityGaps:
         calls: list[bool] = []
         original = resolve_module_context
 
-        def spy(*a: object, **kw: object) -> object:
+        def spy(*, app_dir: Path | None) -> tuple[dict, set[str], Path | None, str]:
             calls.append(True)
-            return original(*a, **kw)
+            return original(app_dir=app_dir)
 
         monkeypatch.setattr(_cmd_module, "resolve_module_context", spy)
         # --registry-only avoids needing an nsx.yml
@@ -520,7 +521,7 @@ class TestCliApiParityGaps:
         load_calls: list[object] = []
         original_load = _cmd_module.load_yaml
 
-        def spy(path: object) -> object:
+        def spy(path: Path) -> dict[str, Any]:
             load_calls.append(path)
             return original_load(path)
 

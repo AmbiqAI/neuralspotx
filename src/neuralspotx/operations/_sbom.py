@@ -19,20 +19,18 @@ import hashlib
 import json
 import uuid
 from pathlib import Path
-from typing import Any, Final, Literal
+from typing import Any, Final
 
 from .._errors import NSXConfigError
 from ..nsx_lock import LockKind, NsxLock, lock_path, read_lock
 from ..project_config import _board_key_for_app
-
-SBOMFormat = Literal["spdx", "cyclonedx"]
 
 _SUPPORTED_FORMATS: Final[frozenset[str]] = frozenset({"spdx", "cyclonedx"})
 
 _SPDX_NOASSERTION: Final[str] = "NOASSERTION"
 
 
-def generate_sbom_impl(app_dir: Path, *, format: SBOMFormat = "spdx") -> str:
+def generate_sbom_impl(app_dir: Path, *, format: str = "spdx") -> str:
     """Return a serialized SBOM for the app at *app_dir*.
 
     Args:

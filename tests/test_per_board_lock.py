@@ -140,6 +140,7 @@ def test_write_lock_preserves_sibling_targets(tmp_path: Path) -> None:
     # Re-locking one board must not drop the other's section.
     write_lock(tmp_path, _empty_lock(), "apollo510_evb")
     lock_file = read_lock_file(tmp_path)
+    assert lock_file is not None
     assert set(lock_file.targets) == {"apollo510_evb", "apollo510b_evb"}
 
 
@@ -154,6 +155,7 @@ def test_prune_lock_targets_drops_orphans(tmp_path: Path) -> None:
     write_lock(tmp_path, _empty_lock(), "apollo510b_evb")
     prune_lock_targets(tmp_path, {"apollo510_evb"})
     lock_file = read_lock_file(tmp_path)
+    assert lock_file is not None
     assert set(lock_file.targets) == {"apollo510_evb"}
 
 

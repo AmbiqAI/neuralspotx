@@ -141,7 +141,7 @@ def run(
                 # split on \r as well as \n so live progress redraws render
                 # in place. Windows falls back to a blocking readline with a
                 # per-iteration deadline check.
-                deadline = None if effective is None else time.monotonic() + effective
+                started = time.monotonic()
                 stream = proc.stdout
 
                 def _emit(text_line: str, terminator: str) -> None:
@@ -164,16 +164,17 @@ def run(
                     fd = stream.fileno()
                     pending = b""
                     while True:
-                        if deadline is not None:
-                            remaining = deadline - time.monotonic()
+                        if effective is not None:
+                            remaining = effective - (time.monotonic() - started)
                             if remaining <= 0:
                                 container.terminate(proc)
                                 raise subprocess.TimeoutExpired(cmd, effective)
                         else:
                             remaining = None
                         ready, _, _ = select.select([fd], [], [], remaining)
-                        if not ready:
-                            # select timed out -> deadline reached
+                        if not ready and effective is not None:
+                            # select only returns empty on timeout, which
+                            # requires a finite budget -> deadline reached
                             container.terminate(proc)
                             raise subprocess.TimeoutExpired(cmd, effective)
                         chunk = os.read(fd, 65536)
@@ -191,8 +192,8 @@ def run(
                     # a completed line is emitted segment-by-segment.
                     pending = b""
                     while True:
-                        if deadline is not None:
-                            remaining = deadline - time.monotonic()
+                        if effective is not None:
+                            remaining = effective - (time.monotonic() - started)
                             if remaining <= 0:
                                 container.terminate(proc)
                                 raise subprocess.TimeoutExpired(cmd, effective)
@@ -204,13 +205,22 @@ def run(
                             _emit(text_line, terminator)
                         if at_eof:
                             break
-                wait_timeout = None if deadline is None else max(0.0, deadline - time.monotonic())
+                wait_timeout = (
+                    None
+                    if effective is None
+                    else max(0.0, effective - (time.monotonic() - started))
+                )
                 rc = proc.wait(timeout=wait_timeout)
             else:
                 rc = proc.wait(timeout=effective)
-        except subprocess.TimeoutExpired:
+        except subprocess.TimeoutExpired as exc:
             container.terminate(proc)
-            raise subprocess.TimeoutExpired(cmd, effective) from None
+            # Report the full budget; the inner wait may have carried only
+            # the remainder. A timeout is unreachable without a budget, so
+            # fall back to the expired exception's own value.
+            raise subprocess.TimeoutExpired(
+                cmd, effective if effective is not None else exc.timeout
+            ) from None
         except KeyboardInterrupt:
             # ``start_new_session=True`` (POSIX) and the Job Object (Windows)
             # both isolate the child from our terminal's signals, so the
@@ -248,14 +258,19 @@ def run_capture(
     try:
         try:
             out, err = proc.communicate(timeout=effective)
-        except subprocess.TimeoutExpired:
+        except subprocess.TimeoutExpired as exc:
             container.terminate(proc)
             # Drain any buffered output so the caller can still log it.
             try:
                 out, err = proc.communicate(timeout=1)
             except Exception:  # noqa: BLE001
                 out, err = "", ""
-            raise subprocess.TimeoutExpired(cmd, effective, output=out, stderr=err) from None
+            raise subprocess.TimeoutExpired(
+                cmd,
+                effective if effective is not None else exc.timeout,
+                output=out,
+                stderr=err,
+            ) from None
         except KeyboardInterrupt:
             # See note in :func:`run` — the child is isolated from our
             # terminal's SIGINT; tear the tree down before re-raising.

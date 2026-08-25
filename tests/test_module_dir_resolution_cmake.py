@@ -27,6 +27,13 @@ CMAKE = shutil.which("cmake")
 pytestmark = pytest.mark.skipif(CMAKE is None, reason="cmake not available")
 
 
+def _cmake() -> str:
+    """The cmake executable; the module-level skip guarantees it is present."""
+    if CMAKE is None:
+        pytest.skip("cmake not available")
+    return CMAKE
+
+
 def _bootstrap_cmake(tmp_path: Path) -> Path:
     """Copy the packaged bootstrap script into *tmp_path* and return it."""
     dest = tmp_path / "cmake"
@@ -56,7 +63,7 @@ def _resolve(
     harness = tmp_path / "harness.cmake"
     harness.write_text("\n".join(lines) + "\n", encoding="utf-8")
     return subprocess.run(
-        [CMAKE, "-P", str(harness)],
+        [_cmake(), "-P", str(harness)],
         capture_output=True,
         text=True,
     )

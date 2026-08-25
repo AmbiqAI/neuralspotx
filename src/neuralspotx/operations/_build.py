@@ -10,6 +10,7 @@ import sys
 import time
 from collections.abc import Callable
 from pathlib import Path
+from typing import TextIO
 
 from .. import board_descriptors as bd
 from .._errors import NSXError
@@ -288,7 +289,7 @@ def flash_app_impl(
     )
 
 
-def _terminate_viewer(proc: "subprocess.Popen[object]") -> None:
+def _terminate_viewer(proc: subprocess.Popen[str] | subprocess.Popen[bytes]) -> None:
     """Tear down the SWO viewer (and its process group) if still running."""
 
     if proc.poll() is not None:
@@ -328,7 +329,7 @@ def _probe_serial_from_view_cmd(view_cmd: list[str]) -> str | None:
 
 
 def _raise_if_viewer_exited(
-    proc: "subprocess.Popen[object]",
+    proc: subprocess.Popen[str] | subprocess.Popen[bytes],
     *,
     phase: str,
     cmd: list[str],
@@ -464,17 +465,7 @@ def view_app_impl(
     capture_path = Path(capture).expanduser().resolve() if capture is not None else None
     stream_output = capture_path is not None
 
-    popen_kwargs: dict[str, object] = {"cwd": str(resolved_build_dir)}
-    if os.name != "nt":
-        popen_kwargs["start_new_session"] = True
-    # JLinkSWOViewerCL exits on "any key" — including the EOF it reads
-    # immediately when stdin is closed or redirected from /dev/null (any
-    # non-interactive invocation: CI, scripts, backgrounded shells).
-    # Always give the viewer a pipe we never write to so it can never
-    # observe EOF and behaves identically in every context; the viewer
-    # is closed with Ctrl-C (handled below) or --duration instead of
-    # SEGGER's "press any key" prompt.
-    popen_kwargs["stdin"] = subprocess.PIPE
+    start_new_session = os.name != "nt"
     run_cmd = list(view_cmd)
     if stream_output:
         # Line-buffer the viewer so captured output is not block-buffered
@@ -482,12 +473,6 @@ def view_app_impl(
         stdbuf = shutil.which("stdbuf")
         if stdbuf is not None:
             run_cmd = [stdbuf, "-oL", "-eL", *run_cmd]
-        popen_kwargs.update(
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            bufsize=1,
-        )
 
     # Open (and create the parent dir for) the capture file *before*
     # spawning the viewer. Opening after the viewer is attached would
@@ -501,9 +486,37 @@ def view_app_impl(
         except OSError as exc:
             raise NSXError(f"Cannot open capture file {capture_path}: {exc}") from exc
 
-    viewer_proc: subprocess.Popen[object] | None = None
+    # JLinkSWOViewerCL exits on "any key" — including the EOF it reads
+    # immediately when stdin is closed or redirected from /dev/null (any
+    # non-interactive invocation: CI, scripts, backgrounded shells).
+    # Always give the viewer a pipe we never write to so it can never
+    # observe EOF and behaves identically in every context; the viewer
+    # is closed with Ctrl-C (handled below) or --duration instead of
+    # SEGGER's "press any key" prompt.
+    viewer_proc: subprocess.Popen[str] | subprocess.Popen[bytes] | None = None
+    # Text-mode handle used only when streaming to a capture file; it is
+    # the same process as ``viewer_proc`` but typed for line reads.
+    stream_proc: subprocess.Popen[str] | None = None
     try:
-        viewer_proc = subprocess.Popen(run_cmd, **popen_kwargs)  # type: ignore[arg-type]
+        if stream_output:
+            stream_proc = subprocess.Popen(
+                run_cmd,
+                cwd=str(resolved_build_dir),
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+                start_new_session=start_new_session,
+            )
+            viewer_proc = stream_proc
+        else:
+            viewer_proc = subprocess.Popen(
+                run_cmd,
+                cwd=str(resolved_build_dir),
+                stdin=subprocess.PIPE,
+                start_new_session=start_new_session,
+            )
         viewer_pid = getattr(viewer_proc, "pid", "unknown")
         info(f"SWO viewer launched (pid={viewer_pid})")
         if effective_reset_on_open:
@@ -540,10 +553,10 @@ def view_app_impl(
             )
 
         deadline = None if duration_s is None else time.monotonic() + duration_s
-        if stream_output:
+        if stream_proc is not None:
             assert capture_file is not None  # noqa: S101 — opened above when streaming
-            _stream_viewer(viewer_proc, capture_file, deadline)
-            _terminate_viewer(viewer_proc)
+            _stream_viewer(stream_proc, capture_file, deadline)
+            _terminate_viewer(stream_proc)
         elif deadline is not None:
             try:
                 viewer_proc.wait(timeout=duration_s)
@@ -568,8 +581,8 @@ def view_app_impl(
 
 
 def _stream_viewer(
-    proc: "subprocess.Popen[object]",
-    sink: "object",
+    proc: subprocess.Popen[str],
+    sink: TextIO,
     deadline: float | None,
 ) -> None:
     """Pump viewer stdout to our stdout and *sink* until EOF or *deadline*.
@@ -616,8 +629,8 @@ def _stream_viewer(
             break
         sys.stdout.write(item)
         sys.stdout.flush()
-        sink.write(item)  # type: ignore[attr-defined]
-        sink.flush()  # type: ignore[attr-defined]
+        sink.write(item)
+        sink.flush()
 
 
 def clean_app_impl(

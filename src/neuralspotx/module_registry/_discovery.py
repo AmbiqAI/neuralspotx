@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
@@ -21,7 +22,7 @@ def _module_discovery_record(
     include_metadata: bool = True,
 ) -> DiscoveryRecord:
     entry = registry_entry_for_module(registry, module_name)
-    core = dict(
+    record = DiscoveryRecord(
         name=module_name,
         project=entry.project,
         revision=entry.revision,
@@ -29,7 +30,7 @@ def _module_discovery_record(
         enabled=enabled,
     )
     if not include_metadata:
-        return DiscoveryRecord(**core)
+        return record
 
     try:
         metadata = _load_module_metadata(module_name, registry, app_dir=app_dir)
@@ -39,7 +40,7 @@ def _module_discovery_record(
             if app_dir is None
             else str(exc)
         )
-        return DiscoveryRecord(**core, metadata_error=error_msg)
+        return replace(record, metadata_error=error_msg)
 
     raw = metadata.raw
     kwargs: dict[str, Any] = {}
@@ -58,8 +59,8 @@ def _module_discovery_record(
         if key in raw:
             kwargs[key] = copy.deepcopy(raw[key])
 
-    return DiscoveryRecord(
-        **core,
+    return replace(
+        record,
         metadata_available=True,
         module=copy.deepcopy(raw["module"]),
         support=copy.deepcopy(raw["support"]),

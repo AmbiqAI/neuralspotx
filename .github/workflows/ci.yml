@@ -32,10 +32,16 @@ jobs:
           python-version: "3.11"
 
       - name: Install lint dependencies
-        run: uv sync --group lint
+        # The test group is included so `ty check tests` resolves
+        # pytest/hypothesis imports in the check environment.
+        run: uv sync --group lint --group test
 
       - name: Run ruff
-        run: uv run --group lint ruff check .
+        run: uv run --no-sync ruff check .
+
+      - name: Run ty type check
+        # --no-sync: the environment was fully built by the sync step above.
+        run: uv run --no-sync ty check src/neuralspotx tests
 
   # ---------------------------------------------------------------
   # Distribution smoke test — exercise the installed wheel rather

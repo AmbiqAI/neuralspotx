@@ -17,6 +17,7 @@ import os
 import stat
 import sys
 import warnings
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -103,12 +104,14 @@ def test_on_rm_error_retries_func_for_rmdir(tmp_path: Path, module) -> None:
     if module is module_registry:
         # Inline callback — re-derive it through a dummy rmtree that
         # captures the kwarg.
-        captured: dict[str, object] = {}
+        # shutil.rmtree's onexc/onerror callback: (func, path, exc_info).
+        RmCallback = Callable[[Callable[..., object], str, object], object]
+        captured: dict[str, RmCallback | None] = {}
         import shutil as _shutil
 
         real_rmtree = _shutil.rmtree
 
-        def _capture(path, **kwargs):  # type: ignore[no-untyped-def]
+        def _capture(path: Path, **kwargs: RmCallback) -> None:
             captured["cb"] = kwargs.get("onexc") or kwargs.get("onerror")
             real_rmtree(path)
 

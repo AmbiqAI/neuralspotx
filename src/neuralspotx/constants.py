@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, overload
 
 from .board_descriptors import BoardDescriptorError, load_board_descriptors
 
@@ -169,6 +169,10 @@ _BOARD_LOOKUP: dict[str, str] = {b.lower(): b for b in BOARDS}
 _SOC_LOOKUP: dict[str, str] = {s.lower(): s for s in SOCS}
 
 
+@overload
+def normalize_board(value: str) -> str: ...
+@overload
+def normalize_board(value: None) -> None: ...
 def normalize_board(value: str | None) -> str | None:
     """Return the canonical spelling of *value* (case-insensitive match).
 
@@ -182,6 +186,10 @@ def normalize_board(value: str | None) -> str | None:
     return _BOARD_LOOKUP.get(value.lower(), value)
 
 
+@overload
+def normalize_soc(value: str) -> str: ...
+@overload
+def normalize_soc(value: None) -> None: ...
 def normalize_soc(value: str | None) -> str | None:
     """Return the canonical spelling of *value* (case-insensitive match).
 

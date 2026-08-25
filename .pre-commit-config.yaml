@@ -21,3 +21,14 @@ repos:
     rev: 0.7.2
     hooks:
       - id: uv-lock
+
+  - repo: local
+    hooks:
+      # Runs the project-pinned ty (see [dependency-groups].lint in
+      # pyproject.toml) so pre-commit and CI check with the same version.
+      - id: ty
+        name: ty type check
+        entry: uv run --no-sync ty check src/neuralspotx tests
+        language: system
+        pass_filenames: false
+        types: [python]

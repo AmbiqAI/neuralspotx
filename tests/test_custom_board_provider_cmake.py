@@ -29,6 +29,13 @@ CMAKE = shutil.which("cmake")
 pytestmark = pytest.mark.skipif(CMAKE is None, reason="cmake not available")
 
 
+def _cmake() -> str:
+    """The cmake executable; the module-level skip guarantees it is present."""
+    if CMAKE is None:
+        pytest.skip("cmake not available")
+    return CMAKE
+
+
 def _providers_cmake(tmp_path: Path) -> Path:
     """Copy the packaged cmake dir into *tmp_path* and return the providers file.
 
@@ -83,7 +90,7 @@ def _run_select(tmp_path: Path, *, board: str, nsx_root: Path) -> subprocess.Com
     )
     return subprocess.run(
         [
-            CMAKE,
+            _cmake(),
             f"-DNSX_AMBIQSUITE_ROOT_OVERRIDE={sdk_root.as_posix()}",
             "-P",
             str(harness),
