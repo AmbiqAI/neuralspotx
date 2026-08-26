@@ -364,10 +364,25 @@ class TestSdkRootEscapeHatch:
         build_app_impl(tmp_path)
         assert configure_calls == []
 
-    def test_cache_match_normalizes_sdk_root_like_the_configure_writes_it(
+    @staticmethod
+    def _cache_sdk_override(build_dir: Path, sdk_root: Path) -> str:
+        """Cache an override exactly as ``_run_cmake_configure`` writes it.
+
+        Mirrors that function's ``sdk_override`` line via stdlib rather than
+        via ``_sdk_root_cache_matches``, so the assertions below compare the
+        read side against an independently derived write side.
+        """
+
+        cached = str(Path(sdk_root).expanduser().resolve())
+        (build_dir / "CMakeCache.txt").write_text(
+            f"NSX_AMBIQSUITE_ROOT_OVERRIDE:PATH={cached}\n", encoding="utf-8"
+        )
+        return cached
+
+    def test_cache_match_accepts_absolute_and_relative_sdk_root(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """Relative and ``~`` spellings of the cached override must still match.
+        """A relative spelling of the cached override must still match.
 
         ``_run_cmake_configure`` writes the override as
         ``Path(sdk_root).expanduser().resolve()``; comparing an API caller's
@@ -376,22 +391,41 @@ class TestSdkRootEscapeHatch:
         """
         from neuralspotx.operations._build import _sdk_root_cache_matches
 
-        home = tmp_path / "home"
-        sdk = home / "AmbiqSuite"
-        sdk.mkdir(parents=True)
+        sdk = tmp_path / "AmbiqSuite"
+        sdk.mkdir()
         build_dir = tmp_path / "build"
         build_dir.mkdir()
-        # Written exactly as _run_cmake_configure writes the cache entry.
-        cached = str(Path(sdk).expanduser().resolve())
-        (build_dir / "CMakeCache.txt").write_text(
-            f"NSX_AMBIQSUITE_ROOT_OVERRIDE:PATH={cached}\n", encoding="utf-8"
-        )
-        monkeypatch.setenv("HOME", str(home))
-        monkeypatch.chdir(home)
+        cached = self._cache_sdk_override(build_dir, sdk)
+        # Anchor the relative spelling to the cached value's own directory:
+        # on Windows the session CWD can sit on a different drive from
+        # tmp_path, and no relative path spans two drives.
+        monkeypatch.chdir(tmp_path)
 
         assert _sdk_root_cache_matches(build_dir, Path(cached))
         assert _sdk_root_cache_matches(build_dir, Path("AmbiqSuite"))
-        assert _sdk_root_cache_matches(build_dir, Path("~/AmbiqSuite"))
+        assert not _sdk_root_cache_matches(build_dir, tmp_path / "other-sdk")
+
+    def test_cache_match_accepts_tilde_sdk_root(self, tmp_path: Path) -> None:
+        """A ``~``-prefixed spelling of the cached override must still match.
+
+        The home directory is deliberately not monkeypatched.
+        ``ntpath.expanduser`` resolves ``~`` from ``USERPROFILE`` (falling back
+        to ``HOMEDRIVE`` + ``HOMEPATH``) and never reads ``HOME``, so patching
+        ``HOME`` is a silent no-op on Windows. Deriving the cached value from
+        the real ``expanduser()`` result keeps this honest on every platform;
+        the directory need not exist because ``_sdk_root_cache_matches``
+        compares strings and never stats ``sdk_root``.
+        """
+        from neuralspotx.operations._build import _sdk_root_cache_matches
+
+        spelling = Path("~") / "AmbiqSuite"
+        if str(spelling.expanduser()).startswith("~"):
+            pytest.skip("no home directory available to expand ~")
+        build_dir = tmp_path / "build"
+        build_dir.mkdir()
+        self._cache_sdk_override(build_dir, spelling)
+
+        assert _sdk_root_cache_matches(build_dir, spelling)
         assert not _sdk_root_cache_matches(build_dir, tmp_path / "other-sdk")
 
 
