@@ -364,6 +364,36 @@ class TestSdkRootEscapeHatch:
         build_app_impl(tmp_path)
         assert configure_calls == []
 
+    def test_cache_match_normalizes_sdk_root_like_the_configure_writes_it(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Relative and ``~`` spellings of the cached override must still match.
+
+        ``_run_cmake_configure`` writes the override as
+        ``Path(sdk_root).expanduser().resolve()``; comparing an API caller's
+        raw spelling against that would reconfigure on every build/flash/view
+        even though the override is unchanged.
+        """
+        from neuralspotx.operations._build import _sdk_root_cache_matches
+
+        home = tmp_path / "home"
+        sdk = home / "AmbiqSuite"
+        sdk.mkdir(parents=True)
+        build_dir = tmp_path / "build"
+        build_dir.mkdir()
+        # Written exactly as _run_cmake_configure writes the cache entry.
+        cached = str(Path(sdk).expanduser().resolve())
+        (build_dir / "CMakeCache.txt").write_text(
+            f"NSX_AMBIQSUITE_ROOT_OVERRIDE:PATH={cached}\n", encoding="utf-8"
+        )
+        monkeypatch.setenv("HOME", str(home))
+        monkeypatch.chdir(home)
+
+        assert _sdk_root_cache_matches(build_dir, Path(cached))
+        assert _sdk_root_cache_matches(build_dir, Path("AmbiqSuite"))
+        assert _sdk_root_cache_matches(build_dir, Path("~/AmbiqSuite"))
+        assert not _sdk_root_cache_matches(build_dir, tmp_path / "other-sdk")
+
 
 class TestRequestPositionalCompat:
     def test_frozen_is_keyword_only_on_request_dataclasses(self) -> None:

@@ -113,14 +113,21 @@ def _sdk_root_cache_matches(build_dir: Path, sdk_root: Path | None) -> bool:
     ``None`` never forces a reconfigure: a build tree configured with
     ``--sdk-root`` keeps that override until the next explicit configure,
     but says so (see ``_warn_if_cached_sdk_override``).
+
+    ``sdk_root`` is expanded and resolved exactly as
+    ``project_config._run_cmake_configure`` does before writing the cache
+    entry, so a relative or ``~``-prefixed path an API caller passes still
+    compares equal to the cached absolute value instead of reconfiguring
+    on every build/flash/view.
     """
 
     if sdk_root is None:
         _warn_if_cached_sdk_override(build_dir)
         return True
     cached = _cmake_cache_value(build_dir, "NSX_AMBIQSUITE_ROOT_OVERRIDE") or ""
+    expanded = str(Path(sdk_root).expanduser().resolve())
     return os.path.normcase(os.path.normpath(cached)) == os.path.normcase(
-        os.path.normpath(str(sdk_root))
+        os.path.normpath(expanded)
     )
 
 
