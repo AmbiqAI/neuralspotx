@@ -8,6 +8,7 @@ import logging
 import textwrap
 from collections.abc import Iterator
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -470,7 +471,7 @@ def test_stomp_warning_dedups_recomputations_but_not_new_stomps() -> None:
     genuinely new stomp must never be suppressed.
     """
 
-    stomp_a = {
+    stomp_a: dict[str, Any] = {
         "registry": {
             "layers": [
                 {"inline": {"modules": {"nsx-sensors": {"revision": "overlay-a"}}}},

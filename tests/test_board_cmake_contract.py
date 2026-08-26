@@ -46,6 +46,13 @@ CMAKE = shutil.which("cmake")
 
 pytestmark = pytest.mark.skipif(CMAKE is None, reason="cmake not available")
 
+
+def _cmake() -> str:
+    """The cmake executable; the module-level skip guarantees it is present."""
+    if CMAKE is None:
+        pytest.skip("cmake not available")
+    return CMAKE
+
 GOLDEN_DIR = Path(__file__).parent / "data" / "board_contract"
 TOOLCHAIN_FAMILIES = ("gcc", "armclang")
 
@@ -200,7 +207,7 @@ def _capture(
     )
 
     result = subprocess.run(
-        [CMAKE, "-P", str(harness)],
+        [_cmake(), "-P", str(harness)],
         capture_output=True,
         text=True,
     )
@@ -254,6 +261,34 @@ def test_apollo330_itcm_profile_selects_itcm_startup_copy(tmp_path: Path) -> Non
         "target_compile_definitions: nsx_soc_apollo330P_flags;INTERFACE;"
         "NSX_STARTUP_COPY_ITCM_TEXT=1"
     ) in capture
+
+
+@pytest.mark.parametrize(
+    "family, script",
+    [
+        pytest.param("gcc", "linker_script_itcm_nbl.ld", id="gcc"),
+        pytest.param("armclang", "linker_script_itcm_nbl.sct", id="armclang"),
+    ],
+)
+def test_atomiq110_itcm_profile_selects_itcm_nbl_script(
+    tmp_path: Path, family: str, script: str
+) -> None:
+    """``NSX_LINKER_PROFILE=itcm`` picks the no-bootloader ITCM script per toolchain.
+
+    The FPGA turbo board has no secure bootloader, so both the default and
+    the ITCM profile must stay on the ``*_nbl`` script set shipped by
+    nsx-core (the ``*_sbl`` variants are reserved for silicon).
+    """
+
+    capture = _capture(
+        tmp_path,
+        board="atomiq110_fpga_turbo",
+        family=family,
+        linker_profile="itcm",
+    )
+    expected = f"/stub/app/modules/nsx-core/src/atomiq110/{family}/{script}"
+    assert f"NSX_LINKER_SCRIPT={expected}\n" in capture
+    assert "_sbl" not in capture
 
 
 def test_apollo330_nbl_override_selects_itcm_startup_copy(tmp_path: Path) -> None:

@@ -50,6 +50,7 @@ This keeps:
 - `apollo510b_evb`
 - `apollo510dL_evb`
 - `apollo330mP_evb`
+- `atomiq110_fpga_turbo` (preview channel; Atomiq110 FPGA bring-up target)
 
 Run `nsx board list` for the authoritative installed list, or
 `nsx board list --json` for registered board, SoC, CPU, provider, and

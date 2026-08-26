@@ -30,7 +30,6 @@ nsx view      --app-dir .        # (optional) SWO viewer
 | `usb_serial` | `nsx-ambiq-usb`, `nsx-usb`, `nsx-timer`, `nsx-interrupt` | USB CDC echo |
 | `usb_rpc` | `nsx-usb`, `nsx-nanopb` | USB RPC with protobuf serialization |
 
-
 Most examples default to the **Apollo510 EVB** (`apollo510_evb`). Each
 manifest's `targets.default` and `targets.supported` fields are the source of
 truth for its current board coverage; `ble_webble` defaults to

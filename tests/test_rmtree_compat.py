@@ -1,5 +1,5 @@
 """Regression tests for the M2 remediation item: ``shutil.rmtree`` callback
-compatibility across Python 3.10/3.11 (``onerror=``) and 3.12+ (``onexc=``).
+compatibility across Python 3.11 (``onerror=``) and 3.12+ (``onexc=``).
 
 Python 3.12 deprecated ``onerror=`` in favour of ``onexc=`` and 3.14 will
 remove it.  The ``_rmtree`` helpers in ``module_registry``, ``module_cache``
@@ -8,7 +8,7 @@ and ``subprocess_utils`` must:
 * clean up trees containing read-only files (the original Windows-pack-file
   motivation),
 * not emit a ``DeprecationWarning`` on Python 3.12+,
-* still work on Python 3.10/3.11 where ``onexc=`` does not exist.
+* still work on Python 3.11 where ``onexc=`` does not exist.
 """
 
 from __future__ import annotations
@@ -17,6 +17,7 @@ import os
 import stat
 import sys
 import warnings
+from collections.abc import Callable
 from pathlib import Path
 
 import pytest
@@ -103,12 +104,14 @@ def test_on_rm_error_retries_func_for_rmdir(tmp_path: Path, module) -> None:
     if module is module_registry:
         # Inline callback — re-derive it through a dummy rmtree that
         # captures the kwarg.
-        captured: dict[str, object] = {}
+        # shutil.rmtree's onexc/onerror callback: (func, path, exc_info).
+        RmCallback = Callable[[Callable[..., object], str, object], object]
+        captured: dict[str, RmCallback | None] = {}
         import shutil as _shutil
 
         real_rmtree = _shutil.rmtree
 
-        def _capture(path, **kwargs):  # type: ignore[no-untyped-def]
+        def _capture(path: Path, **kwargs: RmCallback) -> None:
             captured["cb"] = kwargs.get("onexc") or kwargs.get("onerror")
             real_rmtree(path)
 

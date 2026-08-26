@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright (c) 2026, Ambiq
-"""Convert a (Vela-compiled) .tflite file into the app's C model header.
+"""Convert a (Vela-compiled) .tflite file into the app's C++ model header.
+
+The generated header uses ``<cstdint>`` and ``alignas``, so include it from
+C++ translation units only (``src/main.cc`` does).
 
 Usage:
     python tools/tflite_to_header.py <model.tflite> src/model_data.h
@@ -29,18 +32,33 @@ const unsigned int g_model_data_len = {size};
 
 def main(argv: list[str]) -> int:
     if len(argv) != 3:
-        print(__doc__.strip(), file=sys.stderr)
+        print((__doc__ or "").strip(), file=sys.stderr)
         return 2
     src, dst = Path(argv[1]), Path(argv[2])
-    data = src.read_bytes()
+    try:
+        data = src.read_bytes()
+    except OSError as exc:
+        print(f"error: cannot read {src}: {exc}", file=sys.stderr)
+        return 1
+    if not data:
+        print(
+            f"error: {src} is empty; pass a Vela-compiled .tflite model "
+            "(a zero-length model would fail at tflite::GetModel)",
+            file=sys.stderr,
+        )
+        return 1
     lines = []
     for i in range(0, len(data), 12):
         chunk = ", ".join(f"0x{b:02x}" for b in data[i : i + 12])
         lines.append(f"    {chunk},\n")
-    dst.write_text(
-        HEADER.format(name=src.name, size=len(data), body="".join(lines)),
-        encoding="utf-8",
-    )
+    try:
+        dst.write_text(
+            HEADER.format(name=src.name, size=len(data), body="".join(lines)),
+            encoding="utf-8",
+        )
+    except OSError as exc:
+        print(f"error: cannot write {dst}: {exc}", file=sys.stderr)
+        return 1
     print(f"Wrote {dst} ({len(data)} bytes)")
     return 0
 

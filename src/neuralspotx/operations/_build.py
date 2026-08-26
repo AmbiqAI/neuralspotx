@@ -10,9 +10,10 @@ import sys
 import time
 from collections.abc import Callable
 from pathlib import Path
+from typing import TextIO
 
 from .. import board_descriptors as bd
-from .._errors import NSXError
+from .._errors import NSXConfigError, NSXError
 from .._io import info, line, warn
 from ..models import FlashResult
 from ..project_config import _run_cmake_configure
@@ -73,6 +74,72 @@ def _flash_cache_matches(
     )
 
 
+def _check_sdk_root(sdk_root: Path | None, *, frozen: bool) -> None:
+    """Validate the ``--sdk-root`` escape hatch before any module sync.
+
+    ``sdk_root`` (CMake ``NSX_AMBIQSUITE_ROOT_OVERRIDE``) builds against an
+    out-of-tree AmbiqSuite instead of the vendored ``nsx-ambiqsuite`` that
+    ``nsx.lock`` records, so the lock, the SBOM and ``--frozen`` no longer
+    describe the produced binary. Refuse a path that is not a directory,
+    refuse it outright together with ``frozen`` (the two contradict each
+    other), and otherwise say loudly that reproducibility is off.
+    """
+
+    if sdk_root is None:
+        return
+    if frozen:
+        raise NSXConfigError(
+            f"--sdk-root ({sdk_root}) cannot be combined with --frozen: an "
+            "out-of-tree AmbiqSuite is not described by nsx.lock, so a frozen "
+            "build cannot be verified against it. Drop one of the two flags."
+        )
+    if not sdk_root.is_dir():
+        raise NSXConfigError(
+            f"--sdk-root is not a directory: {sdk_root}\n"
+            "Pass the root of an out-of-tree AmbiqSuite checkout, or omit the "
+            "flag to build against the vendored nsx-ambiqsuite module."
+        )
+    warn(
+        f"Building against out-of-tree AmbiqSuite at {sdk_root} "
+        "(NSX_AMBIQSUITE_ROOT_OVERRIDE). nsx.lock, the SBOM and --frozen do "
+        "not describe this SDK; the resulting binary is not reproducible from "
+        "the app's lock alone."
+    )
+
+
+def _sdk_root_cache_matches(build_dir: Path, sdk_root: Path | None) -> bool:
+    """Whether an explicit ``sdk_root`` equals the override cached by CMake.
+
+    ``None`` never forces a reconfigure: a build tree configured with
+    ``--sdk-root`` keeps that override until the next explicit configure,
+    but says so (see ``_warn_if_cached_sdk_override``).
+    """
+
+    if sdk_root is None:
+        _warn_if_cached_sdk_override(build_dir)
+        return True
+    cached = _cmake_cache_value(build_dir, "NSX_AMBIQSUITE_ROOT_OVERRIDE") or ""
+    return os.path.normcase(os.path.normpath(cached)) == os.path.normcase(
+        os.path.normpath(str(sdk_root))
+    )
+
+
+def _warn_if_cached_sdk_override(build_dir: Path) -> None:
+    """Say when a build tree still carries a cached ``--sdk-root`` override.
+
+    A plain build/flash/view reuses the existing configure, so an override
+    set on an earlier ``nsx configure --sdk-root`` silently stays in force.
+    """
+
+    cached = _cmake_cache_value(build_dir, "NSX_AMBIQSUITE_ROOT_OVERRIDE") or ""
+    if cached:
+        warn(
+            f"Build tree {build_dir} was configured with out-of-tree AmbiqSuite "
+            f"{cached} (--sdk-root); this build still uses it. Run "
+            "`nsx configure` without --sdk-root to return to the vendored SDK."
+        )
+
+
 def configure_app_impl(
     app_dir: Path,
     *,
@@ -93,11 +160,14 @@ def configure_app_impl(
         frozen: Verify ``modules/`` against ``nsx.lock`` and raise on any
             drift instead of silently re-vendoring (see
             ``_ensure_app_modules``).
+        sdk_root: Out-of-tree AmbiqSuite root (escape hatch; see
+            ``_check_sdk_root``). Incompatible with ``frozen``.
 
     Returns:
         The resolved build directory.
     """
 
+    _check_sdk_root(sdk_root, frozen=frozen)
     resolved_app_dir, _, resolved_board, resolved_build_dir = _resolve_build_context(
         app_dir,
         board=board,
@@ -137,8 +207,12 @@ def build_app_impl(
             verify ``modules/`` against ``nsx.lock`` and raise on any
             drift instead of silently re-vendoring (see
             ``_ensure_app_modules``).
+        sdk_root: Out-of-tree AmbiqSuite root (escape hatch; see
+            ``_check_sdk_root``). Incompatible with ``frozen``; an explicit
+            value that differs from the cached override forces a reconfigure.
     """
 
+    _check_sdk_root(sdk_root, frozen=frozen)
     resolved_app_dir, app_name, resolved_board, resolved_build_dir = _resolve_build_context(
         app_dir,
         board=board,
@@ -146,7 +220,9 @@ def build_app_impl(
     )
     warn_if_lock_stale(resolved_app_dir, resolved_board)
     regenerate_active_board_glue(resolved_app_dir, resolved_board)
-    if not (resolved_build_dir / "build.ninja").exists():
+    if not (resolved_build_dir / "build.ninja").exists() or not _sdk_root_cache_matches(
+        resolved_build_dir, sdk_root
+    ):
         _ensure_app_modules(resolved_app_dir, resolved_board, frozen=frozen)
         _run_cmake_configure(
             resolved_app_dir,
@@ -190,8 +266,12 @@ def flash_app_impl(
             against a different probe) — ``frozen`` does not skip that
             reconfigure, it only changes how the accompanying module
             sync behaves if one is needed.
+        sdk_root: Out-of-tree AmbiqSuite root (escape hatch; see
+            ``_check_sdk_root``). Incompatible with ``frozen``; an explicit
+            value that differs from the cached override forces a reconfigure.
     """
 
+    _check_sdk_root(sdk_root, frozen=frozen)
     resolved_app_dir, app_name, resolved_board, resolved_build_dir = _resolve_build_context(
         app_dir,
         board=board,
@@ -208,6 +288,7 @@ def flash_app_impl(
             probe_serial=probe_serial,
             jlink_executable=jlink_executable,
         )
+        or not _sdk_root_cache_matches(resolved_build_dir, sdk_root)
     )
     if needs_configure:
         _ensure_app_modules(resolved_app_dir, resolved_board, frozen=frozen)
@@ -297,7 +378,7 @@ def flash_app_impl(
     )
 
 
-def _terminate_viewer(proc: "subprocess.Popen[object]") -> None:
+def _terminate_viewer(proc: subprocess.Popen[str] | subprocess.Popen[bytes]) -> None:
     """Tear down the SWO viewer (and its process group) if still running."""
 
     if proc.poll() is not None:
@@ -337,7 +418,7 @@ def _probe_serial_from_view_cmd(view_cmd: list[str]) -> str | None:
 
 
 def _raise_if_viewer_exited(
-    proc: "subprocess.Popen[object]",
+    proc: subprocess.Popen[str] | subprocess.Popen[bytes],
     *,
     phase: str,
     cmd: list[str],
@@ -435,8 +516,12 @@ def view_app_impl(
             ``flash_app_impl``), verify ``modules/`` against ``nsx.lock``
             and raise on any drift instead of silently re-vendoring (see
             ``_ensure_app_modules``).
+        sdk_root: Out-of-tree AmbiqSuite root (escape hatch; see
+            ``_check_sdk_root``). Incompatible with ``frozen``; an explicit
+            value that differs from the cached override forces a reconfigure.
     """
 
+    _check_sdk_root(sdk_root, frozen=frozen)
     resolved_app_dir, app_name, resolved_board, resolved_build_dir = _resolve_build_context(
         app_dir,
         board=board,
@@ -444,7 +529,11 @@ def view_app_impl(
     )
     warn_if_lock_stale(resolved_app_dir, resolved_board)
     regenerate_active_board_glue(resolved_app_dir, resolved_board)
-    if probe_serial is not None or not (resolved_build_dir / "build.ninja").exists():
+    if (
+        probe_serial is not None
+        or not (resolved_build_dir / "build.ninja").exists()
+        or not _sdk_root_cache_matches(resolved_build_dir, sdk_root)
+    ):
         _ensure_app_modules(resolved_app_dir, resolved_board, frozen=frozen)
         _run_cmake_configure(
             resolved_app_dir,
@@ -475,17 +564,7 @@ def view_app_impl(
     capture_path = Path(capture).expanduser().resolve() if capture is not None else None
     stream_output = capture_path is not None
 
-    popen_kwargs: dict[str, object] = {"cwd": str(resolved_build_dir)}
-    if os.name != "nt":
-        popen_kwargs["start_new_session"] = True
-    # JLinkSWOViewerCL exits on "any key" — including the EOF it reads
-    # immediately when stdin is closed or redirected from /dev/null (any
-    # non-interactive invocation: CI, scripts, backgrounded shells).
-    # Always give the viewer a pipe we never write to so it can never
-    # observe EOF and behaves identically in every context; the viewer
-    # is closed with Ctrl-C (handled below) or --duration instead of
-    # SEGGER's "press any key" prompt.
-    popen_kwargs["stdin"] = subprocess.PIPE
+    start_new_session = os.name != "nt"
     run_cmd = list(view_cmd)
     if stream_output:
         # Line-buffer the viewer so captured output is not block-buffered
@@ -493,12 +572,6 @@ def view_app_impl(
         stdbuf = shutil.which("stdbuf")
         if stdbuf is not None:
             run_cmd = [stdbuf, "-oL", "-eL", *run_cmd]
-        popen_kwargs.update(
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-            bufsize=1,
-        )
 
     # Open (and create the parent dir for) the capture file *before*
     # spawning the viewer. Opening after the viewer is attached would
@@ -512,9 +585,37 @@ def view_app_impl(
         except OSError as exc:
             raise NSXError(f"Cannot open capture file {capture_path}: {exc}") from exc
 
-    viewer_proc: subprocess.Popen[object] | None = None
+    # JLinkSWOViewerCL exits on "any key" — including the EOF it reads
+    # immediately when stdin is closed or redirected from /dev/null (any
+    # non-interactive invocation: CI, scripts, backgrounded shells).
+    # Always give the viewer a pipe we never write to so it can never
+    # observe EOF and behaves identically in every context; the viewer
+    # is closed with Ctrl-C (handled below) or --duration instead of
+    # SEGGER's "press any key" prompt.
+    viewer_proc: subprocess.Popen[str] | subprocess.Popen[bytes] | None = None
+    # Text-mode handle used only when streaming to a capture file; it is
+    # the same process as ``viewer_proc`` but typed for line reads.
+    stream_proc: subprocess.Popen[str] | None = None
     try:
-        viewer_proc = subprocess.Popen(run_cmd, **popen_kwargs)  # type: ignore[arg-type]
+        if stream_output:
+            stream_proc = subprocess.Popen(
+                run_cmd,
+                cwd=str(resolved_build_dir),
+                stdin=subprocess.PIPE,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                text=True,
+                bufsize=1,
+                start_new_session=start_new_session,
+            )
+            viewer_proc = stream_proc
+        else:
+            viewer_proc = subprocess.Popen(
+                run_cmd,
+                cwd=str(resolved_build_dir),
+                stdin=subprocess.PIPE,
+                start_new_session=start_new_session,
+            )
         viewer_pid = getattr(viewer_proc, "pid", "unknown")
         info(f"SWO viewer launched (pid={viewer_pid})")
         if effective_reset_on_open:
@@ -551,10 +652,10 @@ def view_app_impl(
             )
 
         deadline = None if duration_s is None else time.monotonic() + duration_s
-        if stream_output:
+        if stream_proc is not None:
             assert capture_file is not None  # noqa: S101 — opened above when streaming
-            _stream_viewer(viewer_proc, capture_file, deadline)
-            _terminate_viewer(viewer_proc)
+            _stream_viewer(stream_proc, capture_file, deadline)
+            _terminate_viewer(stream_proc)
         elif deadline is not None:
             try:
                 viewer_proc.wait(timeout=duration_s)
@@ -579,8 +680,8 @@ def view_app_impl(
 
 
 def _stream_viewer(
-    proc: "subprocess.Popen[object]",
-    sink: "object",
+    proc: subprocess.Popen[str],
+    sink: TextIO,
     deadline: float | None,
 ) -> None:
     """Pump viewer stdout to our stdout and *sink* until EOF or *deadline*.
@@ -627,8 +728,8 @@ def _stream_viewer(
             break
         sys.stdout.write(item)
         sys.stdout.flush()
-        sink.write(item)  # type: ignore[attr-defined]
-        sink.flush()  # type: ignore[attr-defined]
+        sink.write(item)
+        sink.flush()
 
 
 def clean_app_impl(

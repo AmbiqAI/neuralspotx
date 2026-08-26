@@ -155,26 +155,32 @@ def warn_if_lock_stale(app_dir: Path, board: str | None = None) -> None:
         warn(note)
 
 
-def _should_reuse_previous_git_resolution(
+def _reusable_previous_git_resolution(
     previous_entry: ResolvedModule | None,
     *,
     constraint: str,
     url: str,
     refresh_floating_refs: bool,
-) -> bool:
-    """Return True only for pinned git constraints safe to reuse."""
+) -> tuple[str, str | None] | None:
+    """Return ``(commit, tag)`` from *previous_entry* when safe to reuse.
+
+    Only pinned git constraints qualify; every other case yields ``None``
+    so the caller re-resolves against the remote.
+    """
 
     if previous_entry is None:
-        return False
+        return None
     if previous_entry.kind != LockKind.GIT:
-        return False
+        return None
     if previous_entry.constraint != constraint or previous_entry.url != url:
-        return False
+        return None
     if not previous_entry.commit:
-        return False
-    if not refresh_floating_refs:
-        return True
-    return _looks_like_full_sha(constraint) or previous_entry.tag == constraint
+        return None
+    if refresh_floating_refs and not (
+        _looks_like_full_sha(constraint) or previous_entry.tag == constraint
+    ):
+        return None
+    return previous_entry.commit, previous_entry.tag
 
 
 def _resolved_module_path(
@@ -378,12 +384,13 @@ def _build_lock_for_app(
                 continue
             cons = str(ent.revision or "main")
             prev = prev_modules.get(nm)
-            if _should_reuse_previous_git_resolution(
+            reusable = _reusable_previous_git_resolution(
                 prev,
                 constraint=cons,
                 url=proj.url,
                 refresh_floating_refs=refresh_floating_git_refs,
-            ):
+            )
+            if reusable is not None:
                 # Re-use of a pinned previous SHA short-circuits resolve_ref.
                 continue
             jobs[(proj.url, cons)] = None
@@ -426,14 +433,15 @@ def _build_lock_for_app(
                 continue
             cons = str(ent.revision or "main")
             prev = prev_modules.get(nm)
-            if _should_reuse_previous_git_resolution(
+            reusable = _reusable_previous_git_resolution(
                 prev,
                 constraint=cons,
                 url=proj.url,
                 refresh_floating_refs=refresh_floating_git_refs,
-            ):
-                assert prev is not None and prev.commit is not None
-                jobs[(proj.url, prev.commit)] = None
+            )
+            if reusable is not None:
+                reused_commit, _ = reusable
+                jobs[(proj.url, reused_commit)] = None
                 continue
             cached = resolve_ref_cache.get((proj.url, cons))
             if cached is None:
@@ -609,17 +617,17 @@ def _build_lock_for_app(
             )
 
         previous_entry = prev_modules.get(name)
-        commit: str | None
+        commit: str
         tag: str | None
-        if _should_reuse_previous_git_resolution(
+        reusable = _reusable_previous_git_resolution(
             previous_entry,
             constraint=constraint,
             url=url,
             refresh_floating_refs=refresh_floating_git_refs,
-        ):
+        )
+        if reusable is not None:
             # Re-use the previously resolved SHA only for pinned refs.
-            commit = previous_entry.commit
-            tag = previous_entry.tag
+            commit, tag = reusable
         else:
             try:
                 commit, matched = _resolve_ref_cached(url, constraint)
@@ -772,13 +780,18 @@ def _lock_boards_for(app_dir: Path, board: str | None) -> list[str]:
     app_cfg = AppConfig.from_mapping(_load_app_cfg(app_dir))
     if board is not None:
         return [board]
+    default = app_cfg.default_board()
+    if default is None:
+        raise NSXConfigError(
+            f"Unable to determine target board from nsx.yml in {app_dir}; cannot lock.",
+            field="target",
+        )
     if app_cfg.is_multi_target():
         boards = list(app_cfg.targets())
-        default = app_cfg.default_board()
         if default in boards:
             boards = [default] + [b for b in boards if b != default]
-        return boards or [app_cfg.default_board()]
-    return [app_cfg.default_board()]
+        return boards or [default]
+    return [default]
 
 
 def lock_app_impl(

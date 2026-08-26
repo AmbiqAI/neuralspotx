@@ -10,7 +10,7 @@ NSX app template for running a TFLite Micro model on the Arm Ethos-U85 NPU
   (`NSX_HELIA_RT_ENABLE_ETHOSU=ON`, see `CMakeLists.txt`)
 - `src/main.cc` — inference harness (zeros + pseudo-random noise inputs,
   DWT cycle timing, ITM/SWO output)
-- `tools/tflite_to_header.py` — model → C header converter
+- `tools/tflite_to_header.py` — model → C++ header converter
 
 ## 1. Compile your model with Vela
 
@@ -45,10 +45,13 @@ nsx view  --app-dir .
 
 ## Memory placement
 
-The tensor arena is placed in shared SRAM (`.shared` section): the Ethos-U85
-is a bus master and **cannot access the core-private TCM**. Keep the arena
-(and anything the NPU reads/writes) out of TCM. Model weights live in NVM,
-which the NPU can read directly.
+The tensor arena is placed in shared SRAM via the `.sram_bss` section
+(`NOLOAD`, zero-initialized by startup): the Ethos-U85 is a bus master and
+**cannot access the core-private TCM**. Keep the arena (and anything the NPU
+reads/writes) out of TCM. Use the `.shared` section instead when a buffer
+needs copy-initialized contents (it is loaded from NVM at startup, so it
+costs image size and boot time). Model weights live in NVM, which the NPU
+can read directly.
 
 ## Hardware notes
 

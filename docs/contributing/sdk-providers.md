@@ -20,10 +20,14 @@ corrected in the SDK release.
 - `nsx-ambiq-sdk`: `v5.2.24`
 - `nsx-pmu-armv8m`: `v0.2.0`
 
-Stable registry revisions are expected to use immutable version tags or full
-commit SHAs. The packaged `neuralspotx@main` self-reference remains the only
-temporary exception. Do not add another floating ref to bypass that gate; use
-an explicit app/workspace development override instead.
+Stable registry revisions must use immutable version tags or full commit SHAs.
+The packaged `neuralspotx@main` self-reference is the sole *permanent*
+floating-ref allowance (`registry_policy.PERMANENT_FLOATING_REF_KEYS`). Any
+other floating stable ref must be a temporary branch pin registered in
+`TEMPORARY_STABLE_FLOATING_REF_ALLOWLIST` with an `expires_on` date; past that
+date `test_temporary_allowances_have_not_expired` fails until the pin is
+collapsed to a tag/SHA and the allowance removed. Prefer an explicit
+app/workspace development override over a temporary pin whenever possible.
 
 ## Contributor Expectations
 

@@ -72,6 +72,33 @@ def test_derived_profile_module_layout() -> None:
     assert "nsx-pmu-armv8m" in prof["modules"]
 
 
+def test_atomiq110_family_is_apollo5_plus_npu() -> None:
+    """The restated atomiq110 ``sdk_modules`` list must track ``&fam_apollo5``.
+
+    YAML merge keys replace rather than append, so ``atomiq110`` restates the
+    whole Apollo5 list plus ``nsx-npu`` in ``registry.lock.yaml``. Pin that
+    relationship so an Apollo5 module added later cannot silently be missed
+    on atomiq110 (or vice versa). ``apollo5b`` carries the ``&fam_apollo5``
+    anchor; ``apollo510`` / ``apollo510b`` / ``apollo510L`` / ``apollo330P``
+    alias it.
+    """
+
+    reg = _packaged_registry()
+    families = reg["soc_families"]
+    apollo5 = families["apollo5b"]
+    for alias in ("apollo510", "apollo510b", "apollo510L", "apollo330P"):
+        assert families[alias]["sdk_modules"] == apollo5["sdk_modules"], alias
+
+    atomiq110 = families["atomiq110"]
+    assert set(atomiq110["sdk_modules"]) == set(apollo5["sdk_modules"]) | {"nsx-npu"}
+    assert len(atomiq110["sdk_modules"]) == len(set(atomiq110["sdk_modules"]))
+    # Everything else is inherited from the Apollo5 baseline except the SDK
+    # revision, which is pinned to the validated atomiq110 SHA.
+    for key in ("provider", "project", "modules", "core_modules"):
+        assert atomiq110[key] == apollo5[key], key
+    assert atomiq110["revision"] != apollo5["revision"]
+
+
 def test_non_r5_profiles_do_not_gain_armv8m_pmu() -> None:
     reg = _packaged_registry()
     prof = reg["starter_profiles"]["apollo4p_evb_minimal"]

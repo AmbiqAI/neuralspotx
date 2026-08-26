@@ -11,7 +11,8 @@ flow halts in the secure boot handoff and can make the SWO viewer exit.
 
 ```text
 nsx view [--app-dir APP_DIR] [--board BOARD] [--build-dir BUILD_DIR]
-         [--toolchain TOOLCHAIN] [--probe-serial PROBE_SERIAL] [--frozen]
+         [--toolchain TOOLCHAIN] [--sdk-root SDK_ROOT]
+         [--probe-serial PROBE_SERIAL] [--frozen]
          [--reset-on-open | --no-reset-on-open]
          [--reset-delay-ms RESET_DELAY_MS] [--duration SECONDS]
          [--capture FILE] [--timeout SECONDS] [app]
@@ -24,6 +25,7 @@ nsx view [--app-dir APP_DIR] [--board BOARD] [--build-dir BUILD_DIR]
 - `--board`: select a board from the app's supported targets instead of `targets.default`
 - `--build-dir`: build directory override
 - `--toolchain`: toolchain override (`gcc`, `armclang`, `atfe`). Defaults to `nsx.yml` → `arm-none-eabi-gcc`
+- `--sdk-root`: escape hatch — when a configure is needed, build against an out-of-tree AmbiqSuite root (`NSX_AMBIQSUITE_ROOT_OVERRIDE`); warns that `nsx.lock`/SBOM no longer describe the binary and cannot be combined with `--frozen`. See [SDK provider selection](../user-guide/sdk-provider-selection.md#out-of-tree-sdk-sdk-root)
 - `--probe-serial`: select a specific J-Link probe
 - `--frozen`: when configure is needed, reject manifest, lock, or vendored-module drift; explicit probe selection still forces configure
 - `--reset-on-open`: force a reset after opening the viewer

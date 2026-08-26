@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import argparse
+import io
 import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -1154,3 +1156,83 @@ def test_view_warns_when_probe_already_in_use(
     assert "1160002204" in err
     assert "already in use" in err
     assert "4242" in err
+
+
+def _view_ready_app(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, name: str) -> Path:
+    create_app(AppCreateRequest(app_dir=tmp_path / name, board="apollo510_evb", no_bootstrap=True))
+    app_dir = tmp_path / name
+    build_dir = app_dir / "build" / "apollo510_evb"
+    build_dir.mkdir(parents=True, exist_ok=True)
+    (build_dir / "build.ninja").write_text("# fake\n", encoding="utf-8")
+    monkeypatch.setattr(operations._build, "extract_view_command", lambda *_a, **_k: ["viewer"])
+    # Drop the stdbuf prefix so the recorded command is platform-independent.
+    monkeypatch.setattr(operations._build.shutil, "which", lambda _name: None)
+    return app_dir
+
+
+class _FinishedViewer:
+    """A viewer that already exited: ``_terminate_viewer`` is a no-op on it."""
+
+    pid = 4242
+
+    def __init__(self, text: str) -> None:
+        self.stdout = io.StringIO(text)
+
+    def poll(self) -> int:
+        return 0
+
+    def wait(self, timeout: float | None = None) -> int:
+        del timeout
+        return 0
+
+
+def test_view_capture_streams_lines_with_text_mode_pipe(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app_dir = _view_ready_app(tmp_path, monkeypatch, "hello_view_capture")
+    popen_kwargs: list[dict[str, object]] = []
+
+    def fake_popen(cmd: list[str], **kwargs: object) -> _FinishedViewer:
+        del cmd
+        popen_kwargs.append(kwargs)
+        return _FinishedViewer("line1\nline2\n")
+
+    monkeypatch.setattr(operations._build.subprocess, "Popen", fake_popen)
+
+    capture = tmp_path / "swo" / "out.log"
+    view_app(
+        AppViewRequest(app_dir=app_dir, capture=capture, duration_s=0.5, reset_on_open=False)
+    )
+
+    assert len(popen_kwargs) == 1
+    kw = popen_kwargs[0]
+    assert kw["stdin"] is subprocess.PIPE
+    assert kw["stdout"] is subprocess.PIPE
+    assert kw["stderr"] is subprocess.STDOUT
+    assert kw["text"] is True
+    assert kw["bufsize"] == 1
+    assert kw["start_new_session"] is (os.name != "nt")
+    assert capture.read_text(encoding="utf-8") == "line1\nline2\n"
+
+
+def test_view_without_capture_keeps_viewer_stdout_inherited(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app_dir = _view_ready_app(tmp_path, monkeypatch, "hello_view_plain")
+    popen_kwargs: list[dict[str, object]] = []
+
+    def fake_popen(cmd: list[str], **kwargs: object) -> _FinishedViewer:
+        del cmd
+        popen_kwargs.append(kwargs)
+        return _FinishedViewer("")
+
+    monkeypatch.setattr(operations._build.subprocess, "Popen", fake_popen)
+
+    view_app(AppViewRequest(app_dir=app_dir, duration_s=0.1, reset_on_open=False))
+
+    assert len(popen_kwargs) == 1
+    kw = popen_kwargs[0]
+    # The viewer must never observe EOF on stdin (see view_app_impl).
+    assert kw["stdin"] is subprocess.PIPE
+    assert kw["start_new_session"] is (os.name != "nt")
+    assert "stdout" not in kw and "text" not in kw and "bufsize" not in kw

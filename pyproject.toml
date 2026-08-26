@@ -2,7 +2,7 @@
 name = "neuralspotx"
 version = "0.7.17"
 description = "Python tooling and app bootstrap for neuralspotx"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = "BSD-3-Clause"
 license-files = ["LICENSE", "NOTICE"]
 readme = "README.md"
@@ -13,9 +13,9 @@ keywords = ["embedded", "firmware", "ambiq", "neuralspot", "build-system"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Software Development :: Build Tools",
     "Topic :: Software Development :: Embedded Systems",
     "Typing :: Typed",
@@ -42,6 +42,9 @@ docs = [
 ]
 lint = [
     "ruff>=0.11.0",
+    # Pinned exactly: ty is pre-1.0 and its rule behavior moves between
+    # releases -- upgrades are deliberate, with a re-triage of diagnostics.
+    "ty==0.0.74",
 ]
 test = [
     "hypothesis>=6.0",
@@ -76,19 +79,38 @@ include = ["neuralspotx", "neuralspotx.*"]
 [tool.setuptools.package-data]
 neuralspotx = [
     "py.typed",
-    "templates/external_app/**/*",
-    "templates/module_skeleton/**/*",
+    # Every template directory ships; adding a template is data-only.
+    "templates/**/*",
+    # setuptools expands these with glob(recursive=True), which never matches
+    # dotfiles under `**/*`; the app-template .gitignore needs its own entry.
+    # Guarded by tests/test_app_templates.py::test_app_template_files_are_packaged.
+    "templates/*/.gitignore",
     "cmake/**/*",
     "boards/**/*",
 ]
 "neuralspotx.data" = ["*.yaml"]
 
+[tool.setuptools.exclude-package-data]
+# `templates/**/*` would otherwise sweep a checkout's stale
+# templates/__pycache__/*.pyc into the wheel. Keyed on "*" because setuptools
+# filters per (sub)package root and matches with fnmatch (a `*` spans `/`):
+# the first pattern covers `neuralspotx`, the second `neuralspotx.templates`.
+# Guarded by tests/test_app_templates.py::test_app_template_files_are_packaged.
+"*" = ["*/__pycache__/*", "__pycache__/*"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
+[tool.ty.environment]
+# Check every platform branch. ty defaults to the host platform and
+# treats the other `os.name` / `sys.platform` branches as unreachable,
+# which left the Windows Job Object path in subprocess_utils/_winjob.py
+# unchecked on Linux CI.
+python-platform = "all"
+
 [tool.ruff]
 line-length = 100
-target-version = "py310"
+target-version = "py311"
 preview = true
 
 [tool.ruff.lint]
