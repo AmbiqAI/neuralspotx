@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026, Ambiq
 # nsx_toolchain_flags.cmake
 #
 # Provides nsx_apply_toolchain_flags(<flags_target>) to set compile options,

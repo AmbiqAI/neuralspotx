@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026, Ambiq
 # apollo3p_evb board aggregator (issue #154a).
 #
 # Stable include entry point (nsx_app_bootstrap.cmake includes

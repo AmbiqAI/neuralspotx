@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026, Ambiq
 # Role fragment: SoC. SoC fact load + the nsx::soc_flags interface target.
 # Apollo4p Blue KXR EVB board descriptor.
 #

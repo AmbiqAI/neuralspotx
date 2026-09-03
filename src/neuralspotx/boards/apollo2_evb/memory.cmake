@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026, Ambiq
 # Role fragment: memory. Startup/system sources + linker-script selection.
 nsx_module_dir_for_name(_nsx_core_module_dir "nsx-core")
 set(NSX_CORE_DIR "${NSX_ROOT}/${_nsx_core_module_dir}")

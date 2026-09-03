@@ -176,6 +176,21 @@ Typical use cases:
 `nsx outdated` only operates on `git` modules — the others have no
 upstream constraint to compare against.
 
+## After upgrading neuralspotx
+
+An NSX release can update packaged board or tooling files. Those files are
+content-hashed in `nsx.lock`, so an existing app must refresh its lock once
+after installing such a release:
+
+```bash
+nsx lock
+nsx sync --frozen
+```
+
+Review and commit the resulting `nsx.lock` change with the application. CI
+should continue to use frozen operations; do not bypass a packaged-content
+hash mismatch by editing files under `boards/` or `cmake/nsx/`.
+
 ## CI recipe
 
 ```bash
