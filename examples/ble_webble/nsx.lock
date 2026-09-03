@@ -3,9 +3,9 @@
 schema_version: 4
 targets:
   apollo4p_blue_kxr_evb:
-    generated_at: '2026-08-12T22:55:56+00:00'
+    generated_at: '2026-09-03T23:02:03+00:00'
     nsx_tool:
-      version: 0.7.16
+      version: 0.7.17
     manifest:
       path: nsx.yml
       hash: sha256:094c70e52abf09562f3318291373e11430cce07292b8fb7c3ab7d07b6bc6fb7e
@@ -85,10 +85,10 @@ targets:
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.7.16
+          tool_version: 0.7.17
           vendored_at: boards/apollo4p_blue_kxr_evb
-          content_hash: sha256:e31bdf61af774ab72d976652595cc1fc3137d2d097f39bb0bdaa0feb7d7ac276
-          acquired_at: '2026-08-12T22:55:56+00:00'
+          content_hash: sha256:1aa5931bcd18f0bd1ccea7df6635d0c590cb3e42c69910be288eeef11ea56ec7
+          acquired_at: '2026-09-03T23:02:03+00:00'
       nsx-core:
         project: nsx-ambiq-sdk
         kind: git
@@ -105,10 +105,10 @@ targets:
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.7.16
+          tool_version: 0.7.17
           vendored_at: cmake/nsx
-          content_hash: sha256:a9a4824ba265d9a0ea7f0ca8237a11834fb0017c9177a3a23d7f746868b07133
-          acquired_at: '2026-08-12T22:55:56+00:00'
+          content_hash: sha256:04de1c1329109e872fea5c65ce36e8ccec02fb2492eb5450a341b0c488d96528
+          acquired_at: '2026-09-03T23:02:03+00:00'
       nsx-freertos:
         project: nsx-ambiq-sdk
         kind: git
@@ -143,9 +143,9 @@ targets:
           content_hash: sha256:4ca0d4e197abbb9a0165baebb6b7832d24b6fd23f1a47e424e9f5a01fbd459c6
           acquired_at: '2026-08-04T04:01:08+00:00'
   apollo3p_evb:
-    generated_at: '2026-08-12T22:55:56+00:00'
+    generated_at: '2026-09-03T23:02:03+00:00'
     nsx_tool:
-      version: 0.7.16
+      version: 0.7.17
     manifest:
       path: nsx.yml
       hash: sha256:094c70e52abf09562f3318291373e11430cce07292b8fb7c3ab7d07b6bc6fb7e
@@ -225,10 +225,10 @@ targets:
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.7.16
+          tool_version: 0.7.17
           vendored_at: boards/apollo3p_evb
-          content_hash: sha256:58191cced5f29ddce9d5e31470ab027bd87615e1b0be76ffd686a9e380172aea
-          acquired_at: '2026-08-12T22:55:56+00:00'
+          content_hash: sha256:69fb455d50f74d22f759d4e6c21346e73a6640034fbf354f63795c9bd2f6773e
+          acquired_at: '2026-09-03T23:02:03+00:00'
       nsx-core:
         project: nsx-ambiq-sdk
         kind: git
@@ -245,10 +245,10 @@ targets:
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.7.16
+          tool_version: 0.7.17
           vendored_at: cmake/nsx
-          content_hash: sha256:a9a4824ba265d9a0ea7f0ca8237a11834fb0017c9177a3a23d7f746868b07133
-          acquired_at: '2026-08-12T22:55:56+00:00'
+          content_hash: sha256:04de1c1329109e872fea5c65ce36e8ccec02fb2492eb5450a341b0c488d96528
+          acquired_at: '2026-09-03T23:02:03+00:00'
       nsx-freertos:
         project: nsx-ambiq-sdk
         kind: git
@@ -283,9 +283,9 @@ targets:
           content_hash: sha256:4ca0d4e197abbb9a0165baebb6b7832d24b6fd23f1a47e424e9f5a01fbd459c6
           acquired_at: '2026-08-04T04:01:08+00:00'
   apollo510b_evb:
-    generated_at: '2026-08-12T23:33:56+00:00'
+    generated_at: '2026-09-03T23:02:04+00:00'
     nsx_tool:
-      version: 0.7.16
+      version: 0.7.17
     manifest:
       path: nsx.yml
       hash: sha256:094c70e52abf09562f3318291373e11430cce07292b8fb7c3ab7d07b6bc6fb7e
@@ -365,10 +365,10 @@ targets:
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.7.16
+          tool_version: 0.7.17
           vendored_at: boards/apollo510b_evb
-          content_hash: sha256:44a8b155b4392387c37ca0e8af1f1c5ce21a6fa7726b6c8d868208ac73a47b68
-          acquired_at: '2026-08-12T22:55:57+00:00'
+          content_hash: sha256:e40d4aa44d3f6dd974b37a7b99f71e19c33d06f6aa601ec6dc953987d693eccc
+          acquired_at: '2026-09-03T23:02:04+00:00'
       nsx-core:
         project: nsx-ambiq-sdk
         kind: git
@@ -396,10 +396,10 @@ targets:
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.7.16
+          tool_version: 0.7.17
           vendored_at: cmake/nsx
-          content_hash: sha256:a9a4824ba265d9a0ea7f0ca8237a11834fb0017c9177a3a23d7f746868b07133
-          acquired_at: '2026-08-12T22:55:57+00:00'
+          content_hash: sha256:04de1c1329109e872fea5c65ce36e8ccec02fb2492eb5450a341b0c488d96528
+          acquired_at: '2026-09-03T23:02:04+00:00'
       nsx-freertos:
         project: nsx-ambiq-sdk
         kind: git
