@@ -157,9 +157,7 @@ def render_matrix(rows: list[dict] | None = None) -> str:
         caps = ", ".join(f"`{c}`" for c in r["capabilities"])
         boards = _fmt_boards(r["default"], r["boards"])
         tested = ", ".join(r["tested"]) if r["tested"] else "—"
-        lines.append(
-            f"| {example} | {r['tier']} | {caps} | {boards} | {tested} | {r['status']} |"
-        )
+        lines.append(f"| {example} | {r['tier']} | {caps} | {boards} | {tested} | {r['status']} |")
     lines.extend(["", END])
     return "\n".join(lines)
 

@@ -48,9 +48,7 @@ def _providers_cmake(tmp_path: Path) -> Path:
     for name in ("nsx_sdk_providers.cmake", "nsx_board_table.cmake"):
         src = pkg.joinpath(name)
         with resources.as_file(src) as path:
-            (dest / name).write_text(
-                Path(path).read_text(encoding="utf-8"), encoding="utf-8"
-            )
+            (dest / name).write_text(Path(path).read_text(encoding="utf-8"), encoding="utf-8")
     return dest / "nsx_sdk_providers.cmake"
 
 
@@ -77,14 +75,12 @@ def _run_select(tmp_path: Path, *, board: str, nsx_root: Path) -> subprocess.Com
     sdk_root.mkdir(exist_ok=True)
     harness = tmp_path / "harness.cmake"
     harness.write_text(
-        "\n".join(
-            [
-                f'set(NSX_ROOT "{nsx_root.as_posix()}")',
-                f'include("{providers.as_posix()}")',
-                f'nsx_select_sdk_provider("{board}")',
-                'message(STATUS "RESOLVED_PROVIDER=${NSX_SDK_PROVIDER}")',
-            ]
-        )
+        "\n".join([
+            f'set(NSX_ROOT "{nsx_root.as_posix()}")',
+            f'include("{providers.as_posix()}")',
+            f'nsx_select_sdk_provider("{board}")',
+            'message(STATUS "RESOLVED_PROVIDER=${NSX_SDK_PROVIDER}")',
+        ])
         + "\n",
         encoding="utf-8",
     )

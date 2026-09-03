@@ -116,8 +116,7 @@ def test_reflashing_an_unchanged_image_succeeds(
         lambda cmd, **_kwargs: subprocess.CompletedProcess(
             cmd,
             0,
-            stdout="J-Link: Flash download: Bank 0 @ 0x00018000: "
-            "Skipped. Contents already match\n",
+            stdout="J-Link: Flash download: Bank 0 @ 0x00018000: Skipped. Contents already match\n",
             stderr="",
         ),
     )
@@ -138,8 +137,9 @@ def test_unrecognized_flash_output_still_raises(
             cmd, 0, stdout="Connecting to J-Link via USB...O.K.\n", stderr=""
         ),
     )
-    with using_emitter(lambda _event: None), pytest.raises(
-        NSXError, match="no recognized flash result"
+    with (
+        using_emitter(lambda _event: None),
+        pytest.raises(NSXError, match="no recognized flash result"),
     ):
         _build.flash_app_impl(tmp_path)
 
@@ -167,10 +167,7 @@ def test_reflash_of_identical_image_is_verified() -> None:
     line failed every idempotent re-flash of an unchanged binary.
     """
 
-    output = (
-        "J-Link: Flash download: Bank 0 @ 0x00018000: Skipped. Contents already match\n"
-        "O.K.\n"
-    )
+    output = "J-Link: Flash download: Bank 0 @ 0x00018000: Skipped. Contents already match\nO.K.\n"
     assert _hardware.flash_programming_verified(output)
 
 
@@ -247,8 +244,7 @@ def test_flash_reconfigures_when_jlink_discovery_changes(
 ) -> None:
     build_dir, _ = _flash_build(tmp_path, "primary")
     (build_dir / "CMakeCache.txt").write_text(
-        "NSX_JLINK_SERIAL:UNINITIALIZED=\n"
-        "NSX_JLINK_EXE:FILEPATH=NSX_JLINK_EXE-NOTFOUND\n",
+        "NSX_JLINK_SERIAL:UNINITIALIZED=\nNSX_JLINK_EXE:FILEPATH=NSX_JLINK_EXE-NOTFOUND\n",
         encoding="utf-8",
     )
     _stub_build_context(monkeypatch, tmp_path, build_dir)

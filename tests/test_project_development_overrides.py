@@ -358,13 +358,7 @@ def test_local_path_overrides_packaged_neuralspotx_project(tmp_path: Path) -> No
         encoding="utf-8",
     )
     stale_metadata = (
-        app_dir
-        / "modules"
-        / "neuralspotx"
-        / "src"
-        / "neuralspotx"
-        / "cmake"
-        / "nsx-module.yaml"
+        app_dir / "modules" / "neuralspotx" / "src" / "neuralspotx" / "cmake" / "nsx-module.yaml"
     )
     stale_metadata.parent.mkdir(parents=True)
     stale_metadata.write_text(
@@ -386,9 +380,7 @@ def test_local_path_overrides_packaged_neuralspotx_project(tmp_path: Path) -> No
 
     sync_app(app_dir)
     assert (app_dir / "modules" / "neuralspotx" / "LOCAL_CHECKOUT.txt").is_file()
-    modules_cmake = (app_dir / "cmake" / "nsx" / "modules.cmake").read_text(
-        encoding="utf-8"
-    )
+    modules_cmake = (app_dir / "cmake" / "nsx" / "modules.cmake").read_text(encoding="utf-8")
     assert (
         'set(NSX_APP_MODULE_DIR_nsx_tooling "modules/neuralspotx/src/neuralspotx/cmake")'
         in modules_cmake
@@ -454,9 +446,7 @@ def test_local_neuralspotx_board_is_mirrored_for_bootstrap(tmp_path: Path) -> No
                 module_name: {
                     "project": "neuralspotx",
                     "revision": "local-checkout",
-                    "metadata": (
-                        "src/neuralspotx/boards/apollo510_evb/nsx-module.yaml"
-                    ),
+                    "metadata": ("src/neuralspotx/boards/apollo510_evb/nsx-module.yaml"),
                 }
             },
         },
@@ -471,9 +461,9 @@ def test_local_neuralspotx_board_is_mirrored_for_bootstrap(tmp_path: Path) -> No
     sync_app(app_dir)
 
     mirrored_board = app_dir / "boards" / "apollo510_evb" / "board.cmake"
-    assert mirrored_board.read_text(encoding="utf-8") == (
-        board_dir / "board.cmake"
-    ).read_text(encoding="utf-8")
+    assert mirrored_board.read_text(encoding="utf-8") == (board_dir / "board.cmake").read_text(
+        encoding="utf-8"
+    )
     sync_app(app_dir, frozen=True)
 
     mirrored_board.write_text("set(NSX_BOARD_TARGET stale)\n", encoding="utf-8")
@@ -522,9 +512,7 @@ def test_local_path_missing_metadata_does_not_fall_back_to_packaged_copy(
         lock_app(app_dir, quiet=True)
 
     assert "explicit local project 'neuralspotx'" in str(exc.value)
-    assert str(source / "src" / "neuralspotx" / "cmake" / "nsx-module.yaml") in str(
-        exc.value
-    )
+    assert str(source / "src" / "neuralspotx" / "cmake" / "nsx-module.yaml") in str(exc.value)
 
 
 def _initialize_git_repository(repo: Path, branch: str) -> None:

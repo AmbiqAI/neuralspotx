@@ -50,28 +50,21 @@ static nsx_timer_config_t s_timer_cfg = {
 
 static CORETIMETYPE start_time_val, stop_time_val;
 
-void
-start_time(void)
-{
+void start_time(void) {
     nsx_timer_clear(&s_timer_cfg);
     start_time_val = nsx_timer_us_read(&s_timer_cfg);
 }
 
-void
-stop_time(void)
-{
+void stop_time(void) {
     stop_time_val = nsx_timer_us_read(&s_timer_cfg);
 }
 
 CORE_TICKS
-get_time(void)
-{
+get_time(void) {
     return (CORE_TICKS)(stop_time_val - start_time_val);
 }
 
-secs_ret
-time_in_secs(CORE_TICKS ticks)
-{
+secs_ret time_in_secs(CORE_TICKS ticks) {
     return (secs_ret)ticks / (secs_ret)1000000.0;
 }
 
@@ -79,12 +72,10 @@ time_in_secs(CORE_TICKS ticks)
 ee_u32 default_num_contexts = 1;
 
 /* ── Results pointer for ITCM loop ─────────────────────────── */
-extern void *s_coremark_results;  /* defined in main.c */
+extern void *s_coremark_results; /* defined in main.c */
 
 /* ── Platform init/fini ────────────────────────────────────── */
-void
-portable_init(core_portable *p, int *argc, char *argv[])
-{
+void portable_init(core_portable *p, int *argc, char *argv[]) {
     (void)argc;
     (void)argv;
 
@@ -102,9 +93,7 @@ portable_init(core_portable *p, int *argc, char *argv[])
     p->portable_id = 1;
 }
 
-void
-portable_fini(core_portable *p)
-{
+void portable_fini(core_portable *p) {
     p->portable_id = 0;
 
     /* Stash the core_results pointer for iterate() in the ITCM loop.
@@ -115,10 +104,8 @@ portable_fini(core_portable *p)
 }
 
 /* ── ee_printf via ITM/SWO ─────────────────────────────────── */
-int
-ee_printf(const char *fmt, ...)
-{
-    char    buf[256];
+int ee_printf(const char *fmt, ...) {
+    char buf[256];
     va_list args;
 
     va_start(args, fmt);

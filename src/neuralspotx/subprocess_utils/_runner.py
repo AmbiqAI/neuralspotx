@@ -37,9 +37,7 @@ def _popen(cmd: list[str], **kwargs: Any) -> subprocess.Popen:
         raise NSXToolchainError(f"failed to launch {cmd[0]!r}: {exc}") from exc
 
 
-def _split_emitted_lines(
-    pending: bytes, *, at_eof: bool
-) -> tuple[list[tuple[str, str]], bytes]:
+def _split_emitted_lines(pending: bytes, *, at_eof: bool) -> tuple[list[tuple[str, str]], bytes]:
     """Split streamed *pending* bytes into ``(text, terminator)`` segments.
 
     Breaks on ``\\n``, ``\\r``, and ``\\r\\n`` (each treated as a single

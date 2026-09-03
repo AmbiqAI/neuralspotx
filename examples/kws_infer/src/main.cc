@@ -34,7 +34,9 @@ static inline void dwt_init(void) {
     DWT->CYCCNT = 0;
     DWT->CTRL |= DWT_CTRL_CYCCNTENA_Msk;
 }
-static inline uint32_t dwt_cycles(void) { return DWT->CYCCNT; }
+static inline uint32_t dwt_cycles(void) {
+    return DWT->CYCCNT;
+}
 
 // Embedded model
 #include "kws_model_data.h"
@@ -45,22 +47,20 @@ static inline uint32_t dwt_cycles(void) { return DWT->CYCCNT; }
 
 // KWS model: input [1,49,10,1] int8, output [1,12] int8
 // Ops: Conv2D, DepthwiseConv2D, AveragePool2D, FullyConnected, Reshape, Softmax
-static constexpr int kNumOps    = 6;
-static constexpr int kArenaSize = 64 * 1024;  // 64 KB tensor arena
+static constexpr int kNumOps = 6;
+static constexpr int kArenaSize = 64 * 1024; // 64 KB tensor arena
 
 // KWS class labels (Google Speech Commands subset, 12 classes)
-static const char *kLabels[] = {
-    "silence", "unknown", "yes", "no", "up", "down",
-    "left", "right", "on", "off", "stop", "go"
-};
+static const char *kLabels[] = {"silence", "unknown", "yes", "no",  "up",   "down",
+                                "left",    "right",   "on",  "off", "stop", "go"};
 static constexpr int kNumClasses = 12;
 
 static const nsx_system_config_t kKwsSystemConfig = {
-    .perf_mode        = NSX_PERF_LOW,
-    .enable_cache     = true,
-    .enable_sram      = true,
-    .debug            = { .transport = NSX_DEBUG_ITM },
-    .skip_bsp_init    = true,
+    .perf_mode = NSX_PERF_LOW,
+    .enable_cache = true,
+    .enable_sram = true,
+    .debug = {.transport = NSX_DEBUG_ITM},
+    .skip_bsp_init = true,
     .spot_mgr_profile = true,
 };
 
@@ -113,9 +113,10 @@ int main(void) {
 
     const tflite::Model *model = tflite::GetModel(kws_model_data);
     if (model->version() != TFLITE_SCHEMA_VERSION) {
-        nsx_printf("ERROR: Model schema version %lu != expected %d\n",
-                   model->version(), TFLITE_SCHEMA_VERSION);
-        while (1) {}
+        nsx_printf("ERROR: Model schema version %lu != expected %d\n", model->version(),
+                   TFLITE_SCHEMA_VERSION);
+        while (1) {
+        }
     }
 
     tflite::MicroMutableOpResolver<kNumOps> &resolver = get_resolver();
@@ -123,29 +124,27 @@ int main(void) {
     // Init PMU profiler with ML-default counters
     g_profiler.Init(NSX_PMU_PRESET_ML_DEFAULT);
 
-    tflite::MicroInterpreter interpreter(model, resolver, g_arena, kArenaSize,
-                                         nullptr, &g_profiler);
+    tflite::MicroInterpreter interpreter(model, resolver, g_arena, kArenaSize, nullptr,
+                                         &g_profiler);
 
     TfLiteStatus status = interpreter.AllocateTensors();
     if (status != kTfLiteOk) {
         nsx_printf("ERROR: AllocateTensors() failed\n");
-        while (1) {}
+        while (1) {
+        }
     }
 
     // Report arena usage
     size_t used = interpreter.arena_used_bytes();
-    nsx_printf("Arena: %u / %u bytes used (%.1f%%)\n",
-               (unsigned)used, kArenaSize, 100.0f * used / kArenaSize);
+    nsx_printf("Arena: %u / %u bytes used (%.1f%%)\n", (unsigned)used, kArenaSize,
+               100.0f * used / kArenaSize);
 
-    TfLiteTensor *input  = interpreter.input(0);
+    TfLiteTensor *input = interpreter.input(0);
     TfLiteTensor *output = interpreter.output(0);
 
-    nsx_printf("Input:  dims=[%d,%d,%d,%d] type=%d\n",
-               input->dims->data[0], input->dims->data[1],
-               input->dims->data[2], input->dims->data[3],
-               input->type);
-    nsx_printf("Output: dims=[%d,%d] type=%d\n",
-               output->dims->data[0], output->dims->data[1],
+    nsx_printf("Input:  dims=[%d,%d,%d,%d] type=%d\n", input->dims->data[0], input->dims->data[1],
+               input->dims->data[2], input->dims->data[3], input->type);
+    nsx_printf("Output: dims=[%d,%d] type=%d\n", output->dims->data[0], output->dims->data[1],
                output->type);
 
     // --- Fill input with dummy data (zeros = silence) ---
@@ -160,13 +159,14 @@ int main(void) {
 
     if (status != kTfLiteOk) {
         nsx_printf("ERROR: Invoke() failed\n");
-        while (1) {}
+        while (1) {
+        }
     }
 
     // CPU runs at ~96 MHz
     uint32_t elapsed_us = (end_cyc - start_cyc) / 96;
-    nsx_printf("Inference time: %lu us (%lu cycles)\n",
-               (unsigned long)elapsed_us, (unsigned long)(end_cyc - start_cyc));
+    nsx_printf("Inference time: %lu us (%lu cycles)\n", (unsigned long)elapsed_us,
+               (unsigned long)(end_cyc - start_cyc));
 
     // --- Per-layer PMU stats ---
     nsx_printf("\n--- Per-Layer PMU Profile ---\n");
@@ -176,13 +176,13 @@ int main(void) {
     // --- Print output scores ---
     nsx_printf("\n--- Results ---\n");
     int8_t best_score = -128;
-    int    best_idx   = 0;
+    int best_idx = 0;
     for (int i = 0; i < kNumClasses && i < output->dims->data[1]; i++) {
         int8_t score = output->data.int8[i];
         nsx_printf("  [%2d] %-10s  score=%4d\n", i, kLabels[i], (int)score);
         if (score > best_score) {
             best_score = score;
-            best_idx   = i;
+            best_idx = i;
         }
     }
     nsx_printf("\nPrediction: \"%s\" (score=%d)\n", kLabels[best_idx], (int)best_score);
@@ -192,7 +192,8 @@ int main(void) {
         // DWT-based delay: ~2 seconds at 96 MHz
         {
             uint32_t t0 = dwt_cycles();
-            while ((dwt_cycles() - t0) < (96000000u * 2)) {}
+            while ((dwt_cycles() - t0) < (96000000u * 2)) {
+            }
         }
 
         // Fill with random-ish pattern to exercise more of the model
@@ -210,16 +211,16 @@ int main(void) {
         g_profiler.ClearEvents();
 
         best_score = -128;
-        best_idx   = 0;
+        best_idx = 0;
         for (int i = 0; i < kNumClasses && i < output->dims->data[1]; i++) {
             int8_t score = output->data.int8[i];
             if (score > best_score) {
                 best_score = score;
-                best_idx   = i;
+                best_idx = i;
             }
         }
-        nsx_printf("Inference: %lu us -> \"%s\" (score=%d)\n",
-                 (unsigned long)elapsed_us, kLabels[best_idx], (int)best_score);
+        nsx_printf("Inference: %lu us -> \"%s\" (score=%d)\n", (unsigned long)elapsed_us,
+                   kLabels[best_idx], (int)best_score);
     }
 
     return 0;

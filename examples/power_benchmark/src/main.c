@@ -53,17 +53,15 @@ static const nsx_gpio_config_t s_power_monitor_gpio_1 = {
 };
 
 static const nsx_system_config_t s_power_benchmark_system_config = {
-    .perf_mode        = NSX_PERF_HIGH,
-    .enable_cache     = true,
-    .enable_sram      = true,
-    .debug            = { .transport = NSX_DEBUG_ITM },
-    .skip_bsp_init    = false,
+    .perf_mode = NSX_PERF_HIGH,
+    .enable_cache = true,
+    .enable_sram = true,
+    .debug = {.transport = NSX_DEBUG_ITM},
+    .skip_bsp_init = false,
     .spot_mgr_profile = true,
 };
 
-static void
-ns_init_power_monitor_state(void)
-{
+static void ns_init_power_monitor_state(void) {
     nsx_gpio_init(&s_power_monitor_gpio_0);
     nsx_gpio_init(&s_power_monitor_gpio_1);
 }
@@ -80,10 +78,8 @@ ns_init_power_monitor_state(void)
  * Everything called from here MUST be in ITCM or DTCM.
  * =================================================================== */
 #if !defined(BENCHMARK_NVM_ALL_ON) && !defined(BENCHMARK_NVM_MINMEM)
-__attribute__((section(".itcm_text"), noinline, noreturn))
-static void
-itcm_measurement_loop(void *arg)
-{
+__attribute__((section(".itcm_text"), noinline,
+               noreturn)) static void itcm_measurement_loop(void *arg) {
     /* --- Step 6: Power off NVM --- */
     nsx_power_disable_nvm();
 
@@ -129,9 +125,7 @@ itcm_measurement_loop(void *arg)
  * writes — each step is a single, auditable function call.
  * =================================================================== */
 #if !defined(BENCHMARK_NVM_ALL_ON) && !defined(BENCHMARK_NVM_MINMEM)
-static void
-enter_power_measurement(void *benchmark_arg)
-{
+static void enter_power_measurement(void *benchmark_arg) {
     nsx_printf("Entering power measurement...\n");
     nsx_delay_us(200000); /* let SWO flush */
 
@@ -174,9 +168,7 @@ enter_power_measurement(void *benchmark_arg)
  * configuration requested for datasheet numbers.
  * =================================================================== */
 #ifdef BENCHMARK_NVM_ALL_ON
-static void __attribute__((noreturn))
-enter_nvm_power_measurement(void *benchmark_arg)
-{
+static void __attribute__((noreturn)) enter_nvm_power_measurement(void *benchmark_arg) {
     nsx_printf("Entering NVM all-memory-on power measurement...\n");
     nsx_delay_us(200000); /* let SWO flush */
 
@@ -229,9 +221,7 @@ enter_nvm_power_measurement(void *benchmark_arg)
  * =================================================================== */
 #ifdef BENCHMARK_NVM_MINMEM
 
-static void __attribute__((noreturn))
-enter_minmem_power_measurement(void *benchmark_arg)
-{
+static void __attribute__((noreturn)) enter_minmem_power_measurement(void *benchmark_arg) {
     nsx_printf("Entering NVM min-memory power measurement...\n");
 
     /* I-cache warm-up */
@@ -301,9 +291,7 @@ enter_minmem_power_measurement(void *benchmark_arg)
  * UART is enabled/disabled around the dump so it doesn't affect
  * the measurement.
  * --------------------------------------------------------------- */
-static void
-dump_power_registers(void)
-{
+static void dump_power_registers(void) {
     am_bsp_uart_printf_enable();
     am_util_stdio_printf("\n=== REGISTER DUMP (pre-measurement) ===\n");
 
@@ -398,9 +386,7 @@ dump_power_registers(void)
     am_bsp_uart_printf_disable();
 }
 
-static void __attribute__((noreturn))
-enter_sdk5_power_measurement(void *benchmark_arg)
-{
+static void __attribute__((noreturn)) enter_sdk5_power_measurement(void *benchmark_arg) {
     /* --- CPDLP: ELP retention (SDK5: ELP_ON=0 → ELP_RET) --- */
     am_hal_pwrctrl_pwrmodctl_cpdlp_t cpdlp = {
         .eRlpConfig = AM_HAL_PWRCTRL_RLP_ON,
@@ -431,24 +417,24 @@ enter_sdk5_power_measurement(void *benchmark_arg)
 
     /* --- Memory config: SDK5 apollo5_cache_memory_config() --- */
     am_hal_pwrctrl_mcu_memory_config_t McuMemCfg = {
-        .eROMMode              = AM_HAL_PWRCTRL_ROM_AUTO,
-        .eDTCMCfg              = AM_HAL_PWRCTRL_ITCM32K_DTCM128K,
-        .eRetainDTCM           = AM_HAL_PWRCTRL_MEMRETCFG_TCMPWDSLP_RETAIN,
-        .eNVMCfg               = AM_HAL_PWRCTRL_NVM0_ONLY,
+        .eROMMode = AM_HAL_PWRCTRL_ROM_AUTO,
+        .eDTCMCfg = AM_HAL_PWRCTRL_ITCM32K_DTCM128K,
+        .eRetainDTCM = AM_HAL_PWRCTRL_MEMRETCFG_TCMPWDSLP_RETAIN,
+        .eNVMCfg = AM_HAL_PWRCTRL_NVM0_ONLY,
         .bKeepNVMOnInDeepSleep = false,
     };
     am_hal_pwrctrl_mcu_memory_config(&McuMemCfg);
 
-    MCUCTRL->MRAMCRYPTOPWRCTRL_b.MRAM0LPREN   = 1;
-    MCUCTRL->MRAMCRYPTOPWRCTRL_b.MRAM0SLPEN   = 0;
+    MCUCTRL->MRAMCRYPTOPWRCTRL_b.MRAM0LPREN = 1;
+    MCUCTRL->MRAMCRYPTOPWRCTRL_b.MRAM0SLPEN = 0;
     MCUCTRL->MRAMCRYPTOPWRCTRL_b.MRAM0PWRCTRL = 1;
 
     am_hal_pwrctrl_sram_memcfg_t SRAMMemCfg = {
-        .eSRAMCfg        = AM_HAL_PWRCTRL_SRAM_NONE,
-        .eActiveWithMCU  = AM_HAL_PWRCTRL_SRAM_NONE,
-        .eActiveWithGFX  = AM_HAL_PWRCTRL_SRAM_NONE,
+        .eSRAMCfg = AM_HAL_PWRCTRL_SRAM_NONE,
+        .eActiveWithMCU = AM_HAL_PWRCTRL_SRAM_NONE,
+        .eActiveWithGFX = AM_HAL_PWRCTRL_SRAM_NONE,
         .eActiveWithDISP = AM_HAL_PWRCTRL_SRAM_NONE,
-        .eSRAMRetain     = AM_HAL_PWRCTRL_SRAM_NONE,
+        .eSRAMRetain = AM_HAL_PWRCTRL_SRAM_NONE,
     };
     am_hal_pwrctrl_sram_config(&SRAMMemCfg);
 
@@ -482,9 +468,7 @@ enter_sdk5_power_measurement(void *benchmark_arg)
  * Deep sleep mode — no ITCM trampoline needed
  * =================================================================== */
 #ifdef BENCHMARK_DEEPSLEEP
-static void __attribute__((noreturn))
-enter_deepsleep_measurement(void)
-{
+static void __attribute__((noreturn)) enter_deepsleep_measurement(void) {
     nsx_printf("Entering deep sleep measurement...\n");
     nsx_delay_us(200000);
 
@@ -537,15 +521,13 @@ void *s_coremark_results = NULL;
 /* ===================================================================
  * Entry point
  * =================================================================== */
-int
-main(void)
-{
+int main(void) {
 #ifdef BENCHMARK_SDK5_MIMIC
     /* ---------------------------------------------------------------
      * SDK5-identical init — bypass NSX system init entirely.
-    * Only nsx_core_init is needed for the timer in core_portme.c.
+     * Only nsx_core_init is needed for the timer in core_portme.c.
      * --------------------------------------------------------------- */
-    nsx_core_config_t core_cfg = { .api = &nsx_core_V1_0_0 };
+    nsx_core_config_t core_cfg = {.api = &nsx_core_V1_0_0};
     nsx_core_init(&core_cfg);
 
     /* BSP init (identical to SDK5 portable_init first call):
@@ -576,11 +558,11 @@ main(void)
      * that differs from a direct LP boot (as SDK5 does). */
 #ifdef BENCHMARK_NVM_MINMEM
     static const nsx_system_config_t minmem_cfg = {
-        .perf_mode        = NSX_PERF_LOW,
-        .enable_cache     = true,
-        .enable_sram      = false,
-        .debug            = { .transport = NSX_DEBUG_ITM },
-        .skip_bsp_init    = false,
+        .perf_mode = NSX_PERF_LOW,
+        .enable_cache = true,
+        .enable_sram = false,
+        .debug = {.transport = NSX_DEBUG_ITM},
+        .skip_bsp_init = false,
         .spot_mgr_profile = false,
     };
     nsx_system_init(&minmem_cfg);
@@ -637,5 +619,7 @@ main(void)
 #endif /* BENCHMARK_SDK5_MIMIC */
 
     /* Never reached */
-    while (1) { __WFI(); }
+    while (1) {
+        __WFI();
+    }
 }

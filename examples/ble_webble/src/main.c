@@ -20,24 +20,22 @@
 #include "ns_ble.h"
 
 /* ---- Service data (app-owned) ---------------------------------------- */
-static uint8_t heartbeat_value = 0;    /* read-only: LED heartbeat counter */
-static uint8_t notify_value = 0;       /* notify: one byte, no endian parsing */
-static uint8_t rgb[3] = {0, 0, 0};     /* read/write */
+static uint8_t heartbeat_value = 0; /* read-only: LED heartbeat counter */
+static uint8_t notify_value = 0;    /* notify: one byte, no endian parsing */
+static uint8_t rgb[3] = {0, 0, 0};  /* read/write */
 
 /* ---- WSF buffer pool (app-owned policy) ------------------------------ */
 #define WEBBLE_WSF_BUFFER_POOLS 4
-#define WEBBLE_WSF_BUFFER_SIZE                                                  \
-    (WEBBLE_WSF_BUFFER_POOLS * 16 + 16 * 8 + 32 * 4 + 64 * 6 + 512 * 14) /      \
-        sizeof(uint32_t)
+#define WEBBLE_WSF_BUFFER_SIZE                                                                     \
+    (WEBBLE_WSF_BUFFER_POOLS * 16 + 16 * 8 + 32 * 4 + 64 * 6 + 512 * 14) / sizeof(uint32_t)
 
 static uint32_t webbleWSFBufferPool[WEBBLE_WSF_BUFFER_SIZE];
 static wsfBufPoolDesc_t webbleBufferDescriptors[WEBBLE_WSF_BUFFER_POOLS] = {
     {16, 8}, {32, 4}, {64, 6}, {512, 14}};
-static ns_ble_pool_config_t webbleWsfBuffers = {
-    .pool = webbleWSFBufferPool,
-    .poolSize = sizeof(webbleWSFBufferPool),
-    .desc = webbleBufferDescriptors,
-    .descNum = WEBBLE_WSF_BUFFER_POOLS};
+static ns_ble_pool_config_t webbleWsfBuffers = {.pool = webbleWSFBufferPool,
+                                                .poolSize = sizeof(webbleWSFBufferPool),
+                                                .desc = webbleBufferDescriptors,
+                                                .descNum = WEBBLE_WSF_BUFFER_POOLS};
 
 /* ---- BLE objects ----------------------------------------------------- */
 #define webbleUuid(uuid) "19b10000" uuid "537e4f6cd104768a1214"
@@ -49,16 +47,16 @@ static ns_ble_characteristic_t webbleRgb;
 
 #if defined(AM_PART_APOLLO3P) || defined(AM_PART_APOLLO3)
 #define WEBBLE_BOARD_MODEL "Apollo3 Blue Plus"
-#define WEBBLE_ADV_NAME    "NSX-AP3"
+#define WEBBLE_ADV_NAME "NSX-AP3"
 #elif defined(AM_PART_APOLLO4P)
 #define WEBBLE_BOARD_MODEL "Apollo4 Blue Plus"
-#define WEBBLE_ADV_NAME    "NSX-AP4"
+#define WEBBLE_ADV_NAME "NSX-AP4"
 #elif defined(AM_PART_APOLLO510B)
 #define WEBBLE_BOARD_MODEL "Apollo510B EVB"
-#define WEBBLE_ADV_NAME    "NSX-AP5"
+#define WEBBLE_ADV_NAME "NSX-AP5"
 #else
 #define WEBBLE_BOARD_MODEL "Ambiq BLE Board"
-#define WEBBLE_ADV_NAME    "NSX-BLE"
+#define WEBBLE_ADV_NAME "NSX-BLE"
 #endif
 
 static const ns_ble_device_info_t webbleDeviceInfo = {
@@ -114,17 +112,16 @@ volatile uint32_t g_webble_stage = WEBBLE_STAGE_RESET;
 volatile int32_t g_webble_status = NS_STATUS_SUCCESS;
 
 #define WEBBLE_HEARTBEAT_STACK_WORDS 1024
-#define WEBBLE_SETUP_STACK_WORDS     2048
-#define WEBBLE_RADIO_STACK_WORDS     4096
+#define WEBBLE_SETUP_STACK_WORDS 2048
+#define WEBBLE_RADIO_STACK_WORDS 4096
 
 #define WEBBLE_HEARTBEAT_TASK_PRIORITY (tskIDLE_PRIORITY + 1)
-#define WEBBLE_RADIO_TASK_PRIORITY     (tskIDLE_PRIORITY + 3)
+#define WEBBLE_RADIO_TASK_PRIORITY (tskIDLE_PRIORITY + 3)
 
 static void webble_fail(webble_stage_t stage, int32_t status) {
     g_webble_stage = stage;
     g_webble_status = status;
-    nsx_printf("webble: FAIL stage=%lu status=%ld\r\n", (unsigned long)stage,
-               (long)status);
+    nsx_printf("webble: FAIL stage=%lu status=%ld\r\n", (unsigned long)stage, (long)status);
     taskDISABLE_INTERRUPTS();
     for (;;) {
     }
@@ -148,23 +145,27 @@ static void webble_ble_interrupts_init(void) {
 }
 
 #if defined(AM_PART_APOLLO3P) || defined(AM_PART_APOLLO3)
-void am_ble_isr(void) { ns_ble_handle_controller_irq(); }
+void am_ble_isr(void) {
+    ns_ble_handle_controller_irq();
+}
 #elif defined(AM_PART_APOLLO4P)
-void am_cooper_irq_isr(void) { ns_ble_handle_cooper_gpio_irq(); }
+void am_cooper_irq_isr(void) {
+    ns_ble_handle_cooper_gpio_irq();
+}
 #elif defined(AM_PART_APOLLO510B)
-void AM_BSP_EM9305_RADIO_INT_ISR(void) { ns_ble_handle_em9305_gpio_irq(AM_BSP_EM9305_RADIO_INT_IRQ); }
+void AM_BSP_EM9305_RADIO_INT_ISR(void) {
+    ns_ble_handle_em9305_gpio_irq(AM_BSP_EM9305_RADIO_INT_IRQ);
+}
 #endif
 
 /* ---- Characteristic handlers ----------------------------------------- */
-static int webbleReadHandler(ns_ble_service_t *s, ns_ble_characteristic_t *c,
-                             void *dest) {
+static int webbleReadHandler(ns_ble_service_t *s, ns_ble_characteristic_t *c, void *dest) {
     (void)s;
     memcpy(dest, c->applicationValue, c->valueLen);
     return NS_STATUS_SUCCESS;
 }
 
-static int webbleWriteHandler(ns_ble_service_t *s, ns_ble_characteristic_t *c,
-                              void *src) {
+static int webbleWriteHandler(ns_ble_service_t *s, ns_ble_characteristic_t *c, void *src) {
     (void)s;
     memcpy(c->applicationValue, src, c->valueLen);
     nsx_printf("webble: RGB set to %02x%02x%02x\r\n", rgb[0], rgb[1], rgb[2]);
@@ -183,12 +184,10 @@ static void webble_ble_event_handler(const ns_ble_event_t *event, void *context)
     switch (event->type) {
     case NS_BLE_EVENT_CONNECTED:
         nsx_printf("webble: connected conn=%u interval=%u latency=%u timeout=%lu\r\n",
-                   event->connId, event->value0, event->value1,
-                   (unsigned long)event->detail);
+                   event->connId, event->value0, event->value1, (unsigned long)event->detail);
         break;
     case NS_BLE_EVENT_DISCONNECTED:
-        nsx_printf("webble: disconnected conn=%u reason=0x%02x\r\n", event->connId,
-                   event->value0);
+        nsx_printf("webble: disconnected conn=%u reason=0x%02x\r\n", event->connId, event->value0);
         break;
     case NS_BLE_EVENT_MTU_UPDATED:
         nsx_printf("webble: negotiated MTU %u\r\n", event->value0);
@@ -227,26 +226,24 @@ static int webble_service_init(void) {
     ns_ble_service_set_event_handler(&webbleService, webble_ble_event_handler, NULL);
 
     webble_stage(WEBBLE_STAGE_CHARACTERISTICS);
-    status = ns_ble_create_characteristic(
-        &webbleTemperature, webbleUuid("2001"), &heartbeat_value,
-        sizeof(heartbeat_value), NS_BLE_READ, &webbleReadHandler, NULL, NULL, 0,
-        false, &(webbleService.numAttributes));
+    status = ns_ble_create_characteristic(&webbleTemperature, webbleUuid("2001"), &heartbeat_value,
+                                          sizeof(heartbeat_value), NS_BLE_READ, &webbleReadHandler,
+                                          NULL, NULL, 0, false, &(webbleService.numAttributes));
+    if (status != NS_STATUS_SUCCESS) {
+        return status;
+    }
+
+    status = ns_ble_create_characteristic(&webbleAccel, webbleUuid("5001"), &notify_value,
+                                          sizeof(notify_value), NS_BLE_READ | NS_BLE_NOTIFY, NULL,
+                                          NULL, &webbleNotifyHandler, 200, false,
+                                          &(webbleService.numAttributes));
     if (status != NS_STATUS_SUCCESS) {
         return status;
     }
 
     status = ns_ble_create_characteristic(
-        &webbleAccel, webbleUuid("5001"), &notify_value, sizeof(notify_value),
-        NS_BLE_READ | NS_BLE_NOTIFY, NULL, NULL, &webbleNotifyHandler, 200,
-        false, &(webbleService.numAttributes));
-    if (status != NS_STATUS_SUCCESS) {
-        return status;
-    }
-
-    status = ns_ble_create_characteristic(
-        &webbleRgb, webbleUuid("8001"), rgb, sizeof(rgb),
-        NS_BLE_READ | NS_BLE_WRITE, &webbleReadHandler, &webbleWriteHandler,
-        NULL, 0, false, &(webbleService.numAttributes));
+        &webbleRgb, webbleUuid("8001"), rgb, sizeof(rgb), NS_BLE_READ | NS_BLE_WRITE,
+        &webbleReadHandler, &webbleWriteHandler, NULL, 0, false, &(webbleService.numAttributes));
     if (status != NS_STATUS_SUCCESS) {
         return status;
     }
@@ -458,14 +455,13 @@ int main(void) {
 
     webble_stage(WEBBLE_STAGE_CREATE_HEARTBEAT);
     if (xTaskCreate(heartbeat_task, "HB", WEBBLE_HEARTBEAT_STACK_WORDS, NULL,
-                    WEBBLE_HEARTBEAT_TASK_PRIORITY,
-                    &heartbeat_task_handle) != pdPASS) {
+                    WEBBLE_HEARTBEAT_TASK_PRIORITY, &heartbeat_task_handle) != pdPASS) {
         webble_fail(WEBBLE_STAGE_CREATE_HEARTBEAT, NS_STATUS_FAILURE);
     }
 
     webble_stage(WEBBLE_STAGE_CREATE_SETUP);
-    if (xTaskCreate(setup_task, "Setup", WEBBLE_SETUP_STACK_WORDS, NULL,
-                    WEBBLE_RADIO_TASK_PRIORITY, &setup_task_handle) != pdPASS) {
+    if (xTaskCreate(setup_task, "Setup", WEBBLE_SETUP_STACK_WORDS, NULL, WEBBLE_RADIO_TASK_PRIORITY,
+                    &setup_task_handle) != pdPASS) {
         webble_fail(WEBBLE_STAGE_CREATE_SETUP, NS_STATUS_FAILURE);
     }
     webble_stage(WEBBLE_STAGE_SCHEDULER);

@@ -141,9 +141,7 @@ def _merge_inherited(
     if not isinstance(overrides, dict):
         raise BoardDescriptorError(f"{where}: 'overrides' must be a mapping")
     if "toolchains" in overrides:
-        toolchains = _apply_list_overrides(
-            toolchains, overrides["toolchains"], where=where
-        )
+        toolchains = _apply_list_overrides(toolchains, overrides["toolchains"], where=where)
     elif "toolchains" in raw:
         toolchains = raw["toolchains"]
     merged["toolchains"] = toolchains
@@ -162,9 +160,7 @@ def _build_descriptor(raw: dict, *, path: Path) -> BoardDescriptor:
         raise BoardDescriptorError(f"{path}: 'cpu' must be a mapping")
 
     toolchains = raw.get("toolchains") or []
-    if not isinstance(toolchains, list) or not all(
-        isinstance(t, str) for t in toolchains
-    ):
+    if not isinstance(toolchains, list) or not all(isinstance(t, str) for t in toolchains):
         raise BoardDescriptorError(f"{path}: 'toolchains' must be a list of strings")
 
     return BoardDescriptor(
@@ -195,8 +191,7 @@ def _parse_descriptor(
     version = raw.get("schema_version")
     if version != SCHEMA_VERSION:
         raise BoardDescriptorError(
-            f"{path}: unsupported schema_version {version!r} "
-            f"(expected {SCHEMA_VERSION})"
+            f"{path}: unsupported schema_version {version!r} (expected {SCHEMA_VERSION})"
         )
 
     inherits = raw.get("inherits")
@@ -205,8 +200,7 @@ def _parse_descriptor(
         parent = lookup.get(str(inherits))
         if parent is None:
             raise BoardDescriptorError(
-                f"{path}: inherits unknown board '{inherits}' "
-                f"(known: {sorted(lookup)})"
+                f"{path}: inherits unknown board '{inherits}' (known: {sorted(lookup)})"
             )
         resolved = _merge_inherited(raw, parent, where=path)
         return _build_descriptor(resolved, path=path)
@@ -245,17 +239,14 @@ def load_board(name: str) -> BoardDescriptor | None:
     return load_board_descriptors().get(name)
 
 
-def list_boards(
-    *, tier: str | None = None, registered_only: bool = False
-) -> list[BoardDescriptor]:
+def list_boards(*, tier: str | None = None, registered_only: bool = False) -> list[BoardDescriptor]:
     """Return descriptors, optionally filtered by ``tier`` / ``registered``."""
 
     boards = load_board_descriptors().values()
     result = [
         b
         for b in boards
-        if (tier is None or b.tier == tier)
-        and (not registered_only or b.registered)
+        if (tier is None or b.tier == tier) and (not registered_only or b.registered)
     ]
     return result
 

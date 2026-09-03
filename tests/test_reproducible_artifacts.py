@@ -74,9 +74,7 @@ def test_build_backend_is_pinned() -> None:
     assert '"packaging==26.3"' in pyproject
 
 
-def test_reconcile_restores_hash_verified_canonical_bytes(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_reconcile_restores_hash_verified_canonical_bytes(tmp_path: Path, monkeypatch) -> None:
     dist = tmp_path / "dist"
     dist.mkdir()
     artifact = dist / "demo-1.0-py3-none-any.whl"
@@ -161,9 +159,7 @@ def test_reconcile_rejects_missing_canonical_artifact(tmp_path: Path, monkeypatc
         reconcile(dist, project="demo", version="1.0")
 
 
-def test_reconcile_allows_retry_before_pypi_publication(
-    tmp_path: Path, monkeypatch
-) -> None:
+def test_reconcile_allows_retry_before_pypi_publication(tmp_path: Path, monkeypatch) -> None:
     dist = tmp_path / "dist"
     dist.mkdir()
     artifact = dist / "demo-1.0-py3-none-any.whl"

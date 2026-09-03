@@ -26,9 +26,7 @@ from neuralspotx import board_descriptors as bd
 
 # Match the real ``nsx_load_soc_facts("…")`` call (line start, after optional
 # indentation) so commented references do not match.
-_LOAD_SOC_FACTS_RE = re.compile(
-    r'^\s*nsx_load_soc_facts\(\s*"([^"]+)"\s*\)', re.MULTILINE
-)
+_LOAD_SOC_FACTS_RE = re.compile(r'^\s*nsx_load_soc_facts\(\s*"([^"]+)"\s*\)', re.MULTILINE)
 
 
 def test_board_yaml_soc_matches_soc_cmake_load() -> None:
@@ -42,19 +40,15 @@ def test_board_yaml_soc_matches_soc_cmake_load() -> None:
         assert soc_cmake.is_file(), f"{name}: missing soc.cmake at {soc_cmake}"
         args = _LOAD_SOC_FACTS_RE.findall(soc_cmake.read_text(encoding="utf-8"))
         if not args:
-            missing_call.append(f"{name}: no nsx_load_soc_facts(\"…\") call in soc.cmake")
+            missing_call.append(f'{name}: no nsx_load_soc_facts("…") call in soc.cmake')
             continue
         for arg in args:
             if arg != desc.soc:
                 mismatches.append(
-                    f"{name}: board.yaml soc='{desc.soc}' but "
-                    f"soc.cmake loads '{arg}'"
+                    f"{name}: board.yaml soc='{desc.soc}' but soc.cmake loads '{arg}'"
                 )
 
-    assert not missing_call, "boards missing the SoC-facts load call:\n" + "\n".join(
-        missing_call
-    )
+    assert not missing_call, "boards missing the SoC-facts load call:\n" + "\n".join(missing_call)
     assert not mismatches, (
-        "board.yaml soc drifted from soc.cmake nsx_load_soc_facts:\n"
-        + "\n".join(mismatches)
+        "board.yaml soc drifted from soc.cmake nsx_load_soc_facts:\n" + "\n".join(mismatches)
     )

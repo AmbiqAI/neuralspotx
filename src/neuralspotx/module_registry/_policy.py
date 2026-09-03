@@ -37,11 +37,7 @@ def _validate_sdk_provider_policy(
     if required_provider is None:
         return
 
-    provider_names = [
-        name
-        for name, meta in resolver.items()
-        if meta.module_type == "sdk_provider"
-    ]
+    provider_names = [name for name, meta in resolver.items() if meta.module_type == "sdk_provider"]
     if required_provider not in provider_names:
         raise NSXModuleError(
             f"Module '{module_name}' requires SDK provider '{required_provider}' "

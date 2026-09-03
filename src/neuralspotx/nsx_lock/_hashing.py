@@ -79,10 +79,7 @@ def _git_artifact_hash_cache_path() -> Path:
 
     # Keep semantic generations in separate files so an older nsx can
     # continue using its v1 cache after a newer release writes v2.
-    return (
-        nsx_cache_root()
-        / f"git-artifact-hashes-v{_ARTIFACT_HASH_CACHE_SCHEMA_VERSION}.json"
-    )
+    return nsx_cache_root() / f"git-artifact-hashes-v{_ARTIFACT_HASH_CACHE_SCHEMA_VERSION}.json"
 
 
 def _read_artifact_hash_cache() -> dict[str, str]:

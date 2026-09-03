@@ -188,9 +188,7 @@ class LockFile:
     def to_yaml_dict(self) -> dict[str, Any]:
         return {
             "schema_version": self.schema_version,
-            "targets": {
-                board: lock.to_section_dict() for board, lock in self.targets.items()
-            },
+            "targets": {board: lock.to_section_dict() for board, lock in self.targets.items()},
         }
 
     @classmethod

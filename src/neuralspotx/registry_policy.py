@@ -63,16 +63,14 @@ class StableRegistryRefPolicyError(ValueError):
 
     def __init__(self, report: StableRegistryRefReport) -> None:
         details = [
-            f"{use.location}: {use.project}@{use.revision}"
-            for use in report.unapproved_floating
+            f"{use.location}: {use.project}@{use.revision}" for use in report.unapproved_floating
         ]
         details.extend(
             f"unused allowance: {allowance.project}@{allowance.revision}"
             for allowance in report.unused_allowances
         )
         super().__init__(
-            "Stable registry refs must use a version tag or full commit SHA; "
-            + "; ".join(details)
+            "Stable registry refs must use a version tag or full commit SHA; " + "; ".join(details)
         )
         self.report = report
 
@@ -103,15 +101,12 @@ def stable_registry_ref_report(
     allowance_tuple = tuple(allowances)
     allowance_keys = {(item.project, item.revision) for item in allowance_tuple}
     floating = tuple(
-        use for use in _stable_registry_ref_uses(registry)
+        use
+        for use in _stable_registry_ref_uses(registry)
         if not is_immutable_registry_revision(use.revision)
     )
-    approved = tuple(
-        use for use in floating if (use.project, use.revision) in allowance_keys
-    )
-    unapproved = tuple(
-        use for use in floating if (use.project, use.revision) not in allowance_keys
-    )
+    approved = tuple(use for use in floating if (use.project, use.revision) in allowance_keys)
+    unapproved = tuple(use for use in floating if (use.project, use.revision) not in allowance_keys)
     used_keys = {(use.project, use.revision) for use in floating}
     unused = tuple(
         allowance
@@ -164,8 +159,10 @@ def _stable_registry_ref_uses(registry: dict[str, Any]) -> tuple[RegistryRefUse,
                 if not isinstance(overrides, dict):
                     continue
                 for name, raw in overrides.items():
-                    project = name if section == "project_overrides" else (
-                        raw.get("project") if isinstance(raw, dict) else None
+                    project = (
+                        name
+                        if section == "project_overrides"
+                        else (raw.get("project") if isinstance(raw, dict) else None)
                     )
                     _add_ref_use(
                         uses,

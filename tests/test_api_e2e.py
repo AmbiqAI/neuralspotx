@@ -1193,9 +1193,7 @@ def test_view_capture_streams_lines_with_text_mode_pipe(
     monkeypatch.setattr(operations._build.subprocess, "Popen", fake_popen)
 
     capture = tmp_path / "swo" / "out.log"
-    view_app(
-        AppViewRequest(app_dir=app_dir, capture=capture, duration_s=0.5, reset_on_open=False)
-    )
+    view_app(AppViewRequest(app_dir=app_dir, capture=capture, duration_s=0.5, reset_on_open=False))
 
     assert len(popen_kwargs) == 1
     kw = popen_kwargs[0]

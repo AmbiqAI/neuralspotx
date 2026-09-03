@@ -165,7 +165,9 @@ def test_api_create_board_requires_parent(tmp_path: Path) -> None:
 def test_api_create_board_accepts_request_object(tmp_path: Path) -> None:
     import neuralspotx as nsx
 
-    request = nsx.BoardCreateRequest(name="my510", from_board="apollo510_evb", app_dir=str(tmp_path))
+    request = nsx.BoardCreateRequest(
+        name="my510", from_board="apollo510_evb", app_dir=str(tmp_path)
+    )
     desc = nsx.create_board(request, emit=lambda _event: None)
     assert desc.name == "my510"
     assert (tmp_path / "boards" / "my510" / "board.yaml").is_file()

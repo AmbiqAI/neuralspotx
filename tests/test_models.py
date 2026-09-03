@@ -77,9 +77,7 @@ def test_module_metadata_required_sdk_provider_absent_or_malformed() -> None:
     assert ModuleMetadata.from_raw({}).required_sdk_provider is None
     assert ModuleMetadata.from_raw({"constraints": []}).required_sdk_provider is None
     assert (
-        ModuleMetadata.from_raw(
-            {"constraints": {"required_sdk_provider": 3}}
-        ).required_sdk_provider
+        ModuleMetadata.from_raw({"constraints": {"required_sdk_provider": 3}}).required_sdk_provider
         is None
     )
 

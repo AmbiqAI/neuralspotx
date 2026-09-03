@@ -375,9 +375,7 @@ def _view_board_soc(app_dir: Path, board: str) -> str | None:
 _SWO_SECURE_RESET_SOCS = frozenset({"apollo3p", "apollo4l", "apollo4p", "apollo510b"})
 
 
-def _resolved_view_reset_on_open(
-    app_dir: Path, board: str, reset_on_open: bool | None
-) -> bool:
+def _resolved_view_reset_on_open(app_dir: Path, board: str, reset_on_open: bool | None) -> bool:
     """Return the effective SWO reset policy for *board*."""
 
     if reset_on_open is not None:

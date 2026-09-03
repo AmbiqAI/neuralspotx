@@ -142,9 +142,7 @@ def _resolve_module_closure_inner(
         _validate_sdk_provider_policy(module_name, module_meta, metadata_cache)
 
     sdk_providers = [
-        name
-        for name, meta in metadata_cache.items()
-        if meta.module_type == "sdk_provider"
+        name for name, meta in metadata_cache.items() if meta.module_type == "sdk_provider"
     ]
     if len(sdk_providers) > 1:
         raise NSXModuleError(
