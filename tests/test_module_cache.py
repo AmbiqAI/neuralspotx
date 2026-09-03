@@ -397,9 +397,7 @@ class TestVendorGitIntegration:
 
         app_dir = cache_dir / "nested-git"
         app_dir.mkdir()
-        module_registry._vendor_git_module_at_commit(
-            app_dir, "demo-mod", _REGISTRY, "deadbeef"
-        )
+        module_registry._vendor_git_module_at_commit(app_dir, "demo-mod", _REGISTRY, "deadbeef")
 
         clone_dir = app_dir / "modules" / "demo-proj"
         assert not (clone_dir / ".git").exists()

@@ -53,6 +53,7 @@ def _cmake() -> str:
         pytest.skip("cmake not available")
     return CMAKE
 
+
 GOLDEN_DIR = Path(__file__).parent / "data" / "board_contract"
 TOOLCHAIN_FAMILIES = ("gcc", "armclang")
 
@@ -177,31 +178,33 @@ def _capture(
     out_file = tmp_path / "capture.txt"
     harness = tmp_path / "harness.cmake"
     harness.write_text(
-        "\n".join(
-            [
-                f'set(HARNESS_LOG "{log_file.as_posix()}")',
-                f'file(WRITE "{log_file.as_posix()}" "")',
-                _STUBS,
-                f'set(NSX_ROOT "{_STUB_ROOT}")',
-                f'set(NSX_AMBIQSUITE_ROOT "{_STUB_SDK_ROOT}")',
-                f'set(NSX_CMAKE_DIR "{cmake_dir.as_posix()}")',
-                'set(NSX_SDK_PROVIDER "ambiqsuite")',
-                *([f'set(NSX_LINKER_PROFILE "{linker_profile}")'] if linker_profile is not None else []),
-                *([f'set(NSX_LINKER_SCRIPT "{linker_script}")'] if linker_script is not None else []),
-                f'include("{(board_dir / "board.cmake").as_posix()}")',
-                "get_cmake_property(_all VARIABLES)",
-                "list(SORT _all)",
-                'set(_out "## CALLS\\n")',
-                'file(READ "${HARNESS_LOG}" _calls)',
-                'string(APPEND _out "${_calls}## VARS\\n")',
-                "foreach(_v ${_all})",
-                '    if(_v MATCHES "^NSX_")',
-                '        string(APPEND _out "${_v}=${${_v}}\\n")',
-                "    endif()",
-                "endforeach()",
-                f'file(WRITE "{out_file.as_posix()}" "${{_out}}")',
-            ]
-        )
+        "\n".join([
+            f'set(HARNESS_LOG "{log_file.as_posix()}")',
+            f'file(WRITE "{log_file.as_posix()}" "")',
+            _STUBS,
+            f'set(NSX_ROOT "{_STUB_ROOT}")',
+            f'set(NSX_AMBIQSUITE_ROOT "{_STUB_SDK_ROOT}")',
+            f'set(NSX_CMAKE_DIR "{cmake_dir.as_posix()}")',
+            'set(NSX_SDK_PROVIDER "ambiqsuite")',
+            *(
+                [f'set(NSX_LINKER_PROFILE "{linker_profile}")']
+                if linker_profile is not None
+                else []
+            ),
+            *([f'set(NSX_LINKER_SCRIPT "{linker_script}")'] if linker_script is not None else []),
+            f'include("{(board_dir / "board.cmake").as_posix()}")',
+            "get_cmake_property(_all VARIABLES)",
+            "list(SORT _all)",
+            'set(_out "## CALLS\\n")',
+            'file(READ "${HARNESS_LOG}" _calls)',
+            'string(APPEND _out "${_calls}## VARS\\n")',
+            "foreach(_v ${_all})",
+            '    if(_v MATCHES "^NSX_")',
+            '        string(APPEND _out "${_v}=${${_v}}\\n")',
+            "    endif()",
+            "endforeach()",
+            f'file(WRITE "{out_file.as_posix()}" "${{_out}}")',
+        ])
         + "\n",
         encoding="utf-8",
     )
@@ -216,9 +219,7 @@ def _capture(
     text = out_file.read_text(encoding="utf-8")
     # Drop harness-input vars so no tmp path leaks into the golden.
     kept = [
-        line
-        for line in text.splitlines()
-        if not any(line.startswith(f"{v}=") for v in _INPUT_VARS)
+        line for line in text.splitlines() if not any(line.startswith(f"{v}=") for v in _INPUT_VARS)
     ]
     return "\n".join(kept) + "\n"
 
@@ -242,8 +243,7 @@ def test_board_cmake_contract(tmp_path: Path, board: str, family: str) -> None:
         pytest.skip(f"regenerated golden for {board}/{family}")
 
     assert golden.exists(), (
-        f"missing golden {golden.name}; regenerate with "
-        f"NSX_REGEN_BOARD_CONTRACT=1"
+        f"missing golden {golden.name}; regenerate with NSX_REGEN_BOARD_CONTRACT=1"
     )
     assert capture == golden.read_text(encoding="utf-8"), (
         f"board.cmake contract drift for {board}/{family}"

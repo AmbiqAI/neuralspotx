@@ -111,9 +111,7 @@ def _validate_baseline(value: Any, *, origin: str = "nsx.yml") -> None:
         )
 
 
-def _validate_module_sources(
-    modules: tuple[AppModule, ...], *, origin: str = "nsx.yml"
-) -> None:
+def _validate_module_sources(modules: tuple[AppModule, ...], *, origin: str = "nsx.yml") -> None:
     """Validate each ``modules[i].source`` declares at most one source kind.
 
     A dependency's source is exactly one of ``path`` / ``vendored`` / ``git``

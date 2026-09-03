@@ -1021,7 +1021,9 @@ class TestGitKind:
         fake_sha = "a" * 40
         previous_hash = "sha256:" + "e" * 64
         monkeypatch.setattr(operations._lock, "resolve_ref", lambda url, ref: (fake_sha, "branch"))
-        monkeypatch.setattr(operations._lock, "hash_git_artifact", lambda url, commit: previous_hash)
+        monkeypatch.setattr(
+            operations._lock, "hash_git_artifact", lambda url, commit: previous_hash
+        )
         _write_nsx_yml(
             app,
             [{"name": "fake-mod", "project": "fake-proj", "revision": fake_sha}],

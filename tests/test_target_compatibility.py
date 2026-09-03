@@ -35,7 +35,8 @@ def _resolve(
     tc: str = "arm-none-eabi-gcc",
 ) -> list[str]:
     monkeypatch.setattr(
-        _closure, "_load_module_metadata",
+        _closure,
+        "_load_module_metadata",
         lambda name, registry, app_dir=None: ModuleMetadata.from_raw(meta),
     )
     return _closure._resolve_module_closure(
@@ -92,9 +93,7 @@ def test_incompatible_soc_raises(monkeypatch) -> None:
 def test_incompatible_board_raises(monkeypatch) -> None:
     monkeypatch.delenv("NSX_SKIP_COMPAT_CHECK", raising=False)
     with pytest.raises(NSXModuleError):
-        _resolve(
-            _meta(["apollo4p_blue_kxr_evb"], ["*"], ["*"]), monkeypatch, board="apollo510_evb"
-        )
+        _resolve(_meta(["apollo4p_blue_kxr_evb"], ["*"], ["*"]), monkeypatch, board="apollo510_evb")
 
 
 def test_skip_env_bypasses_incompatible_module(monkeypatch) -> None:

@@ -74,9 +74,7 @@ def test_empty_bare_string_entry_is_rejected() -> None:
 
 
 def test_path_source_round_trips_through_loader() -> None:
-    cfg = _base_cfg(
-        modules=[{"name": "my-driver", "source": {"path": "../my-driver"}}]
-    )
+    cfg = _base_cfg(modules=[{"name": "my-driver", "source": {"path": "../my-driver"}}])
     project = NsxProject.from_mapping(cfg)
     module = project.modules[0]
 
@@ -187,9 +185,7 @@ def test_default_baseline_layers_profile_under_modules() -> None:
 
 
 def test_multiple_sources_on_one_entry_are_rejected() -> None:
-    cfg = _base_cfg(
-        modules=[{"name": "acme", "source": {"path": "../acme", "vendored": True}}]
-    )
+    cfg = _base_cfg(modules=[{"name": "acme", "source": {"path": "../acme", "vendored": True}}])
     with pytest.raises(NSXConfigError) as excinfo:
         NsxProject.from_mapping(cfg)
 

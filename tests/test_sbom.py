@@ -205,10 +205,7 @@ class TestSbomGitProvenance:
         assert _cyclonedx_properties(tagged)["nsx:constraint"] == "v5.2.23"
         assert _cyclonedx_properties(tagged)["nsx:tag"] == "v5.2.23"
         assert bringup["version"] == "2" * 40
-        assert (
-            _cyclonedx_properties(bringup)["nsx:constraint"]
-            == "bringup/customer-board"
-        )
+        assert _cyclonedx_properties(bringup)["nsx:constraint"] == "bringup/customer-board"
         assert "nsx:tag" not in _cyclonedx_properties(bringup)
 
 

@@ -26,17 +26,15 @@ def main() -> int:
             f"Expected neuralspotx to load from {install_root}, loaded {package_path} instead"
         )
 
-    init_result = nsx_main(
-        [
-            "module",
-            "init",
-            str(args.module_dir),
-            "--name",
-            "wheel-smoke-module",
-            "--summary",
-            "Installed wheel smoke-test module",
-        ]
-    )
+    init_result = nsx_main([
+        "module",
+        "init",
+        str(args.module_dir),
+        "--name",
+        "wheel-smoke-module",
+        "--summary",
+        "Installed wheel smoke-test module",
+    ])
     if init_result != 0:
         raise RuntimeError(f"nsx module init failed with exit code {init_result}")
 

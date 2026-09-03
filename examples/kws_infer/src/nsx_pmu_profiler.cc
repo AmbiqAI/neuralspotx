@@ -18,7 +18,7 @@ void NsxPmuProfiler::Init(nsx_pmu_preset_e preset) {
     initialized_ = true;
 }
 
-uint32_t NsxPmuProfiler::BeginEvent(const char* tag) {
+uint32_t NsxPmuProfiler::BeginEvent(const char *tag) {
     if (!initialized_ || num_events_ >= kMaxLayers) {
         return 0;
     }
@@ -41,7 +41,7 @@ void NsxPmuProfiler::EndEvent(uint32_t event_handle) {
     uint32_t saved_cyccnt = DWT->CYCCNT;
     nsx_pmu_get_counters(&pmu_cfg_);
     DWT->CYCCNT = saved_cyccnt;
-    LayerRecord& rec = layers_[event_handle];
+    LayerRecord &rec = layers_[event_handle];
     for (int i = 0; i < kNumEvents; i++) {
         rec.counters[i] = pmu_cfg_.counter[i].counterValue;
     }
@@ -59,7 +59,8 @@ void NsxPmuProfiler::PrintCsv() const {
     // Build header from event names
     nsx_printf("\"Layer\",\"Op\"");
     for (int e = 0; e < kNumEvents; e++) {
-        if (!pmu_cfg_.events[e].enabled) break;
+        if (!pmu_cfg_.events[e].enabled)
+            break;
         // Look up the name from the PMU map via the counter's map index
         uint32_t map_idx = pmu_cfg_.counter[e].mapIndex;
         if (map_idx < NSX_PMU_MAP_SIZE) {
@@ -72,10 +73,11 @@ void NsxPmuProfiler::PrintCsv() const {
 
     // One row per layer
     for (int i = 0; i < num_events_; i++) {
-        const LayerRecord& rec = layers_[i];
+        const LayerRecord &rec = layers_[i];
         nsx_printf("%d,%s", i, rec.tag ? rec.tag : "?");
         for (int e = 0; e < kNumEvents; e++) {
-            if (!pmu_cfg_.events[e].enabled) break;
+            if (!pmu_cfg_.events[e].enabled)
+                break;
             nsx_printf(",%lu", (unsigned long)rec.counters[e]);
         }
         nsx_printf("\n");

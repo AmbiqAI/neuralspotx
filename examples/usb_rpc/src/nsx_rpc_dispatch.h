@@ -19,10 +19,10 @@ extern "C" {
 #endif
 
 /** Maximum encoded size of any NsxRpcMessage (computed at codegen time). */
-#define NSX_RPC_MAX_MSG_BYTES  280   /* 270 + small margin */
+#define NSX_RPC_MAX_MSG_BYTES 280 /* 270 + small margin */
 
 /** 4-byte little-endian length prefix that precedes every message on the wire. */
-#define NSX_RPC_FRAME_HDR_LEN  4
+#define NSX_RPC_FRAME_HDR_LEN 4
 
 /**
  * Decode @p rx_buf (nanopb-encoded NsxRpcMessage, @p rx_len bytes), dispatch
@@ -37,8 +37,7 @@ extern "C" {
  * @return true if the message was decoded and a response was produced;
  *         false on decode error (tx_len set to 0).
  */
-bool nsx_rpc_dispatch(const uint8_t *rx_buf, uint32_t rx_len,
-                      uint8_t *tx_buf, uint32_t *tx_len);
+bool nsx_rpc_dispatch(const uint8_t *rx_buf, uint32_t rx_len, uint8_t *tx_buf, uint32_t *tx_len);
 
 /**
  * Write a 4-byte little-endian length prefix to @p hdr_buf.
@@ -55,10 +54,8 @@ static inline void nsx_rpc_write_hdr(uint8_t *hdr_buf, uint32_t len) {
  * Read a 4-byte little-endian length prefix from @p hdr_buf.
  */
 static inline uint32_t nsx_rpc_read_hdr(const uint8_t *hdr_buf) {
-    return (uint32_t)hdr_buf[0]
-         | ((uint32_t)hdr_buf[1] << 8)
-         | ((uint32_t)hdr_buf[2] << 16)
-         | ((uint32_t)hdr_buf[3] << 24);
+    return (uint32_t)hdr_buf[0] | ((uint32_t)hdr_buf[1] << 8) | ((uint32_t)hdr_buf[2] << 16) |
+           ((uint32_t)hdr_buf[3] << 24);
 }
 
 #ifdef __cplusplus

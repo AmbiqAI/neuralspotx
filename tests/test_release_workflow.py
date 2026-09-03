@@ -60,7 +60,11 @@ def _job_block_text(job_name: str) -> str:
     for i in range(start + 1, len(lines)):
         if lines[i] and not lines[i][0].isspace():
             continue
-        if lines[i].startswith("  ") and not lines[i].startswith("   ") and lines[i].strip().endswith(":"):
+        if (
+            lines[i].startswith("  ")
+            and not lines[i].startswith("   ")
+            and lines[i].strip().endswith(":")
+        ):
             end = i
             break
     return "".join(lines[start:end])
@@ -108,9 +112,11 @@ def test_release_publication_is_downstream_of_exact_commit_ci() -> None:
     assert 'cleanup_ref="repos/${GITHUB_REPOSITORY}/git/refs/heads/$CI_BRANCH"' in text
     assert 'gh api --method DELETE "$cleanup_ref"' in text
     assert "No fresh CI run appeared for exact commit" in text
-    assert 'required_jobs=$(printf \'%s\' "$jobs" |' in text
-    assert 'needs.exact-commit-ci.result == \'success\'' in text
-    assert "skip-existing: ${{ github.event_name == 'workflow_dispatch' && inputs.tag != '' }}" in text
+    assert "required_jobs=$(printf '%s' \"$jobs\" |" in text
+    assert "needs.exact-commit-ci.result == 'success'" in text
+    assert (
+        "skip-existing: ${{ github.event_name == 'workflow_dispatch' && inputs.tag != '' }}" in text
+    )
 
 
 def test_tagged_manual_rebuild_overrides_release_please_skip_propagation() -> None:
@@ -150,9 +156,7 @@ def test_github_release_notes_do_not_depend_on_skipped_release_please_output() -
     job = workflow["jobs"]["github-release"]
     text = _job_block_text("github-release")
     release_step = next(
-        step
-        for step in job["steps"]
-        if step.get("name") == "Create GitHub release"
+        step for step in job["steps"] if step.get("name") == "Create GitHub release"
     )
 
     assert "Checkout the exact release source" in text
@@ -209,11 +213,11 @@ def test_custom_release_path_finalizes_release_please_bookkeeping() -> None:
     assert "needs.create-release-tag.result == 'success'" in job["if"]
     assert "needs.create-release-tag.result == 'skipped'" in job["if"]
 
-    assert 'git/ref/tags/$RELEASE_TAG' in text
+    assert "git/ref/tags/$RELEASE_TAG" in text
     assert 'if [[ "$MANUAL" != "true" ]]; then' in text
     assert 'if [[ "$peeled_sha" != "$TARGET_SHA" ]]; then' in text
-    assert 'releases/tags/$RELEASE_TAG' in text
-    assert 'commits/$TARGET_SHA/pulls' in text
+    assert "releases/tags/$RELEASE_TAG" in text
+    assert "commits/$TARGET_SHA/pulls" in text
     assert 'if [[ "$count" != "1" ]]; then' in text
     assert "Manual rebuild has no unique merged release PR" in text
     assert "Manual rebuild PR #$number has no Release Please lifecycle label" in text
@@ -227,7 +231,7 @@ def test_new_tags_are_annotated_and_fail_closed() -> None:
 
     assert "git/tags" in text
     assert "git/refs" in text
-    assert "--field \"type=commit\"" in text
+    assert '--field "type=commit"' in text
     assert "peeled_sha" in text
     assert "Creating a ref, rather than force-updating one" in text
     assert "git push origin :" not in text
@@ -260,7 +264,9 @@ def test_lock_sync_job_runs_between_release_please_and_ci_dispatch() -> None:
         == "${{ needs.release-please.result == 'success' && needs.release-please.outputs.pr != '' }}"
     )
     assert jobs["dispatch-release-pr-ci"]["needs"] == "sync-release-lock"
-    assert jobs["dispatch-release-pr-ci"]["if"] == "${{ needs.sync-release-lock.result == 'success' }}"
+    assert (
+        jobs["dispatch-release-pr-ci"]["if"] == "${{ needs.sync-release-lock.result == 'success' }}"
+    )
 
     # The dispatch job must not read the raw release-please PR output directly;
     # it only sees the lock-sync job's outputs.
@@ -288,11 +294,14 @@ def test_lock_sync_dispatches_ci_against_the_final_synced_head() -> None:
     dispatch_steps = workflow["jobs"]["dispatch-release-pr-ci"]["steps"]
 
     step_names = [step["name"] for step in dispatch_steps]
-    assert step_names.index("Confirm the branch still points at the synced head") < step_names.index(
-        "Dispatch CI on the release-please PR branch"
-    )
+    assert step_names.index(
+        "Confirm the branch still points at the synced head"
+    ) < step_names.index("Dispatch CI on the release-please PR branch")
 
-    assert 'remote_sha=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/$BRANCH" --jq \'.object.sha\')' in text
+    assert (
+        "remote_sha=$(gh api \"repos/${GITHUB_REPOSITORY}/git/ref/heads/$BRANCH\" --jq '.object.sha')"
+        in text
+    )
     assert 'if [[ "$remote_sha" != "$EXPECTED_SHA" ]]; then' in text
     assert 'gh workflow run ci.yml --ref "$BRANCH" --repo "$GITHUB_REPOSITORY"' in text
 
@@ -323,13 +332,17 @@ def test_lock_sync_commits_only_uv_lock() -> None:
 def test_lock_sync_validates_the_release_branch_before_pushing() -> None:
     text = _workflow_text()
 
-    assert 'package_name=$(jq -r \'.packages["."]["package-name"]\' release-please-config.json)' in text
+    assert (
+        'package_name=$(jq -r \'.packages["."]["package-name"]\' release-please-config.json)'
+        in text
+    )
     assert 'expected_branch="release-please--branches--main--components--${package_name}"' in text
     assert 'if [[ "$branch" != "$expected_branch" ]]; then' in text
     assert 'if [[ "$state" != "open" ]]; then' in text
     assert 'if [[ "$head_ref" != "$branch" ]]; then' in text
     assert (
-        'if [[ "$head_repo" != "$GITHUB_REPOSITORY" || "$base_repo" != "$GITHUB_REPOSITORY" ]]; then' in text
+        'if [[ "$head_repo" != "$GITHUB_REPOSITORY" || "$base_repo" != "$GITHUB_REPOSITORY" ]]; then'
+        in text
     )
     assert "refusing to push" in text.lower()
     assert 'if [[ ! "$head_sha" =~ ^[0-9a-f]{40}$ ]]; then' in text
@@ -369,7 +382,7 @@ def test_lock_sync_has_a_branch_protection_fallback_that_re_validates_the_head()
     # dispatch-release-pr-ci has its own, separate copy of the same check.
     assert (
         sync_job_text.count(
-            'remote_sha=$(gh api "repos/${GITHUB_REPOSITORY}/git/ref/heads/$BRANCH" --jq \'.object.sha\')'
+            "remote_sha=$(gh api \"repos/${GITHUB_REPOSITORY}/git/ref/heads/$BRANCH\" --jq '.object.sha')"
         )
         == 1
     )
@@ -380,9 +393,7 @@ def test_lock_sync_push_step_has_gh_token_for_its_api_fallback() -> None:
     """The push step calls `gh api` in its fallback path and needs GH_TOKEN to do so."""
     workflow = _workflow()
     push_step = next(
-        step
-        for step in workflow["jobs"]["sync-release-lock"]["steps"]
-        if step.get("id") == "push"
+        step for step in workflow["jobs"]["sync-release-lock"]["steps"] if step.get("id") == "push"
     )
 
     assert "gh api" in push_step["run"]
@@ -434,7 +445,9 @@ def test_publisher_still_uses_the_merged_release_landing_sha() -> None:
     text = _workflow_text()
 
     release_context_steps = workflow["jobs"]["release-context"]["steps"]
-    checkout_step = next(step for step in release_context_steps if step["name"] == "Checkout release target")
+    checkout_step = next(
+        step for step in release_context_steps if step["name"] == "Checkout release target"
+    )
     assert checkout_step["with"]["ref"] == (
         "${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.sha }}"
     )
@@ -457,9 +470,9 @@ def test_release_created_detection_is_merge_method_agnostic() -> None:
     """
     text = _workflow_text()
 
-    assert 'git/ref/tags/{tag_name}' in text
+    assert "git/ref/tags/{tag_name}" in text
     assert "tag_check.returncode == 0" in text
-    assert 'git show HEAD^:pyproject.toml' not in text
+    assert "git show HEAD^:pyproject.toml" not in text
     assert "parent_version" not in text
     assert "merge method" in text.lower()
 

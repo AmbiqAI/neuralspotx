@@ -61,9 +61,7 @@ def test_probes_json_is_parsable(monkeypatch) -> None:
     monkeypatch.setattr(
         cli,
         "list_jlink_probes",
-        lambda: [
-            cli.JLinkProbe(index=0, serial="1160002204", product="J-Link-OB-Apollo4-CortexM")
-        ],
+        lambda: [cli.JLinkProbe(index=0, serial="1160002204", product="J-Link-OB-Apollo4-CortexM")],
     )
 
     stdout, stderr, code = _invoke("probes", "--json")

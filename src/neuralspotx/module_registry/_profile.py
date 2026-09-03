@@ -202,9 +202,7 @@ def expand_profile_seeds(
     # direct dep still resolves without re-inlining the project on each entry.
     authored_registry = nsx_cfg.get("module_registry")
     app_module_overrides = (
-        authored_registry.get("modules", {})
-        if isinstance(authored_registry, dict)
-        else {}
+        authored_registry.get("modules", {}) if isinstance(authored_registry, dict) else {}
     )
     if not isinstance(app_module_overrides, dict):
         app_module_overrides = {}

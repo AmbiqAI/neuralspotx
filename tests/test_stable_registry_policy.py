@@ -19,9 +19,7 @@ from neuralspotx.registry_policy import (
 def test_packaged_registry_floating_refs_are_exactly_allowlisted() -> None:
     report = validate_stable_registry_refs(load_registry())
 
-    assert {
-        (use.project, use.revision) for use in report.approved_floating
-    } == {
+    assert {(use.project, use.revision) for use in report.approved_floating} == {
         ("neuralspotx", "main"),
     }
     assert {
@@ -195,10 +193,7 @@ def test_new_floating_module_ref_is_reported_without_broad_exception() -> None:
 
     report = stable_registry_ref_report(registry, allowances=())
 
-    assert [
-        (use.project, use.revision, use.location)
-        for use in report.unapproved_floating
-    ] == [
+    assert [(use.project, use.revision, use.location) for use in report.unapproved_floating] == [
         ("new-project", "customer-bringup", "modules.new-module"),
     ]
     with pytest.raises(StableRegistryRefPolicyError):
