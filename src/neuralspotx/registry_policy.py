@@ -32,9 +32,9 @@ RESERVED_REGISTRY_PROJECT_NAMES: Final[frozenset[str]] = frozenset()
 # this very package). Every other floating stable ref is a temporary branch
 # pin and must carry ``expires_on`` so it cannot silently outlive the
 # upstream PR it tracks; see ``FloatingRefAllowance.__post_init__``.
-PERMANENT_FLOATING_REF_KEYS: Final[frozenset[tuple[str, str]]] = frozenset(
-    {("neuralspotx", "main")}
-)
+PERMANENT_FLOATING_REF_KEYS: Final[frozenset[tuple[str, str]]] = frozenset({
+    ("neuralspotx", "main")
+})
 
 
 @dataclass(frozen=True, slots=True, kw_only=True)
@@ -108,8 +108,7 @@ class StableRegistryRefPolicyError(ValueError):
 
     def __init__(self, report: StableRegistryRefReport) -> None:
         details = [
-            f"{use.location}: {use.project}@{use.revision}"
-            for use in report.unapproved_floating
+            f"{use.location}: {use.project}@{use.revision}" for use in report.unapproved_floating
         ]
         details.extend(
             f"unused allowance: {allowance.project}@{allowance.revision}"
@@ -121,8 +120,7 @@ class StableRegistryRefPolicyError(ValueError):
             for allowance in report.expired_allowances
         )
         super().__init__(
-            "Stable registry refs must use a version tag or full commit SHA; "
-            + "; ".join(details)
+            "Stable registry refs must use a version tag or full commit SHA; " + "; ".join(details)
         )
         self.report = report
 
@@ -171,15 +169,12 @@ def stable_registry_ref_report(
         allowance for allowance in allowance_tuple if allowance.is_expired(effective_today)
     )
     floating = tuple(
-        use for use in _stable_registry_ref_uses(registry)
+        use
+        for use in _stable_registry_ref_uses(registry)
         if not is_immutable_registry_revision(use.revision)
     )
-    approved = tuple(
-        use for use in floating if (use.project, use.revision) in allowance_keys
-    )
-    unapproved = tuple(
-        use for use in floating if (use.project, use.revision) not in allowance_keys
-    )
+    approved = tuple(use for use in floating if (use.project, use.revision) in allowance_keys)
+    unapproved = tuple(use for use in floating if (use.project, use.revision) not in allowance_keys)
     used_keys = {(use.project, use.revision) for use in floating}
     unused = tuple(
         allowance
@@ -234,8 +229,10 @@ def _stable_registry_ref_uses(registry: dict[str, Any]) -> tuple[RegistryRefUse,
                 if not isinstance(overrides, dict):
                     continue
                 for name, raw in overrides.items():
-                    project = name if section == "project_overrides" else (
-                        raw.get("project") if isinstance(raw, dict) else None
+                    project = (
+                        name
+                        if section == "project_overrides"
+                        else (raw.get("project") if isinstance(raw, dict) else None)
                     )
                     _add_ref_use(
                         uses,

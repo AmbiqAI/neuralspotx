@@ -37,11 +37,15 @@ def test_packaged_registry_floating_refs_are_exactly_allowlisted() -> None:
     } == expected
     # Only the packaged self-reference may be permanent; every branch pin
     # must carry an expiry so it cannot silently outlive its upstream PR.
-    assert {
-        (allowance.project, allowance.revision)
-        for allowance in TEMPORARY_STABLE_FLOATING_REF_ALLOWLIST
-        if allowance.is_permanent
-    } == set(PERMANENT_FLOATING_REF_KEYS) == {("neuralspotx", "main")}
+    assert (
+        {
+            (allowance.project, allowance.revision)
+            for allowance in TEMPORARY_STABLE_FLOATING_REF_ALLOWLIST
+            if allowance.is_permanent
+        }
+        == set(PERMANENT_FLOATING_REF_KEYS)
+        == {("neuralspotx", "main")}
+    )
 
 
 def test_permanent_allowance_rejected_for_non_self_reference() -> None:
@@ -107,10 +111,7 @@ def test_packaged_registry_release_projects_are_immutable() -> None:
 
     assert registry["projects"]["nsx-ambiq-sdk"]["revision"] == "v5.2.24"
     assert registry["projects"]["nsx-pmu-armv8m"]["revision"] == "v0.2.0"
-    assert (
-        registry["projects"]["nsx-ethos-u-driver"]["revision"]
-        == "nsx-ethos-u-driver-v0.1.2"
-    )
+    assert registry["projects"]["nsx-ethos-u-driver"]["revision"] == "nsx-ethos-u-driver-v0.1.2"
     assert registry["projects"]["arm-cmsis-nn"]["revision"] == "v0.1.0"
     assert registry["projects"]["nsx-tflite-micro"]["revision"] == "v0.1.0"
     assert registry["projects"]["ns-cmsis-nn"]["revision"] == "v7.29.2"
@@ -281,10 +282,7 @@ def test_new_floating_module_ref_is_reported_without_broad_exception() -> None:
 
     report = stable_registry_ref_report(registry, allowances=())
 
-    assert [
-        (use.project, use.revision, use.location)
-        for use in report.unapproved_floating
-    ] == [
+    assert [(use.project, use.revision, use.location) for use in report.unapproved_floating] == [
         ("new-project", "customer-bringup", "modules.new-module"),
     ]
     with pytest.raises(StableRegistryRefPolicyError):
@@ -362,9 +360,7 @@ def test_expired_allowance_is_reported_with_removal_condition() -> None:
     registry["projects"]["neuralspotx"] = {"revision": "main"}
 
     # On and before the expiry date the allowance still applies.
-    on_time = stable_registry_ref_report(
-        registry, allowances=(temporary, permanent), today=expiry
-    )
+    on_time = stable_registry_ref_report(registry, allowances=(temporary, permanent), today=expiry)
     assert on_time.expired_allowances == ()
     assert on_time.is_valid
 

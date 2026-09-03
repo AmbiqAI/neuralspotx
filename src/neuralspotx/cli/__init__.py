@@ -207,7 +207,9 @@ def cmd_configure(args: argparse.Namespace) -> None:
         build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
         toolchain=args.toolchain,
         probe_serial=getattr(args, "probe_serial", None),
-        sdk_root=Path(args.sdk_root).expanduser().resolve() if getattr(args, "sdk_root", None) else None,
+        sdk_root=Path(args.sdk_root).expanduser().resolve()
+        if getattr(args, "sdk_root", None)
+        else None,
         frozen=getattr(args, "frozen", False),
         timeout_s=getattr(args, "timeout", None),
     )
@@ -240,7 +242,9 @@ def cmd_build(args: argparse.Namespace) -> None:
         toolchain=args.toolchain,
         target=args.target,
         jobs=args.jobs,
-        sdk_root=Path(args.sdk_root).expanduser().resolve() if getattr(args, "sdk_root", None) else None,
+        sdk_root=Path(args.sdk_root).expanduser().resolve()
+        if getattr(args, "sdk_root", None)
+        else None,
         frozen=getattr(args, "frozen", False),
         timeout_s=getattr(args, "timeout", None),
     )
@@ -260,7 +264,9 @@ def cmd_flash(args: argparse.Namespace) -> None:
         target=getattr(args, "target", None),
         probe_serial=getattr(args, "probe_serial", None),
         jobs=args.jobs,
-        sdk_root=Path(args.sdk_root).expanduser().resolve() if getattr(args, "sdk_root", None) else None,
+        sdk_root=Path(args.sdk_root).expanduser().resolve()
+        if getattr(args, "sdk_root", None)
+        else None,
         frozen=getattr(args, "frozen", False),
         timeout_s=getattr(args, "timeout", None),
         emit=quiet_emit,
@@ -275,7 +281,9 @@ def cmd_view(args: argparse.Namespace) -> None:
         build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
         toolchain=args.toolchain,
         probe_serial=getattr(args, "probe_serial", None),
-        sdk_root=Path(args.sdk_root).expanduser().resolve() if getattr(args, "sdk_root", None) else None,
+        sdk_root=Path(args.sdk_root).expanduser().resolve()
+        if getattr(args, "sdk_root", None)
+        else None,
         frozen=getattr(args, "frozen", False),
         reset_on_open=getattr(args, "reset_on_open", None),
         reset_delay_ms=args.reset_delay_ms,

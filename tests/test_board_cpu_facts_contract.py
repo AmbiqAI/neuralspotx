@@ -50,10 +50,7 @@ _SET_RE = re.compile(r'^\s*set\(\s*(\w+)\s+"([^"]*)"\s*\)', re.MULTILINE)
 
 
 def _parse_facts(path: Path) -> dict[str, str]:
-    return {
-        m.group(1): m.group(2)
-        for m in _SET_RE.finditer(path.read_text(encoding="utf-8"))
-    }
+    return {m.group(1): m.group(2) for m in _SET_RE.finditer(path.read_text(encoding="utf-8"))}
 
 
 pytestmark = pytest.mark.skipif(
@@ -86,16 +83,12 @@ def test_board_cpu_matches_sdk_soc_facts() -> None:
             "abi": desc.cpu.abi,
         }
         if actual != expected:
-            mismatches.append(
-                f"{name} (soc={desc.soc}): board.yaml={actual} vs sdk={expected}"
-            )
+            mismatches.append(f"{name} (soc={desc.soc}): board.yaml={actual} vs sdk={expected}")
 
     assert not missing_facts, "boards reference SoCs without SDK facts:\n" + "\n".join(
         missing_facts
     )
-    assert not mismatches, "board.yaml cpu drifted from SDK SoC facts:\n" + "\n".join(
-        mismatches
-    )
+    assert not mismatches, "board.yaml cpu drifted from SDK SoC facts:\n" + "\n".join(mismatches)
 
 
 # SoCs that legitimately ship SDK facts without a matching NSX board. Extend
@@ -134,6 +127,5 @@ def test_soc_inventory_symmetry() -> None:
     facts_without_boards = sorted(facts_socs - board_socs - ALLOWED_SOCS_WITHOUT_BOARD)
     assert not facts_without_boards, (
         "SDK SoC facts exist with no NSX board and are not allow-listed — add a "
-        "board.yaml or extend ALLOWED_SOCS_WITHOUT_BOARD:\n  "
-        + "\n  ".join(facts_without_boards)
+        "board.yaml or extend ALLOWED_SOCS_WITHOUT_BOARD:\n  " + "\n  ".join(facts_without_boards)
     )

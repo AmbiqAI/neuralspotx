@@ -32,8 +32,7 @@ def create_board_impl(
     parent = bd.load_board(from_board)
     if parent is None:
         raise NSXConfigError(
-            f"unknown parent board '{from_board}' "
-            f"(run `nsx board list` to see available boards)"
+            f"unknown parent board '{from_board}' (run `nsx board list` to see available boards)"
         )
 
     root = resolve_app_dir(app_dir)

@@ -82,9 +82,7 @@ pytestmark = pytest.mark.skipif(
 
 
 def _golden_params() -> list:
-    return [
-        pytest.param(path, id=path.stem) for path in sorted(_GOLDEN_DIR.glob("*.txt"))
-    ]
+    return [pytest.param(path, id=path.stem) for path in sorted(_GOLDEN_DIR.glob("*.txt"))]
 
 
 def _referenced_nsx_core_paths(golden: Path) -> set[str]:

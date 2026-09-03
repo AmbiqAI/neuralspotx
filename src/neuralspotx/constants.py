@@ -81,21 +81,15 @@ def validate_board_registry() -> list[str]:
             f"_BOARD_ORDER references boards without a board.yaml descriptor: {missing}"
         )
     unordered = sorted(
-        name
-        for name, desc in _DESCRIPTORS.items()
-        if desc.registered and name not in _BOARD_ORDER
+        name for name, desc in _DESCRIPTORS.items() if desc.registered and name not in _BOARD_ORDER
     )
     if unordered:
-        problems.append(
-            f"registered board descriptors missing from _BOARD_ORDER: {unordered}"
-        )
+        problems.append(f"registered board descriptors missing from _BOARD_ORDER: {unordered}")
     problems.extend(_casefold_collisions("board", _BOARD_ORDER))
     problems.extend(
         _casefold_collisions(
             "SoC",
-            dict.fromkeys(
-                _DESCRIPTORS[b].soc for b in _BOARD_ORDER if b in _DESCRIPTORS
-            ),
+            dict.fromkeys(_DESCRIPTORS[b].soc for b in _BOARD_ORDER if b in _DESCRIPTORS),
         )
     )
     if DEFAULT_BOARD not in _BOARD_ORDER:
@@ -132,9 +126,7 @@ def _casefold_collisions(kind: str, names: "Iterable[str]") -> list[str]:
 # the board descriptors in the canonical order above. Built defensively (any
 # board lacking a descriptor is skipped) so a drifted/broken registry is
 # reported by :func:`validate_board_registry` rather than crashing import.
-DEFAULT_SOC_FOR_BOARD = {
-    b: _DESCRIPTORS[b].soc for b in _BOARD_ORDER if b in _DESCRIPTORS
-}
+DEFAULT_SOC_FOR_BOARD = {b: _DESCRIPTORS[b].soc for b in _BOARD_ORDER if b in _DESCRIPTORS}
 
 # Canonical (case-correct) board identifiers.  Most are already lowercase, but
 # ``apollo330mP_evb`` carries a load-bearing capital ``P`` (filesystem dir,

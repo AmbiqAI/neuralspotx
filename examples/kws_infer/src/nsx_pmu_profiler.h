@@ -16,7 +16,7 @@
 #include "nsx_pmu_utils.h"
 
 class NsxPmuProfiler : public tflite::MicroProfilerInterface {
- public:
+  public:
     static constexpr int kMaxLayers = 128;
     // 4 events at 32-bit width = 8 HW counters (chained pairs)
     static constexpr int kNumEvents = 4;
@@ -28,7 +28,7 @@ class NsxPmuProfiler : public tflite::MicroProfilerInterface {
     void Init(nsx_pmu_preset_e preset = NSX_PMU_PRESET_ML_DEFAULT);
 
     /// MicroProfilerInterface hooks — called by TFLM per operator.
-    uint32_t BeginEvent(const char* tag) override;
+    uint32_t BeginEvent(const char *tag) override;
     void EndEvent(uint32_t event_handle) override;
 
     /// Reset recorded data for next inference.
@@ -37,11 +37,13 @@ class NsxPmuProfiler : public tflite::MicroProfilerInterface {
     /// Print CSV header + one row per layer to ns_printf.
     void PrintCsv() const;
 
-    int num_events() const { return num_events_; }
+    int num_events() const {
+        return num_events_;
+    }
 
- private:
+  private:
     struct LayerRecord {
-        const char* tag;
+        const char *tag;
         uint32_t counters[kNumEvents];
     };
 

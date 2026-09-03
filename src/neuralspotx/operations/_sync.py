@@ -110,8 +110,8 @@ def regenerate_active_board_glue(app_dir: Path, board: str | None = None) -> Non
     ordered_modules = list(lock.modules)
     _write_app_module_file(app_dir, nsx_cfg, module_names=ordered_modules)
     _write_modules_gitignore_for_module_names(
-        app_dir, nsx_cfg, _locked_module_union(app_dir, ordered_modules))
-
+        app_dir, nsx_cfg, _locked_module_union(app_dir, ordered_modules)
+    )
 
 
 def sync_app_impl(
@@ -585,7 +585,8 @@ def _sync_app_impl_unlocked(
     ordered_modules = list(lock.modules)
     _write_app_module_file(app_dir, nsx_cfg, module_names=ordered_modules)
     _write_modules_gitignore_for_module_names(
-        app_dir, nsx_cfg, _locked_module_union(app_dir, ordered_modules))
+        app_dir, nsx_cfg, _locked_module_union(app_dir, ordered_modules)
+    )
 
     # Now that ``cmake/nsx`` has been replaced by _copy_packaged_tree,
     # verify any packaged lock entry mapped to that path against its

@@ -12,14 +12,14 @@
 #include <stddef.h>
 
 /* ── Data types ────────────────────────────────────────────── */
-typedef signed short   ee_s16;
+typedef signed short ee_s16;
 typedef unsigned short ee_u16;
-typedef signed int     ee_s32;
-typedef double         ee_f32;
-typedef unsigned char  ee_u8;
-typedef unsigned int   ee_u32;
-typedef ee_u32         ee_ptr_int;
-typedef size_t         ee_size_t;
+typedef signed int ee_s32;
+typedef double ee_f32;
+typedef unsigned char ee_u8;
+typedef unsigned int ee_u32;
+typedef ee_u32 ee_ptr_int;
+typedef size_t ee_size_t;
 
 /* ── Feature flags ─────────────────────────────────────────── */
 #ifndef HAS_FLOAT
@@ -27,8 +27,8 @@ typedef size_t         ee_size_t;
 #endif
 
 #define HAS_TIME_H 0
-#define USE_CLOCK  0
-#define HAS_STDIO  0
+#define USE_CLOCK 0
+#define HAS_STDIO 0
 #define HAS_PRINTF 0
 
 /* Timer is microseconds (ee_u32), ticks == microseconds */
@@ -53,8 +53,8 @@ typedef ee_u32 CORE_TICKS;
 #ifndef MULTITHREAD
 #define MULTITHREAD 1
 #define USE_PTHREAD 0
-#define USE_FORK    0
-#define USE_SOCKET  0
+#define USE_FORK 0
+#define USE_SOCKET 0
 #endif
 
 /* ── Main signature ────────────────────────────────────────── */

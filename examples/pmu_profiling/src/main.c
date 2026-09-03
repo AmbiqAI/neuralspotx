@@ -3,13 +3,12 @@
 #include "am_mcu_apollo.h"
 #include "nsx_pmu_utils.h"
 
-#define VECTOR_LEN  256
+#define VECTOR_LEN 256
 #define OUTER_LOOPS 100
 
 static volatile int32_t g_sink;
 
-static void workload(void)
-{
+static void workload(void) {
     volatile int32_t acc = 0;
     for (uint32_t i = 0; i < VECTOR_LEN; ++i) {
         acc += (int32_t)(i * i);
@@ -17,8 +16,7 @@ static void workload(void)
     g_sink = acc;
 }
 
-int main(void)
-{
+int main(void) {
     nsx_core_config_t core_cfg = {
         .api = &nsx_core_V1_0_0,
     };
@@ -47,8 +45,7 @@ int main(void)
 
         nsx_printf("--- PMU after %u iterations ---\r\n", (unsigned)OUTER_LOOPS);
         if (nsx_pmu_get_counters(&pmu_cfg) == NSX_STATUS_SUCCESS) {
-            nsx_printf("cycles=%lu inst=%lu\r\n",
-                       (unsigned long)pmu_cfg.counter[0].counterValue,
+            nsx_printf("cycles=%lu inst=%lu\r\n", (unsigned long)pmu_cfg.counter[0].counterValue,
                        (unsigned long)pmu_cfg.counter[1].counterValue);
         } else {
             nsx_printf("PMU read failed\r\n");

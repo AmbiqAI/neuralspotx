@@ -18,7 +18,7 @@
 
 #define MODEL_DATA_IS_PLACEHOLDER 1
 
-alignas(16) const unsigned char g_model_data[] = { 0 };
+alignas(16) const unsigned char g_model_data[] = {0};
 const unsigned int g_model_data_len = 0;
 
-#endif  // MODEL_DATA_H
+#endif // MODEL_DATA_H

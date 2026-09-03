@@ -135,8 +135,7 @@ def write_lock(app_dir: Path, lock: NsxLock, board: str | None = None) -> Path:
         board = str(lock.target.get("board") or "")
     if not board:
         raise NSXLockError(
-            "write_lock requires a board key (none supplied and lock.target "
-            "has no 'board')."
+            "write_lock requires a board key (none supplied and lock.target has no 'board')."
         )
 
     existing: LockFile | None = None

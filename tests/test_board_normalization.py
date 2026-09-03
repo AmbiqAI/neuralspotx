@@ -99,10 +99,7 @@ def test_cmake_provider_list_matches_python_board_map() -> None:
     text = _packaged_cmake_text()
     # The generated table carries the lowercased registered board list in
     # `_NSX_REGISTERED_BOARDS_LOWER`. Pull the quoted entries from that list.
-    cmake_boards = {
-        m.lower()
-        for m in re.findall(r'^\s*"([^"]+)"\s*$', text, flags=re.MULTILINE)
-    }
+    cmake_boards = {m.lower() for m in re.findall(r'^\s*"([^"]+)"\s*$', text, flags=re.MULTILINE)}
     py_boards = {b.lower() for b in BOARDS}
     assert cmake_boards == py_boards, (
         f"CMake/Python board lists drifted.\n"
@@ -147,9 +144,7 @@ def test_validate_board_registry_reports_casefold_collision(monkeypatch) -> None
 
     collider = "Apollo510_EVB"  # casefold-equal to canonical "apollo510_evb"
     assert collider.lower() in {b.lower() for b in constants._BOARD_ORDER}
-    monkeypatch.setattr(
-        constants, "_BOARD_ORDER", (*constants._BOARD_ORDER, collider)
-    )
+    monkeypatch.setattr(constants, "_BOARD_ORDER", (*constants._BOARD_ORDER, collider))
     problems = constants.validate_board_registry()
     assert any("collide under case-folding" in p for p in problems), problems
 

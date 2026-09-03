@@ -248,9 +248,7 @@ def _create_app_body(
         {"name": name} for name in template_modules if name not in declared
     ]
     if no_bootstrap:
-        _save_lean_app_manifest(
-            app_dir, nsx_cfg, baseline_none=True, keep_modules=template_modules
-        )
+        _save_lean_app_manifest(app_dir, nsx_cfg, baseline_none=True, keep_modules=template_modules)
         nsx_cfg["modules"] = [{"name": name} for name in template_modules]
         _write_app_module_file(app_dir, nsx_cfg)
         _write_modules_gitignore(app_dir, nsx_cfg)

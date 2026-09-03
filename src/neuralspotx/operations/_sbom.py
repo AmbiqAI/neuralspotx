@@ -47,6 +47,7 @@ def coerce_sbom_format(value: str) -> SBOMFormat:
         )
     return value
 
+
 _SPDX_NOASSERTION: Final[str] = "NOASSERTION"
 
 

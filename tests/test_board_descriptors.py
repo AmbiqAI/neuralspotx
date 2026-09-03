@@ -36,9 +36,7 @@ def test_descriptor_name_matches_directory() -> None:
 def test_registered_set_matches_board_order() -> None:
     """``_BOARD_ORDER`` must equal exactly the set of registered boards."""
 
-    registered = {
-        name for name, desc in bd.load_board_descriptors().items() if desc.registered
-    }
+    registered = {name for name, desc in bd.load_board_descriptors().items() if desc.registered}
     assert registered == set(_BOARD_ORDER)
 
 
@@ -65,9 +63,7 @@ def test_registered_providers_are_known() -> None:
 def test_unregistered_board_excluded_from_legacy_tables() -> None:
     """A descriptor with ``registered: false`` stays out of the dicts."""
 
-    unregistered = [
-        d.name for d in bd.load_board_descriptors().values() if not d.registered
-    ]
+    unregistered = [d.name for d in bd.load_board_descriptors().values() if not d.registered]
     for name in unregistered:
         assert name not in DEFAULT_SOC_FOR_BOARD
         assert name not in BOARD_SDK_PROVIDER
@@ -114,9 +110,7 @@ def test_validate_board_registry_reports_missing_descriptor(
 ) -> None:
     """A board in _BOARD_ORDER without a descriptor is reported, not raised."""
 
-    monkeypatch.setattr(
-        constants, "_BOARD_ORDER", (*_BOARD_ORDER, "ghost_board"), raising=True
-    )
+    monkeypatch.setattr(constants, "_BOARD_ORDER", (*_BOARD_ORDER, "ghost_board"), raising=True)
     problems = validate_board_registry()
     assert any("ghost_board" in p for p in problems)
 

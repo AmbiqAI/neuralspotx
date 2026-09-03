@@ -31,7 +31,9 @@ class DeviceCandidate:
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="BLE smoke tool for ble_webble")
-    parser.add_argument("--list", action="store_true", help="scan and list matching BLE devices, then exit")
+    parser.add_argument(
+        "--list", action="store_true", help="scan and list matching BLE devices, then exit"
+    )
     parser.add_argument("--address", help="connect to a specific BLE device address")
     parser.add_argument(
         "--name",
@@ -61,11 +63,14 @@ def parse_args() -> argparse.Namespace:
 async def discover_candidates(scan_seconds: float) -> list[DeviceCandidate]:
     devices = await BleakScanner.discover(timeout=scan_seconds, return_adv=True)
     candidates: list[DeviceCandidate] = []
-    entries = devices.values() if isinstance(devices, dict) else ((device, None) for device in devices)
+    entries = (
+        devices.values() if isinstance(devices, dict) else ((device, None) for device in devices)
+    )
     for device, advertisement_data in entries:
         name = device.name or ""
         uuids = {
-            uuid.lower() for uuid in ((advertisement_data.service_uuids if advertisement_data else None) or [])
+            uuid.lower()
+            for uuid in ((advertisement_data.service_uuids if advertisement_data else None) or [])
         }
         if name in DEFAULT_NAMES or SERVICE_UUID.lower() in uuids:
             candidates.append(

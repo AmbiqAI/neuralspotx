@@ -113,10 +113,7 @@ def test_overrides_mixing_plain_and_prefixed_raises(tmp_path: Path) -> None:
 def test_inherits_unknown_board_raises(tmp_path: Path) -> None:
     board_yaml = _write(
         tmp_path / "boards" / "custom" / "board.yaml",
-        "schema_version: 1\n"
-        "inherits: not_a_real_board\n"
-        "board:\n"
-        "  name: custom\n",
+        "schema_version: 1\ninherits: not_a_real_board\nboard:\n  name: custom\n",
     )
     with pytest.raises(BoardDescriptorError, match="inherits unknown board"):
         bd.load_board_descriptor_file(board_yaml)
@@ -127,14 +124,9 @@ def test_inherits_with_explicit_parent_lookup(tmp_path: Path) -> None:
     assert parent is not None
     board_yaml = _write(
         tmp_path / "boards" / "custom" / "board.yaml",
-        "schema_version: 1\n"
-        "inherits: my_base\n"
-        "board:\n"
-        "  name: custom\n",
+        "schema_version: 1\ninherits: my_base\nboard:\n  name: custom\n",
     )
-    desc = bd.load_board_descriptor_file(
-        board_yaml, parent_lookup={"my_base": parent}
-    )
+    desc = bd.load_board_descriptor_file(board_yaml, parent_lookup={"my_base": parent})
     assert desc.soc == parent.soc
     assert desc.sdk_provider == parent.sdk_provider
 

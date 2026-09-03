@@ -105,7 +105,9 @@ def test_doctor_dispatch(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def test_configure_view_and_clean_dispatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    configure_calls: list[tuple[Path, str | None, Path | None, str | None, str | None, Path | None, bool]] = []
+    configure_calls: list[
+        tuple[Path, str | None, Path | None, str | None, str | None, Path | None, bool]
+    ] = []
     view_calls: list[tuple[Path, str | None, Path | None, str | None, str | None, Path | None]] = []
     clean_calls: list[tuple[Path, str | None, Path | None, str | None, bool]] = []
 
@@ -119,7 +121,15 @@ def test_configure_view_and_clean_dispatch(tmp_path: Path, monkeypatch: pytest.M
         sdk_root: Path | None = None,
         frozen: bool = False,
     ) -> None:
-        configure_calls.append((app_dir, board, build_dir, toolchain, probe_serial, sdk_root, frozen))
+        configure_calls.append((
+            app_dir,
+            board,
+            build_dir,
+            toolchain,
+            probe_serial,
+            sdk_root,
+            frozen,
+        ))
 
     def fake_view(
         app_dir: Path,
@@ -178,9 +188,21 @@ def test_configure_view_and_clean_dispatch(tmp_path: Path, monkeypatch: pytest.M
 
 
 def test_build_and_flash_dispatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    build_calls: list[tuple[Path, str | None, Path | None, str | None, str | None, int, Path | None, bool]] = []
+    build_calls: list[
+        tuple[Path, str | None, Path | None, str | None, str | None, int, Path | None, bool]
+    ] = []
     flash_calls: list[
-        tuple[Path, str | None, Path | None, str | None, str | None, str | None, int, Path | None, bool]
+        tuple[
+            Path,
+            str | None,
+            Path | None,
+            str | None,
+            str | None,
+            str | None,
+            int,
+            Path | None,
+            bool,
+        ]
     ] = []
 
     def fake_build(
@@ -245,7 +267,16 @@ def test_build_and_flash_dispatch(tmp_path: Path, monkeypatch: pytest.MonkeyPatc
     )
 
     assert build_calls == [
-        (app_dir.resolve(), "apollo4l_evb", build_dir.resolve(), None, "custom-target", 3, None, True)
+        (
+            app_dir.resolve(),
+            "apollo4l_evb",
+            build_dir.resolve(),
+            None,
+            "custom-target",
+            3,
+            None,
+            True,
+        )
     ]
     assert flash_calls == [
         (app_dir.resolve(), None, build_dir.resolve(), None, None, "1160002204", 2, None, True)

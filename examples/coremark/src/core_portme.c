@@ -24,11 +24,11 @@
 #include <stdarg.h>
 
 static const nsx_system_config_t s_coremark_system_config = {
-    .perf_mode        = NSX_PERF_HIGH,
-    .enable_cache     = true,
-    .enable_sram      = true,
-    .debug            = { .transport = NSX_DEBUG_ITM },
-    .skip_bsp_init    = false,
+    .perf_mode = NSX_PERF_HIGH,
+    .enable_cache = true,
+    .enable_sram = true,
+    .debug = {.transport = NSX_DEBUG_ITM},
+    .skip_bsp_init = false,
     .spot_mgr_profile = false,
 };
 
@@ -61,29 +61,22 @@ static nsx_timer_config_t s_timer_cfg = {
 
 static CORETIMETYPE start_time_val, stop_time_val;
 
-void
-start_time(void)
-{
+void start_time(void) {
     nsx_timer_clear(&s_timer_cfg);
     start_time_val = nsx_timer_us_read(&s_timer_cfg);
 }
 
-void
-stop_time(void)
-{
+void stop_time(void) {
     stop_time_val = nsx_timer_us_read(&s_timer_cfg);
 }
 
 CORE_TICKS
-get_time(void)
-{
+get_time(void) {
     return (CORE_TICKS)(stop_time_val - start_time_val);
 }
 
 /* Return seconds — timer is in microseconds */
-secs_ret
-time_in_secs(CORE_TICKS ticks)
-{
+secs_ret time_in_secs(CORE_TICKS ticks) {
     return (secs_ret)ticks / (secs_ret)1000000.0;
 }
 
@@ -91,17 +84,14 @@ time_in_secs(CORE_TICKS ticks)
 ee_u32 default_num_contexts = 1;
 
 /* ── Platform init/fini ────────────────────────────────────── */
-void
-portable_init(core_portable *p, int *argc, char *argv[])
-{
+void portable_init(core_portable *p, int *argc, char *argv[]) {
     (void)argc;
     (void)argv;
 
     /* Initialize SEGGER RTT control block early so the J-Link host can
      * locate it as soon as the firmware boots.  NO_BLOCK_TRIM means writes
      * that overflow the 32 KB up-buffer are dropped instead of stalling. */
-    SEGGER_RTT_ConfigUpBuffer(0, "CoreMark", NULL, 0,
-                              SEGGER_RTT_MODE_NO_BLOCK_TRIM);
+    SEGGER_RTT_ConfigUpBuffer(0, "CoreMark", NULL, 0, SEGGER_RTT_MODE_NO_BLOCK_TRIM);
 
     /* Full SoC init: caches, perf mode, debug output */
     nsx_system_init(&s_coremark_system_config);
@@ -122,25 +112,23 @@ portable_init(core_portable *p, int *argc, char *argv[])
 }
 
 /* ── Platform init/fini ────────────────────────────────────── */
-void
-portable_fini(core_portable *p)
-{
+void portable_fini(core_portable *p) {
     p->portable_id = 0;
 
     ee_printf("\n--- CoreMark complete. ---\n");
 
     /* Spin so the score stays visible on the RTT channel */
-    while (1) { __WFI(); }
+    while (1) {
+        __WFI();
+    }
 }
 
 /* ── ee_printf via SEGGER RTT ──────────────────────────────── */
 /* RTT writes to an in-SRAM ring buffer that JLinkRTTLogger drains over SWD
  * via background memory reads — no SWO/TPIU pins, no ITM stimulus, and no
  * sensitivity to clock/baud configuration. */
-int
-ee_printf(const char *fmt, ...)
-{
-    char    buf[256];
+int ee_printf(const char *fmt, ...) {
+    char buf[256];
     va_list args;
 
     va_start(args, fmt);

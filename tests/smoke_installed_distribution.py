@@ -32,23 +32,19 @@ _TEMPLATE_BOARDS: dict[str, str] = {
 }
 
 
-def _smoke_create_app(
-    nsx_main: Callable[[list[str]], int], work_dir: Path, template: str
-) -> None:
+def _smoke_create_app(nsx_main: Callable[[list[str]], int], work_dir: Path, template: str) -> None:
     """Scaffold *template* with ``--no-bootstrap`` and check its shipped files."""
 
     app_dir = work_dir / f"wheel-smoke-app-{template}"
-    result = nsx_main(
-        [
-            "create-app",
-            str(app_dir),
-            "--board",
-            _TEMPLATE_BOARDS[template],
-            "--template",
-            template,
-            "--no-bootstrap",
-        ]
-    )
+    result = nsx_main([
+        "create-app",
+        str(app_dir),
+        "--board",
+        _TEMPLATE_BOARDS[template],
+        "--template",
+        template,
+        "--no-bootstrap",
+    ])
     if result != 0:
         raise RuntimeError(f"nsx create-app --template {template} failed with exit code {result}")
     missing = [rel for rel in _EXPECTED_APP_FILES[template] if not (app_dir / rel).is_file()]
@@ -83,17 +79,15 @@ def main() -> int:
             f"Expected neuralspotx to load from {install_root}, loaded {package_path} instead"
         )
 
-    init_result = nsx_main(
-        [
-            "module",
-            "init",
-            str(args.module_dir),
-            "--name",
-            "wheel-smoke-module",
-            "--summary",
-            "Installed wheel smoke-test module",
-        ]
-    )
+    init_result = nsx_main([
+        "module",
+        "init",
+        str(args.module_dir),
+        "--name",
+        "wheel-smoke-module",
+        "--summary",
+        "Installed wheel smoke-test module",
+    ])
     if init_result != 0:
         raise RuntimeError(f"nsx module init failed with exit code {init_result}")
 

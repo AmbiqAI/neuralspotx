@@ -9,8 +9,8 @@
 /* Buffers — all static, no malloc                                     */
 /* ------------------------------------------------------------------ */
 
-#define USB_TX_BUF_SIZE  2048
-#define USB_RX_BUF_SIZE  2048   /* >= NSX_USB_MIN_CDC_RX_BUFSIZE (1024) */
+#define USB_TX_BUF_SIZE 2048
+#define USB_RX_BUF_SIZE 2048 /* >= NSX_USB_MIN_CDC_RX_BUFSIZE (1024) */
 
 /* USB DMA buffers — place in SRAM for DMA engine access. */
 static NSX_MEM_SRAM_BSS uint8_t g_usb_tx_buf[USB_TX_BUF_SIZE];
@@ -26,14 +26,14 @@ static uint8_t g_hdr_buf[NSX_RPC_FRAME_HDR_LEN];
 /* ------------------------------------------------------------------ */
 
 typedef enum {
-    RX_WAIT_HDR,   /* collecting the 4-byte length prefix */
-    RX_WAIT_BODY,  /* collecting the protobuf payload     */
+    RX_WAIT_HDR,  /* collecting the 4-byte length prefix */
+    RX_WAIT_BODY, /* collecting the protobuf payload     */
 } rx_state_t;
 
-static rx_state_t g_rx_state    = RX_WAIT_HDR;
-static uint32_t   g_rx_need     = NSX_RPC_FRAME_HDR_LEN;
-static uint32_t   g_rx_got      = 0;
-static uint32_t   g_rx_body_len = 0;
+static rx_state_t g_rx_state = RX_WAIT_HDR;
+static uint32_t g_rx_need = NSX_RPC_FRAME_HDR_LEN;
+static uint32_t g_rx_got = 0;
+static uint32_t g_rx_body_len = 0;
 
 /**
  * Feed bytes from the CDC FIFO into the framing state machine.
@@ -46,10 +46,10 @@ static bool rx_feed(nsx_usb_config_t *usb, uint32_t *frame_len) {
         uint32_t room;
 
         if (g_rx_state == RX_WAIT_HDR) {
-            dst  = g_hdr_buf + g_rx_got;
+            dst = g_hdr_buf + g_rx_got;
             room = (uint32_t)sizeof(g_hdr_buf) - g_rx_got;
         } else {
-            dst  = g_rx_frame + g_rx_got;
+            dst = g_rx_frame + g_rx_got;
             room = g_rx_body_len - g_rx_got;
         }
 
@@ -66,17 +66,17 @@ static bool rx_feed(nsx_usb_config_t *usb, uint32_t *frame_len) {
             if (len == 0 || len > NSX_RPC_MAX_MSG_BYTES) {
                 nsx_printf("RPC framing: bad length %u — resync\r\n", (unsigned)len);
                 g_rx_state = RX_WAIT_HDR;
-                g_rx_got   = 0;
+                g_rx_got = 0;
                 continue;
             }
             g_rx_body_len = len;
-            g_rx_state    = RX_WAIT_BODY;
-            g_rx_got      = 0;
+            g_rx_state = RX_WAIT_BODY;
+            g_rx_got = 0;
         } else if (g_rx_state == RX_WAIT_BODY && g_rx_got == g_rx_body_len) {
             /* Complete payload received. */
-            *frame_len    = g_rx_body_len;
-            g_rx_state    = RX_WAIT_HDR;
-            g_rx_got      = 0;
+            *frame_len = g_rx_body_len;
+            g_rx_state = RX_WAIT_HDR;
+            g_rx_got = 0;
             g_rx_body_len = 0;
             return true;
         }
@@ -97,21 +97,22 @@ int main(void) {
     nsx_cache_enable();
 
     nsx_usb_config_t usb = {
-        .tx_buffer        = g_usb_tx_buf,
-        .tx_buffer_len    = sizeof(g_usb_tx_buf),
-        .rx_buffer        = g_usb_rx_buf,
-        .rx_buffer_len    = sizeof(g_usb_rx_buf),
+        .tx_buffer = g_usb_tx_buf,
+        .tx_buffer_len = sizeof(g_usb_tx_buf),
+        .rx_buffer = g_usb_rx_buf,
+        .rx_buffer_len = sizeof(g_usb_rx_buf),
         .poll_interval_us = NSX_USB_DEFAULT_POLL_US,
-        .timeout_ms       = NSX_USB_DEFAULT_TIMEOUT_MS,
-        .rx_cb            = NULL,
-        .vendor_rx_cb     = NULL,
-        .device_desc      = NULL,
-        .user_ctx         = NULL,
+        .timeout_ms = NSX_USB_DEFAULT_TIMEOUT_MS,
+        .rx_cb = NULL,
+        .vendor_rx_cb = NULL,
+        .device_desc = NULL,
+        .user_ctx = NULL,
     };
 
     if (nsx_usb_init(&usb) != 0) {
         nsx_printf("USB init failed\r\n");
-        while (1) {}
+        while (1) {
+        }
     }
 
     nsx_printf("NSX USB RPC ready\r\n");
@@ -120,8 +121,8 @@ int main(void) {
     while (1) {
         if (!nsx_usb_connected(&usb)) {
             /* Not connected — reset framing state to avoid stale half-frames. */
-            g_rx_state    = RX_WAIT_HDR;
-            g_rx_got      = 0;
+            g_rx_state = RX_WAIT_HDR;
+            g_rx_got = 0;
             g_rx_body_len = 0;
             nsx_delay_us(100000);
             continue;
@@ -136,8 +137,7 @@ int main(void) {
 
         /* Dispatch and encode response. */
         uint32_t tx_payload_len = 0;
-        bool ok = nsx_rpc_dispatch(g_rx_frame, frame_len,
-                                   g_tx_frame, &tx_payload_len);
+        bool ok = nsx_rpc_dispatch(g_rx_frame, frame_len, g_tx_frame, &tx_payload_len);
         if (!ok || tx_payload_len == 0) {
             continue;
         }

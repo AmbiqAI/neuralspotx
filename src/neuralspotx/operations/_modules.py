@@ -99,9 +99,7 @@ def add_module_impl(
     app_cfg = AppConfig.from_mapping(nsx_cfg)
     declared = {module.name for module in app_cfg.modules}
     if module_name in declared:
-        raise NSXModuleError(
-            f"Module '{module_name}' is already a direct dependency in nsx.yml"
-        )
+        raise NSXModuleError(f"Module '{module_name}' is already a direct dependency in nsx.yml")
 
     if boards:
         supported = set(app_cfg.targets())
@@ -109,8 +107,7 @@ def add_module_impl(
         if supported and unknown:
             listed = ", ".join(sorted(supported))
             raise NSXConfigError(
-                f"--board {', '.join(unknown)} not in the app's supported targets "
-                f"({listed})"
+                f"--board {', '.join(unknown)} not in the app's supported targets ({listed})"
             )
 
     entry: dict[str, Any] = {"name": module_name}
@@ -276,9 +273,7 @@ def update_modules_impl(
         # would be rejected before ``lock_app_impl`` can refresh all targets.
         lock_file = read_lock_file(app_dir)
         if lock_file is not None:
-            known = {
-                name for section in lock_file.targets.values() for name in section.modules
-            }
+            known = {name for section in lock_file.targets.values() for name in section.modules}
             if module_name not in known:
                 raise NSXModuleError(
                     f"Module '{module_name}' is not in the app's resolved closure (nsx.lock)"
@@ -288,7 +283,11 @@ def update_modules_impl(
         names = [module_name] if module_name else sorted(before)
         return [
             ModuleChange(
-                name=name, before=before.get(name), after=before.get(name), action="noop", dry_run=True
+                name=name,
+                before=before.get(name),
+                after=before.get(name),
+                action="noop",
+                dry_run=True,
             )
             for name in names
         ]

@@ -864,9 +864,7 @@ def lock_app_impl(
             # Full lock: drop any orphaned target section left behind by a
             # board that was removed from ``targets:`` in nsx.yml.
             nsx_cfg = _load_app_cfg(app_dir)
-            keep = {
-                k for b in boards if (k := _lock_board_key(nsx_cfg, b)) is not None
-            }
+            keep = {k for b in boards if (k := _lock_board_key(nsx_cfg, b)) is not None}
             if keep:
                 prune_lock_targets(app_dir, keep)
     return results[0]

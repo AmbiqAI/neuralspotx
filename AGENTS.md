@@ -272,7 +272,7 @@ Examples:
 Before sending or merging changes, run the relevant checks from repo root:
 
 ```bash
-uv run --group lint ruff check .
+pre-commit run --all-files --hook-stage manual
 uv run --group lint --group test ty check --error-on-warning src/neuralspotx tests
 uv run --group test pytest -q
 uv run --group docs zensical build

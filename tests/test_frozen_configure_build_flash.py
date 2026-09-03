@@ -216,9 +216,7 @@ class TestSdkRootEscapeHatch:
         _make_vendored(tmp_path, "my-vend")
         _write_nsx_yml(tmp_path, [{"name": "my-vend", "source": {"vendored": True}}])
         sync_calls: list[object] = []
-        monkeypatch.setattr(
-            _build_mod, "_ensure_app_modules", lambda *a, **k: sync_calls.append(a)
-        )
+        monkeypatch.setattr(_build_mod, "_ensure_app_modules", lambda *a, **k: sync_calls.append(a))
 
         with pytest.raises(NSXConfigError, match="--sdk-root is not a directory"):
             operation(tmp_path, sdk_root=tmp_path / "does-not-exist")
@@ -233,9 +231,7 @@ class TestSdkRootEscapeHatch:
         _make_vendored(tmp_path, "my-vend")
         _write_nsx_yml(tmp_path, [{"name": "my-vend", "source": {"vendored": True}}])
         sync_calls: list[object] = []
-        monkeypatch.setattr(
-            _build_mod, "_ensure_app_modules", lambda *a, **k: sync_calls.append(a)
-        )
+        monkeypatch.setattr(_build_mod, "_ensure_app_modules", lambda *a, **k: sync_calls.append(a))
 
         with pytest.raises(NSXConfigError, match="--sdk-root is not a directory"):
             view_app_impl(tmp_path, sdk_root=tmp_path / "does-not-exist")
@@ -258,9 +254,7 @@ class TestSdkRootEscapeHatch:
         sdk = tmp_path / "sdk"
         sdk.mkdir()
         sync_calls: list[object] = []
-        monkeypatch.setattr(
-            _build_mod, "_ensure_app_modules", lambda *a, **k: sync_calls.append(a)
-        )
+        monkeypatch.setattr(_build_mod, "_ensure_app_modules", lambda *a, **k: sync_calls.append(a))
 
         with pytest.raises(NSXConfigError, match="cannot be combined with --frozen"):
             operation(tmp_path, sdk_root=sdk, frozen=True)

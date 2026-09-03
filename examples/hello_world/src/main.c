@@ -1,7 +1,6 @@
 #include "nsx_core.h"
 
-int main(void)
-{
+int main(void) {
     nsx_core_config_t cfg = {
         .api = &nsx_core_V1_0_0,
     };

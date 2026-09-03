@@ -122,7 +122,11 @@ def test_board_module_name_lowercased() -> None:
 
 def test_unknown_family_raises() -> None:
     data = {
-        "profile_defaults": {"toolchain": "arm-none-eabi-gcc", "channel": "stable", "core_modules": []},
+        "profile_defaults": {
+            "toolchain": "arm-none-eabi-gcc",
+            "channel": "stable",
+            "core_modules": [],
+        },
         "soc_families": {"r5": {"provider": "p", "revision": "v", "modules": []}},
         "board_profiles": {"apollo3_evb": {}},  # apollo3_evb is an r3 board
     }
@@ -146,13 +150,7 @@ def test_literal_starter_profiles_still_accepted() -> None:
     import tempfile
     from pathlib import Path
 
-    text = (
-        "schema_version: 1\n"
-        "channels: {}\n"
-        "projects: {}\n"
-        "modules: {}\n"
-        "starter_profiles: {}\n"
-    )
+    text = "schema_version: 1\nchannels: {}\nprojects: {}\nmodules: {}\nstarter_profiles: {}\n"
     with tempfile.TemporaryDirectory() as tmp:
         path = Path(tmp) / "registry.lock.yaml"
         path.write_text(text, encoding="utf-8")

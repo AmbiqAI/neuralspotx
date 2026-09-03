@@ -145,27 +145,23 @@ def _iter_registry_layers(
             continue
         if kind == "workspace":
             overlay_path = (base_dir / str(value)).resolve()
-            resolved.append(
-                (
-                    f"registry.layers[{index}] (workspace: {value})",
-                    f"registry.layers[{index}]",
-                    _resolve_override_local_paths(
-                        ModuleRegistryOverride.from_mapping(_load_workspace_overlay(overlay_path)),
-                        base_dir=overlay_path.parent,
-                    ),
-                )
-            )
+            resolved.append((
+                f"registry.layers[{index}] (workspace: {value})",
+                f"registry.layers[{index}]",
+                _resolve_override_local_paths(
+                    ModuleRegistryOverride.from_mapping(_load_workspace_overlay(overlay_path)),
+                    base_dir=overlay_path.parent,
+                ),
+            ))
         elif kind == "inline":
-            resolved.append(
-                (
-                    f"registry.layers[{index}] (inline)",
-                    f"registry.layers[{index}]",
-                    _resolve_override_local_paths(
-                        ModuleRegistryOverride.from_mapping(value),
-                        base_dir=base_dir,
-                    ),
-                )
-            )
+            resolved.append((
+                f"registry.layers[{index}] (inline)",
+                f"registry.layers[{index}]",
+                _resolve_override_local_paths(
+                    ModuleRegistryOverride.from_mapping(value),
+                    base_dir=base_dir,
+                ),
+            ))
         else:
             raise NSXConfigError(
                 f"nsx.yml: unknown registry layer kind '{kind}' at index {index} "

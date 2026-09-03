@@ -90,9 +90,7 @@ def test_app_template_files_are_packaged() -> None:
             if path.is_file() and "__pycache__" not in path.parts
         )
         assert files, f"{name}: template directory {template_dir} is empty"
-        missing.extend(
-            f"{name}: {rel.as_posix()}" for rel in files if rel not in packaged
-        )
+        missing.extend(f"{name}: {rel.as_posix()}" for rel in files if rel not in packaged)
     assert not missing, (
         "Template files not selected by any [tool.setuptools.package-data] glob "
         "in pyproject.toml:\n  " + "\n  ".join(missing)

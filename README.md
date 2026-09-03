@@ -73,9 +73,14 @@ For contributors working from a source checkout:
 cd <nsx-repo>
 uv sync
 source .venv/bin/activate
+uv tool install pre-commit
+pre-commit install
 nsx doctor
 nsx create-app hello_ap510 --board apollo510_evb
 ```
+
+`pre-commit install` sets up the lint and pre-push hooks that CI also runs. See [docs/contributing/index.md](docs/contributing/index.md) for
+what runs at each stage.
 
 Build the app:
 

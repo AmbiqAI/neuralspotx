@@ -74,8 +74,7 @@ def cmd_board_show(args: argparse.Namespace) -> None:
     desc = bd.load_board(args.board)
     if desc is None:
         raise NSXConfigError(
-            f"unknown board '{args.board}' "
-            f"(run `nsx board list` to see available boards)"
+            f"unknown board '{args.board}' (run `nsx board list` to see available boards)"
         )
     if args.json:
         print(json.dumps(_descriptor_to_dict(desc), indent=2))
