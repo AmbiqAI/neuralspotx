@@ -9,6 +9,8 @@ import tempfile
 from collections.abc import Callable
 from pathlib import Path
 
+import yaml
+
 # Files every ``create-app --no-bootstrap`` scaffold must ship, per template.
 # The npu-tflm entries guard the wheel-level package-data contract: the
 # template renders fine from a checkout (``pip install -e``) even when a file
@@ -30,6 +32,9 @@ _TEMPLATE_BOARDS: dict[str, str] = {
     "default": "apollo510_evb",
     "npu-tflm": "atomiq110_fpga_turbo",
 }
+_SPDX_HEADER = "SPDX-License-Identifier: BSD-3-Clause"
+_COPYRIGHT_HEADER = "Copyright (c) 2026, Ambiq"
+_PACKAGED_SOURCE_SUFFIXES = {".cmake", ".in", ".yaml"}
 
 
 def _smoke_create_app(nsx_main: Callable[[list[str]], int], work_dir: Path, template: str) -> None:
@@ -52,6 +57,63 @@ def _smoke_create_app(nsx_main: Callable[[list[str]], int], work_dir: Path, temp
         raise RuntimeError(
             f"create-app --template {template} scaffold is missing packaged template files: "
             + json.dumps(missing)
+        )
+
+
+def _smoke_packaged_licenses(package_dir: Path) -> None:
+    """Verify every registry-backed packaged module in the installed wheel."""
+
+    registry_path = package_dir / "data" / "registry.lock.yaml"
+    registry = yaml.safe_load(registry_path.read_text(encoding="utf-8"))
+    package_prefix = Path("src/neuralspotx")
+    roots: list[Path] = []
+
+    for name, entry in registry["modules"].items():
+        if entry.get("project") != "neuralspotx":
+            continue
+        metadata = Path(entry["metadata"])
+        try:
+            relative_metadata = metadata.relative_to(package_prefix)
+        except ValueError as exc:
+            raise RuntimeError(
+                f"Packaged module {name!r} has metadata outside {package_prefix}: {metadata}"
+            ) from exc
+        root = package_dir / relative_metadata.parent
+        if not root.is_dir():
+            raise RuntimeError(f"Packaged module {name!r} is missing from the wheel: {root}")
+        roots.append(root)
+
+    if not roots:
+        raise RuntimeError("Installed registry contains no neuralspotx packaged modules")
+
+    license_texts: set[str] = set()
+    missing_headers: list[str] = []
+    for root in roots:
+        license_path = root / "LICENSE"
+        if not license_path.is_file():
+            raise RuntimeError(f"Packaged module is missing LICENSE: {root}")
+        license_texts.add(license_path.read_text(encoding="utf-8"))
+
+        sources = sorted(
+            path
+            for path in root.rglob("*")
+            if path.is_file() and path.suffix in _PACKAGED_SOURCE_SUFFIXES
+        )
+        for source in sources:
+            prefix = "// " if source.name.endswith(".jlink.in") else "# "
+            expected = [prefix + _SPDX_HEADER, prefix + _COPYRIGHT_HEADER]
+            lines = source.read_text(encoding="utf-8").splitlines()
+            if lines[:2] != expected:
+                missing_headers.append(source.relative_to(package_dir).as_posix())
+
+    if len(license_texts) != 1:
+        raise RuntimeError("Packaged modules do not carry one identical project license")
+    if not next(iter(license_texts)).startswith("BSD 3-Clause License\n"):
+        raise RuntimeError("Packaged module LICENSE is not the BSD 3-Clause project license")
+    if missing_headers:
+        raise RuntimeError(
+            "Packaged wheel sources are missing leading BSD-3-Clause headers: "
+            + json.dumps(missing_headers)
         )
 
 
@@ -78,6 +140,8 @@ def main() -> int:
         raise RuntimeError(
             f"Expected neuralspotx to load from {install_root}, loaded {package_path} instead"
         )
+
+    _smoke_packaged_licenses(package_path.parent)
 
     init_result = nsx_main([
         "module",

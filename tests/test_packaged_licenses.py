@@ -32,8 +32,10 @@ def test_packaged_module_sources_carry_spdx_headers() -> None:
     for root in _packaged_roots():
         sources = sorted(path for path in root.rglob("*") if path.suffix in SOURCE_SUFFIXES)
         for source in sources:
-            text = source.read_text(encoding="utf-8")
-            if SPDX_HEADER not in text or COPYRIGHT_HEADER not in text:
+            prefix = "// " if source.name.endswith(".jlink.in") else "# "
+            expected = [prefix + SPDX_HEADER, prefix + COPYRIGHT_HEADER]
+            lines = source.read_text(encoding="utf-8").splitlines()
+            if lines[:2] != expected:
                 missing.append(source.relative_to(PACKAGE_DIR).as_posix())
 
     assert not missing, "Packaged sources missing BSD-3-Clause headers:\n  " + "\n  ".join(missing)
