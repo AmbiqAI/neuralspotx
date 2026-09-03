@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026, Ambiq
 include(CMakeParseArguments)
 
 set(NSX_APP_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}")

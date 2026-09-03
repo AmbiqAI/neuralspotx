@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026, Ambiq
 function(nsx_assert_file_exists path)
     if(NOT EXISTS "${path}")
         message(FATAL_ERROR "Required file does not exist: ${path}")

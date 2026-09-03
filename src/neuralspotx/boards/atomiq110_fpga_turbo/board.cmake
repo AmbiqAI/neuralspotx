@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026, Ambiq
 # atomiq110_fpga_turbo board aggregator.
 include("${CMAKE_CURRENT_LIST_DIR}/soc.cmake")
 include("${CMAKE_CURRENT_LIST_DIR}/bsp.cmake")

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026, Ambiq
 # Role fragment: memory. Startup/system sources + linker-script selection.
 # The FPGA turbo board loads directly via J-Link with no secure bootloader,
 # so the default profile is the "nbl" (no-bootloader) script set shipped by

@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026, Ambiq
 # Arm Toolchain for Embedded (ATfE) — LLVM-based bare-metal toolchain.
 #
 # Uses:

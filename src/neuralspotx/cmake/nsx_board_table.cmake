@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026, Ambiq
 # Auto-generated from src/neuralspotx/constants.py BOARDS
 # by scripts/gen_board_table.py — DO NOT EDIT.
 #

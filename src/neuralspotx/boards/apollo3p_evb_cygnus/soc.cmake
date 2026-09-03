@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026, Ambiq
 # Role fragment: SoC. SoC fact load + the nsx::soc_flags interface target.
 # SoC facts (NSX_SOC_* + NSX_CPU/NSX_FPU/NSX_FLOAT_ABI/NSX_ABI_FLAGS) come from
 # the nsx-ambiq-sdk single source of truth so they cannot drift from the SDK's

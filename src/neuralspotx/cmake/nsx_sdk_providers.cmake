@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026, Ambiq
 function(_nsx_pick_first_existing out_var)
     foreach(candidate IN LISTS ARGN)
         if(EXISTS "${candidate}")

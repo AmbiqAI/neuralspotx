@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026, Ambiq
 # Role fragment: debug. Debug-probe / SEGGER device facts.
 # Same silicon/package as apollo4p_evb (both are non-Blue Apollo4 Plus BGA
 # parts); the display shield is a passive daughter board with no J-Link

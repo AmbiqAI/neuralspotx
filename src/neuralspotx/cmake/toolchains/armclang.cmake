@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026, Ambiq
 # Arm Compiler 6 (armclang) CMake toolchain file for NSX bare-metal targets.
 #
 # armclang uses:

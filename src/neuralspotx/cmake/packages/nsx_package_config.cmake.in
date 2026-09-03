@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026, Ambiq
 @PACKAGE_INIT@
 
 set(NSX_ROOT "${PACKAGE_PREFIX_DIR}")

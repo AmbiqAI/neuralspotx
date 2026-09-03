@@ -1,3 +1,5 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026, Ambiq
 # Role fragment: memory. Startup/system sources + linker-script selection.
 # Same silicon/package as apollo4p_evb, so the same startup/system/linker
 # sources apply.
