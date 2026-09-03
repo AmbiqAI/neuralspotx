@@ -31,16 +31,28 @@ jobs:
         with:
           python-version: "3.11"
 
+      - name: Cache pre-commit environments
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ runner.os }}-${{ hashFiles('.pre-commit-config.yaml') }}
+          restore-keys: pre-commit-${{ runner.os }}-
+
+      - name: Run pre-commit
+        # Same config contributors install locally, so a skipped local hook
+        # only delays the failure to here. Pinned to the version the hooks
+        # were authored against. The manual stage is everything on the commit
+        # path plus the whole-tree secret scan, which is not on the commit path.
+        run: uvx pre-commit@3.8.0 run --all-files --hook-stage manual --show-diff-on-failure
+
       - name: Install lint dependencies
         # The test group is included so `ty check tests` resolves
         # pytest/hypothesis imports in the check environment.
         run: uv sync --locked --group lint --group test
 
-      - name: Run ruff
-        run: uv run --no-sync ruff check .
-
       - name: Run ty type check
         # --no-sync: the environment was fully built by the sync step above.
+        # Locally ty only runs at pre-push, so this is the always-on gate.
         run: uv run --no-sync ty check --error-on-warning src/neuralspotx tests
 
   # ---------------------------------------------------------------

@@ -1,19 +1,50 @@
+# Every remote repo is pinned to an exact tag so a hook cannot change under a
+# clean checkout. Bumps go through `pre-commit autoupdate` in a reviewed PR,
+# never ad hoc. The ruff-pre-commit rev must stay equal to the ruff version in
+# uv.lock, otherwise local hooks and CI can disagree about formatting.
+minimum_pre_commit_version: "3.2.0"
+
+default_install_hook_types: [pre-commit, pre-push]
+# The manual stage is what CI runs: every commit-path hook plus the whole-tree
+# secret scan, which has no useful meaning on a local commit.
+default_stages: [pre-commit, manual]
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v5.0.0
+    rev: v6.0.0
     hooks:
       - id: trailing-whitespace
       - id: end-of-file-fixer
-      - id: check-yaml
-        args: [--unsafe]
+      - id: check-merge-conflict
       - id: check-added-large-files
         args: ["--maxkb=500"]
-      - id: check-merge-conflict
+      - id: check-yaml
+        # mkdocs.yml uses Python-specific YAML tags.
+        args: [--unsafe]
+      - id: check-json
+      - id: check-toml
+
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      # Scans staged content only, which is what a commit is about to add.
+      - id: gitleaks
+        stages: [pre-commit]
+
+      # Nothing is staged in a CI checkout, so the staged scan above is blind
+      # there. A whole-tree scan covers CI, but it does not honour .gitignore
+      # and would read into .venv, so it must never run on the commit path.
+      - id: gitleaks
+        alias: gitleaks-tree
+        name: Detect hardcoded secrets (whole tree)
+        entry: gitleaks dir --no-banner --redact --verbose
+        pass_filenames: false
+        stages: [manual]
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.11.6
+    rev: v0.15.7
     hooks:
-      - id: ruff
+      - id: ruff-check
         args: [--fix, --exit-non-zero-on-fix]
       - id: ruff-format
 
@@ -22,13 +53,42 @@ repos:
     hooks:
       - id: uv-lock
 
+  - repo: https://github.com/pre-commit/mirrors-clang-format
+    rev: v22.1.8
+    hooks:
+      - id: clang-format
+        types_or: [c, c++]
+        # Vendored (EEMBC CoreMark, SEGGER RTT) and generated (TFLite model
+        # array, nanopb output) sources are upstream artifacts, not ours to
+        # restyle.
+        exclude: |
+          (?x)^(
+            examples/coremark/src/coremark/|
+            examples/power_benchmark/src/coremark/|
+            examples/.*/src/rtt/|
+            examples/usb_rpc/proto/|
+            examples/kws_infer/src/kws_model_data\.h$
+          )
+
   - repo: local
     hooks:
+      - id: todo-needs-issue
+        name: deferred-work markers reference an issue
+        entry: python scripts/hooks/todo_needs_issue.py
+        language: python
+        types: [text]
+        # CHANGELOG entries are historical record; uv.lock is generated.
+        exclude: ^(CHANGELOG\.md|uv\.lock)$
+
       # Runs the project-pinned ty (see [dependency-groups].lint in
       # pyproject.toml) so pre-commit and CI check with the same version.
+      # Pre-push rather than pre-commit: it checks the whole package
+      # regardless of which files changed, so it does not belong on the
+      # per-file commit path. CI runs it on every pull request.
       - id: ty
         name: ty type check
         entry: uv run --group lint --group test ty check --error-on-warning src/neuralspotx tests
         language: system
+        stages: [pre-push]
+        always_run: true
         pass_filenames: false
-        types_or: [python, pyi, toml]
