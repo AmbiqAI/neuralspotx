@@ -155,6 +155,7 @@ class TestCliApiParity:
                 soc=None,
                 force=False,
                 no_bootstrap=False,
+                template="default",
             )
         )
         assert len(calls) == 1

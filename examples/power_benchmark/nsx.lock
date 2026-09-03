@@ -3,9 +3,9 @@
 schema_version: 4
 targets:
   apollo510_evb:
-    generated_at: '2026-08-04T04:01:53+00:00'
+    generated_at: '2026-08-12T23:34:01+00:00'
     nsx_tool:
-      version: 0.7.10
+      version: 0.7.16
     manifest:
       path: nsx.yml
       hash: sha256:d40c4480fe184338203f9a49361f3e7395b58e25af234094015f2870077ba790
@@ -85,10 +85,10 @@ targets:
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.7.10
+          tool_version: 0.7.16
           vendored_at: boards/apollo510_evb
           content_hash: sha256:92475fa453fa03373abd7913459027cc310ce976ddb493c408648771bbf1a0f8
-          acquired_at: '2026-08-04T04:01:53+00:00'
+          acquired_at: '2026-08-12T22:56:32+00:00'
       nsx-core:
         project: nsx-ambiq-sdk
         kind: git
@@ -110,16 +110,16 @@ targets:
           commit: 5725c065a0c3603132f1064ee2684d1fa8587c88
           vendored_at: modules/nsx-pmu-armv8m
           content_hash: sha256:cbecc30022858bc177555bf2389fdf0e8c4c3f59f11c07265d2f461d53ca848b
-          acquired_at: '2026-08-04T04:01:53+00:00'
+          acquired_at: '2026-08-12T23:34:01+00:00'
       nsx-tooling:
         project: neuralspotx
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.7.10
+          tool_version: 0.7.16
           vendored_at: cmake/nsx
-          content_hash: sha256:7ec410eb9c51ebf7fc21557a1e232ace5e757af44681f1e645ef433c4ae11b86
-          acquired_at: '2026-08-04T04:01:53+00:00'
+          content_hash: sha256:a9a4824ba265d9a0ea7f0ca8237a11834fb0017c9177a3a23d7f746868b07133
+          acquired_at: '2026-08-12T22:56:32+00:00'
       nsx-interrupt:
         project: nsx-ambiq-sdk
         kind: git
@@ -165,9 +165,9 @@ targets:
           content_hash: sha256:4ca0d4e197abbb9a0165baebb6b7832d24b6fd23f1a47e424e9f5a01fbd459c6
           acquired_at: '2026-08-04T04:01:53+00:00'
   apollo510b_evb:
-    generated_at: '2026-08-04T04:01:53+00:00'
+    generated_at: '2026-08-12T23:34:02+00:00'
     nsx_tool:
-      version: 0.7.10
+      version: 0.7.16
     manifest:
       path: nsx.yml
       hash: sha256:d40c4480fe184338203f9a49361f3e7395b58e25af234094015f2870077ba790
@@ -247,10 +247,10 @@ targets:
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.7.10
+          tool_version: 0.7.16
           vendored_at: boards/apollo510b_evb
           content_hash: sha256:44a8b155b4392387c37ca0e8af1f1c5ce21a6fa7726b6c8d868208ac73a47b68
-          acquired_at: '2026-08-04T04:01:54+00:00'
+          acquired_at: '2026-08-12T22:56:32+00:00'
       nsx-core:
         project: nsx-ambiq-sdk
         kind: git
@@ -272,16 +272,16 @@ targets:
           commit: 5725c065a0c3603132f1064ee2684d1fa8587c88
           vendored_at: modules/nsx-pmu-armv8m
           content_hash: sha256:cbecc30022858bc177555bf2389fdf0e8c4c3f59f11c07265d2f461d53ca848b
-          acquired_at: '2026-08-04T04:01:54+00:00'
+          acquired_at: '2026-08-12T23:34:02+00:00'
       nsx-tooling:
         project: neuralspotx
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.7.10
+          tool_version: 0.7.16
           vendored_at: cmake/nsx
-          content_hash: sha256:7ec410eb9c51ebf7fc21557a1e232ace5e757af44681f1e645ef433c4ae11b86
-          acquired_at: '2026-08-04T04:01:54+00:00'
+          content_hash: sha256:a9a4824ba265d9a0ea7f0ca8237a11834fb0017c9177a3a23d7f746868b07133
+          acquired_at: '2026-08-12T22:56:32+00:00'
       nsx-interrupt:
         project: nsx-ambiq-sdk
         kind: git

@@ -34,6 +34,7 @@ _BOARD_ORDER: tuple[str, ...] = (
     "apollo510b_evb",
     "apollo330mP_evb",
     "apollo510dL_evb",
+    "atomiq110_fpga_turbo",
 )
 
 # Load the packaged board descriptors. A malformed descriptor must NOT make

@@ -1,0 +1,66 @@
+# {{ app_name }} — Ethos-U85 TFLite Micro App
+
+NSX app template for running a TFLite Micro model on the Arm Ethos-U85 NPU
+({{ board }}). Ships with:
+
+- **nsx-npu** — NPU power-up + Ethos-U core-driver init (`nsx_npu_init`),
+  built on top of **nsx-ethos-u-driver** (the board/SoC-agnostic upstream
+  Ethos-U driver, pulled in automatically as a `nsx-npu` dependency)
+- **nsx-helia-rt** — TFLM runtime with the ethos-u custom-op kernel enabled
+  (`NSX_HELIA_RT_ENABLE_ETHOSU=ON`, see `CMakeLists.txt`)
+- `src/main.cc` — inference harness (zeros + pseudo-random noise inputs,
+  DWT cycle timing, ITM/SWO output)
+- `tools/tflite_to_header.py` — model → C++ header converter
+
+## 1. Compile your model with Vela
+
+The NPU executes command streams produced offline by
+[Vela](https://pypi.org/project/ethos-u-vela/):
+
+```bash
+pip install ethos-u-vela
+vela your_model.tflite --accelerator-config ethos-u85-256 --output-dir vela_out
+```
+
+`ethos-u85-256` matches the 256-MAC Ethos-U85 configuration on atomiq110.
+Vela wraps supported subgraphs in an `ethos-u` custom op; fully-supported
+models become a single NPU op (100% offload).
+
+## 2. Embed the model
+
+```bash
+python tools/tflite_to_header.py vela_out/your_model_vela.tflite src/model_data.h
+```
+
+Until you do this, the app builds with a placeholder and prints these
+instructions at runtime instead of running inference.
+
+## 3. Build, flash, view
+
+```bash
+nsx build --app-dir .
+nsx flash --app-dir .
+nsx view  --app-dir .
+```
+
+## Memory placement
+
+The tensor arena is placed in shared SRAM via the `.sram_bss` section
+(`NOLOAD`, zero-initialized by startup): the Ethos-U85 is a bus master and
+**cannot access the core-private TCM**. Keep the arena (and anything the NPU
+reads/writes) out of TCM. Use the `.shared` section instead when a buffer
+needs copy-initialized contents (it is loaded from NVM at startup, so it
+costs image size and boot time). Model weights live in NVM, which the NPU
+can read directly.
+
+## Hardware notes
+
+- `src/main.cc` requests HP perf mode; `am_hal_pwrctrl_npu_mode_select`
+  works on both silicon and the NPU-enabled FPGA image. Set
+  `skip_perf_mode = true` only to bypass mode selection on a custom
+  pre-silicon target.
+- If the target has no working NPU power domain (e.g. an FPGA image without
+  the U85), `nsx_npu_init` fails cleanly and the app prints an actionable
+  message instead of bus-faulting.
+- If Vela leaves some ops on the CPU (partial offload), add the matching
+  `resolver.Add*()` kernels in `src/main.cc` and bump `kNumOps`.

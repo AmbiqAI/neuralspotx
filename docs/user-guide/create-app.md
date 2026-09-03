@@ -18,6 +18,25 @@ Example:
 nsx create-app hello_ap510 --board apollo510_evb
 ```
 
+## Templates
+
+`--template` selects the app scaffold flavor:
+
+| Template | Contents |
+| --- | --- |
+| `default` | Minimal hello-world app (SWO printf loop). |
+| `npu-tflm` | TFLite Micro inference on the Ethos-U85 NPU: seeds `nsx-helia-rt` + `nsx-npu`, enables heliaRT's ethos-u dispatch, and ships a Vela model harness plus a `tools/tflite_to_header.py` converter. |
+
+Example (atomiq110 with Ethos-U85):
+
+```bash
+nsx create-app pd_npu --board atomiq110_fpga_turbo --template npu-tflm
+```
+
+The generated `README.md` inside the app documents the offline Vela
+compilation step (`vela --accelerator-config ethos-u85-256`) and how to embed
+the compiled model.
+
 ## What Happens
 
 NSX:

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 from dataclasses import dataclass
+from datetime import date
 from typing import Any, Final, Iterable
 
 _FULL_SHA_RE: Final[re.Pattern[str]] = re.compile(r"^[0-9a-fA-F]{40}$")
@@ -25,15 +26,54 @@ _VERSION_TAG_RE: Final[re.Pattern[str]] = re.compile(
 # silently leaving it orphaned.
 RESERVED_REGISTRY_PROJECT_NAMES: Final[frozenset[str]] = frozenset()
 
+# The only ``(project, revision)`` pairs that may be allowlisted *without* an
+# expiry date. Today that is exactly the packaged ``neuralspotx@main``
+# self-reference (board/tooling modules resolve from the release branch of
+# this very package). Every other floating stable ref is a temporary branch
+# pin and must carry ``expires_on`` so it cannot silently outlive the
+# upstream PR it tracks; see ``FloatingRefAllowance.__post_init__``.
+PERMANENT_FLOATING_REF_KEYS: Final[frozenset[tuple[str, str]]] = frozenset({
+    ("neuralspotx", "main")
+})
 
-@dataclass(frozen=True, slots=True)
+
+@dataclass(frozen=True, slots=True, kw_only=True)
 class FloatingRefAllowance:
-    """One temporary exception for a known stable-registry floating ref."""
+    """One exception for a known stable-registry floating ref.
+
+    ``expires_on`` is the last day the allowance is honored: once
+    ``today > expires_on`` the ref must have been re-pinned per
+    ``removal_condition`` and the allowance deleted, otherwise the policy
+    reports it as expired. ``None`` marks a *permanent* allowance; permanent
+    allowances are reserved for the keys in ``PERMANENT_FLOATING_REF_KEYS``
+    (the packaged ``neuralspotx@main`` self-reference) and constructing one
+    for any other ref raises ``ValueError``.
+    """
 
     project: str
     revision: str
     reason: str
     removal_condition: str
+    expires_on: date | None
+
+    def __post_init__(self) -> None:
+        if self.expires_on is None and (self.project, self.revision) not in (
+            PERMANENT_FLOATING_REF_KEYS
+        ):
+            raise ValueError(
+                f"Floating-ref allowance {self.project}@{self.revision} has no "
+                "expires_on; only the packaged self-reference may be permanent. "
+                "Set expires_on to the date by which the ref must be re-pinned."
+            )
+
+    @property
+    def is_permanent(self) -> bool:
+        return self.expires_on is None
+
+    def is_expired(self, today: date) -> bool:
+        """Whether *today* is past this allowance's ``expires_on`` date."""
+
+        return self.expires_on is not None and today > self.expires_on
 
 
 @dataclass(frozen=True, slots=True)
@@ -52,10 +92,15 @@ class StableRegistryRefReport:
     approved_floating: tuple[RegistryRefUse, ...]
     unapproved_floating: tuple[RegistryRefUse, ...]
     unused_allowances: tuple[FloatingRefAllowance, ...]
+    expired_allowances: tuple[FloatingRefAllowance, ...] = ()
 
     @property
     def is_valid(self) -> bool:
-        return not self.unapproved_floating and not self.unused_allowances
+        return (
+            not self.unapproved_floating
+            and not self.unused_allowances
+            and not self.expired_allowances
+        )
 
 
 class StableRegistryRefPolicyError(ValueError):
@@ -69,6 +114,11 @@ class StableRegistryRefPolicyError(ValueError):
             f"unused allowance: {allowance.project}@{allowance.revision}"
             for allowance in report.unused_allowances
         )
+        details.extend(
+            f"expired allowance ({allowance.expires_on}): "
+            f"{allowance.project}@{allowance.revision} - {allowance.removal_condition}"
+            for allowance in report.expired_allowances
+        )
         super().__init__(
             "Stable registry refs must use a version tag or full commit SHA; " + "; ".join(details)
         )
@@ -81,7 +131,14 @@ TEMPORARY_STABLE_FLOATING_REF_ALLOWLIST: Final[tuple[FloatingRefAllowance, ...]]
         revision="main",
         reason="Packaged board and tooling modules currently resolve from this release branch.",
         removal_condition="Replace packaged self-references with the released neuralspotx tag or SHA.",
+        # Permanent: the packaged self-reference is the one allowance that
+        # does not track an open upstream branch.
+        expires_on=None,
     ),
+    # Temporary branch pins go here with a real ``expires_on``. Once that
+    # date passes, ``tests/test_stable_registry_policy.py::
+    # test_temporary_allowances_have_not_expired`` fails repo-wide by design:
+    # collapse the pin to a tag/SHA and delete the entry.
 )
 
 
@@ -95,11 +152,22 @@ def stable_registry_ref_report(
     registry: dict[str, Any],
     *,
     allowances: Iterable[FloatingRefAllowance] = TEMPORARY_STABLE_FLOATING_REF_ALLOWLIST,
+    today: date | None = None,
 ) -> StableRegistryRefReport:
-    """Evaluate stable project/module/profile refs against exact exceptions."""
+    """Evaluate stable project/module/profile refs against exact exceptions.
+
+    *today* (default ``date.today()``) decides which temporary allowances
+    have passed their ``expires_on`` date; those are surfaced in
+    ``expired_allowances`` so a stale branch pin fails loudly instead of
+    living on behind an allowlist entry nobody revisits.
+    """
 
     allowance_tuple = tuple(allowances)
     allowance_keys = {(item.project, item.revision) for item in allowance_tuple}
+    effective_today = today if today is not None else date.today()
+    expired = tuple(
+        allowance for allowance in allowance_tuple if allowance.is_expired(effective_today)
+    )
     floating = tuple(
         use
         for use in _stable_registry_ref_uses(registry)
@@ -117,6 +185,7 @@ def stable_registry_ref_report(
         approved_floating=approved,
         unapproved_floating=unapproved,
         unused_allowances=unused,
+        expired_allowances=expired,
     )
 
 
@@ -124,10 +193,11 @@ def validate_stable_registry_refs(
     registry: dict[str, Any],
     *,
     allowances: Iterable[FloatingRefAllowance] = TEMPORARY_STABLE_FLOATING_REF_ALLOWLIST,
+    today: date | None = None,
 ) -> StableRegistryRefReport:
     """Return a valid report or raise with every policy violation."""
 
-    report = stable_registry_ref_report(registry, allowances=allowances)
+    report = stable_registry_ref_report(registry, allowances=allowances, today=today)
     if not report.is_valid:
         raise StableRegistryRefPolicyError(report)
     return report

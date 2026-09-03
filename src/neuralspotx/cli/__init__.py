@@ -142,6 +142,7 @@ def cmd_create_app(args: argparse.Namespace) -> None:
         soc=args.soc,
         force=args.force,
         no_bootstrap=args.no_bootstrap,
+        template=args.template,
     )
 
 
@@ -206,6 +207,9 @@ def cmd_configure(args: argparse.Namespace) -> None:
         build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
         toolchain=args.toolchain,
         probe_serial=getattr(args, "probe_serial", None),
+        sdk_root=Path(args.sdk_root).expanduser().resolve()
+        if getattr(args, "sdk_root", None)
+        else None,
         frozen=getattr(args, "frozen", False),
         timeout_s=getattr(args, "timeout", None),
     )
@@ -238,6 +242,9 @@ def cmd_build(args: argparse.Namespace) -> None:
         toolchain=args.toolchain,
         target=args.target,
         jobs=args.jobs,
+        sdk_root=Path(args.sdk_root).expanduser().resolve()
+        if getattr(args, "sdk_root", None)
+        else None,
         frozen=getattr(args, "frozen", False),
         timeout_s=getattr(args, "timeout", None),
     )
@@ -257,6 +264,9 @@ def cmd_flash(args: argparse.Namespace) -> None:
         target=getattr(args, "target", None),
         probe_serial=getattr(args, "probe_serial", None),
         jobs=args.jobs,
+        sdk_root=Path(args.sdk_root).expanduser().resolve()
+        if getattr(args, "sdk_root", None)
+        else None,
         frozen=getattr(args, "frozen", False),
         timeout_s=getattr(args, "timeout", None),
         emit=quiet_emit,
@@ -271,6 +281,9 @@ def cmd_view(args: argparse.Namespace) -> None:
         build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
         toolchain=args.toolchain,
         probe_serial=getattr(args, "probe_serial", None),
+        sdk_root=Path(args.sdk_root).expanduser().resolve()
+        if getattr(args, "sdk_root", None)
+        else None,
         frozen=getattr(args, "frozen", False),
         reset_on_open=getattr(args, "reset_on_open", None),
         reset_delay_ms=args.reset_delay_ms,
@@ -532,37 +545,40 @@ def _build_parser() -> argparse.ArgumentParser:
             help="App name or directory (overrides --app-dir; resolved under ./ and ./examples)",
         )
 
+    def _add_create_app_arguments(p: argparse.ArgumentParser) -> None:
+        # Shared by ``create-app`` and its ``new`` alias so the two parsers
+        # cannot drift; ``--template`` help is built from the registry so a
+        # new AppTemplate entry documents itself.
+        p.add_argument("app_dir", help="App directory to create")
+        p.add_argument("--board", default=DEFAULT_BOARD, help="Target board package suffix")
+        p.add_argument(
+            "--soc", default=None, help="Target SoC package suffix (default inferred from board)"
+        )
+        p.add_argument(
+            "--force", action="store_true", help="Allow writing into a non-empty app directory"
+        )
+        p.add_argument(
+            "--no-bootstrap",
+            action="store_true",
+            help="Create the app without initializing starter modules",
+        )
+        template_help = "; ".join(
+            f"{name}: {template.description.rstrip('.')}"
+            for name, template in sorted(operations.APP_TEMPLATES.items())
+        )
+        p.add_argument(
+            "--template",
+            default="default",
+            choices=sorted(operations.APP_TEMPLATES),
+            help=f"App template ({template_help})",
+        )
+        p.set_defaults(func=cmd_create_app)
+
     p_new = sub.add_parser("create-app", help="Create a new standalone NSX app project")
-    p_new.add_argument("app_dir", help="App directory to create")
-    p_new.add_argument("--board", default=DEFAULT_BOARD, help="Target board package suffix")
-    p_new.add_argument(
-        "--soc", default=None, help="Target SoC package suffix (default inferred from board)"
-    )
-    p_new.add_argument(
-        "--force", action="store_true", help="Allow writing into a non-empty app directory"
-    )
-    p_new.add_argument(
-        "--no-bootstrap",
-        action="store_true",
-        help="Create the app without initializing starter modules",
-    )
-    p_new.set_defaults(func=cmd_create_app)
+    _add_create_app_arguments(p_new)
 
     p_new_alias = sub.add_parser("new", help="Alias for create-app")
-    p_new_alias.add_argument("app_dir", help="App directory to create")
-    p_new_alias.add_argument("--board", default=DEFAULT_BOARD, help="Target board package suffix")
-    p_new_alias.add_argument(
-        "--soc", default=None, help="Target SoC package suffix (default inferred from board)"
-    )
-    p_new_alias.add_argument(
-        "--force", action="store_true", help="Allow writing into a non-empty app directory"
-    )
-    p_new_alias.add_argument(
-        "--no-bootstrap",
-        action="store_true",
-        help="Create the app without initializing starter modules",
-    )
-    p_new_alias.set_defaults(func=cmd_create_app)
+    _add_create_app_arguments(p_new_alias)
 
     p_doctor = sub.add_parser("doctor", help="Check the local NSX toolchain environment")
     p_doctor.add_argument(
@@ -605,6 +621,11 @@ def _build_parser() -> argparse.ArgumentParser:
         "--toolchain", default=None, help="Toolchain override (gcc, armclang, atfe)"
     )
     p_configure.add_argument(
+        "--sdk-root",
+        default=None,
+        help="Optional out-of-tree AmbiqSuite root passed as NSX_AMBIQSUITE_ROOT_OVERRIDE",
+    )
+    p_configure.add_argument(
         "--probe-serial",
         default=None,
         help="Optional SEGGER J-Link USB serial number to use for generated flash/view targets",
@@ -624,6 +645,11 @@ def _build_parser() -> argparse.ArgumentParser:
     p_build.add_argument("--build-dir", default=None, help="Build directory override")
     p_build.add_argument(
         "--toolchain", default=None, help="Toolchain override (gcc, armclang, atfe)"
+    )
+    p_build.add_argument(
+        "--sdk-root",
+        default=None,
+        help="Optional out-of-tree AmbiqSuite root passed as NSX_AMBIQSUITE_ROOT_OVERRIDE",
     )
     p_build.add_argument("--target", default=None, help="Optional explicit build target")
     p_build.add_argument("--jobs", type=int, default=8, help="Parallel build jobs")
@@ -652,6 +678,11 @@ def _build_parser() -> argparse.ArgumentParser:
         "--toolchain", default=None, help="Toolchain override (gcc, armclang, atfe)"
     )
     p_flash.add_argument("--target", default=None, help="Optional executable target to flash")
+    p_flash.add_argument(
+        "--sdk-root",
+        default=None,
+        help="Optional out-of-tree AmbiqSuite root passed as NSX_AMBIQSUITE_ROOT_OVERRIDE",
+    )
     p_flash.add_argument(
         "--probe-serial",
         default=None,
@@ -701,6 +732,11 @@ def _build_parser() -> argparse.ArgumentParser:
     p_view.add_argument("--build-dir", default=None, help="Build directory override")
     p_view.add_argument(
         "--toolchain", default=None, help="Toolchain override (gcc, armclang, atfe)"
+    )
+    p_view.add_argument(
+        "--sdk-root",
+        default=None,
+        help="Optional out-of-tree AmbiqSuite root passed as NSX_AMBIQSUITE_ROOT_OVERRIDE",
     )
     p_view.add_argument(
         "--probe-serial",

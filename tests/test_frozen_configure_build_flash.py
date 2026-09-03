@@ -20,6 +20,7 @@ import pytest
 import yaml
 
 from neuralspotx import NSXError
+from neuralspotx._errors import NSXConfigError
 from neuralspotx.operations import (
     build_app_impl,
     configure_app_impl,
@@ -187,6 +188,239 @@ class TestViewFrozen:
 
         with pytest.raises(NSXError):
             view_app_impl(tmp_path, probe_serial="1160002204", frozen=True)
+
+
+class TestSdkRootEscapeHatch:
+    """``sdk_root`` is validated before any module sync and refused with frozen."""
+
+    @staticmethod
+    def _configured_app(tmp_path: Path) -> Path:
+        _make_vendored(tmp_path, "my-vend")
+        _write_nsx_yml(tmp_path, [{"name": "my-vend", "source": {"vendored": True}}])
+        lock_app_impl(tmp_path)
+        build_dir = tmp_path / "build" / "apollo510_evb"
+        build_dir.mkdir(parents=True, exist_ok=True)
+        (build_dir / "build.ninja").write_text("# already configured\n")
+        return build_dir
+
+    @pytest.mark.parametrize(
+        "operation",
+        [configure_app_impl, build_app_impl, flash_app_impl],
+        ids=["configure", "build", "flash"],
+    )
+    def test_missing_sdk_root_dir_is_rejected_before_module_sync(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, operation: Any
+    ) -> None:
+        import neuralspotx.operations._build as _build_mod
+
+        _make_vendored(tmp_path, "my-vend")
+        _write_nsx_yml(tmp_path, [{"name": "my-vend", "source": {"vendored": True}}])
+        sync_calls: list[object] = []
+        monkeypatch.setattr(_build_mod, "_ensure_app_modules", lambda *a, **k: sync_calls.append(a))
+
+        with pytest.raises(NSXConfigError, match="--sdk-root is not a directory"):
+            operation(tmp_path, sdk_root=tmp_path / "does-not-exist")
+        assert sync_calls == []
+
+    def test_view_rejects_missing_sdk_root_dir(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import neuralspotx.operations._build as _build_mod
+        from neuralspotx.operations import view_app_impl
+
+        _make_vendored(tmp_path, "my-vend")
+        _write_nsx_yml(tmp_path, [{"name": "my-vend", "source": {"vendored": True}}])
+        sync_calls: list[object] = []
+        monkeypatch.setattr(_build_mod, "_ensure_app_modules", lambda *a, **k: sync_calls.append(a))
+
+        with pytest.raises(NSXConfigError, match="--sdk-root is not a directory"):
+            view_app_impl(tmp_path, sdk_root=tmp_path / "does-not-exist")
+        assert sync_calls == []
+
+    @pytest.mark.parametrize(
+        "operation",
+        [configure_app_impl, build_app_impl, flash_app_impl],
+        ids=["configure", "build", "flash"],
+    )
+    def test_sdk_root_with_frozen_is_refused(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, operation: Any
+    ) -> None:
+        """An out-of-tree SDK is not described by nsx.lock; frozen cannot verify it."""
+        import neuralspotx.operations._build as _build_mod
+
+        _make_vendored(tmp_path, "my-vend")
+        _write_nsx_yml(tmp_path, [{"name": "my-vend", "source": {"vendored": True}}])
+        lock_app_impl(tmp_path)
+        sdk = tmp_path / "sdk"
+        sdk.mkdir()
+        sync_calls: list[object] = []
+        monkeypatch.setattr(_build_mod, "_ensure_app_modules", lambda *a, **k: sync_calls.append(a))
+
+        with pytest.raises(NSXConfigError, match="cannot be combined with --frozen"):
+            operation(tmp_path, sdk_root=sdk, frozen=True)
+        assert sync_calls == []
+
+    def test_sdk_root_warns_and_is_passed_to_configure(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        import neuralspotx.operations._build as _build_mod
+
+        _make_vendored(tmp_path, "my-vend")
+        _write_nsx_yml(tmp_path, [{"name": "my-vend", "source": {"vendored": True}}])
+        lock_app_impl(tmp_path)
+        sdk = tmp_path / "sdk"
+        sdk.mkdir()
+        warnings: list[str] = []
+        configure_calls: list[dict[str, object]] = []
+        monkeypatch.setattr(_build_mod, "warn", lambda msg, **_k: warnings.append(msg))
+        monkeypatch.setattr(
+            _build_mod,
+            "_run_cmake_configure",
+            lambda *_a, **kwargs: configure_calls.append(kwargs),
+        )
+
+        configure_app_impl(tmp_path, sdk_root=sdk)
+
+        assert [call["sdk_root"] for call in configure_calls] == [sdk]
+        assert len(warnings) == 1
+        assert "out-of-tree AmbiqSuite" in warnings[0]
+        assert "nsx.lock" in warnings[0] and "--frozen" in warnings[0]
+
+    def test_plain_build_warns_when_tree_carries_cached_sdk_override(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A cached --sdk-root stays in force on a plain build, but not silently."""
+        import neuralspotx.operations._build as _build_mod
+
+        build_dir = self._configured_app(tmp_path)
+        sdk = tmp_path / "sdk"
+        sdk.mkdir()
+        (build_dir / "CMakeCache.txt").write_text(
+            f"NSX_AMBIQSUITE_ROOT_OVERRIDE:PATH={sdk}\n", encoding="utf-8"
+        )
+        warnings: list[str] = []
+        configure_calls: list[dict[str, object]] = []
+        monkeypatch.setattr(_build_mod, "warn", lambda msg, **_k: warnings.append(msg))
+        monkeypatch.setattr(
+            _build_mod,
+            "_run_cmake_configure",
+            lambda *_a, **kwargs: configure_calls.append(kwargs),
+        )
+
+        build_app_impl(tmp_path)
+
+        assert configure_calls == []
+        assert [w for w in warnings if "still uses it" in w and str(sdk) in w]
+
+        # A tree with no cached override stays quiet.
+        (build_dir / "CMakeCache.txt").write_text(
+            "NSX_AMBIQSUITE_ROOT_OVERRIDE:PATH=\n", encoding="utf-8"
+        )
+        warnings.clear()
+        build_app_impl(tmp_path)
+        assert not [w for w in warnings if "still uses it" in w]
+
+    def test_build_reconfigures_when_sdk_root_differs_from_cache(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """An explicit sdk_root that the build tree was not configured with
+
+        must not be silently ignored just because build.ninja exists.
+        """
+        import neuralspotx.operations._build as _build_mod
+
+        build_dir = self._configured_app(tmp_path)
+        (build_dir / "CMakeCache.txt").write_text(
+            "NSX_AMBIQSUITE_ROOT_OVERRIDE:PATH=\n", encoding="utf-8"
+        )
+        sdk = tmp_path / "sdk"
+        sdk.mkdir()
+        configure_calls: list[dict[str, object]] = []
+        monkeypatch.setattr(_build_mod, "warn", lambda *_a, **_k: None)
+        monkeypatch.setattr(
+            _build_mod,
+            "_run_cmake_configure",
+            lambda *_a, **kwargs: configure_calls.append(kwargs),
+        )
+
+        build_app_impl(tmp_path, sdk_root=sdk)
+        assert [call["sdk_root"] for call in configure_calls] == [sdk]
+
+        # Same override already cached -> no reconfigure.
+        (build_dir / "CMakeCache.txt").write_text(
+            f"NSX_AMBIQSUITE_ROOT_OVERRIDE:PATH={sdk}\n", encoding="utf-8"
+        )
+        configure_calls.clear()
+        build_app_impl(tmp_path, sdk_root=sdk)
+        assert configure_calls == []
+
+        # No sdk_root keeps whatever the tree was configured with.
+        build_app_impl(tmp_path)
+        assert configure_calls == []
+
+    @staticmethod
+    def _cache_sdk_override(build_dir: Path, sdk_root: Path) -> str:
+        """Cache an override exactly as ``_run_cmake_configure`` writes it.
+
+        Mirrors that function's ``sdk_override`` line via stdlib rather than
+        via ``_sdk_root_cache_matches``, so the assertions below compare the
+        read side against an independently derived write side.
+        """
+
+        cached = str(Path(sdk_root).expanduser().resolve())
+        (build_dir / "CMakeCache.txt").write_text(
+            f"NSX_AMBIQSUITE_ROOT_OVERRIDE:PATH={cached}\n", encoding="utf-8"
+        )
+        return cached
+
+    def test_cache_match_accepts_absolute_and_relative_sdk_root(
+        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A relative spelling of the cached override must still match.
+
+        ``_run_cmake_configure`` writes the override as
+        ``Path(sdk_root).expanduser().resolve()``; comparing an API caller's
+        raw spelling against that would reconfigure on every build/flash/view
+        even though the override is unchanged.
+        """
+        from neuralspotx.operations._build import _sdk_root_cache_matches
+
+        sdk = tmp_path / "AmbiqSuite"
+        sdk.mkdir()
+        build_dir = tmp_path / "build"
+        build_dir.mkdir()
+        cached = self._cache_sdk_override(build_dir, sdk)
+        # Anchor the relative spelling to the cached value's own directory:
+        # on Windows the session CWD can sit on a different drive from
+        # tmp_path, and no relative path spans two drives.
+        monkeypatch.chdir(tmp_path)
+
+        assert _sdk_root_cache_matches(build_dir, Path(cached))
+        assert _sdk_root_cache_matches(build_dir, Path("AmbiqSuite"))
+        assert not _sdk_root_cache_matches(build_dir, tmp_path / "other-sdk")
+
+    def test_cache_match_accepts_tilde_sdk_root(self, tmp_path: Path) -> None:
+        """A ``~``-prefixed spelling of the cached override must still match.
+
+        The home directory is deliberately not monkeypatched.
+        ``ntpath.expanduser`` resolves ``~`` from ``USERPROFILE`` (falling back
+        to ``HOMEDRIVE`` + ``HOMEPATH``) and never reads ``HOME``, so patching
+        ``HOME`` is a silent no-op on Windows. Deriving the cached value from
+        the real ``expanduser()`` result keeps this honest on every platform;
+        the directory need not exist because ``_sdk_root_cache_matches``
+        compares strings and never stats ``sdk_root``.
+        """
+        from neuralspotx.operations._build import _sdk_root_cache_matches
+
+        spelling = Path("~") / "AmbiqSuite"
+        if str(spelling.expanduser()).startswith("~"):
+            pytest.skip("no home directory available to expand ~")
+        build_dir = tmp_path / "build"
+        build_dir.mkdir()
+        self._cache_sdk_override(build_dir, spelling)
+
+        assert _sdk_root_cache_matches(build_dir, spelling)
+        assert not _sdk_root_cache_matches(build_dir, tmp_path / "other-sdk")
 
 
 class TestRequestPositionalCompat:

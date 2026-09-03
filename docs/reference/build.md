@@ -7,8 +7,8 @@ Builds a generated NSX app.
 ```text
 nsx build [--app-dir APP_DIR] [--board BOARD]
           [--build-dir BUILD_DIR] [--toolchain TOOLCHAIN]
-          [--target TARGET] [--jobs JOBS] [--update] [--frozen]
-          [--timeout SECONDS] [app]
+          [--sdk-root SDK_ROOT] [--target TARGET] [--jobs JOBS]
+          [--update] [--frozen] [--timeout SECONDS] [app]
 ```
 
 ## Main Arguments
@@ -18,6 +18,7 @@ nsx build [--app-dir APP_DIR] [--board BOARD]
 - `--board`: select a board from the app's supported targets instead of `targets.default`
 - `--build-dir`: build directory override
 - `--toolchain`: toolchain override (`gcc`, `armclang`, `atfe`). Defaults to `nsx.yml` → `arm-none-eabi-gcc`
+- `--sdk-root`: escape hatch — build against an out-of-tree AmbiqSuite root (`NSX_AMBIQSUITE_ROOT_OVERRIDE`); warns that `nsx.lock`/SBOM no longer describe the binary, cannot be combined with `--frozen`, and forces a reconfigure when it differs from the cached override. See [SDK provider selection](../user-guide/sdk-provider-selection.md#out-of-tree-sdk-sdk-root)
 - `--target`: explicit build target
 - `--jobs`: parallel build jobs
 - `--update`: re-resolve module constraints to upstream tips and re-vendor before building

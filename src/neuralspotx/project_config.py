@@ -1184,6 +1184,7 @@ def _run_cmake_configure(
     board: str,
     toolchain: str | None = None,
     probe_serial: str | None = None,
+    sdk_root: Path | None = None,
 ) -> None:
     from .constants import DEFAULT_TOOLCHAIN, EXPERIMENTAL_TOOLCHAINS, SUPPORTED_TOOLCHAINS
 
@@ -1228,6 +1229,14 @@ def _run_cmake_configure(
         "-DCMAKE_BUILD_TYPE=Release",
         f"-DNSX_BOARD={board}",
     ]
+    # Single emit site for the out-of-tree SDK escape hatch (see AGENTS.md).
+    # Always set the cache entry, including an empty value, so omitting
+    # ``--sdk-root`` on a later configure clears a previously cached override
+    # instead of silently building against it (nsx_sdk_providers.cmake
+    # treats "" as unset). The operations layer validates the path and
+    # refuses it under ``--frozen`` before we get here.
+    sdk_override = str(Path(sdk_root).expanduser().resolve()) if sdk_root is not None else ""
+    cmd.append(f"-DNSX_AMBIQSUITE_ROOT_OVERRIDE={sdk_override}")
     # Always set the cache entry, including an empty value, so a caller can
     # return from explicit probe selection to CMake/J-Link auto-selection.
     cmd.append(f"-DNSX_JLINK_SERIAL={probe_serial or ''}")

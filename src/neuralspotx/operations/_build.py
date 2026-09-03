@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import TextIO
 
 from .. import board_descriptors as bd
-from .._errors import NSXError
+from .._errors import NSXConfigError, NSXError
 from .._io import info, line, warn
 from ..models import FlashResult
 from ..project_config import _run_cmake_configure
@@ -74,6 +74,79 @@ def _flash_cache_matches(
     )
 
 
+def _check_sdk_root(sdk_root: Path | None, *, frozen: bool) -> None:
+    """Validate the ``--sdk-root`` escape hatch before any module sync.
+
+    ``sdk_root`` (CMake ``NSX_AMBIQSUITE_ROOT_OVERRIDE``) builds against an
+    out-of-tree AmbiqSuite instead of the vendored ``nsx-ambiqsuite`` that
+    ``nsx.lock`` records, so the lock, the SBOM and ``--frozen`` no longer
+    describe the produced binary. Refuse a path that is not a directory,
+    refuse it outright together with ``frozen`` (the two contradict each
+    other), and otherwise say loudly that reproducibility is off.
+    """
+
+    if sdk_root is None:
+        return
+    if frozen:
+        raise NSXConfigError(
+            f"--sdk-root ({sdk_root}) cannot be combined with --frozen: an "
+            "out-of-tree AmbiqSuite is not described by nsx.lock, so a frozen "
+            "build cannot be verified against it. Drop one of the two flags."
+        )
+    if not sdk_root.is_dir():
+        raise NSXConfigError(
+            f"--sdk-root is not a directory: {sdk_root}\n"
+            "Pass the root of an out-of-tree AmbiqSuite checkout, or omit the "
+            "flag to build against the vendored nsx-ambiqsuite module."
+        )
+    warn(
+        f"Building against out-of-tree AmbiqSuite at {sdk_root} "
+        "(NSX_AMBIQSUITE_ROOT_OVERRIDE). nsx.lock, the SBOM and --frozen do "
+        "not describe this SDK; the resulting binary is not reproducible from "
+        "the app's lock alone."
+    )
+
+
+def _sdk_root_cache_matches(build_dir: Path, sdk_root: Path | None) -> bool:
+    """Whether an explicit ``sdk_root`` equals the override cached by CMake.
+
+    ``None`` never forces a reconfigure: a build tree configured with
+    ``--sdk-root`` keeps that override until the next explicit configure,
+    but says so (see ``_warn_if_cached_sdk_override``).
+
+    ``sdk_root`` is expanded and resolved exactly as
+    ``project_config._run_cmake_configure`` does before writing the cache
+    entry, so a relative or ``~``-prefixed path an API caller passes still
+    compares equal to the cached absolute value instead of reconfiguring
+    on every build/flash/view.
+    """
+
+    if sdk_root is None:
+        _warn_if_cached_sdk_override(build_dir)
+        return True
+    cached = _cmake_cache_value(build_dir, "NSX_AMBIQSUITE_ROOT_OVERRIDE") or ""
+    expanded = str(Path(sdk_root).expanduser().resolve())
+    return os.path.normcase(os.path.normpath(cached)) == os.path.normcase(
+        os.path.normpath(expanded)
+    )
+
+
+def _warn_if_cached_sdk_override(build_dir: Path) -> None:
+    """Say when a build tree still carries a cached ``--sdk-root`` override.
+
+    A plain build/flash/view reuses the existing configure, so an override
+    set on an earlier ``nsx configure --sdk-root`` silently stays in force.
+    """
+
+    cached = _cmake_cache_value(build_dir, "NSX_AMBIQSUITE_ROOT_OVERRIDE") or ""
+    if cached:
+        warn(
+            f"Build tree {build_dir} was configured with out-of-tree AmbiqSuite "
+            f"{cached} (--sdk-root); this build still uses it. Run "
+            "`nsx configure` without --sdk-root to return to the vendored SDK."
+        )
+
+
 def configure_app_impl(
     app_dir: Path,
     *,
@@ -81,6 +154,7 @@ def configure_app_impl(
     build_dir: Path | None = None,
     toolchain: str | None = None,
     probe_serial: str | None = None,
+    sdk_root: Path | None = None,
     frozen: bool = False,
 ) -> Path:
     """Configure an app with CMake.
@@ -93,11 +167,14 @@ def configure_app_impl(
         frozen: Verify ``modules/`` against ``nsx.lock`` and raise on any
             drift instead of silently re-vendoring (see
             ``_ensure_app_modules``).
+        sdk_root: Out-of-tree AmbiqSuite root (escape hatch; see
+            ``_check_sdk_root``). Incompatible with ``frozen``.
 
     Returns:
         The resolved build directory.
     """
 
+    _check_sdk_root(sdk_root, frozen=frozen)
     resolved_app_dir, _, resolved_board, resolved_build_dir = _resolve_build_context(
         app_dir,
         board=board,
@@ -111,6 +188,7 @@ def configure_app_impl(
         resolved_board,
         toolchain=toolchain,
         probe_serial=probe_serial,
+        sdk_root=sdk_root,
     )
     info(f"Configured app at: {resolved_app_dir}")
     info(f"Build directory: {resolved_build_dir}")
@@ -125,6 +203,7 @@ def build_app_impl(
     toolchain: str | None = None,
     target: str | None = None,
     jobs: int = 8,
+    sdk_root: Path | None = None,
     frozen: bool = False,
     on_line: "Callable[[str], None] | None" = None,
 ) -> Path:
@@ -135,8 +214,12 @@ def build_app_impl(
             verify ``modules/`` against ``nsx.lock`` and raise on any
             drift instead of silently re-vendoring (see
             ``_ensure_app_modules``).
+        sdk_root: Out-of-tree AmbiqSuite root (escape hatch; see
+            ``_check_sdk_root``). Incompatible with ``frozen``; an explicit
+            value that differs from the cached override forces a reconfigure.
     """
 
+    _check_sdk_root(sdk_root, frozen=frozen)
     resolved_app_dir, app_name, resolved_board, resolved_build_dir = _resolve_build_context(
         app_dir,
         board=board,
@@ -144,10 +227,16 @@ def build_app_impl(
     )
     warn_if_lock_stale(resolved_app_dir, resolved_board)
     regenerate_active_board_glue(resolved_app_dir, resolved_board)
-    if not (resolved_build_dir / "build.ninja").exists():
+    if not (resolved_build_dir / "build.ninja").exists() or not _sdk_root_cache_matches(
+        resolved_build_dir, sdk_root
+    ):
         _ensure_app_modules(resolved_app_dir, resolved_board, frozen=frozen)
         _run_cmake_configure(
-            resolved_app_dir, resolved_build_dir, resolved_board, toolchain=toolchain
+            resolved_app_dir,
+            resolved_build_dir,
+            resolved_board,
+            toolchain=toolchain,
+            sdk_root=sdk_root,
         )
     resolved_target = target or app_name
     run(
@@ -166,6 +255,7 @@ def flash_app_impl(
     target: str | None = None,
     probe_serial: str | None = None,
     jobs: int = 8,
+    sdk_root: Path | None = None,
     frozen: bool = False,
     on_line: "Callable[[str], None] | None" = None,
 ) -> FlashResult:
@@ -183,8 +273,12 @@ def flash_app_impl(
             against a different probe) — ``frozen`` does not skip that
             reconfigure, it only changes how the accompanying module
             sync behaves if one is needed.
+        sdk_root: Out-of-tree AmbiqSuite root (escape hatch; see
+            ``_check_sdk_root``). Incompatible with ``frozen``; an explicit
+            value that differs from the cached override forces a reconfigure.
     """
 
+    _check_sdk_root(sdk_root, frozen=frozen)
     resolved_app_dir, app_name, resolved_board, resolved_build_dir = _resolve_build_context(
         app_dir,
         board=board,
@@ -201,6 +295,7 @@ def flash_app_impl(
             probe_serial=probe_serial,
             jlink_executable=jlink_executable,
         )
+        or not _sdk_root_cache_matches(resolved_build_dir, sdk_root)
     )
     if needs_configure:
         _ensure_app_modules(resolved_app_dir, resolved_board, frozen=frozen)
@@ -210,6 +305,7 @@ def flash_app_impl(
             resolved_board,
             toolchain=toolchain,
             probe_serial=probe_serial,
+            sdk_root=sdk_root,
         )
     resolved_target = target or app_name
     validate_flash_target_name(resolved_target)
@@ -399,6 +495,7 @@ def view_app_impl(
     build_dir: Path | None = None,
     toolchain: str | None = None,
     probe_serial: str | None = None,
+    sdk_root: Path | None = None,
     frozen: bool = False,
     reset_on_open: bool | None = None,
     reset_delay_ms: int = 400,
@@ -424,8 +521,12 @@ def view_app_impl(
             ``flash_app_impl``), verify ``modules/`` against ``nsx.lock``
             and raise on any drift instead of silently re-vendoring (see
             ``_ensure_app_modules``).
+        sdk_root: Out-of-tree AmbiqSuite root (escape hatch; see
+            ``_check_sdk_root``). Incompatible with ``frozen``; an explicit
+            value that differs from the cached override forces a reconfigure.
     """
 
+    _check_sdk_root(sdk_root, frozen=frozen)
     resolved_app_dir, app_name, resolved_board, resolved_build_dir = _resolve_build_context(
         app_dir,
         board=board,
@@ -433,7 +534,11 @@ def view_app_impl(
     )
     warn_if_lock_stale(resolved_app_dir, resolved_board)
     regenerate_active_board_glue(resolved_app_dir, resolved_board)
-    if probe_serial is not None or not (resolved_build_dir / "build.ninja").exists():
+    if (
+        probe_serial is not None
+        or not (resolved_build_dir / "build.ninja").exists()
+        or not _sdk_root_cache_matches(resolved_build_dir, sdk_root)
+    ):
         _ensure_app_modules(resolved_app_dir, resolved_board, frozen=frozen)
         _run_cmake_configure(
             resolved_app_dir,
@@ -441,6 +546,7 @@ def view_app_impl(
             resolved_board,
             toolchain=toolchain,
             probe_serial=probe_serial,
+            sdk_root=sdk_root,
         )
     target = f"{app_name}_view"
     view_cmd = extract_view_command(resolved_build_dir, target)
