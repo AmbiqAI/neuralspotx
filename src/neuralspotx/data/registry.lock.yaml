@@ -11,11 +11,9 @@ projects:
     url: https://github.com/AmbiqAI/neuralspotx.git
     revision: main
     path: neuralspotx
-  # Unified SDK: one repo covering all supported SoC families. The v5.2.24
-  # pin predates atomiq110; atomiq110 support (nsx-ambiq-sdk PR #46, merged
-  # to main) is pinned below to the hardware-validated SHA
-  # deda37552e790ad2ebf6fd5a27f0628ac6fcf44f. Collapse those pins to the
-  # first nsx-ambiq-sdk tag > v5.2.24 when it exists.
+  # Unified SDK: one repo covering all supported SoC families. atomiq110 is
+  # pinned below to v5.2.25, the first tag that ships it; the apollo families
+  # stay on v5.2.24. See AmbiqAI/neuralspotx#248.
   nsx-ambiq-sdk:
     name: nsx-ambiq-sdk
     url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
@@ -205,13 +203,11 @@ modules:
     project: nsx-ethos-u-driver
     revision: nsx-ethos-u-driver-v0.1.2
     metadata: modules/nsx-ethos-u-driver/nsx-module.yaml
-  # nsx-npu is not in any SDK release tag yet (first shipped by PR #46, now
-  # on nsx-ambiq-sdk main). Pinned to the hardware-validated SHA; collapse it
-  # to the first nsx-ambiq-sdk tag > v5.2.24 like the other nsx-ambiq-sdk
-  # modules once that tag exists.
+  # nsx-npu (atomiq110-only) first shipped in nsx-ambiq-sdk v5.2.25; the
+  # other nsx-ambiq-sdk modules stay on v5.2.24. See AmbiqAI/neuralspotx#248.
   nsx-npu:
     project: nsx-ambiq-sdk
-    revision: deda37552e790ad2ebf6fd5a27f0628ac6fcf44f
+    revision: v5.2.25
     metadata: modules/nsx-npu/nsx-module.yaml
   nsx-uart:
     project: nsx-ambiq-sdk
@@ -430,15 +426,13 @@ soc_families:
   apollo510b: *fam_apollo5
   apollo510L: *fam_apollo5
   apollo330P: *fam_apollo5
-  # atomiq110 support (its own arch dir, CRM_TPIUCLKCFG bus-fault
-  # workarounds for the FPGA turbo board, rebuilt HAL/BSP libs) landed on
-  # nsx-ambiq-sdk main via PR #46 but is not in any release tag yet. Pinned
-  # to the hardware-validated SHA; collapse this back to the *fam_apollo5
-  # alias once the first nsx-ambiq-sdk tag > v5.2.24 exists and *fam_apollo5
-  # moves to it.
+  # atomiq110 resolves nsx-ambiq-sdk v5.2.25, the first tag that ships its
+  # arch dir, FPGA turbo-board workarounds and HAL/BSP libs; *fam_apollo5
+  # stays on v5.2.24, so the revision is overridden rather than aliased.
+  # See AmbiqAI/neuralspotx#248.
   atomiq110:
     <<: *fam_apollo5
-    revision: deda37552e790ad2ebf6fd5a27f0628ac6fcf44f
+    revision: v5.2.25
     # Same list as *fam_apollo5 plus nsx-npu (Ethos-U85 core-driver module,
     # atomiq110-only). YAML merge keys replace rather than append, so the
     # full list is restated here.

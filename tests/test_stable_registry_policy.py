@@ -18,9 +18,9 @@ from neuralspotx.registry_policy import (
     validate_stable_registry_refs,
 )
 
-# The validated nsx-ambiq-sdk commit the atomiq110 family + nsx-npu are pinned
-# to until the first SDK tag > v5.2.24 exists (see registry.lock.yaml).
-_ATOMIQ110_SDK_SHA = "deda37552e790ad2ebf6fd5a27f0628ac6fcf44f"
+# The nsx-ambiq-sdk tag the atomiq110 family + nsx-npu resolve; the apollo
+# families stay on the older release tag (see registry.lock.yaml).
+_ATOMIQ110_SDK_TAG = "v5.2.25"
 
 
 def test_packaged_registry_floating_refs_are_exactly_allowlisted() -> None:
@@ -135,12 +135,10 @@ def test_packaged_registry_release_projects_are_immutable() -> None:
     } == {"v0.1.0"}
     assert registry["projects"]["helia-rt"]["revision"] == "helia-rt-v1.18.0"
     assert registry["modules"]["nsx-helia-rt"]["revision"] == "helia-rt-v1.18.0"
-    # Every nsx-ambiq-sdk ref is either the release tag or the validated
-    # atomiq110 SHA (an immutable pin, so no allowance is involved). Only the
-    # tag is *required*: collapsing the SHA back to a newer tag must not break
-    # this test.
+    # Every nsx-ambiq-sdk ref is one of the two release tags: the apollo
+    # families' tag, which is *required*, and the atomiq110 tag.
     sdk_release_tag = "v5.2.24"
-    allowed_sdk_refs = {sdk_release_tag, _ATOMIQ110_SDK_SHA}
+    allowed_sdk_refs = {sdk_release_tag, _ATOMIQ110_SDK_TAG}
     sdk_module_refs = {
         entry["revision"]
         for entry in registry["modules"].values()
