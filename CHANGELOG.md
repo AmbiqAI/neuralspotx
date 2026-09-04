@@ -1,5 +1,45 @@
 # Changelog
 
+## [0.8.0](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.17...neuralspotx-v0.8.0) (2026-09-04)
+
+
+### ⚠ BREAKING CHANGES
+
+* Python 3.10 is no longer supported (requires-python >=3.11).
+
+### Features
+
+* add atomiq110_fpga_turbo board and Ethos-U85 NPU support ([ffa684e](https://github.com/AmbiqAI/neuralspotx/commit/ffa684e68ed3de7564c95fe3a1f2c7e134ac81f1))
+* adopt ty type checking in CI and raise Python floor to 3.11 ([#239](https://github.com/AmbiqAI/neuralspotx/issues/239)) ([895f706](https://github.com/AmbiqAI/neuralspotx/commit/895f7062754fcaca2d470b5c391dac8019384530))
+* **registry:** register nsx-ethos-u-driver for nsx-npu resolution ([ae1953b](https://github.com/AmbiqAI/neuralspotx/commit/ae1953b68772b69819b12c16fe19beb37f03e402))
+
+
+### Bug Fixes
+
+* accept skipped-identical J-Link flash as programming confirmation ([#220](https://github.com/AmbiqAI/neuralspotx/issues/220)) ([91bc4a9](https://github.com/AmbiqAI/neuralspotx/commit/91bc4a9c402c605638b9e1dd395da00266655484))
+* address new Copilot review comments on eb3573b ([276af03](https://github.com/AmbiqAI/neuralspotx/commit/276af03ddab563f971880173475a19604b3560e3))
+* **atomiq110:** remove npu_person_detect example, keep generic NPU template only ([60d44a7](https://github.com/AmbiqAI/neuralspotx/commit/60d44a73261c5cb4196746be8fe7632ef35caa78))
+* **atomiq110:** resolve [#217](https://github.com/AmbiqAI/neuralspotx/issues/217) review comments ([c2cf879](https://github.com/AmbiqAI/neuralspotx/commit/c2cf879a19dd3c977a92196f304d71c5fe586c44))
+* **boards:** resolve atomiq110 review blockers; source startup/linker from nsx-core ([2c732df](https://github.com/AmbiqAI/neuralspotx/commit/2c732dff04bdcadf85b4dbe96f7bbd07c45b14ff))
+* **boards:** resolve atomiq110 review blockers; source startup/linker from nsx-core ([f4169b1](https://github.com/AmbiqAI/neuralspotx/commit/f4169b100aa2d7711aebfd189befbd1567630c5b))
+* **boards:** set atomiq110_fpga_turbo SHARED_SRAM to 3 MB ([56f8670](https://github.com/AmbiqAI/neuralspotx/commit/56f86706c5be963e191b5f8b3484ba939170db0f))
+* **boards:** set atomiq110_fpga_turbo SHARED_SRAM to 3 MB ([5b589e7](https://github.com/AmbiqAI/neuralspotx/commit/5b589e7f7e747f9207ee97f1b7d0a76d7ad9cc1e)), closes [#232](https://github.com/AmbiqAI/neuralspotx/issues/232)
+* **build:** normalize sdk_root before comparing the cached override ([dc22f55](https://github.com/AmbiqAI/neuralspotx/commit/dc22f55483267b7f2408c5385522f3c1d75adc18))
+* collapse atomiq110 pins, gate the NPU template, harden --sdk-root ([68a5a7b](https://github.com/AmbiqAI/neuralspotx/commit/68a5a7bb85179d3563cfb7266659cb748977f94f))
+* license packaged modules and require nsx lock once after upgrade ([#247](https://github.com/AmbiqAI/neuralspotx/issues/247)) ([c2b666b](https://github.com/AmbiqAI/neuralspotx/commit/c2b666b5b5fbac65954cdea320d3b16a15047ce5))
+* register nsx-ethos-u-driver and fix FPGA NPU build flow ([eb3573b](https://github.com/AmbiqAI/neuralspotx/commit/eb3573b26883a6d713a84c41d48303437eeee997))
+* **registry:** honor app project pins over packaged module revisions ([#223](https://github.com/AmbiqAI/neuralspotx/issues/223)) ([4ae7d1f](https://github.com/AmbiqAI/neuralspotx/commit/4ae7d1f6a06f11e71d660f1ec6352c8d18f64e75))
+* **registry:** honor app project pins over packaged module revisions ([#223](https://github.com/AmbiqAI/neuralspotx/issues/223)) ([a07f152](https://github.com/AmbiqAI/neuralspotx/commit/a07f152a8910f09791f394f3309fd8ce81d74c4a))
+* **registry:** promote nsx-sensors to v0.3.0 ([#222](https://github.com/AmbiqAI/neuralspotx/issues/222)) ([073242b](https://github.com/AmbiqAI/neuralspotx/commit/073242b2d74290002bf0588cac1f3a1f7fd4266d))
+* **registry:** promote nsx-sensors to v0.3.0 ([#222](https://github.com/AmbiqAI/neuralspotx/issues/222)) ([e50e1f1](https://github.com/AmbiqAI/neuralspotx/commit/e50e1f14ea900a7d5462eb282dc5b21f1227a9c0))
+* **registry:** restore nsx-sensors pin to v0.3.0 ([dfb8171](https://github.com/AmbiqAI/neuralspotx/commit/dfb817138f49b87cee198a3dce995e0c9781ffa7))
+* **registry:** restore nsx-sensors pin to v0.3.0 ([24610cd](https://github.com/AmbiqAI/neuralspotx/commit/24610cd4428e395221fdf46856f173163d96e0ab)), closes [#233](https://github.com/AmbiqAI/neuralspotx/issues/233)
+
+
+### Documentation
+
+* add nsx-ethos-u-driver and nsx-npu to module catalog ([#230](https://github.com/AmbiqAI/neuralspotx/issues/230)) ([8519fd7](https://github.com/AmbiqAI/neuralspotx/commit/8519fd76a81238a2e7262f97e4bdcf53f5a1fb36))
+
 ## [0.7.17](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.16...neuralspotx-v0.7.17) (2026-08-15)
 
 
