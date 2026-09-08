@@ -3,7 +3,7 @@ nsx_load_soc_facts: apollo4l
 nsx_soc_flags_target: nsx_soc_apollo4l_flags
 nsx_module_dir_for_name: _nsx_core_module_dir;nsx-core
 nsx_assert_file_exists: /stub/app/modules/nsx-core/src/apollo4l/armclang/linker_script.sct
-nsx_assert_file_exists: /stub/app/modules/nsx-core/src/apollo4l/armclang/startup_keil6.s
+nsx_assert_file_exists: /stub/app/modules/nsx-core/src/apollo4l/armclang/startup_keil6.c
 add_library: nsx_board_apollo4l_evb;INTERFACE
 add_library: nsx_board_apollo4l_evb_flags;INTERFACE
 set_target_properties: nsx_board_apollo4l_evb;PROPERTIES;EXPORT_NAME;board_apollo4l_evb
@@ -43,7 +43,7 @@ NSX_SEGGER_DEVICE=AMAP42KL-KBR
 NSX_SOC_FLAGS_TARGET=nsx_soc_apollo4l_flags
 NSX_SOC_NAME=apollo4l
 NSX_SOC_TARGET_EXPORT_NAME=soc_hal_apollo4l
-NSX_STARTUP_SOURCE=/stub/app/modules/nsx-core/src/apollo4l/armclang/startup_keil6.s
+NSX_STARTUP_SOURCE=/stub/app/modules/nsx-core/src/apollo4l/armclang/startup_keil6.c
 NSX_STARTUP_TARGET_EXPORT_NAME=startup_apollo4l
-NSX_SYSTEM_SOURCE=
+NSX_SYSTEM_SOURCE=/stub/ambiqsuite/CMSIS/AmbiqMicro/Source/system_apollo4l.c
 NSX_TOOLCHAIN_FAMILY=armclang
