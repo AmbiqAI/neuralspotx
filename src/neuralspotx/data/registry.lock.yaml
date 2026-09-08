@@ -39,7 +39,7 @@ projects:
   helia-dsp:
     name: helia-dsp
     url: https://github.com/AmbiqAI/helia-dsp.git
-    revision: v1.0.0
+    revision: v1.1.0
     path: modules/helia-dsp
   nsx-ethos-u-driver:
     name: nsx-ethos-u-driver
@@ -252,7 +252,7 @@ modules:
     metadata: modules/ns-cmsis-nn/nsx/nsx-module.yaml
   helia-dsp:
     project: helia-dsp
-    revision: v1.0.0
+    revision: v1.1.0
     metadata: modules/helia-dsp/nsx-module.yaml
   nsx-physiokit:
     project: nsx-physiokit
