@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.1](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.8.0...neuralspotx-v0.8.1) (2026-09-08)
+
+
+### Bug Fixes
+
+* **boards:** compile the apollo4l CMSIS system file so SystemCoreClock links ([#250](https://github.com/AmbiqAI/neuralspotx/issues/250)) ([26dcec0](https://github.com/AmbiqAI/neuralspotx/commit/26dcec0c01c2b9b91686637fab2041730ade54a6))
+
 ## [0.8.0](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.7.17...neuralspotx-v0.8.0) (2026-09-04)
 
 
