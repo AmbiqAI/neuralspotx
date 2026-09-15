@@ -165,8 +165,11 @@ the Apollo5a/Apollo5b/Apollo510L/Apollo510B and Apollo330mP EVBs.
 **ATfE** builds correctly on the same targets but is considered **experimental**
 (limited on-device validation).
 
-Apollo3p and Apollo4p EVBs declare all three toolchains (see the
-`compatibility.toolchains` list in each `boards/<board>/nsx-module.yaml`).
+Apollo3p and Apollo4p EVBs declare all three toolchains in their packaged
+module metadata (the `compatibility.toolchains` list in each
+`boards/<board>/nsx-module.yaml`, which is what `nsx lock` enforces). Their
+`board.yaml` descriptors, which `nsx board show` prints, still list only
+`arm-none-eabi-gcc`; aligning those descriptors is a separate change.
 
 The Apollo4 Lite EVBs (`apollo4l_evb`, `apollo4l_blue_evb`) declare
 `arm-none-eabi-gcc` and `atfe`. ATfE reuses the GCC startup file and linker
