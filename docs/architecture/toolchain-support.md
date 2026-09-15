@@ -165,16 +165,25 @@ the Apollo5a/Apollo5b/Apollo510L/Apollo510B and Apollo330mP EVBs.
 **ATfE** builds correctly on the same targets but is considered **experimental**
 (limited on-device validation).
 
-Apollo3/Apollo3p/Apollo4* boards currently declare only `arm-none-eabi-gcc`:
+Apollo3p and Apollo4p EVBs declare all three toolchains (see the
+`compatibility.toolchains` list in each `boards/<board>/nsx-module.yaml`).
 
-- Apollo3 / Apollo3p: no armclang startup/scatter files in `nsx-core` yet.
-  ATfE would work in principle (it reuses the GCC startup/linker script) but
-  has not been validated on these parts.
-- Apollo4l / Apollo4p / Apollo4b-blue: armclang ships only an assembly startup
-  (`startup_keil6.s`) instead of the `.c` variant NSX board files wire up, and
-  only a `linker_script.sct` (no `_sbl` variant). Adding armclang here is a
-  matter of supplying the missing `startup_armclang.c` + `linker_script_sbl.sct`
-  under `nsx-core/src/<soc>/armclang/`. ATfE would also need validation.
+The Apollo4 Lite EVBs (`apollo4l_evb`, `apollo4l_blue_evb`) declare
+`arm-none-eabi-gcc` and `atfe`. ATfE reuses the GCC startup file and linker
+script that `memory.cmake` selects for it, and an `apollo4l_blue_evb` app
+configures, compiles and links with ATfE 22.1.0; on-device validation runs
+through the helia-profiler hardware matrix once a release carrying the
+declaration is qualified there. armclang stays undeclared on these two boards
+until it has been built and exercised, although the `startup_keil6.c` and
+`linker_script.sct` assets it would use are already in place.
+
+Apollo2 / Apollo3 boards declare only `arm-none-eabi-gcc`: no armclang
+startup/scatter files exist in `nsx-core` yet, and ATfE has not been
+validated on those parts.
+
+`tests/test_packaged_board_toolchains.py` pins each board descriptor to its
+packaged module: a `board.yaml` may not advertise a toolchain that the
+module's `compatibility.toolchains` would make `nsx lock` refuse.
 
 ## Notes
 
