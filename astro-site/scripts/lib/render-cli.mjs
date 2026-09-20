@@ -43,12 +43,30 @@ function optionType(argument) {
   return 'value';
 }
 
+/**
+ * What goes in the Default column. Only a genuine default belongs there:
+ * "required" is a property of the argument, not a value, and an argument that
+ * may simply be left out has neither.
+ */
+function defaultCell(argument) {
+  if (argument.default !== null && argument.default !== undefined) return argument.default;
+  if (argument.required) return 'required';
+  return 'optional';
+}
+
+function describe(argument) {
+  const help = argument.help ?? '';
+  if (!argument.exclusive_with?.length) return help;
+  const others = argument.exclusive_with.map((flag) => `\`${flag}\``).join(', ');
+  return `${help}${help.endsWith('.') || !help ? '' : '.'} Cannot be combined with ${others}.`;
+}
+
 function rows(args) {
   return args.map((argument) => ({
     name: optionLabel(argument),
     type: optionType(argument),
-    default: argument.default ?? (argument.positional ? 'required' : ''),
-    description: argument.help ?? '',
+    default: defaultCell(argument),
+    description: describe(argument),
   }));
 }
 
@@ -167,10 +185,10 @@ function renderNode(node, { cli, routePrefix, base, notes }) {
   }
 
   if (cli.global_arguments.length && !node.alias_of) {
+    const flags = cli.global_arguments.map((argument) => argument.flags.join('/'));
     lines.push(
-      `Every command also accepts the global flags \`${cli.global_arguments
-        .map((argument) => argument.flags.join('/'))
-        .join('`, `')}\`.`,
+      `\`${flags.join('`, `')}\` are parsed by \`nsx\` itself, so they go before the command`,
+      `name, as \`nsx -v ${node.name}\`.`,
       '',
     );
   }

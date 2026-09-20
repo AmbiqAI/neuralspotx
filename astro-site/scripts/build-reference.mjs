@@ -15,7 +15,7 @@
  * it exactly.
  */
 
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -33,8 +33,8 @@ const SOURCE_URL = 'https://github.com/AmbiqAI/neuralspotx/blob/{commit}/{path}#
 // Every name in neuralspotx.__all__ carries the same status, so the site says
 // so once per page instead of 80 times per page.
 const PROVISIONAL_BANNER =
-  'Every name on this page is <strong>Provisional</strong>: it is public and supported, ' +
-  'but may change in a minor release.';
+  'The names on this page are <strong>Provisional</strong>: public and supported, ' +
+  'but they may change in a minor release.';
 
 const GROUP_LABELS = {
   errors: 'Errors',
@@ -95,23 +95,41 @@ function commitSha() {
   }
 }
 
-/** Starlight renders frontmatter `banner` once per page, above the content. */
-function addProvisionalBanner(dir) {
+/**
+ * Finish the pages pyref wrote.
+ *
+ * Starlight renders frontmatter `banner` once per page, which is where the
+ * Provisional status belongs; pyref has no status field of its own
+ * (AmbiqAI/helia-ui, gaps note). pyref also titles a page with the module's
+ * leaf name, so `neuralspotx.api` arrives as "api"; the dotted path is what a
+ * reader needs in a tab title and a search result. The sidebar is built
+ * separately and keeps its short labels.
+ */
+function finalizeApiPages(dir) {
   let touched = 0;
   const visit = (current) => {
     for (const entry of fs.readdirSync(current, { withFileTypes: true })) {
       const full = path.join(current, entry.name);
       if (entry.isDirectory()) {
         visit(full);
-      } else if (entry.name.endsWith('.mdx')) {
-        const text = fs.readFileSync(full, 'utf8');
-        if (!text.startsWith('---\n') || text.includes('\nbanner:')) continue;
-        const end = text.indexOf('\n---', 4);
-        if (end === -1) continue;
-        const banner = `\nbanner:\n  content: ${JSON.stringify(PROVISIONAL_BANNER)}`;
-        fs.writeFileSync(full, text.slice(0, end) + banner + text.slice(end), 'utf8');
-        touched += 1;
+        continue;
       }
+      if (entry.name !== 'index.mdx') continue;
+      const text = fs.readFileSync(full, 'utf8');
+      if (!text.startsWith('---\n')) continue;
+      const end = text.indexOf('\n---', 4);
+      if (end === -1) continue;
+
+      const dotted = path.relative(dir, path.dirname(full)).split(path.sep).join('.');
+      let head = text.slice(0, end);
+      if (dotted) {
+        head = head.replace(/^title:.*$/m, `title: ${JSON.stringify(dotted)}`);
+      }
+      if (!head.includes('\nbanner:')) {
+        head += `\nbanner:\n  content: ${JSON.stringify(PROVISIONAL_BANNER)}`;
+      }
+      fs.writeFileSync(full, head + text.slice(end), 'utf8');
+      touched += 1;
     }
   };
   visit(dir);
@@ -227,8 +245,8 @@ function main() {
 
   const catalog = JSON.parse(fs.readFileSync(catalogPath, 'utf8'));
 
-  const pyrefOutput = timed('pyref', () =>
-    run(
+  const pyrefResult = timed('pyref', () =>
+    spawnSync(
       path.join(siteRoot, 'node_modules/.bin/helia-ui-pyref'),
       [
         '--input', prunedDump,
@@ -241,20 +259,29 @@ function main() {
         '--source-url', SOURCE_URL.replace('{commit}', commit || 'main'),
         ...(commit ? ['--commit', commit] : []),
       ],
-      { cwd: siteRoot, stdio: ['ignore', 'pipe', 'pipe'] },
+      { cwd: siteRoot, encoding: 'utf8', maxBuffer: 64 * 1024 * 1024 },
     ),
   );
 
-  const warnings = (pyrefOutput.match(/warning/gi) ?? []).length;
+  if (pyrefResult.error) throw pyrefResult.error;
+  const pyrefOutput = `${pyrefResult.stdout ?? ''}${pyrefResult.stderr ?? ''}`;
+  if (pyrefResult.status !== 0) {
+    throw new Error(`build-reference: pyref exited ${pyrefResult.status}:\n${pyrefOutput}`);
+  }
+
+  // pyref prints each unresolved cross-reference as `pyref warning: ...` on
+  // stderr and exits 0, so both streams have to be read and the token has to
+  // be the one pyref actually emits.
+  const warnings = (pyrefOutput.match(/^pyref warning:/gm) ?? []).length;
   if (warnings > 0) {
     throw new Error(
-      `build-reference: pyref reported ${warnings} warnings, which the reference budget does not allow:\n${pyrefOutput}`,
+      `build-reference: pyref reported ${warnings} unresolved cross-references:\n${pyrefOutput}`,
     );
   }
 
   // pyref writes the package page at reference/api/neuralspotx; the section
   // needs an index at reference/api itself.
-  const bannered = addProvisionalBanner(dirs.api);
+  const bannered = finalizeApiPages(dirs.api);
   fs.writeFileSync(
     path.join(dirs.api, 'index.mdx'),
     [

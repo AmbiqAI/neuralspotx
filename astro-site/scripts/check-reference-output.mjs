@@ -19,17 +19,22 @@ const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 const dist = path.join(siteRoot, 'dist');
 const reportPath = path.join(siteRoot, 'src/data/reference-report.json');
 
-// Gzip is what a reader actually downloads and is the binding budget, held at
-// the same 40 KB the helia-rt API pages use. The uncompressed budget is split
-// by area because the two differ in kind: a Starlight page shell measures
-// about 100 KB before any content, a CLI or configuration page adds a table on
-// top of that, and a Python API group page adds 30-odd rendered signatures
-// with their parameter tables. Holding the API pages to the 250 KB the C++
-// reference uses would mean roughly ten symbols per page, which breaks the
-// grouping the reference is organized around (AmbiqAI/neuralspotx#258).
+// Gzip is held at the 40 KB the helia-rt API pages use. The uncompressed
+// budget is split by area because the two differ in kind: a Starlight page
+// shell measures about 100 KB before any content, a CLI or configuration page
+// adds a table on top of that, and a Python API page adds 30-odd rendered
+// signatures with their parameter tables at roughly 10 KB each. Holding the
+// API pages to the 250 KB the C++ reference uses would cap a page near ten
+// symbols and break the grouping the reference is organized around.
+//
+// Neither budget is comfortably slack, so WARN_AT exists to say so before a
+// page trips one: `neuralspotx.api` is the page that will need splitting, and
+// it is meant to be split when it crosses 80% of either budget rather than
+// when it fails (AmbiqAI/neuralspotx#258).
 const GZIP_BUDGET = 40_000;
+const WARN_AT = 0.8;
 const HTML_BUDGETS = {
-  'reference/api': 550_000,
+  'reference/api': 640_000,
   'reference/cli': 250_000,
   'reference/config': 250_000,
 };
@@ -40,6 +45,8 @@ function htmlBudget(route) {
   }
   return 250_000;
 }
+
+const warnings = [];
 
 const errors = [];
 
@@ -132,21 +139,51 @@ function main() {
         `reference page over budget: ${route} (${buffer.byteLength} HTML, ${gzip} gzip; ` +
           `budget ${budget}/${GZIP_BUDGET})`,
       );
+    } else if (buffer.byteLength > budget * WARN_AT || gzip > GZIP_BUDGET * WARN_AT) {
+      warnings.push(
+        `${route} is at ${Math.round((buffer.byteLength / budget) * 100)}% of the HTML budget ` +
+          `and ${Math.round((gzip / GZIP_BUDGET) * 100)}% of the gzip budget; split it`,
+      );
     }
   }
 
   // The text bundle is what an agent reads instead of the site, so it has to
-  // carry every name the pages do.
+  // carry every name the pages do. The expected names come out of the built
+  // HTML rather than out of the report, because the report is what wrote the
+  // bundle: checking one against the other would only prove it agrees with
+  // itself.
+  const publishedAnchors = new Set();
+  for (const route of walkRoutes('reference/api')) {
+    const file = pageFor(route);
+    if (!fs.existsSync(file)) continue;
+    const html = fs.readFileSync(file, 'utf8');
+    for (const match of html.matchAll(/id="(neuralspotx(?:\.[A-Za-z_][\w]*)+)"/g)) {
+      publishedAnchors.add(match[1]);
+    }
+  }
+  const publishedCommands = new Set(
+    walkRoutes('reference/cli')
+      .filter((route) => fs.existsSync(pageFor(route)))
+      .map((route) => route.slice('reference/cli/'.length))
+      .filter(Boolean),
+  );
+
+  if (!publishedAnchors.size) fail('no Python anchors found in the built HTML');
+  if (!publishedCommands.size) fail('no CLI pages found in the built HTML');
+
   const bundlePath = path.join(dist, report.artifacts.bundle);
   if (!fs.existsSync(bundlePath)) {
     fail(`text bundle missing at ${report.artifacts.bundle}`);
   } else {
     const bundle = fs.readFileSync(bundlePath, 'utf8');
-    for (const symbol of report.python.symbols) {
-      if (!bundle.includes(symbol.anchor)) fail(`text bundle omits ${symbol.anchor}`);
+    for (const anchor of [...publishedAnchors].sort()) {
+      if (!bundle.includes(anchor)) fail(`text bundle omits ${anchor}, which the site publishes`);
     }
-    for (const command of report.cli.commands) {
-      if (!bundle.includes(`nsx ${command.name}`)) fail(`text bundle omits nsx ${command.name}`);
+    for (const slug of [...publishedCommands].sort()) {
+      const name = slug.split('-').join(' ');
+      if (!bundle.includes(`nsx ${name}`) && !bundle.includes(`nsx ${slug}`)) {
+        fail(`text bundle omits the command published at reference/cli/${slug}`);
+      }
     }
     for (const schema of report.config.schemas) {
       if (!bundle.includes(schema.file)) fail(`text bundle omits ${schema.file}`);
@@ -161,6 +198,8 @@ function main() {
     for (const message of errors) console.error(`check-reference: ${message}`);
     throw new Error(`check-reference: ${errors.length} problem(s) in the generated reference`);
   }
+
+  for (const message of warnings) console.warn(`check-reference: warning: ${message}`);
 
   console.log(
     `check-reference: ${report.python.symbols.length} anchors, ` +

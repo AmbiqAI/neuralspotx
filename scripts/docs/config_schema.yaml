@@ -3,11 +3,24 @@
 #
 # Field tables for the four files NSX reads. Three of the four validators are
 # imperative rather than declarative, so the tables cannot be introspected out
-# of the loaders. tests/test_reference_generation.py closes the gap: it checks
-# every declared schema_version against the constant in the code, checks the
-# dataclass-backed schemas field by field, and pushes each `example` through
-# the real loader, removing one required field at a time to prove the loader
-# still rejects it. A field that drifts out of the code fails the test.
+# of the loaders. tests/test_reference_generation.py is what stops this being
+# an unverified mirror, and every schema below is checked in both directions:
+#
+#   * `example` is the document the page shows, and the loader must accept it.
+#   * `coverage_example` must use every documented path, so a field invented
+#     here that the loader has never heard of fails.
+#   * removing each leaf of `coverage_example` in turn gives the set of paths
+#     the loader actually enforces, and that set must equal the set marked
+#     `required: true` here. A required flag flipped either way fails.
+#   * each documented `type` must match the type of the value at that path in
+#     `coverage_example`, so a type flipped here fails.
+#   * where a dataclass backs the file, `model_field` maps a documented path to
+#     a dataclass attribute, and the two field sets must match exactly, so a
+#     field deleted here fails.
+#
+# `required_when` marks a field the loader enforces only in some documents;
+# `coverage_example` is built to satisfy the condition so the field still shows
+# up in the enforced set.
 
 schemas:
   - id: nsx-yml
@@ -58,6 +71,43 @@ schemas:
       toolchain: arm-none-eabi-gcc
       channel: stable
       features: {}
+    coverage_example: |
+      schema_version: 2
+      project:
+        name: coverage_app
+      target:
+        board: apollo510_evb
+      targets:
+        default: apollo510_evb
+        supported:
+          - apollo510_evb
+      toolchain: arm-none-eabi-gcc
+      channel: stable
+      modules:
+        - name: nsx-uart
+          project: nsx-core
+          revision: v1.0.0
+          boards: [apollo510_evb]
+          local: false
+          source: { git: 'https://example.invalid/r.git', rev: main }
+      module_registry:
+        projects:
+          nsx-core:
+            url: 'https://example.invalid/c.git'
+            revision: main
+            path: modules/nsx-core
+            local_path: /tmp/nsx-core
+        modules:
+          nsx-uart:
+            project: nsx-core
+            revision: v1.0.0
+            metadata: nsx-module.yaml
+      tooling:
+        cmake: {}
+      features: {}
+      profile: minimal
+      profile_status: stable
+      baseline: none
 
   - id: nsx-module-yaml
     file: nsx-module.yaml
@@ -86,9 +136,9 @@ schemas:
       - {path: compatibility.boards, type: list of string, required: true, description: "Boards the module supports. Must be non-empty."}
       - {path: compatibility.socs, type: list of string, required: true, description: "SoCs the module supports. Must be non-empty."}
       - {path: compatibility.toolchains, type: list of string, required: true, description: "Toolchains the module supports. Must be non-empty."}
-      - {path: integrations.zephyr.path, type: string, required: false, description: "Zephyr module directory. Required when support.zephyr is true."}
-      - {path: integrations.zephyr.module_yml, type: string, required: false, description: "Path to the Zephyr module.yml. Required when support.zephyr is true."}
-      - {path: integrations.zephyr.kconfig, type: string, required: false, description: "Path to the module's Kconfig. Required when support.zephyr is true."}
+      - {path: integrations.zephyr.path, type: string, required: true, required_when: "support.zephyr is true", description: "Zephyr module directory. Required when support.zephyr is true."}
+      - {path: integrations.zephyr.module_yml, type: string, required: true, required_when: "support.zephyr is true", description: "Path to the Zephyr module.yml. Required when support.zephyr is true."}
+      - {path: integrations.zephyr.kconfig, type: string, required: true, required_when: "support.zephyr is true", description: "Path to the module's Kconfig. Required when support.zephyr is true."}
       - {path: constraints.required_sdk_provider, type: string, required: false, description: "SDK provider module this module must be built against."}
       - {path: summary, type: string, required: false, description: "One-line description shown in the module catalog."}
       - {path: capabilities, type: list of string, required: false, description: "What the module provides, for search and agent discovery."}
@@ -122,6 +172,48 @@ schemas:
           - apollo510
         toolchains:
           - arm-none-eabi-gcc
+    coverage_example: |
+      schema_version: 1
+      module:
+        name: nsx-coverage
+        type: algorithm
+        version: "0.1.0"
+        category: dsp
+        provider: Ambiq
+      support:
+        ambiqsuite: true
+        zephyr: true
+      build:
+        cmake:
+          package: nsx_coverage
+          targets:
+            - nsx::coverage
+      depends:
+        required:
+          - nsx-core
+        optional:
+          - nsx-uart
+      compatibility:
+        boards:
+          - apollo510_evb
+        socs:
+          - apollo510
+        toolchains:
+          - arm-none-eabi-gcc
+      integrations:
+        zephyr:
+          path: zephyr
+          module_yml: zephyr/module.yml
+          kconfig: zephyr/Kconfig
+      constraints:
+        required_sdk_provider: nsx-ambiqsuite
+      summary: Coverage module.
+      capabilities: [dsp]
+      use_cases: [filtering]
+      anti_use_cases: [inference]
+      agent_keywords: [fir]
+      example_refs: [examples/hello_world]
+      composition_hints: [nsx-pdm]
 
   - id: board-yaml
     file: board.yaml
@@ -139,15 +231,15 @@ schemas:
       Kept. Unrecognized keys are ignored by the parser.
     fields:
       - {path: schema_version, type: int, required: true, values: "1", description: "Board descriptor schema version."}
-      - {path: board.name, type: string, required: true, description: "Board name as used by --board and by targets.supported."}
-      - {path: board.soc, type: string, required: true, description: "SoC this board carries."}
-      - {path: board.tier, type: string, required: false, default: evb, description: "Board tier. Custom boards created from an EVB baseline record their own tier."}
-      - {path: board.registered, type: bool, required: false, default: "true", description: "Whether the board appears in nsx board list."}
-      - {path: sdk_provider, type: string, required: true, description: "SDK provider module the board builds against."}
-      - {path: cpu.core, type: string, required: true, description: "Arm core name, for example cortex-m55."}
-      - {path: cpu.float_abi, type: string, required: true, description: "Floating-point ABI passed to the toolchain."}
-      - {path: cpu.abi, type: string, required: true, description: "Full ABI triple used to select toolchain flags."}
-      - {path: toolchains, type: list of string, required: false, description: "Toolchains the board supports."}
+      - {path: board.name, model_field: name, type: string, required: true, required_when: "inherits is not set", description: "Board name as used by --board and by targets.supported."}
+      - {path: board.soc, model_field: soc, type: string, required: true, required_when: "inherits is not set", description: "SoC this board carries."}
+      - {path: board.tier, model_field: tier, type: string, required: false, default: evb, description: "Board tier. Custom boards created from an EVB baseline record their own tier."}
+      - {path: board.registered, model_field: registered, type: bool, required: false, default: "true", description: "Whether the board appears in nsx board list."}
+      - {path: sdk_provider, model_field: sdk_provider, type: string, required: true, required_when: "inherits is not set", description: "SDK provider module the board builds against."}
+      - {path: cpu.core, model_field: cpu.core, type: string, required: true, description: "Arm core name, for example cortex-m55."}
+      - {path: cpu.float_abi, model_field: cpu.float_abi, type: string, required: true, description: "Floating-point ABI passed to the toolchain."}
+      - {path: cpu.abi, model_field: cpu.abi, type: string, required: true, description: "Full ABI triple used to select toolchain flags."}
+      - {path: toolchains, model_field: toolchains, type: list of string, required: false, description: "Toolchains the board supports."}
       - {path: inherits, type: string, required: false, description: "Board this descriptor inherits from. Only custom boards set it."}
       - {path: overrides.toolchains, type: list of string, required: false, description: "Delta applied to the inherited toolchain list, using +name to add and -name to remove. Only valid with inherits."}
     example: |
@@ -165,6 +257,38 @@ schemas:
       toolchains:
         - arm-none-eabi-gcc
         - armclang
+    coverage_example: |
+      schema_version: 1
+      inherits: apollo510_evb
+      board:
+        name: coverage_evb
+        tier: custom
+        soc: apollo510
+        registered: true
+      sdk_provider: ambiqsuite
+      cpu:
+        core: cortex-m55
+        float_abi: hard
+        abi: thumbv8.1m-fpv5-hard
+      toolchains:
+        - arm-none-eabi-gcc
+      overrides:
+        toolchains:
+          - -armclang
+      ---
+      schema_version: 1
+      board:
+        name: standalone_evb
+        tier: evb
+        soc: apollo510
+        registered: true
+      sdk_provider: ambiqsuite
+      cpu:
+        core: cortex-m55
+        float_abi: hard
+        abi: thumbv8.1m-fpv5-hard
+      toolchains:
+        - arm-none-eabi-gcc
 
   - id: nsx-lock
     file: nsx.lock
@@ -196,16 +320,16 @@ schemas:
       - {path: "targets.<board>.target.soc", type: string, required: true, description: "SoC of that board."}
       - {path: "targets.<board>.target.toolchain", type: string, required: true, description: "Toolchain the section was resolved for."}
       - {path: "targets.<board>.modules", type: map of module name to entry, required: true, description: "The full resolved closure, not just the direct dependencies."}
-      - {path: "modules.<name>.project", type: string, required: true, description: "Registry project that provides the module."}
-      - {path: "modules.<name>.kind", type: string, required: true, default: git, values: "git, packaged, local, vendored, unresolved", description: "How the module was resolved, which decides what the resolved block carries."}
-      - {path: "modules.<name>.constraint", type: string, required: true, description: "Constraint the resolution satisfied."}
-      - {path: "modules.<name>.resolved.url", type: string, required: false, description: "Upstream repository. Present for git and unresolved kinds."}
-      - {path: "modules.<name>.resolved.tag", type: string, required: false, description: "Tag the commit carries, when the constraint matched one."}
-      - {path: "modules.<name>.resolved.commit", type: string, required: false, description: "Exact commit vendored. Present for git and unresolved kinds."}
-      - {path: "modules.<name>.resolved.tool_version", type: string, required: false, description: "neuralspotx version that supplied a packaged module."}
-      - {path: "modules.<name>.resolved.vendored_at", type: string, required: true, description: "Path under the app where the module is materialized."}
-      - {path: "modules.<name>.resolved.content_hash", type: string, required: true, description: "SHA-256 of the vendored tree. The SBOM reports this and sync verifies it."}
-      - {path: "modules.<name>.resolved.acquired_at", type: "string (ISO 8601)", required: true, description: "When the module was fetched."}
+      - {path: "modules.<name>.project", model_field: project, type: string, required: true, description: "Registry project that provides the module."}
+      - {path: "modules.<name>.kind", model_field: kind, type: string, required: true, default: git, values: "git, packaged, local, vendored, unresolved", description: "How the module was resolved, which decides what the resolved block carries."}
+      - {path: "modules.<name>.constraint", model_field: constraint, type: string, required: true, description: "Constraint the resolution satisfied."}
+      - {path: "modules.<name>.resolved.url", model_field: url, type: string, required: false, description: "Upstream repository. Present for git and unresolved kinds."}
+      - {path: "modules.<name>.resolved.tag", model_field: tag, type: string, required: false, description: "Tag the commit carries, when the constraint matched one."}
+      - {path: "modules.<name>.resolved.commit", model_field: commit, type: string, required: false, description: "Exact commit vendored. Present for git and unresolved kinds."}
+      - {path: "modules.<name>.resolved.tool_version", model_field: tool_version, type: string, required: false, description: "neuralspotx version that supplied a packaged module."}
+      - {path: "modules.<name>.resolved.vendored_at", model_field: vendored_at, type: string, required: true, description: "Path under the app where the module is materialized."}
+      - {path: "modules.<name>.resolved.content_hash", model_field: content_hash, type: string, required: true, description: "SHA-256 of the vendored tree. The SBOM reports this and sync verifies it."}
+      - {path: "modules.<name>.resolved.acquired_at", model_field: acquired_at, type: "string (ISO 8601)", required: true, description: "When the module was fetched."}
     example: |
       schema_version: 4
       targets:
@@ -229,6 +353,33 @@ schemas:
                 url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
                 tag: v5.2.24
                 commit: a9f4ec25a162f6f3700623feb691423bb5a51132
+                vendored_at: modules/nsx-ambiq-sdk
+                content_hash: sha256:4ca0d4e197abbb9a0165baebb6b7832d24b6fd23f1a47e424e9f5a01fbd459c6
+                acquired_at: '2026-08-04T04:01:24+00:00'
+    coverage_example: |
+      schema_version: 4
+      targets:
+        apollo510_evb:
+          generated_at: '2026-09-03T23:02:17+00:00'
+          nsx_tool:
+            version: 0.7.17
+          manifest:
+            path: nsx.yml
+            hash: sha256:1c975664f58e7a6ee643a0bc37c90d8535543812703c6d3502595cc5f9992cef
+          target:
+            board: apollo510_evb
+            soc: apollo510
+            toolchain: arm-none-eabi-gcc
+          modules:
+            nsx-ambiqsuite:
+              project: nsx-ambiq-sdk
+              kind: git
+              constraint: v5.2.24
+              resolved:
+                url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+                tag: v5.2.24
+                commit: a9f4ec25a162f6f3700623feb691423bb5a51132
+                tool_version: 0.8.1
                 vendored_at: modules/nsx-ambiq-sdk
                 content_hash: sha256:4ca0d4e197abbb9a0165baebb6b7832d24b6fd23f1a47e424e9f5a01fbd459c6
                 acquired_at: '2026-08-04T04:01:24+00:00'

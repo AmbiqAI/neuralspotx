@@ -130,14 +130,46 @@ def _annotation_names(node: Any, out: set[str]) -> None:
 
 
 def _signature_types(obj: dict[str, Any]) -> set[str]:
+    """Every identifier a reader meets in a symbol's rendered signature.
+
+    That is parameters and return types, the annotation on an attribute (a
+    dataclass field is an attribute, so this is where most of them come from)
+    and the same again for nested classes.
+    """
     names: set[str] = set()
     for parameter in obj.get("parameters") or []:
         _annotation_names(parameter.get("annotation"), names)
     _annotation_names(obj.get("returns"), names)
+    _annotation_names(obj.get("annotation"), names)
+    for base in obj.get("bases") or []:
+        _annotation_names(base, names)
     for member in (obj.get("members") or {}).values():
-        if isinstance(member, dict) and member.get("kind") in {"function", "attribute"}:
+        if isinstance(member, dict) and member.get("kind") in {"function", "attribute", "class"}:
             names |= _signature_types(member)
     return names
+
+
+def _find_definition(
+    name: str, index: dict[str, dict[str, Any]]
+) -> tuple[str, dict[str, Any]] | None:
+    """Locate a definition anywhere in the dump by its leaf name.
+
+    A type named in a public signature is usually not re-exported from the
+    package root, so probing ``neuralspotx.<name>`` alone misses it. Prefer a
+    definition in a public module, then the shallowest path, so the choice is
+    deterministic.
+    """
+    candidates = [
+        path
+        for path, obj in index.items()
+        if path.rsplit(".", 1)[-1] == name
+        and obj.get("kind") in {"class", "attribute"}
+        and obj.get("kind") != "alias"
+    ]
+    if not candidates:
+        return None
+    candidates.sort(key=lambda path: (_is_private_path(path), path.count("."), path))
+    return candidates[0], index[candidates[0]]
 
 
 def _rewrite_crossrefs(node: Any, remap: dict[str, str]) -> int:
@@ -216,13 +248,37 @@ def build(
         referenced |= _signature_types(obj)
     supporting: dict[str, str] = {}
     for name in sorted(referenced - set(public_names)):
-        resolved = _resolve(f"{PACKAGE}.{name}", index)
-        if resolved is None or resolved[1].get("kind") not in {"class", "attribute"}:
+        resolved = _resolve(f"{PACKAGE}.{name}", index) or _find_definition(name, index)
+        if resolved is None:
+            # Names from the standard library and third-party packages are not
+            # in this dump at all, which is expected; only a neuralspotx symbol
+            # that cannot be placed is a defect.
             continue
-        supporting[name] = PACKAGE
-        concrete[name] = resolved[1]
-        origins[name] = resolved[0]
-        homes[name] = PACKAGE
+        origin, obj = resolved
+        if obj.get("kind") not in {"class", "attribute"}:
+            continue
+        if not origin.startswith(f"{PACKAGE}.") and origin != PACKAGE:
+            continue
+        # Document it on the public module that defines it where there is one,
+        # otherwise on the package root alongside the errors and the emitter.
+        owner = origin.rsplit(".", 1)[0]
+        home = owner if owner in HOME_MODULES else PACKAGE
+        supporting[name] = home
+        concrete[name] = obj
+        origins[name] = origin
+        homes[name] = home
+
+    unplaced = sorted(
+        name
+        for name in referenced - set(public_names) - set(supporting)
+        if (found := _find_definition(name, index)) is not None
+        and (found[0] == PACKAGE or found[0].startswith(f"{PACKAGE}."))
+    )
+    if unplaced:
+        raise SystemExit(
+            f"prune_griffe: {PACKAGE} types named by public signatures could not be "
+            f"documented: {unplaced}"
+        )
 
     categories = {
         name: _categorize(name, concrete[name], error_names)
@@ -314,15 +370,18 @@ def main(argv: list[str] | None = None) -> int:
     }
     pruned, catalog = build(dump, list(neuralspotx.__all__), exported_by)
 
+    # Check before writing, so a leak cannot leave a bad dump on disk for the
+    # next stage to pick up.
+    leaked = [m for m in catalog["modules"] if _is_private_path(m)]
+    leaked += [s["path"] for s in catalog["symbols"] if _is_private_path(s["path"])]
+    if leaked:
+        raise SystemExit(f"prune_griffe: private paths survived pruning: {sorted(set(leaked))}")
+
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(pruned, indent=1, sort_keys=True), encoding="utf-8")
     if args.catalog:
         args.catalog.parent.mkdir(parents=True, exist_ok=True)
         args.catalog.write_text(json.dumps(catalog, indent=2, sort_keys=True), encoding="utf-8")
-
-    leaked = [m for m in catalog["modules"] if _is_private_path(m)]
-    if leaked:
-        raise SystemExit(f"prune_griffe: private modules survived pruning: {leaked}")
 
     print(
         f"prune_griffe: {len(catalog['symbols'])} public symbols across "

@@ -9,3 +9,7 @@ nsx clean
 ```
 
 Run `nsx commands --json` for the authoritative machine-readable argument schema.
+
+`--app-dir` names the app directory containing `nsx.yml`; when it is omitted NSX searches
+upward from the current directory. The positional `app` argument overrides `--app-dir` and
+is resolved under the current directory and under `examples/`.

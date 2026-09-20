@@ -10,3 +10,11 @@ nsx configure
 ```
 
 Run `nsx commands --json` for the authoritative machine-readable argument schema.
+
+`--app-dir` names the app directory containing `nsx.yml`; when it is omitted NSX searches
+upward from the current directory. The positional `app` argument overrides `--app-dir` and
+is resolved under the current directory and under `examples/`.
+
+{/* TODO(#260): link the SDK provider selection guide once it is migrated. */}
+The out-of-tree SDK escape hatch is described in full under SDK provider selection in the
+guides, in the section on `--sdk-root`.

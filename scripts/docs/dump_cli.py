@@ -39,7 +39,16 @@ def _subparsers_action(parser: argparse.ArgumentParser) -> argparse._SubParsersA
     return None
 
 
-def _format_default(value: Any) -> str | None:
+def _format_default(action: argparse.Action) -> str | None:
+    """The default worth showing a reader, or None when there is none.
+
+    ``--no-x`` stores False and therefore carries an argparse default of True.
+    That True is the value of the *other* flag in the pair, not a default for
+    this one, so showing it would tell the reader the opposite of the truth.
+    """
+    if isinstance(action, argparse._StoreFalseAction):
+        return None
+    value = action.default
     if value is None or value is False or isinstance(value, argparse.Namespace):
         return None
     if value is True:
@@ -51,27 +60,48 @@ def _format_default(value: Any) -> str | None:
     return str(value)
 
 
-def _argument(action: argparse.Action) -> dict[str, Any] | None:
+def _exclusive_groups(parser: argparse.ArgumentParser) -> dict[str, list[str]]:
+    """Map each option to the flags it is mutually exclusive with."""
+    paired: dict[str, list[str]] = {}
+    for group in parser._mutually_exclusive_groups:
+        flags = [a.option_strings[-1] for a in group._group_actions if a.option_strings]
+        for flag in flags:
+            paired[flag] = [other for other in flags if other != flag]
+    return paired
+
+
+def _argument(action: argparse.Action, exclusive: dict[str, list[str]]) -> dict[str, Any] | None:
     if isinstance(action, argparse._SubParsersAction):
         return None
     if isinstance(action, argparse._HelpAction):
         return None
     positional = not action.option_strings
+    name = action.dest if positional else action.option_strings[-1]
+    # A positional with nargs '?' or '*' may be omitted, so it is not required
+    # however much argparse's own `required` attribute says about positionals.
+    optional_positional = action.nargs in {"?", "*"}
     return {
-        "name": action.dest if positional else action.option_strings[-1],
+        "name": name,
         "flags": list(action.option_strings),
         "positional": positional,
         "metavar": action.metavar,
-        "required": bool(action.required) if not positional else True,
+        "nargs": action.nargs if action.nargs is None else str(action.nargs),
+        "required": (not optional_positional) if positional else bool(action.required),
         "repeatable": action.__class__.__name__ in {"_AppendAction", "_CountAction"}
         or action.nargs in {"*", "+"},
         "takes_value": not isinstance(
             action, (argparse._StoreTrueAction, argparse._StoreFalseAction, argparse._CountAction)
         ),
-        "default": _format_default(action.default),
+        "default": _format_default(action),
         "choices": [str(choice) for choice in action.choices] if action.choices else None,
+        "exclusive_with": exclusive.get(name) or None,
         "help": (action.help or "").strip() or None,
     }
+
+
+def _arguments(parser: argparse.ArgumentParser) -> list[dict[str, Any]]:
+    exclusive = _exclusive_groups(parser)
+    return [a for a in (_argument(x, exclusive) for x in parser._actions) if a is not None]
 
 
 def _usage(parser: argparse.ArgumentParser, path: list[str]) -> str:
@@ -88,7 +118,7 @@ def _walk(parser: argparse.ArgumentParser, path: list[str]) -> dict[str, Any]:
         "help": (getattr(parser, "_docs_help", None) or "").strip() or None,
         "description": (parser.description or "").strip() or None,
         "usage": _usage(parser, path),
-        "arguments": [a for a in (_argument(x) for x in parser._actions) if a is not None],
+        "arguments": _arguments(parser),
         "alias_of": ALIASES.get(name),
         "subcommands": [],
     }
@@ -122,7 +152,7 @@ def build() -> dict[str, Any]:
         "program": "nsx",
         "description": (parser.description or "").strip(),
         "usage": _usage(parser, []),
-        "global_arguments": [a for a in (_argument(x) for x in parser._actions) if a is not None],
+        "global_arguments": _arguments(parser),
         "aliases": dict(sorted(ALIASES.items())),
         "commands": commands,
     }

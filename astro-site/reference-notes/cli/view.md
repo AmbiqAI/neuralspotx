@@ -12,3 +12,11 @@ The viewer requires SEGGER SWO tooling in `PATH` and depends on the target being
 for SWO output. Apollo4 secure boards are validated with `nsx flash` followed by an
 attach-only `nsx view`. Apollo510 keeps the normal viewer-first `Reset` flow and does not
 require a stronger reset mode.
+
+`--app-dir` names the app directory containing `nsx.yml`; when it is omitted NSX searches
+upward from the current directory. The positional `app` argument overrides `--app-dir` and
+is resolved under the current directory and under `examples/`.
+
+{/* TODO(#260): link the SDK provider selection guide once it is migrated. */}
+The out-of-tree SDK escape hatch is described in full under SDK provider selection in the
+guides, in the section on `--sdk-root`.

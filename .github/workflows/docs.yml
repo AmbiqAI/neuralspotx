@@ -12,6 +12,7 @@ on:
     paths:
       - "astro-site/**"
       - "docs/**"
+      - "scripts/docs/**"
       - "src/neuralspotx/**"
       - ".github/workflows/docs.yml"
       - "pyproject.toml"
@@ -19,6 +20,7 @@ on:
     paths:
       - "astro-site/**"
       - "docs/**"
+      - "scripts/docs/**"
       - "src/neuralspotx/**"
       - ".github/workflows/docs.yml"
       - "pyproject.toml"
