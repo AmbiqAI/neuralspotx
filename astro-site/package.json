@@ -18,7 +18,7 @@
     "precheck": "npm run prepare:docs",
     "check": "astro check",
     "validate": "node scripts/check-output.mjs && helia-ui-check-spdx --root . && helia-ui-check-spelling --root .",
-    "clean": "node -e \"fs.rmSync('dist',{recursive:true,force:true});fs.rmSync('.astro',{recursive:true,force:true})\"",
+    "clean": "node -e \"const fs=require('node:fs');fs.rmSync('dist',{recursive:true,force:true});fs.rmSync('.astro',{recursive:true,force:true})\"",
     "smoke:pyref": "node scripts/smoke-pyref.mjs"
   },
   "dependencies": {
