@@ -17,11 +17,12 @@
     "preview": "astro preview",
     "precheck": "npm run prepare:docs",
     "check": "astro check",
-    "validate": "node scripts/check-output.mjs && node scripts/check-reference-output.mjs && helia-ui-check-spdx --root . && helia-ui-check-spelling --root .",
+    "validate": "node scripts/check-output.mjs && node scripts/check-reference-output.mjs && node scripts/check-modules-output.mjs && helia-ui-check-spdx --root . && helia-ui-check-spelling --root .",
     "clean": "node -e \"const fs=require('node:fs');fs.rmSync('dist',{recursive:true,force:true});fs.rmSync('.astro',{recursive:true,force:true})\"",
     "build:reference": "node scripts/build-reference.mjs",
     "check:reference": "node scripts/check-reference-output.mjs",
-    "build:modules": "node scripts/build-modules.mjs"
+    "build:modules": "node scripts/build-modules.mjs",
+    "check:modules": "node scripts/check-modules-output.mjs"
   },
   "dependencies": {
     "@ambiqai/helia-ui": "github:AmbiqAI/helia-ui#v0.1.0-alpha.14",
