@@ -3,7 +3,8 @@
 ## Goal
 
 Stand up `astro-site/` on Astro, Starlight and `@ambiqai/helia-ui` with the five-section
-shell and a PR-only build-and-validate workflow. No deploy, no content migration. Part of
+shell and a build-and-validate workflow that runs on pull requests, on pushes to main and
+on demand, with no deploy step. No content migration. Part of
 the migration plan in `tasks/256-docs-migration/plan.md` (parent AmbiqAI/neuralspotx#256).
 
 ## Current state
@@ -104,6 +105,6 @@ measurements behind them.
 ## Refs
 
 - Issue: AmbiqAI/neuralspotx#257. Parent: #256. Plan: `tasks/256-docs-migration/plan.md`.
-- Branch: `257-astro-docs-scaffold`. Not pushed, no PR opened.
+- Branch: `257-astro-docs-scaffold`.
 - Reference implementation: `AmbiqAI/helia-rt`, `astro-site/` on `main`.
 - helia-ui: `AmbiqAI/helia-ui` at tag `v0.1.0-alpha.14`.

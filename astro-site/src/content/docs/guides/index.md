@@ -13,6 +13,6 @@ app targets several boards. Everything NSX generates is ordinary CMake and Ninja
 pages explain the generated project rather than hiding it.
 
 :::note[This section is still being filled in]
-The user guide, the architecture concepts and the examples are being reorganised and moved
+The user guide, the architecture concepts and the examples are being reorganized and moved
 here in [#260](https://github.com/AmbiqAI/neuralspotx/issues/260).
 :::
