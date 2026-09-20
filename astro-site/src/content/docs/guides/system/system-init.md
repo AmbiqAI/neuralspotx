@@ -104,8 +104,8 @@ typedef struct {
 } nsx_system_config_t;
 ```
 
-`enable_sram` is marked in the header as reserved and not wired, so setting it does
-nothing today. `spot_mgr_profile` is documented in the header as applying to the Apollo5
+`enable_sram` is marked in the header as reserved and not wired, so setting it has no
+effect. `spot_mgr_profile` is documented in the header as applying to the Apollo5
 family only.
 
 ### Performance and debug modes

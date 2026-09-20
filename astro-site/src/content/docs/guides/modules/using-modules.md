@@ -32,9 +32,9 @@ first app.
 ## Seeing what you have
 
 ```bash
-nsx module list              # what this app depends on
-nsx module list --json       # the same, machine readable
-nsx module list --registry-only   # every module NSX knows about
+nsx module list                 # what this app depends on
+nsx module list --json          # the same, machine readable
+nsx module list --registry-only # every module NSX knows about
 ```
 
 `nsx list-modules` is an alias for the same command.
@@ -107,10 +107,9 @@ pinning behind all of this, including how to pin a module to an exact revision.
 
 ## Optional dependencies are information, not installs
 
-Module manifests can declare `depends.optional` alongside `depends.required`. NSX resolves
-required dependencies into the closure. Optional ones are metadata: they are searchable
-and shown on the module's catalog page, and they tell you what a module can work with, but
-nothing pulls them in. If you want an optional dependency in your build, add it yourself.
+Only `depends.required` is resolved. A manifest's `depends.optional` is searchable
+metadata, so a module you expected to arrive may not have. See the
+[dependency model](/neuralspotx/guides/concepts/dependency-model/).
 
 ## Where modules come from
 

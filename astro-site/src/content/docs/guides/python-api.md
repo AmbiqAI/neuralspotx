@@ -132,7 +132,7 @@ the CLI does, so your tool resolves an app the same way `nsx build` would.
 
 ## A build matrix
 
-The case the API is clearly better than shelling out:
+The case where the API is clearly better than shelling out:
 
 ```python
 from neuralspotx import NSXError, build_app, configure_app

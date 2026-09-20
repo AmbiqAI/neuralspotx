@@ -18,7 +18,7 @@ Unsupported NSX_SDK_PROVIDER='zephyr' (expected 'ambiqsuite').
 Modules declare which provider they need through
 `constraints.required_sdk_provider`, and an app's closure is rejected if it ends up with
 more than one provider module. That constraint exists so that the model has room for
-another provider, not because there is a second one to pick from today.
+another provider, not because there is a second one to pick from.
 
 ## You do not choose it, the board does
 

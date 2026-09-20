@@ -1,6 +1,6 @@
 # hello_world
 
-Minimal **nsx** application. Initialises the runtime core and prints a
+Minimal **nsx** application. Initializes the runtime core and prints a
 message to SWO in a loop.
 
 This is the recommended starting point for new users — it validates that

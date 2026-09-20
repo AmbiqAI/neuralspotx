@@ -27,7 +27,7 @@ they appear on the module's catalog page, and they tell you what a module is des
 work alongside. Nothing installs them.
 
 This is worth knowing because a module can look like it should have pulled something in
-and not have done. If you want an optional dependency, declare it yourself.
+and not pulled it in. If you want an optional dependency, declare it yourself.
 
 ## The closure lives only in the lock
 
@@ -62,7 +62,7 @@ link time:
 - **No cycles.** `Dependency cycle detected at module '<name>'`. Break it by moving the
   shared piece into a third module.
 - **At most one SDK provider.** A module can require a specific one through
-  `constraints.required_sdk_provider`; two providers in one closure is a conflict. See
+  `constraints.required_sdk_provider`; a closure with two providers is a conflict. See
   [SDK providers](/neuralspotx/guides/modules/sdk-providers/).
 - **A board module depends on exactly one SoC module.** A board that claims two SoCs is
   not a board.

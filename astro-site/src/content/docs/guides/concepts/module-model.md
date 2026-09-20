@@ -7,7 +7,7 @@ A module is two things: a manifest that describes it and a CMake surface that bu
 There is no plugin API, no registration call and no NSX-specific build language. A
 directory with an `nsx-module.yaml` and a `CMakeLists.txt` is a module.
 
-That is deliberately low. It means a module you write for your own hardware is the same
+That bar is deliberately low. It means a module you write for your own hardware is the same
 kind of object as the ones NSX ships, resolved the same way and subject to the same
 checks.
 

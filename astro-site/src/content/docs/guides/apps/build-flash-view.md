@@ -39,9 +39,8 @@ is enough. It drives Ninja through CMake and leaves the linked image, the `.bin`
 `.map` in `build/<board>/`.
 
 `--jobs`, `--target` and `--update` are accepted by both `build` and `flash`. `--jobs`
-sets the parallelism, `--update` re-resolves constraints to upstream tip and re-vendors
-first, and `--target` selects a CMake target to build and an executable to flash
-respectively.
+sets the parallelism. `--target` selects a CMake target to build, or an executable to
+flash. `--update` re-resolves constraints to upstream tip and re-vendors first.
 
 :::caution[`--sdk-root` and `--frozen` are mutually exclusive]
 `--sdk-root` points the build at an SDK tree on your machine instead of the vendored one.
@@ -91,7 +90,7 @@ after the reset before reading, and defaults to 400.
 
 `--capture <path>` writes the stream to a file as well as the terminal, and `--duration
 <seconds>` stops the viewer after a fixed time. Together they are what you want in a
-script or a CI job, where nothing is there to press Ctrl-C.
+script or a CI job, where no one is there to press Ctrl-C.
 
 ## Reset
 

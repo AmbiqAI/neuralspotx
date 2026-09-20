@@ -44,7 +44,7 @@ const TIER_LABEL = {
  * British spelling in a README fails `npm run validate` until it is added
  * here, which is the point: nobody's prose changes silently.
  */
-const QUOTED_TERMS = ['Initialises']; // spelling: allow
+const QUOTED_TERMS = [];
 const QUOTED_MARKER = ' <!-- spelling: allow -->';
 
 const fail = (message) => {
@@ -151,7 +151,7 @@ description: ${yamlString(ex.summary)}
 
 ${ex.summary}
 
-| Declared by the example author | |
+| Declared by the example author | Value |
 | --- | --- |
 | Tier | ${TIER_LABEL[ex.tier]} |
 | Status | \`${ex.status}\` |
@@ -206,10 +206,10 @@ Several declare more than one target, so \`--board\` picks which one you are bui
 ${rows}
 
 Every column in that table comes from the example's own front matter. **Tier** is the
-reading order: \`Basics\` first, then a single \`Capabilities\` at a time, then
+reading order: \`Basics\` first, then \`Capabilities\` one at a time, then
 \`Integrations\` that compose several. **Status** and **Boards tested** are the author's
-declaration of what they ran and where, not a test record this site holds, so treat an
-empty boards column as "not stated" rather than as "does not work".
+declaration of what they ran and where, not a test record this site holds, so treat a
+"none declared" boards column as "not stated" rather than as "does not work".
 
 ## Where to start
 

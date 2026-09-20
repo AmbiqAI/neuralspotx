@@ -33,7 +33,7 @@ The macros are the portable spelling of a section attribute. Six are defined:
 | Macro | What it selects |
 | --- | --- |
 | `NSX_MEM_NVM` | Non-volatile memory. Where `const` data goes already. |
-| `NSX_MEM_FAST` | The fast default for initialized data, which is tightly coupled memory on every current SoC. |
+| `NSX_MEM_FAST` | The fast default for initialized data, which is tightly coupled memory on every SoC NSX packages a board for. |
 | `NSX_MEM_FAST_BSS` | The zero-initialized equivalent. |
 | `NSX_MEM_SRAM` | Initialized data in shared SRAM. |
 | `NSX_MEM_SRAM_BSS` | Zero-initialized data in shared SRAM. |
@@ -43,8 +43,8 @@ Use `NSX_MEM_SRAM_BSS` rather than `NSX_MEM_SRAM` for anything large and zero-in
 Initialized data has to be copied out of NVM at startup, so a 16 KB initialized array
 costs you 16 KB of NVM and the time to copy it, for a buffer you were going to overwrite.
 
-`NSX_SRAM_BSS` and `NS_PUT_IN_TCM` are legacy spellings kept for compatibility. New code
-should use the `NSX_MEM_` names.
+`NSX_SRAM_BSS` and `NS_PUT_IN_TCM` are older spellings kept for compatibility; prefer the
+`NSX_MEM_` names.
 
 ### What they expand to
 

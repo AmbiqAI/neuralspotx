@@ -40,8 +40,8 @@ Changing what the app is made of, and pinning it so it stays that way.
 - [SDK providers](/neuralspotx/guides/modules/sdk-providers/) - where the AmbiqSuite
   payload comes from and how to build against your own.
 
-The [module catalog](/neuralspotx/modules/) is the generated list of every module NSX
-pins, with a page each.
+The [module catalog](/neuralspotx/modules/catalog/) is the generated list of every module
+NSX pins, with a page each.
 
 ## System
 
@@ -60,7 +60,7 @@ The layer between your `main()` and the silicon.
 
 Why NSX behaves the way it does, for when something surprises you.
 
-- [Overview](/neuralspotx/guides/concepts/) - the five ideas, in one page.
+- [Concepts overview](/neuralspotx/guides/concepts/) - the five ideas, in one page.
 - [App generation flow](/neuralspotx/guides/concepts/app-generation-flow/)
 - [Dependency model](/neuralspotx/guides/concepts/dependency-model/)
 - [Module model](/neuralspotx/guides/concepts/module-model/)

@@ -116,7 +116,7 @@ so anyone cloning the app gets the fork too. `--project-local-path` vendors from
 filesystem path instead of a git URL, and `--dry-run` shows the manifest change without
 writing it.
 
-:::caution[An override is invisible in the catalog]
+:::caution[Overrides are invisible to the catalog]
 The [module catalog](/neuralspotx/modules/catalog/) shows what NSX pins, not what your app
 overrides. Once you override a module, `nsx module describe <name>` run inside the app is
 the accurate source, not the catalog page.

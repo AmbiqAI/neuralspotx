@@ -48,7 +48,7 @@ and `nsx sync`, or `nsx configure`, with the modules you want declared.
 
 One directory per module in the resolved graph, each one a real source tree at the commit
 `nsx.lock` pins. After a default bootstrap on an Apollo510 EVB that is `nsx-ambiq-sdk` and
-`nsx-pmu-armv8m`; after a `nsx configure` it is the full closure, which is larger.
+`nsx-pmu-armv8m`; after an `nsx configure` it is the full closure, which is larger.
 
 Do not edit a vendored module in place. `nsx sync` compares each directory against the
 content hash in `nsx.lock` and restores anything that has drifted. If you need to change a

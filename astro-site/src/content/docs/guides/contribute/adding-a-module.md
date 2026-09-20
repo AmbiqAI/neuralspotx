@@ -30,8 +30,8 @@ you are no longer the only reader.
 
 **Keep compatibility explicit.** `compatibility.boards`, `compatibility.socs` and
 `compatibility.toolchains` are enforced at resolution, so they are load bearing. Declaring
-`*` for all three passes every check and tells nobody anything, and it makes your catalog
-page actively misleading.
+`*` for all three passes every check while saying nothing, and it makes your catalog page
+actively misleading.
 
 **Keep the dependency closure clean.** Every entry in `depends.required` is vendored into
 every app that uses you. Depend on what you need to compile and link, and nothing else.

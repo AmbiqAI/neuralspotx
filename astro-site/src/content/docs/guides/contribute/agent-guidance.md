@@ -8,21 +8,10 @@ working on an NSX app, or on NSX itself, should know before it starts writing.
 
 ## Read structured output, not help text
 
-Three surfaces are machine readable and stable enough to build on:
-
-- `nsx commands --json` returns the whole command tree: every command and subcommand,
-  which are aliases, and each one's options with flags, defaults and help strings. It
-  replaces walking `--help`.
-- `nsx doctor --json` returns `{ok, checks[], notes}`, each check carrying `label`, `ok`,
-  `required`, `detail` and `hint`. Enough to decide whether a build can be attempted.
-- The module catalog is published as data at
-  [`/neuralspotx/modules/catalog.json`](/neuralspotx/modules/catalog.json), and
-  `nsx module list`, `nsx module describe`, `nsx module validate` and `nsx outdated` all
-  take `--json`.
-
-For anything beyond inspection, import the Python API rather than shelling out: you get
-typed results and a single `NSXError` hierarchy instead of exit codes and prose. See the
-[Python API guide](/neuralspotx/guides/python-api/).
+Never parse help text: the command tree, the environment report and the module catalog
+are all available as JSON, and anything beyond inspection is better done by importing the
+Python API than by shelling out. The
+[Python API guide](/neuralspotx/guides/python-api/) lists the surfaces and their shapes.
 
 ## Find modules by what they do
 
@@ -48,7 +37,7 @@ Changing a module means changing the module, not its vendored copy. See
 ## Change intent, then re-resolve
 
 The order matters, because the lock is generated from the manifest and not the other way
-round:
+around:
 
 1. Edit `nsx.yml`, or use `nsx module add` and `nsx module remove`, which edit it for you.
 2. Run `nsx lock` to re-resolve, or let `nsx configure` do it.

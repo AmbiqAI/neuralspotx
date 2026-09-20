@@ -209,7 +209,7 @@ colon.
 
 ## Still stuck
 
-- `nsx -v` repeats to increase verbosity, which shows the subprocesses NSX runs.
+- `-v` can be repeated to increase verbosity, which shows the subprocesses NSX runs.
 - The generated tree is ordinary CMake and Ninja, so `ninja -C build/<board> -v` shows the
   exact compiler command lines.
 - `nsx doctor --json` and `nsx commands --json` give machine-readable state if you are
