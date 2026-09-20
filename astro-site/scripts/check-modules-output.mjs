@@ -46,6 +46,11 @@ const FORBIDDEN = [
   'proven on',
 ];
 
+// The element the generator wraps the static table in, and the island filters
+// through. Scoping the row scan to it is what makes the row count a count of
+// rows rather than of links that happen to point at a module.
+const CATALOG_TABLE_ID = 'module-catalog';
+
 const errors = [];
 const warnings = [];
 
@@ -69,6 +74,18 @@ function visibleText(html) {
     .replace(/<style\b[^>]*>[\s\S]*?<\/style>/gi, ' ')
     .replace(/<[^>]+>/g, ' ')
     .replace(/\s+/g, ' ');
+}
+
+/** The body rows of the catalog's static table, in document order. */
+function catalogRows(html) {
+  const anchor = html.indexOf(`id="${CATALOG_TABLE_ID}"`);
+  if (anchor === -1) return [];
+  const open = html.indexOf('<tbody', anchor);
+  const close = html.indexOf('</tbody>', open);
+  if (open === -1 || close === -1) return [];
+  return [...html.slice(open, close).matchAll(/<tr\b[^>]*>[\s\S]*?<\/tr>/g)].map(
+    (match) => match[0],
+  );
 }
 
 function measure(route) {
@@ -111,10 +128,23 @@ function main() {
   const boardsPage = readPage(report.routes.boards);
 
   // Every module: a page, a catalog row, and a way back to the catalog. The
-  // row is looked for in the built HTML rather than in the generator's output,
-  // because the point is what the reader receives.
+  // rows are read out of the built HTML rather than the generator's output,
+  // because the point is what the reader receives, and only out of the table
+  // the island filters: a link in the sidebar or in a paragraph is not a row,
+  // and counting those would let the table shrink unnoticed.
+  const rows = catalog === null ? [] : catalogRows(catalog);
+  if (catalog !== null && rows.length === 0) {
+    fail(`the catalog page carries no static table under id="${CATALOG_TABLE_ID}"`);
+  }
+  if (catalog !== null && rows.length !== snapshot.modules.length) {
+    fail(
+      `the catalog's static table has ${rows.length} rows for ${snapshot.modules.length} ` +
+        'modules; the rows must be in the HTML, one per module, not built by the island',
+    );
+  }
+
   const catalogLinks = new Set(
-    [...(catalog ?? '').matchAll(/href="[^"]*\/modules\/([a-z0-9][a-z0-9-]*)\/"/g)].map(
+    [...rows.join('').matchAll(/href="[^"]*\/modules\/([a-z0-9][a-z0-9-]*)\/"/g)].map(
       (match) => match[1],
     ),
   );
@@ -130,18 +160,6 @@ function main() {
     }
     if (!visibleText(html).includes(`nsx module add ${module.name}`)) {
       fail(`${route} does not show the command that adds the module`);
-    }
-  }
-
-  // The static table has to be in the HTML, not assembled by the island: a row
-  // per module, rendered as a table row.
-  if (catalog !== null) {
-    const rows = (catalog.match(/<tr>/g) ?? []).length;
-    if (rows < snapshot.modules.length) {
-      fail(
-        `the catalog's static table has ${rows} rows for ${snapshot.modules.length} modules; ` +
-          'the rows must be in the HTML, not built by the island',
-      );
     }
   }
 
