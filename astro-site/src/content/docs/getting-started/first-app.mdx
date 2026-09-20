@@ -4,25 +4,14 @@ description: Scaffold an NSX app for an Apollo510 EVB with nsx create-app, and r
 ---
 
 import AsciiTerminal from '@ambiqai/helia-ui/astro/AsciiTerminal';
-
-export const createRun = [
-  { kind: 'command', text: 'nsx create-app hello_ap510 --board apollo510_evb' },
-  { kind: 'success', text: "Created app 'hello_ap510' at: /home/you/hello_ap510" },
-  { kind: 'output', text: 'Next steps:' },
-  { kind: 'output', text: '  1) cd /home/you/hello_ap510' },
-  { kind: 'output', text: '  2) Run `nsx configure --app-dir .`' },
-  { kind: 'output', text: '  3) Run `nsx build --app-dir .`, `nsx flash --app-dir .`, or `nsx view --app-dir .`' },
-  { kind: 'output', text: "Cloning into '/home/you/hello_ap510/modules/nsx-ambiq-sdk'..." },
-  { kind: 'warning', text: 'warning: refs/tags/v5.2.24 ebd898cfd1454e4139f7e56bb0ee1efca4ab25be is not a commit!' },
-  { kind: 'output', text: "Cloning into '/home/you/hello_ap510/modules/nsx-pmu-armv8m'..." },
-];
+import transcripts from '../../../data/transcripts/first-app.json';
 
 `nsx create-app` writes a standalone app directory and, unless you tell it not to, clones
 the starter modules that board needs into it. Nothing else on your machine changes.
 
 <AsciiTerminal
   title="nsx create-app"
-  lines={createRun}
+  lines={transcripts.createRun}
   animated
   copy
 />
@@ -70,7 +59,7 @@ hello_ap510/
 There is no `nsx.lock` and no `build/` yet. Both appear when you run
 [`nsx configure`](/neuralspotx/getting-started/configure-and-build/).
 
-The generated `src/main.c` is a one second SWO heartbeat:
+The generated `src/main.c` is a one-second SWO heartbeat:
 
 ```c
 #include "nsx_core.h"

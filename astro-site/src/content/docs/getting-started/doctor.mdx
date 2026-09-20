@@ -4,26 +4,7 @@ description: What nsx doctor checks, how to read a passing and a failing report,
 ---
 
 import AsciiTerminal from '@ambiqai/helia-ui/astro/AsciiTerminal';
-
-export const failing = [
-  { kind: 'command', text: 'nsx doctor' },
-  { kind: 'success', text: '[OK] Python' },
-  { kind: 'success', text: '[OK] uv' },
-  { kind: 'success', text: '[OK] cmake' },
-  { kind: 'success', text: '[OK] ninja' },
-  { kind: 'success', text: '[OK] git' },
-  { kind: 'success', text: '[OK] Board registry' },
-  { kind: 'error', text: '[FAIL] arm-none-eabi-gcc' },
-  { kind: 'output', text: '  Hint: Install the Arm GNU toolchain and ensure it is in PATH.' },
-  { kind: 'muted', text: '  (armclang toolchain not detected — optional)' },
-  { kind: 'muted', text: '  (ATfE toolchain not detected — set ATFE_ROOT to enable; optional)' },
-  { kind: 'success', text: '[OK] SEGGER J-Link' },
-  { kind: 'error', text: '[FAIL] SEGGER JLinkSWOViewerCL' },
-  { kind: 'output', text: '  Hint: Install the SEGGER J-Link package and ensure JLinkSWOViewerCL is in PATH.' },
-  { kind: 'success', text: '[OK] SEGGER J-Link runtime' },
-  { kind: 'output', text: 'Next: install or fix the failing tool above, then re-run `nsx doctor`.' },
-  { kind: 'error', text: 'error: One or more required tools are missing or misconfigured.' },
-];
+import transcripts from '../../../data/transcripts/doctor.json';
 
 `nsx doctor` is the one command that looks at your machine rather than at an app. It does
 not need a board, an app directory or a network connection. Run it after installing, and
@@ -65,7 +46,7 @@ hint naming what to install.
 
 <AsciiTerminal
   title="nsx doctor"
-  lines={failing}
+  lines={transcripts.failing}
   animated
   copy
 />
@@ -79,9 +60,10 @@ Two things worth knowing from that output:
 - The optional toolchain notes are not failures. A host with only GCC is a supported host.
 - The SEGGER checks fail on any machine without the J-Link pack. If you do not have a
   board yet, that is expected and you can still work through
-  [create](/neuralspotx/getting-started/first-app/) and
-  [configure and build](/neuralspotx/getting-started/configure-and-build/). Install the
-  pack before you reach [flash and view](/neuralspotx/getting-started/flash-and-view/).
+  [Create your first app](/neuralspotx/getting-started/first-app/) and
+  [Configure and build](/neuralspotx/getting-started/configure-and-build/). Install the
+  pack before you reach
+  [Flash, reset and view](/neuralspotx/getting-started/flash-and-view/).
 
 ## Machine-readable output
 

@@ -108,13 +108,13 @@ Two things for Adam, neither a docs change:
 
 ## P2 PR1 (#260) Getting started: done, verified locally
 
-Branch `260-getting-started`, stacked on `259-module-catalog`, not pushed. Nine pages
+Branch `260-getting-started`, stacked on `259-module-catalog`, not pushed. Eleven pages
 under `astro-site/src/content/docs/getting-started/`, the sidebar wired in
 `astro.config.mjs`, and the placeholder note deleted. Every command was run against the
 current CLI on macOS with no board attached; `create-app`, `configure` and `build`
 succeeded end to end and their transcripts are captured runs. Flash, reset, view and
-probes need hardware, so those pages describe the expected output and carry `TODO(#260)`
-markers where a captured transcript goes. Source-to-page mapping, the validation runs and
+probes need hardware, so those pages describe the expected output and `flash-and-view.mdx`
+carries a `:::caution` saying so. Source-to-page mapping, the validation runs and
 the nine current-doc claims that turned out to be wrong are in
 `tasks/256-docs-migration/p2-pr1-notes.md`; upstream drafts in
 `tasks/256-docs-migration/helia-ui-gaps-260.md`.

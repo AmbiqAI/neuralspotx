@@ -1,0 +1,72 @@
+{
+  "failing": [
+    {
+      "kind": "command",
+      "text": "nsx doctor"
+    },
+    {
+      "kind": "success",
+      "text": "[OK] Python"
+    },
+    {
+      "kind": "success",
+      "text": "[OK] uv"
+    },
+    {
+      "kind": "success",
+      "text": "[OK] cmake"
+    },
+    {
+      "kind": "success",
+      "text": "[OK] ninja"
+    },
+    {
+      "kind": "success",
+      "text": "[OK] git"
+    },
+    {
+      "kind": "success",
+      "text": "[OK] Board registry"
+    },
+    {
+      "kind": "error",
+      "text": "[FAIL] arm-none-eabi-gcc"
+    },
+    {
+      "kind": "output",
+      "text": "  Hint: Install the Arm GNU toolchain and ensure it is in PATH."
+    },
+    {
+      "kind": "muted",
+      "text": "  (armclang toolchain not detected — optional)"
+    },
+    {
+      "kind": "muted",
+      "text": "  (ATfE toolchain not detected — set ATFE_ROOT to enable; optional)"
+    },
+    {
+      "kind": "success",
+      "text": "[OK] SEGGER J-Link"
+    },
+    {
+      "kind": "error",
+      "text": "[FAIL] SEGGER JLinkSWOViewerCL"
+    },
+    {
+      "kind": "output",
+      "text": "  Hint: Install the SEGGER J-Link package and ensure JLinkSWOViewerCL is in PATH."
+    },
+    {
+      "kind": "success",
+      "text": "[OK] SEGGER J-Link runtime"
+    },
+    {
+      "kind": "output",
+      "text": "Next: install or fix the failing tool above, then re-run `nsx doctor`."
+    },
+    {
+      "kind": "error",
+      "text": "error: One or more required tools are missing or misconfigured."
+    }
+  ]
+}

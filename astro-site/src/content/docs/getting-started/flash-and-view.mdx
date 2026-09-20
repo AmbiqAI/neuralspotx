@@ -4,11 +4,7 @@ description: Find your J-Link probe, program the board with nsx flash, stream SW
 ---
 
 import AsciiTerminal from '@ambiqai/helia-ui/astro/AsciiTerminal';
-
-export const probesNone = [
-  { kind: 'command', text: 'nsx probes' },
-  { kind: 'output', text: 'No J-Link probes found.' },
-];
+import transcripts from '../../../data/transcripts/flash-and-view.json';
 
 This is the first page in the section that needs hardware: a board with a SEGGER J-Link,
 which on many Ambiq EVBs is onboard rather than a separate probe. It also needs the
@@ -34,7 +30,7 @@ nothing attached it says so and still exits successfully:
 
 <AsciiTerminal
   title="nsx probes"
-  lines={probesNone}
+  lines={transcripts.probesNone}
   animated
   copy
 />

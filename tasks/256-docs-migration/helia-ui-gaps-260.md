@@ -115,3 +115,55 @@ list and Starlight's component.
 **Suggested shape.** Worth a question before an issue: is a numbered-step part wanted, or
 is "use headings so every step is linkable" the house style? If the latter, say so in the
 package's authoring guidance and this draft goes away.
+
+---
+
+## Draft 5: the Markdown rendition emits `export const` bodies and drops LinkCard content
+
+**Title:** Markdown rendition: `export const` bodies leak as prose, and attribute-only
+components render as nothing
+
+**What happened.** Two separate defects in the same pass, both found by reading the
+published `.md` renditions of the Getting started pages rather than the HTML.
+
+1. **`export const` leaks its body.** `stripEsm` in `starlight/discoverability.ts:219-241`
+   drops a line when it matches `/^\s*export\s+(?:const|let|default|function)\s/`. That
+   matches the first line of the statement and nothing else, so a multi-line
+   `export const lines = [ ... ];` loses its opening line and publishes the remaining
+   twenty as body text. Five pages were affected. The worst,
+   `dist/getting-started/install/index.md`, opened with eighty lines of JavaScript object
+   literals, a `//` comment among them, before the first sentence of prose.
+   The multi-line `import { a, b } from '...'` form is handled by the `open` flag a few
+   lines above, so the machinery for a multi-line statement already exists; `export const`
+   just does not use it.
+
+2. **An attribute-only component renders as nothing.** `reduceTags`
+   (`starlight/discoverability.ts:296-322`) strips tags and keeps their children. That is
+   right for a component whose content is in its slot, and wrong for one whose content is
+   in its props. `<LinkCard title="Install" href="/..." >description</LinkCard>` reaches a
+   reader as a bare description with no title and no link, so a section index becomes a
+   list of orphan sentences. `dist/getting-started/index.md` lost all six of its
+   navigation links this way, which is the one thing an index page exists to carry.
+
+The parent gap-analysis issue already warns that a source-based MDX strip will misread
+some authoring shapes. These are two concrete cases of that warning, and the second one
+silently loses information rather than adding noise, which makes it the more serious of
+the two.
+
+**What the pages do instead.** Transcript arrays moved into
+`astro-site/src/data/transcripts/*.json` and are imported, because a single-line `import`
+is stripped cleanly. The Getting started index dropped its `CardGrid` of `LinkCard`s for
+an ordinary numbered list of Markdown links. Both are downgrades in authoring terms: the
+data no longer sits next to the component that consumes it, and the index no longer uses
+the package's cards.
+
+**Why it matters.** The rendition is the artifact agents read, and #261 will build the
+llms bundle from the same pass. A bundle that carries JavaScript literals as prose and
+drops every card's link is worse than no bundle, because it reads as authoritative.
+
+**Suggested shape.** For the first defect, reuse the existing multi-line handling: track
+brace and bracket depth from the `export const` line and drop through the closing
+`];` or `};`. For the second, give `reduceTags` a small map of prop-to-markdown rules for
+the package's own link-bearing parts, so `LinkCard`, `Card` and `Button` emit
+`[title](href)` plus their children. A generic fallback of "if a stripped tag had an
+`href` and a `title`, emit a link" would cover most of it without a per-component table.

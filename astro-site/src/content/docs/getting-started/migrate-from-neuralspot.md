@@ -68,7 +68,7 @@ Status meanings:
 | `ns-spi` | Migrated | [`nsx-spi`](/neuralspotx/modules/nsx-spi/) | SPI wrapper support. |
 | `ns-uart` | Migrated | [`nsx-uart`](/neuralspotx/modules/nsx-uart/) | UART wrapper support. |
 | `ns-features` | Future | none | The quaternion and Euler feature-extraction helpers have not been ported. |
-| `ns-peripherals` | Migrated | `nsx-power`, `nsx-psram`, board button facts on `nsx-gpio` | The mixed legacy bucket was retired into focused surfaces rather than kept under one name. |
+| `ns-peripherals` | Migrated | `nsx-power`, `nsx-psram`, board button definitions in `nsx-gpio` | The mixed legacy bucket was retired into focused surfaces rather than kept under one name. |
 | `ns-utils` | Split | `nsx-core`, `nsx-perf`, `nsx-pmu-armv8m`, `nsx-power` | The portable helpers (`nsx_printf`, `nsx_delay_us`, interrupt enable and disable) live directly in `nsx-core`. |
 | `ns-ble` | Migrated | [`nsx-ble`](/neuralspotx/modules/nsx-ble/) with [`nsx-cordio`](/neuralspotx/modules/nsx-cordio/) | An early baseline: one service and one connection, no out-of-band pairing. The `ble_webble` example exercises it across the CI build matrix. |
 | `ns-usb` | Migrated | [`nsx-usb`](/neuralspotx/modules/nsx-usb/) | USB CDC serial on TinyUSB. |
@@ -99,10 +99,11 @@ Before porting a legacy module, ask:
 4. Is it better as an optional module than as a baseline dependency?
 5. Does it fit the NSX module model cleanly?
 
-Mostly yes means it is a good candidate.
+A module that answers yes to most of these is a good candidate.
 
 ## Where NSX already replaces the legacy core
 
-Board bring-up, smoke tests, the build and flash and view workflow, common peripheral
-access, and profiling and PMU instrumentation. Chasing broad legacy parity for its own
-sake is not the goal; simplifying the old module boundaries as they move is.
+NSX already covers board bring-up, smoke tests, the build, flash and view workflow,
+common peripheral access, and profiling and PMU instrumentation. Chasing broad legacy
+parity for its own sake is not the goal; simplifying the old module boundaries as they
+move is.

@@ -3,9 +3,6 @@ title: Getting started
 description: What NSX does, what your machine needs before you install it, and the order to work through the rest of this section.
 ---
 
-import CardGrid from '@ambiqai/helia-ui/astro/CardGrid';
-import LinkCard from '@ambiqai/helia-ui/astro/LinkCard';
-
 NSX is a command line tool for bare-metal Ambiq apps. You install it once on your machine
 and then use it per app: it scaffolds a project against a real board, resolves and vendors
 the modules that board needs, generates an ordinary CMake and Ninja tree, builds the
@@ -58,28 +55,20 @@ packaged example, so you do not need either to get started.
 
 ## Work through it in this order
 
-<CardGrid columns={2} equalize>
-  <LinkCard title="Install" titleAs="h3" eyebrow="Step 1" href="/neuralspotx/getting-started/install/" lift>
-    Host tools, the Arm toolchain, the J-Link pack and the `nsx` CLI, with the commands
-    for macOS, Linux and Windows side by side.
-  </LinkCard>
-  <LinkCard title="Check your environment" titleAs="h3" eyebrow="Step 2" href="/neuralspotx/getting-started/doctor/" lift>
-    Run `nsx doctor` and read its report, including what a failing check looks like and
-    which failures you can ignore until you have hardware.
-  </LinkCard>
-  <LinkCard title="Create your first app" titleAs="h3" eyebrow="Step 3" href="/neuralspotx/getting-started/first-app/" lift>
-    Scaffold an app for an Apollo510 EVB and read what `nsx create-app` actually wrote.
-  </LinkCard>
-  <LinkCard title="Configure and build" titleAs="h3" eyebrow="Step 4" href="/neuralspotx/getting-started/configure-and-build/" lift>
-    Resolve the module graph, generate the CMake tree and link an image. No board needed.
-  </LinkCard>
-  <LinkCard title="Flash, reset and view" titleAs="h3" eyebrow="Step 5" href="/neuralspotx/getting-started/flash-and-view/" lift>
-    Find your probe, program the board and stream SWO output back from the firmware.
-  </LinkCard>
-  <LinkCard title="Next steps" titleAs="h3" eyebrow="Then" href="/neuralspotx/getting-started/next-steps/" lift>
-    Where to go once your first app runs: guides, the module catalog and the reference.
-  </LinkCard>
-</CardGrid>
+1. **[Install](/neuralspotx/getting-started/install/)** puts the host tools, the Arm
+   toolchain, the J-Link pack and the `nsx` CLI on your machine, with the commands for
+   macOS, Linux and Windows side by side.
+2. **[Check your environment](/neuralspotx/getting-started/doctor/)** runs `nsx doctor` and
+   explains its report, including what a failing check looks like and which failures you
+   can ignore until you have hardware.
+3. **[Create your first app](/neuralspotx/getting-started/first-app/)** scaffolds an app
+   for an Apollo510 EVB and reads back what `nsx create-app` actually wrote.
+4. **[Configure and build](/neuralspotx/getting-started/configure-and-build/)** resolves
+   the module graph, generates the CMake tree and links an image. No board needed.
+5. **[Flash, reset and view](/neuralspotx/getting-started/flash-and-view/)** finds your
+   probe, programs the board and streams SWO output back from the firmware.
+6. **[Next steps](/neuralspotx/getting-started/next-steps/)** points at the guides, the
+   module catalog and the reference once your first app runs.
 
 Coming from legacy neuralSPOT? Read
 [Migrating from neuralSPOT](/neuralspotx/getting-started/migrate-from-neuralspot/) for how
@@ -91,6 +80,7 @@ One placeholder runs through this section:
 
 - `<app-dir>` is the directory of a generated or example app, whichever path you passed to
   `nsx create-app` or checked out.
+- `<board>` is the board id from `nsx.yml`, for example `apollo510_evb`.
 
 Command examples assume you are inside the app directory. NSX finds the nearest `nsx.yml`
 by walking up from the working directory, so `--app-dir` is only needed when you want to

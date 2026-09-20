@@ -17,7 +17,7 @@ pipx install neuralspotx
 nsx doctor
 ```
 
-:::caution[Not yet run end to end on Windows]
+:::caution[Windows steps are unverified]
 Every command in this section was executed on macOS. The Windows steps are carried over
 from the previous documentation and have not been re-run on a Windows host, so treat the
 winget package identifiers and the installer wording as unverified for now.

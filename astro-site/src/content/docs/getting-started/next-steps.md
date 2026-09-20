@@ -45,8 +45,8 @@ combination has been run on hardware.
 
 Everything the CLI does is available as a Python API, which is how you script a build
 matrix or wire NSX into another tool. See the
-[Python API reference](/neuralspotx/reference/api/). Every public symbol is currently
-marked provisional, so pin your NSX version if you depend on it.
+[Python API reference](/neuralspotx/reference/api/). Every public symbol is marked
+provisional, so pin your NSX version if you depend on it.
 
 For agents and scripts that would rather not parse help text,
 [`nsx commands --json`](/neuralspotx/reference/cli/commands/) returns the whole command

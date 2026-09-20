@@ -4,30 +4,7 @@ description: Resolve the module graph, generate the CMake tree and link a firmwa
 ---
 
 import AsciiTerminal from '@ambiqai/helia-ui/astro/AsciiTerminal';
-
-export const configureRun = [
-  { kind: 'command', text: 'nsx configure' },
-  { kind: 'output', text: 'All modules already match nsx.lock.' },
-  { kind: 'output', text: '-- The C compiler identification is GNU 15.2.1' },
-  { kind: 'output', text: '-- The CXX compiler identification is GNU 15.2.1' },
-  { kind: 'output', text: '-- The ASM compiler identification is GNU' },
-  { kind: 'muted', text: '-- (compiler ABI and feature detection, 12 lines)' },
-  { kind: 'output', text: '-- Configuring done (0.3s)' },
-  { kind: 'output', text: '-- Generating done (0.0s)' },
-  { kind: 'output', text: '-- Build files have been written to: /home/you/hello_ap510/build/apollo510_evb' },
-  { kind: 'success', text: 'Configured app at: /home/you/hello_ap510' },
-  { kind: 'output', text: 'Build directory: /home/you/hello_ap510/build/apollo510_evb' },
-];
-
-export const buildRun = [
-  { kind: 'command', text: 'nsx build' },
-  { kind: 'output', text: '[1/24] Building C object _nsx/nsx_core/CMakeFiles/nsx_system.dir/src/nsx_retarget.c.obj' },
-  { kind: 'output', text: '[2/24] Building C object _nsx/nsx_core/CMakeFiles/nsx_core_lifecycle.dir/src/nsx_core_lifecycle.c.obj' },
-  { kind: 'muted', text: '[..] (20 more compile and archive steps)' },
-  { kind: 'output', text: '[23/24] Linking C executable hello_ap510; Generating hello_ap510.bin; Printing image size' },
-  { kind: 'output', text: '   text    data     bss     dec     hex filename' },
-  { kind: 'output', text: '  19080     592  507312  526984   80a88 build/apollo510_evb/hello_ap510' },
-];
+import transcripts from '../../../data/transcripts/configure-and-build.json';
 
 Neither of these commands needs a board. Run them from inside the app directory: NSX walks
 up from your working directory to the nearest `nsx.yml`, so `--app-dir` is only needed when
@@ -47,7 +24,7 @@ cloning anything missing. Then it runs CMake to generate a Ninja build tree unde
 
 <AsciiTerminal
   title="nsx configure"
-  lines={configureRun}
+  lines={transcripts.configureRun}
   animated
   copy
 />
@@ -80,14 +57,14 @@ nsx build
 
 <AsciiTerminal
   title="nsx build"
-  lines={buildRun}
+  lines={transcripts.buildRun}
   animated
   copy
 />
 
 Same host and app as above, with the middle of the Ninja log collapsed and the artifact
-path shortened. The section sizes are from that one build; yours will differ as soon as
-the app does.
+path shortened. Ninja numbers the link step 23 of 24 and prints nothing for the last one.
+The section sizes are from that one build; yours will differ as soon as the app does.
 
 The artifacts land in `build/apollo510_evb/`:
 

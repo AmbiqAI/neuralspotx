@@ -1,0 +1,12 @@
+{
+  "probesNone": [
+    {
+      "kind": "command",
+      "text": "nsx probes"
+    },
+    {
+      "kind": "output",
+      "text": "No J-Link probes found."
+    }
+  ]
+}
