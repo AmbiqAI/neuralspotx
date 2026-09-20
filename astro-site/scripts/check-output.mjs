@@ -173,6 +173,9 @@ if (!fs.existsSync(homeMarkdown)) {
   const required = [
     ...examples.examples.map((example) => example.href),
     '/neuralspotx/guides/examples/',
+    '/neuralspotx/guides/apps/app-layout/',
+    '/neuralspotx/guides/modules/custom-modules/',
+    '/neuralspotx/guides/contribute/adding-a-module/',
     '/neuralspotx/modules/catalog/',
     '/neuralspotx/modules/boards/',
     '/neuralspotx/modules/catalog.json',
@@ -187,6 +190,7 @@ if (!fs.existsSync(homeMarkdown)) {
     'https://ambiqai.github.io/helia-rt/',
     'https://ambiqai.github.io/ns-cmsis-nn/',
     'https://ambiqai.github.io/helia-aot/',
+    'https://github.com/AmbiqAI/heartkit-vitals-demo',
   ]) {
     if (!rendition.includes(`(${link})`)) errors.push(`index.md has no Markdown link to ${link}`);
   }

@@ -185,3 +185,89 @@ brace and bracket depth from the `export const` line and drop through the closin
 the package's own link-bearing parts, so `LinkCard`, `Card` and `Button` emit
 `[title](href)` plus their children. A generic fallback of "if a stripped tag had an
 `href` and a `title`, emit a link" would cover most of it without a per-component table.
+
+---
+
+# Second pass: the landing page rebuild (issue #260)
+
+Checked against `v0.1.0-alpha.15`, the version now pinned in
+`astro-site/package-lock.json`. Same rule as above: drafts only, nothing filed.
+
+**Update to Draft 5, second defect.** Rebuilding the capability cards as `Card` +
+`CardHeader` + `CardContent` instead of `LinkCard` turned out to fix half of it by
+accident. `CardHeader` takes its title from the default slot, so the title survives
+`reduceTags` and reaches the rendition; `LinkCard` takes `title` as a prop, so it does
+not. The card's `href` is still lost either way. That makes the suggested fix narrower
+than Draft 5 assumed: a prop-to-markdown rule is needed for `href`, but a part whose text
+lives in a slot already renders correctly. Worth saying in the issue, because it means
+"prefer the slot form" is a real authoring workaround available today.
+
+---
+
+## Draft 6: a card body cannot reach the primary ink
+
+**Title:** `CardContent`: no way to set the body at `--helia-ink-primary`
+
+**What happened.** The owner's review of the rebuilt landing page called the capability
+card bodies "muddy". Measured on the built page (computed colors, alpha composited over
+the first opaque ancestor):
+
+| Element | Token | Light | Dark | Contrast |
+| --- | --- | --- | --- | --- |
+| `.helia-card-header__title` | `--helia-ink-primary` | `#17181c` | `#ffffff` | 17.7:1 / 19.0:1 |
+| `.helia-card-content` | `--helia-ink-secondary` | `#353841` | `#c1c3c8` | 11.7:1 / 10.8:1 |
+
+So this is not an accessibility defect: the body clears AAA in both themes. It is a
+hierarchy the part fixes on the author's behalf. `recipes.css:823-824` sets
+`.helia-card-content { color: var(--helia-ink-secondary) }`, and `CardContent`'s Props
+(`astro/CardContent.astro`) are `padding` and `variant?: 'prose' | 'stats'` only. There is
+no tone, emphasis or ink prop, so a card whose body is the point rather than a caption
+cannot be authored at full contrast.
+
+**What the page does instead.** Nothing. The cards ship at `--helia-ink-secondary`,
+because the alternative is local CSS overriding a package class, which this site does not
+do. The rebuild bought its legibility back with the icon disc, the eyebrow and the
+whole-card link instead of with the text color.
+
+**Why it matters.** Every product landing page is mostly cards, and the card body is where
+the product's claims live. A part that always renders its body one step down from its
+title is right for a navigation card and wrong for a feature card, and today they are the
+same part.
+
+**Suggested shape.** An `ink?: 'primary' | 'secondary'` (or `emphasis?: 'lead' | 'body'`)
+on `CardContent`, defaulting to today's behavior. A `CardTone`-style union would be
+heavier than needed; the ask is one step on an existing two-token scale.
+
+---
+
+## Draft 7: the Hero has no landing ground between `contrast` and nothing
+
+**Title:** `Hero`: a third `variant` for a landing that should not be inked
+
+**What happened.** `Hero.astro:30-33` documents the two values as a choice about what kind
+of page it is: "`contrast` is the inked card a product landing opens on ... `plain` is the
+same layout with no ground, for a page that is already a section of the site rather than
+its front door." The owner's objection is that the first half now reads as a uniform: with
+several HELIA products on the same frame, every one of them opens on the same dark card,
+so the inked ground stops saying "this is a landing page" and starts saying nothing.
+
+On the contrast ground the summary measures 12.6:1 and the eyebrow 8.45:1 against
+`rgb(17,19,24)`, so nothing here fails 4.5:1 and no accessibility issue is being reported.
+The summary is `--helia-ink-secondary`, which `recipes.css:2234-2238` redefines on the
+contrast ground to `color-mix(in srgb, var(--helia-paper-white) 82%, transparent)`; at
+18px against near-black that is what reads as dim beside a 100%-white headline, which is
+the owner's "too dark".
+
+**What the page does instead.** The landing uses `variant="plain"`, which the part's own
+doc comment says is for a page that is *not* the front door. The page is the front door.
+So the site is now using the value against its documented intent, and the next person to
+read `Hero.astro` will reasonably "fix" it back.
+
+**Why it matters.** This is a portfolio problem rather than a one-site problem. If the
+inked hero is the house style for landings, then products need another way to not look
+identical; if it is not, the doc comment should stop telling each of them to use it.
+
+**Suggested shape.** Worth a question before an issue, like Draft 4. Either a third ground
+(a tinted or paper landing ground that is still distinct from a body section), or keep two
+values and rewrite the doc comment so `plain` is a legitimate landing choice rather than a
+section-page one. The second costs nothing and would be enough here.
