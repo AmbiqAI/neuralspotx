@@ -41,8 +41,19 @@ uv run --group test pytest -q
 CI runs the same three. Run all of them for anything cross-cutting; a narrower
 command is fine for a narrow change.
 
-Details of what each pre-commit stage covers, and when to use `SKIP`, are in the
-[contributing guides on the site](https://ambiqai.github.io/neuralspotx/guides/contribute/agent-guidance/).
+pre-commit is the single lint gate, and it runs different hooks at each stage:
+
+| Stage | Runs | Why |
+| --- | --- | --- |
+| `pre-commit` | whitespace and file hygiene, gitleaks on staged content, ruff check, ruff format, `uv lock`, clang-format, deferred-work marker check | fast enough for every commit |
+| `pre-push` | `ty` type check, plus the whitespace and large-file hooks | whole-package check, not per-file |
+| `manual` | the `pre-commit` row, with the staged gitleaks scan replaced by a whole-tree scan | what CI runs; the staged scan is blind in a fresh checkout |
+
+`SKIP=<hook-id> git commit` is the escape hatch when a hook is wrong. Say so in
+the pull request when you use it. Deferred work must be trackable:
+`TODO(#123): ...` with the tracking issue, or `TODO(verify): ...` for a claim
+still waiting on a source of record. A bare `TODO`, `FIXME` or `HACK` is
+rejected.
 
 ## Documentation
 

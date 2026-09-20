@@ -3,8 +3,8 @@
 The NSX tooling repo owns:
 
 - `src/neuralspotx/`
-- `docs/`
-- `mkdocs.yml`
+- `astro-site/`, the published documentation site
+- `docs/maintainers/`, unpublished maintainer Markdown
 - packaged templates
 - packaged CMake helpers
 - built-in board definitions
