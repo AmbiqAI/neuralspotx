@@ -6,9 +6,10 @@ The names exposed here form the **public Python API** of NSX. Anything
 importable from a private ``_<name>`` module is, by convention,
 internal and may change without notice.
 
-See ``docs/reference/public-api.md`` for the canonical list with
-stability tiers. ``tests/test_public_surface_doc.py`` keeps the doc
-and ``__all__`` from drifting.
+Every name here is Provisional until 1.0; see
+https://ambiqai.github.io/neuralspotx/reference/releases/ for what that
+means and how to pin. ``tests/test_public_surface_doc.py`` keeps the
+published symbol catalog and ``__all__`` from drifting.
 """
 
 from ._errors import (

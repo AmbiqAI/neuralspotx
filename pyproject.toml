@@ -41,9 +41,6 @@ docs = [
     # schema change between releases is a silent breakage. Upgrades are
     # deliberate, with a regeneration and a diff of the rendered reference.
     "griffe==1.7.3",
-    "mkdocs-material>=9.0",
-    "pymdown-extensions>=10.15",
-    "zensical>=0.0.11",
 ]
 lint = [
     "ruff>=0.11.0",

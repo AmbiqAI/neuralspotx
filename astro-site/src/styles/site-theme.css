@@ -8,9 +8,8 @@
  *
  * helia-ui's `accent` plugin option only accepts the product accents the
  * package names, and neuralSPOT-X is not one of them, so the teal identity is
- * carried on the dial instead. The value is the accent the MkDocs site used
- * (docs/stylesheets/extra.css, --l-accent), so the two sites read as one
- * product while both are live.
+ * carried on the dial instead. The value is the accent the product has always
+ * used; upstream: AmbiqAI/helia-ui#115.
  */
 
 :root {

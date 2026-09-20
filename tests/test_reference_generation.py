@@ -1,10 +1,10 @@
 """Prove the generated reference covers the whole public surface.
 
-``test_public_surface_doc.py`` keeps the MkDocs page in sync with
-``__all__``; this module does the same job for the generated Astro
-reference, and adds the checks the generated pages make possible: that the
-argparse tree is fully documented, that nothing private leaks into the
-output, and that the configuration field tables still match the loaders.
+``test_public_surface_doc.py`` keeps the published symbol catalog in sync
+with ``__all__``; this module covers the rendered pages behind it, and adds
+the checks the generated pages make possible: that the argparse tree is
+fully documented, that nothing private leaks into the output, and that the
+configuration field tables still match the loaders.
 
 The tests that need generated output skip when it is absent, because the
 output is gitignored and only exists after ``npm run build:reference``.
