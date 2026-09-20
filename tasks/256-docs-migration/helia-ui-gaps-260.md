@@ -271,3 +271,15 @@ identical; if it is not, the doc comment should stop telling each of them to use
 (a tinted or paper landing ground that is still distinct from a body section), or keep two
 values and rewrite the doc comment so `plain` is a legitimate landing choice rather than a
 section-page one. The second costs nothing and would be enough here.
+
+## Draft 8: a staged walkthrough part
+
+**Title:** Walkthrough: a rail of stages over one AsciiTerminal, played one stage at a time
+
+**What happened.** The neuralspotx landing page needed the install-to-running loop shown as stages rather than one long transcript. helia-ui has the ingredients (Surface, the chip recipe, AsciiTerminal, Reveal, ShowcaseCarousel) but no part that sequences terminals, so the site composed one locally: `astro-site/src/components/JourneyWalkthrough.astro`.
+
+**Shape that worked.** `stages: { id, label, title, caption, lines }[]`, `dwell`, `typingSpeed`, `lineDelay`. A tablist rail of numbered chips, one terminal per stage stacked in a single grid cell so the card keeps the tallest stage's height, a live caption, Replay. Auto-advance starts on intersection, plays a stage through the terminal's own replay control, waits for `data-playing` to clear, dwells, then moves on; a rail click pauses autoplay; hover and focus pause; reduced motion shows the rail and the first stage with no animation. All stages render server-side for no-JS readers and the Markdown rendition.
+
+**Proposal.** Adopt it as `astro/Walkthrough.astro` with that prop shape. Two things the package would fix better than a consumer: a terminal should expose a play method or event instead of a consumer clicking its replay button, and #149 (instances after the first are set up before their children exist) must land first, since the site works around it by re-inserting a clone before each play.
+
+**Consumer context.** AmbiqAI/neuralspotx#260 hero. Related: #118 (output pacing), #149.
