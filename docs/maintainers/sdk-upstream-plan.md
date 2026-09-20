@@ -3,13 +3,12 @@
 This document describes how the AmbiqSuite SDK is sourced and provisioned for
 NSX board and SoC modules.
 
-!!! info "Status: unified"
-    NSX originally planned one upstream repo per AmbiqSuite major line. That
-    plan has been superseded: all AmbiqSuite SoCs now resolve from a single
-    **unified SDK repo**,
-    [`nsx-ambiq-sdk`](https://github.com/AmbiqAI/nsx-ambiq-sdk), through a
-    single provider module. The historical per-major plan is summarized at the
-    end for context.
+> **Status: unified.** NSX originally planned one upstream repo per AmbiqSuite
+> major line. That plan has been superseded: all AmbiqSuite SoCs now resolve
+> from a single **unified SDK repo**,
+> [`nsx-ambiq-sdk`](https://github.com/AmbiqAI/nsx-ambiq-sdk), through a single
+> provider module. The historical per-major plan is summarized at the end for
+> context.
 
 ## Current Model
 
@@ -39,9 +38,8 @@ stale ACfE manifest hashes; `v5.2.23` remains published and immutable.
 
 Board profiles depend on the provider module for their SoC family, and NSX
 vendors the resolved SDK content into the generated app. See
-[SDK Provider Model](sdk-provider-model.md) for how providers are selected and
-[SDK Provider Selection](../user-guide/sdk-provider-selection.md) for the
-user-facing controls.
+[SDK providers](https://ambiqai.github.io/neuralspotx/guides/modules/sdk-providers/)
+for how providers are selected and for the user-facing controls.
 
 ## Why a Single Repo
 

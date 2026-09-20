@@ -1,7 +1,7 @@
 # Internal Module Coverage
 
 For the higher-level migration plan and module matrix, see
-[Migrating from neuralSPOT](migration-from-neuralspot.md).
+[Migrating from neuralSPOT](https://ambiqai.github.io/neuralspotx/getting-started/migrate-from-neuralspot/).
 
 This page tracks how the major internal `neuralSPOT` module areas map into the
 current NSX module set.

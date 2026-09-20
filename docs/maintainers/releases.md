@@ -1,4 +1,9 @@
-# Releases
+# Release mechanics
+
+This page is the maintainer view: what the release workflow does and what it
+verifies. The user-facing half, covering release cadence, tag names, what
+Provisional means and how to pin, is published as
+[Releases and versioning](https://ambiqai.github.io/neuralspotx/reference/releases/).
 
 NSX uses Release Please to manage version bumps and changelog entries for the
 Python package. The release workflow creates the published tag only after
