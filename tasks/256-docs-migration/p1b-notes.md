@@ -106,8 +106,10 @@ rather than the island.
 
 What `RefIndex` costs is recorded in helia-ui-gaps-259.md drafts 6 to 8: the
 count reads "50 of 50 symbols", the first column is headed "Symbol", the facet
-order is the package's, and the capability facet renders about a hundred chips
-because a facet cannot be collapsed. The island is 258 KB of JavaScript against
+order is the package's, no facet can be collapsed, and nothing about a
+selection reaches the URL. Capability is on every row, where the search reads
+it, but not in the chips: a facet cannot be collapsed and a hundred chips are a
+wall rather than a control. The island is 258 KB of JavaScript against
 the previous 225 KB, the difference being `RefIndex`, its table and input
 primitives and its icons; React is 213 KB of both figures.
 

@@ -45,6 +45,12 @@ const FACET_LABELS = {
   capability: 'Capability',
 };
 
+/* Capability has about a hundred values, and RefIndex renders every value of
+   every facet as a chip. It stays on the row, where the free-text search reads
+   it, and off the chips, where it was a wall the reader scrolled past to reach
+   the table. */
+const CHIP_FACETS = ['type', 'soc', 'board', 'toolchain'];
+
 /*
  * The detail panel carries what the manifest says beyond the row: the modules
  * an app gets with this one, and the sentences the manifest writes about using
@@ -97,7 +103,9 @@ const rows: RefIndexRow[] = [...snapshot.modules]
     contract: contractFor(module),
   }));
 
-const facets = refIndexFacets(rows, FACET_LABELS);
+const facets = refIndexFacets(rows, FACET_LABELS).filter((facet) =>
+  CHIP_FACETS.includes(facet.id),
+);
 ---
 
 <div data-module-index data-hides={tableId}>

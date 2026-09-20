@@ -261,7 +261,9 @@ function overviewPage(modules, boards) {
       const description =
         `${group.members.length} module${group.members.length === 1 ? '' : 's'}: ` +
         `${names}${group.members.length > 4 ? ' and more' : ''}.`;
-      const url = `${BASE}${ROUTE}/catalog/?type=${encodeURIComponent(typeLabel(group.type))}`;
+      /* The catalog's filter keeps no state in the URL, so a link carrying a
+         type would land on an unfiltered page claiming otherwise. */
+      const url = `${BASE}${ROUTE}/catalog/`;
       return (
         `  <LinkCard title={${JSON.stringify(group.label)}} href={${JSON.stringify(url)}} ` +
         `description={${JSON.stringify(description)}${jsxEscape(description)}} />`
@@ -292,10 +294,11 @@ function catalogPage(modules) {
     '',
     "import ModuleIndex from '../../../components/ModuleIndex.astro';",
     '',
-    `The registry pins ${modules.length} modules. Search and the chips below filter the list; the`,
-    'same modules are in the page as a table whether the filter runs or not, so the Markdown',
-    'rendition and an agent reading the HTML see the full catalog either way. Each module name',
-    'links to its own page.',
+    `The registry pins ${modules.length} modules. The chips below filter by type, SoC, board and`,
+    'toolchain, and the search field matches a module name, its summary and the capabilities it',
+    'declares. The same modules are in the page as a table whether the filter runs or not, so the',
+    'Markdown rendition and an agent reading the HTML see the full catalog either way. Each module',
+    'name links to its own page.',
     '',
     DECLARED_NOTE,
     '',
@@ -304,9 +307,11 @@ function catalogPage(modules) {
     '',
     `<ModuleIndex base={${JSON.stringify(BASE)}} tableId="module-catalog" />`,
     '',
+    /* No heading inside the container: the island hides it, and a heading the
+       reader cannot reach would still be in the page's table of contents. */
     '<div id="module-catalog">',
     '',
-    '## All modules',
+    `**All ${modules.length} modules.** The filter above replaces this table when it loads.`,
     '',
     catalogTable(modules),
     '',

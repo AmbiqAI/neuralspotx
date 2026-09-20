@@ -225,8 +225,12 @@ what a reader sees that a catalog would not:
 - The same array drives the chips and the table columns, so a facet cannot be
   filterable without also being a column.
 - There is no collapsed or limited facet. The catalog's `capability` facet has
-  about a hundred values, so the reader scrolls a wall of chips before reaching
-  the table, on desktop and worse on mobile.
+  about a hundred values, so the reader scrolled a wall of chips before
+  reaching the table, on desktop and worse on mobile. NSX stopped passing that
+  facet; the values stay on the row, where the free-text search reads them.
+- No state reaches the URL. A link cannot open the index with a facet selected
+  and a reader cannot share what they are looking at, so the overview's type
+  cards link to the catalog rather than to a selection of it.
 - `RefIndexContract` is kernel-shaped: `prerequisites`, `bufferSize`,
   `tolerances`, `notes`. A module has capabilities, use cases and constraints,
   of which only two map honestly.
@@ -240,12 +244,12 @@ collapsed when it has more values than a row of chips.
 `ref-index-model.ts` (`refIndexFacets`, `RefIndexRow`, `RefIndexContract`).
 
 **Proposal.** Add `noun`, `columns: { name, summary }`, an optional facet order
-or a `collapsedAt` on `RefIndexFacet`, and make `kind` optional. None of it
-changes a reference index that passes nothing.
+or a `collapsedAt` on `RefIndexFacet`, `kind` optional, and query-string state
+for the selection. None of it changes a reference index that passes nothing.
 
-**NSX workaround.** None. The package's wording and ordering are on the page as
-shipped; the capability facet is passed because the catalog is meant to filter
-by it.
+**NSX workaround.** The package's wording and ordering are on the page as
+shipped. The capability facet is left out of the chips, which is a choice the
+props allow rather than a change to the part.
 
 ---
 
