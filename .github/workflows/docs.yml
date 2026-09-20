@@ -88,11 +88,40 @@ jobs:
       - name: Check reference completeness
         run: uv run --group docs --group test pytest tests/test_reference_generation.py tests/test_public_surface_doc.py -q
 
+      # The module snapshot is committed because the manifests live in other
+      # repositories and the site build may not fetch them. This is the step
+      # that keeps it honest: it re-reads every manifest from the revision the
+      # registry pins and fails when the committed JSON disagrees. Every
+      # project it clones is public except helia-dsp, which a job with no
+      # credentials reports as not checked rather than as drift, so the step
+      # needs no secret.
+      - name: Check the module snapshot for drift
+        id: snapshot
+        run: |
+          start=$(date +%s)
+          uv run --group docs python scripts/docs/build_module_data.py --check
+          echo "seconds=$(( $(date +%s) - start ))" >> "$GITHUB_OUTPUT"
+
+      # Timed on its own, like the reference, so the summary separates reading
+      # the snapshot from rendering the pages. build-modules.mjs appends its
+      # own table.
+      - name: Generate the Modules section
+        id: modules
+        working-directory: astro-site
+        run: |
+          start=$(date +%s)
+          npm run build:modules
+          echo "seconds=$(( $(date +%s) - start ))" >> "$GITHUB_OUTPUT"
+
+      - name: Check the module snapshot against the tree
+        run: uv run --group docs --group test pytest tests/test_module_data_snapshot.py -q
+
       - name: Astro check
         working-directory: astro-site
         run: npm run check
         env:
           NSX_DOCS_REFERENCE_PREBUILT: '1'
+          NSX_DOCS_MODULES_PREBUILT: '1'
 
       - name: Build the site
         id: build
@@ -103,6 +132,7 @@ jobs:
           echo "seconds=$(( $(date +%s) - start ))" >> "$GITHUB_OUTPUT"
         env:
           NSX_DOCS_REFERENCE_PREBUILT: '1'
+          NSX_DOCS_MODULES_PREBUILT: '1'
 
       - name: Validate the built site
         working-directory: astro-site
@@ -118,6 +148,8 @@ jobs:
             echo "| Measure | Value |"
             echo "| --- | --- |"
             echo "| Reference generation | ${REFERENCE_SECONDS:-n/a}s |"
+            echo "| Module snapshot check | ${SNAPSHOT_SECONDS:-n/a}s |"
+            echo "| Modules generation | ${MODULES_SECONDS:-n/a}s |"
             echo "| Build time | ${BUILD_SECONDS:-n/a}s |"
             echo "| HTML pages | $(find dist -name '*.html' 2>/dev/null | wc -l | tr -d ' ') |"
             echo "| Artifact size | $(du -sh dist 2>/dev/null | cut -f1) |"
@@ -126,6 +158,8 @@ jobs:
         env:
           BUILD_SECONDS: ${{ steps.build.outputs.seconds }}
           REFERENCE_SECONDS: ${{ steps.reference.outputs.seconds }}
+          SNAPSHOT_SECONDS: ${{ steps.snapshot.outputs.seconds }}
+          MODULES_SECONDS: ${{ steps.modules.outputs.seconds }}
 
       - name: Upload the built site
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
