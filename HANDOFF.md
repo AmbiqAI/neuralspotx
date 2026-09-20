@@ -1,4 +1,4 @@
-# HANDOFF: docs migration, P1a reference generation (#258)
+# HANDOFF: docs migration, P1a reference (#258) and P1b modules (#259)
 
 ## Goal
 
@@ -69,20 +69,61 @@ is about 100 KB before content and 250 KB would cap a page near ten symbols. Gzi
 at 40 KB. The largest page sits at 77% of the HTML budget and 78% of the gzip one, and
 the check warns at 80% so it gets split before it fails.
 
+## P1b (#259) module catalog: done, verified locally
+
+Branch `259-module-catalog`, stacked on `258-reference-generation` in the same worktree,
+not pushed. Two stages, split by whether they need the network.
+
+`scripts/docs/build_module_data.py` writes the committed snapshot
+`astro-site/src/data/modules.json` and `boards.json` from the public API plus a shallow,
+blobless, sparse clone of each module project at the revision the registry pins. That
+needs the network: 32 of the 50 manifests live in other repositories. A cold run is about
+27 s, a warm `--check` about 0.2 s. `astro-site/scripts/build-modules.mjs` then renders
+the whole Modules section from the snapshot with no network at all, in the same
+`prepare:docs` pass as the reference: an overview, a catalog, a board matrix and one page
+per module, 53 pages, all gitignored.
+
+The catalog's rows are an ordinary Markdown table. The React island mounts with
+`client:only` and only hides rows, so Pagefind, the `.md` rendition and a reader without
+JavaScript all get the full fifty and nobody gets inert controls. The snapshot is
+published at `/modules/catalog.json`.
+
+Compatibility is worded as declared by the manifest on every page, and
+`check-modules-output.mjs` greps all 53 rendered pages for phrases that would turn that
+into a hardware claim. Detail, measurements and decisions in
+`tasks/256-docs-migration/p1b-notes.md`; new upstream drafts, none filed, in
+`tasks/256-docs-migration/helia-ui-gaps-259.md`.
+
+Two things for Adam, neither a docs change:
+
+1. **Four dependency names are not modules the registry pins.** `nsx-power` and `nsx-usb`
+   require `nsx-timer`, `nsx-uart` requires `nsx-interrupt`, and `nsx-ethos-u-driver`
+   optionally depends on `nsx-harness`. `nsx-timer` and `nsx-interrupt` ship manifests
+   inside `nsx-ambiq-sdk` but are absent from `registry.lock.yaml`. The catalog renders an
+   unknown dependency as a plain name, and the set of four is pinned in
+   `tests/test_module_data_snapshot.py` so a fifth is a decision.
+2. **`helia-dsp` is private.** A CI job with no credentials cannot read its manifest, so
+   the drift check reports it as not checked rather than failing. That module's manifest
+   fields are therefore not covered by CI.
+
 ## Next steps
 
-1. #259 (module catalog and board matrix) stacks on top of the #258 branch in the same
-   worktree. It adds pages under Modules, so it only touches its own `sections[].sidebar`
-   entry in `astro.config.mjs`; the Reference entry now reads from
-   `src/data/reference-sidebar.json`.
-2. #260 migrates the 67 MkDocs pages into Getting started and Guides.
-3. #261 does discoverability (llms), redirects, the real 404, and the deploy cutover.
+1. #260 migrates the 67 MkDocs pages into Getting started and Guides.
+2. #261 does discoverability (llms), redirects, the real 404, and the deploy cutover.
 
-Each section index page carries a `:::note` pointing at its follow-up issue. Delete the
-note when the section's content lands.
+The Getting started and Guides index pages carry a `:::note` pointing at #260. Delete the
+note when the section's content lands. The Modules index is generated and carries none.
 
 ## Gotchas
 
+- **The module snapshot is committed; the pages built from it are not.**
+  `astro-site/src/data/{modules,boards}.json` are tracked. Everything under
+  `src/content/docs/modules/`, `src/data/modules-*.json` and `public/modules/` is
+  generated on every dev, check and build run. Regenerating the snapshot needs network
+  access to the module repositories and credentials for `helia-dsp`.
+- Clones are keyed by `(project, revision)`. `nsx-npu` pins `v5.2.25` while the rest of
+  `nsx-ambiq-sdk` sits on `v5.2.24`; keying by project alone resolves it against a tag
+  where its manifest does not exist.
 - The reference build shells out to `uv run --group docs`, because griffe is pinned in
   the `docs` dependency group. A tree synced without that group regenerates it on the
   first build; a tree with no package index reachable needs `uv sync --group docs` first.
@@ -136,8 +177,8 @@ the measurements behind them, and `prune_griffe.py` comes out only when both lan
 
 ## Refs
 
-- Issue: AmbiqAI/neuralspotx#258. Parent: #256. Plan: `tasks/256-docs-migration/plan.md`.
+- Issues: AmbiqAI/neuralspotx#258 and #259. Parent: #256. Plan: `tasks/256-docs-migration/plan.md`.
   P0 scaffold was #257.
-- Branch: `258-reference-generation`.
+- Branches: `258-reference-generation`, then `259-module-catalog` stacked on it.
 - Reference implementation: `AmbiqAI/helia-rt`, `astro-site/` on `main`.
 - helia-ui: `AmbiqAI/helia-ui` at tag `v0.1.0-alpha.14`.
