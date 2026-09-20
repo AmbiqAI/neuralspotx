@@ -43,8 +43,9 @@ Afterwards the app has three things it did not have before:
 | `build/apollo510_evb/` | The generated CMake and Ninja tree, one directory per board. |
 | `.nsx/` | NSX's own bookkeeping, including the sync lock file. |
 
-Both `build/` and `modules/` are gitignored by the generated `.gitignore`, so your source
-tree stays clean.
+Your source tree stays clean: the generated `.gitignore` covers `build/` and `.nsx/`, and
+`nsx configure` writes a `modules/.gitignore` for the modules it re-acquires and a
+`cmake/.gitignore` for `cmake/nsx/`.
 
 ## Build
 
