@@ -1,0 +1,234 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026, Ambiq
+#
+# Field tables for the four files NSX reads. Three of the four validators are
+# imperative rather than declarative, so the tables cannot be introspected out
+# of the loaders. tests/test_reference_generation.py closes the gap: it checks
+# every declared schema_version against the constant in the code, checks the
+# dataclass-backed schemas field by field, and pushes each `example` through
+# the real loader, removing one required field at a time to prove the loader
+# still rejects it. A field that drifts out of the code fails the test.
+
+schemas:
+  - id: nsx-yml
+    file: nsx.yml
+    title: nsx.yml
+    summary: >-
+      The app manifest. Names the app, the boards it supports, the toolchain
+      and the modules it depends on directly.
+    loader: neuralspotx.project_config.load_project_config
+    model: neuralspotx.models.NsxProject
+    error: NSXConfigError
+    schema_version: 2
+    schema_version_constant: neuralspotx.models._loader.SUPPORTED_SCHEMA_VERSION
+    unknown_keys: >-
+      Kept. Unrecognized top-level keys are preserved rather than rejected, so
+      a newer NSX can read a manifest an older one wrote.
+    fields:
+      - {path: schema_version, type: int, required: true, values: "2", description: "Manifest schema version. NSX refuses a manifest it does not recognize."}
+      - {path: project.name, type: string, required: true, description: "App name. Used for the CMake project and the default build directory."}
+      - {path: targets.default, type: string, required: false, description: "Board built when --board is not given."}
+      - {path: targets.supported, type: "list of string, or map of board to overrides", required: false, description: "Boards this app may be built for. The map form accepts per-board soc, profile and toolchain overrides."}
+      - {path: target.board, type: string, required: false, description: "Single-board shorthand, superseded by targets."}
+      - {path: toolchain, type: string, required: false, default: arm-none-eabi-gcc, description: "Default toolchain for every board unless a board overrides it."}
+      - {path: channel, type: string, required: false, description: "Registry channel the app tracks."}
+      - {path: modules, type: list of module entries, required: false, description: "Direct dependencies. A string is shorthand for a map with only name set."}
+      - {path: "modules[].name", type: string, required: true, description: "Module name as it appears in the registry."}
+      - {path: "modules[].project", type: string, required: false, description: "Registry project that provides the module, when it is ambiguous."}
+      - {path: "modules[].revision", type: string, required: false, description: "Tag, branch or commit constraint for this module."}
+      - {path: "modules[].boards", type: list of string, required: false, description: "Restrict the dependency to a subset of targets.supported."}
+      - {path: "modules[].local", type: bool, required: false, description: "Mirror the module from an external path on every sync."}
+      - {path: "modules[].source", type: map, required: false, description: "Exactly one of path (external directory), vendored (true, committed in this repo) or git (URL, with optional rev)."}
+      - {path: module_registry.projects, type: map, required: false, description: "App-local project overrides keyed by project name, each with url, revision, path or local_path."}
+      - {path: module_registry.modules, type: map, required: false, description: "App-local module overrides keyed by module name, each with project, revision and optional metadata."}
+      - {path: tooling, type: map, required: false, description: "Tool settings passed through to the generated build. Keys are preserved as written."}
+      - {path: features, type: map, required: false, description: "Feature flags passed through to the generated build."}
+      - {path: profile, type: string, required: false, description: "Starter profile the app was created from."}
+      - {path: profile_status, type: string, required: false, description: "Maturity recorded for the starter profile."}
+      - {path: baseline, type: string, required: false, values: none, description: "Set to none to skip the board's baseline module set."}
+    example: |
+      schema_version: 2
+      project:
+        name: hello_world
+      targets:
+        default: apollo510_evb
+        supported:
+          - apollo510_evb
+          - apollo4p_blue_kxr_evb
+      toolchain: arm-none-eabi-gcc
+      channel: stable
+      features: {}
+
+  - id: nsx-module-yaml
+    file: nsx-module.yaml
+    title: nsx-module.yaml
+    summary: >-
+      Module metadata. Declares what a module is, what it builds, what it
+      needs and what it is compatible with.
+    loader: neuralspotx.metadata.validate_nsx_module_metadata
+    error: ValueError
+    schema_version: 1
+    unknown_keys: >-
+      Kept. The validator checks the keys it knows and ignores the rest.
+    fields:
+      - {path: schema_version, type: int, required: true, values: "1", description: "Module metadata schema version."}
+      - {path: module.name, type: string, required: true, description: "Module name. Must match the name used in the registry and in nsx.yml."}
+      - {path: module.type, type: string, required: true, values: "sdk_provider, soc, board, runtime, portable_api, algorithm, tooling, backend_specific", description: "What kind of module this is. Drives resolution order and compatibility rules."}
+      - {path: module.version, type: string, required: true, description: "Module version string."}
+      - {path: module.category, type: string, required: false, description: "Grouping used by the module catalog."}
+      - {path: module.provider, type: string, required: false, description: "Organization or project that supplies the module."}
+      - {path: support.ambiqsuite, type: bool, required: true, values: "true", description: "Whether the module builds against AmbiqSuite. NSX requires true."}
+      - {path: support.zephyr, type: bool, required: true, description: "Whether the module ships a Zephyr integration. When true, integrations.zephyr becomes required."}
+      - {path: build.cmake.package, type: string, required: true, description: "CMake package name the module exports."}
+      - {path: build.cmake.targets, type: list of string, required: true, description: "CMake targets the module exports. Must be non-empty."}
+      - {path: depends.required, type: list of string, required: true, description: "Modules that must be present. May be empty."}
+      - {path: depends.optional, type: list of string, required: true, description: "Modules used when present. May be empty."}
+      - {path: compatibility.boards, type: list of string, required: true, description: "Boards the module supports. Must be non-empty."}
+      - {path: compatibility.socs, type: list of string, required: true, description: "SoCs the module supports. Must be non-empty."}
+      - {path: compatibility.toolchains, type: list of string, required: true, description: "Toolchains the module supports. Must be non-empty."}
+      - {path: integrations.zephyr.path, type: string, required: false, description: "Zephyr module directory. Required when support.zephyr is true."}
+      - {path: integrations.zephyr.module_yml, type: string, required: false, description: "Path to the Zephyr module.yml. Required when support.zephyr is true."}
+      - {path: integrations.zephyr.kconfig, type: string, required: false, description: "Path to the module's Kconfig. Required when support.zephyr is true."}
+      - {path: constraints.required_sdk_provider, type: string, required: false, description: "SDK provider module this module must be built against."}
+      - {path: summary, type: string, required: false, description: "One-line description shown in the module catalog."}
+      - {path: capabilities, type: list of string, required: false, description: "What the module provides, for search and agent discovery."}
+      - {path: use_cases, type: list of string, required: false, description: "Situations the module suits."}
+      - {path: anti_use_cases, type: list of string, required: false, description: "Situations the module does not suit."}
+      - {path: agent_keywords, type: list of string, required: false, description: "Extra search terms for agent tooling."}
+      - {path: example_refs, type: list of string, required: false, description: "Examples that use the module."}
+      - {path: composition_hints, type: list of string, required: false, description: "Modules this one is usually combined with."}
+    example: |
+      schema_version: 1
+      module:
+        name: nsx-board-apollo510-evb
+        type: board
+        version: "0.1.0"
+      support:
+        ambiqsuite: true
+        zephyr: false
+      build:
+        cmake:
+          package: nsx_board_apollo510_evb
+          targets:
+            - nsx::board_apollo510_evb
+      depends:
+        required:
+          - nsx-ambiq-hal
+        optional: []
+      compatibility:
+        boards:
+          - apollo510_evb
+        socs:
+          - apollo510
+        toolchains:
+          - arm-none-eabi-gcc
+
+  - id: board-yaml
+    file: board.yaml
+    title: board.yaml
+    summary: >-
+      Board descriptor. Describes the SoC, the CPU ABI and the toolchains a
+      board can be built with. A board may inherit from another and apply
+      deltas.
+    loader: neuralspotx.board_descriptors.load_board_descriptor_file
+    model: neuralspotx.board_descriptors.BoardDescriptor
+    error: BoardDescriptorError
+    schema_version: 1
+    schema_version_constant: neuralspotx.board_descriptors.SCHEMA_VERSION
+    unknown_keys: >-
+      Kept. Unrecognized keys are ignored by the parser.
+    fields:
+      - {path: schema_version, type: int, required: true, values: "1", description: "Board descriptor schema version."}
+      - {path: board.name, type: string, required: true, description: "Board name as used by --board and by targets.supported."}
+      - {path: board.soc, type: string, required: true, description: "SoC this board carries."}
+      - {path: board.tier, type: string, required: false, default: evb, description: "Board tier. Custom boards created from an EVB baseline record their own tier."}
+      - {path: board.registered, type: bool, required: false, default: "true", description: "Whether the board appears in nsx board list."}
+      - {path: sdk_provider, type: string, required: true, description: "SDK provider module the board builds against."}
+      - {path: cpu.core, type: string, required: true, description: "Arm core name, for example cortex-m55."}
+      - {path: cpu.float_abi, type: string, required: true, description: "Floating-point ABI passed to the toolchain."}
+      - {path: cpu.abi, type: string, required: true, description: "Full ABI triple used to select toolchain flags."}
+      - {path: toolchains, type: list of string, required: false, description: "Toolchains the board supports."}
+      - {path: inherits, type: string, required: false, description: "Board this descriptor inherits from. Only custom boards set it."}
+      - {path: overrides.toolchains, type: list of string, required: false, description: "Delta applied to the inherited toolchain list, using +name to add and -name to remove. Only valid with inherits."}
+    example: |
+      schema_version: 1
+      board:
+        name: apollo510_evb
+        tier: evb
+        soc: apollo510
+        registered: true
+      sdk_provider: ambiqsuite
+      cpu:
+        core: cortex-m55
+        float_abi: hard
+        abi: thumbv8.1m-fpv5-hard
+      toolchains:
+        - arm-none-eabi-gcc
+        - armclang
+
+  - id: nsx-lock
+    file: nsx.lock
+    title: nsx.lock
+    summary: >-
+      The resolution lock. Records, per board, the exact commit and content
+      hash of every module an nsx sync would materialize. NSX writes it; you
+      do not edit it by hand.
+    loader: neuralspotx.nsx_lock.read_lock_file
+    model: neuralspotx.nsx_lock.ResolvedModule
+    error: NSXLockError
+    schema_version: 4
+    schema_version_constant: neuralspotx.nsx_lock._constants.LOCK_SCHEMA_VERSION
+    unknown_keys: >-
+      Rejected in effect. The lock is read into frozen dataclasses, so only
+      the keys below survive a round trip.
+    # NSX writes this file, so the reader is lenient rather than strict: a lock
+    # missing its schema version or its targets reads as an empty lock and is
+    # regenerated, instead of failing the command that needed it.
+    missing_required_behavior: regenerate
+    fields:
+      - {path: schema_version, type: int, required: false, default: "4", values: "4", description: "Lock schema version. NSX writes it on every lock; a lock that declares an older one is regenerated, and a lock missing it is read as the current version."}
+      - {path: targets, type: map of board to lock section, required: true, description: "One resolution per board, so an app can be locked for several boards at once."}
+      - {path: "targets.<board>.generated_at", type: "string (ISO 8601)", required: true, description: "When this section was resolved."}
+      - {path: "targets.<board>.nsx_tool.version", type: string, required: false, description: "neuralspotx version that produced the section."}
+      - {path: "targets.<board>.manifest.path", type: string, required: true, default: nsx.yml, description: "Manifest the section was resolved from."}
+      - {path: "targets.<board>.manifest.hash", type: string, required: true, description: "Content hash of that manifest. A mismatch is the drift --frozen rejects."}
+      - {path: "targets.<board>.target.board", type: string, required: true, description: "Board this section resolves."}
+      - {path: "targets.<board>.target.soc", type: string, required: true, description: "SoC of that board."}
+      - {path: "targets.<board>.target.toolchain", type: string, required: true, description: "Toolchain the section was resolved for."}
+      - {path: "targets.<board>.modules", type: map of module name to entry, required: true, description: "The full resolved closure, not just the direct dependencies."}
+      - {path: "modules.<name>.project", type: string, required: true, description: "Registry project that provides the module."}
+      - {path: "modules.<name>.kind", type: string, required: true, default: git, values: "git, packaged, local, vendored, unresolved", description: "How the module was resolved, which decides what the resolved block carries."}
+      - {path: "modules.<name>.constraint", type: string, required: true, description: "Constraint the resolution satisfied."}
+      - {path: "modules.<name>.resolved.url", type: string, required: false, description: "Upstream repository. Present for git and unresolved kinds."}
+      - {path: "modules.<name>.resolved.tag", type: string, required: false, description: "Tag the commit carries, when the constraint matched one."}
+      - {path: "modules.<name>.resolved.commit", type: string, required: false, description: "Exact commit vendored. Present for git and unresolved kinds."}
+      - {path: "modules.<name>.resolved.tool_version", type: string, required: false, description: "neuralspotx version that supplied a packaged module."}
+      - {path: "modules.<name>.resolved.vendored_at", type: string, required: true, description: "Path under the app where the module is materialized."}
+      - {path: "modules.<name>.resolved.content_hash", type: string, required: true, description: "SHA-256 of the vendored tree. The SBOM reports this and sync verifies it."}
+      - {path: "modules.<name>.resolved.acquired_at", type: "string (ISO 8601)", required: true, description: "When the module was fetched."}
+    example: |
+      schema_version: 4
+      targets:
+        apollo510_evb:
+          generated_at: '2026-09-03T23:02:17+00:00'
+          nsx_tool:
+            version: 0.7.17
+          manifest:
+            path: nsx.yml
+            hash: sha256:1c975664f58e7a6ee643a0bc37c90d8535543812703c6d3502595cc5f9992cef
+          target:
+            board: apollo510_evb
+            soc: apollo510
+            toolchain: arm-none-eabi-gcc
+          modules:
+            nsx-ambiqsuite:
+              project: nsx-ambiq-sdk
+              kind: git
+              constraint: v5.2.24
+              resolved:
+                url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+                tag: v5.2.24
+                commit: a9f4ec25a162f6f3700623feb691423bb5a51132
+                vendored_at: modules/nsx-ambiq-sdk
+                content_hash: sha256:4ca0d4e197abbb9a0165baebb6b7832d24b6fd23f1a47e424e9f5a01fbd459c6
+                acquired_at: '2026-08-04T04:01:24+00:00'
