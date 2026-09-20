@@ -152,6 +152,18 @@ function finalizeApiPages(dir) {
  */
 function apiSidebar(catalog) {
   const items = [{ label: 'Overview', slug: routes.api }];
+  /* The category groups below link to anchors, so without this group the
+     module pages themselves have no sidebar trail and helia-ui files them
+     under "Other pages" in llms.txt, where an agent reading by section never
+     reaches them. check-discoverability-output.mjs fails on that. */
+  items.push({
+    label: 'By module',
+    collapsed: true,
+    items: catalog.modules.map((module) => ({
+      label: module,
+      slug: `${routes.api}/${module.split('.').join('/')}`,
+    })),
+  });
   for (const category of Object.keys(GROUP_LABELS)) {
     const members = catalog.symbols
       .filter((symbol) => symbol.category === category)

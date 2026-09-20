@@ -81,7 +81,7 @@ const present = (section, needle) => section !== null && section.includes(needle
 
 const symbols = readJson(path.join(siteRoot, 'public/reference/python-symbols.json'));
 /* python-symbols.json is generated from neuralspotx.__all__ and pinned to it by
-   tests/test_reference_generation.py, so asserting against it asserts against
+   tests/test_public_surface_doc.py, so asserting against it asserts against
    __all__ without importing the package from a Node check. */
 let symbolsFound = 0;
 for (const symbol of symbols.symbols) {
@@ -152,6 +152,25 @@ const ARTIFACTS = [
 for (const artifact of ARTIFACTS) {
   if (!fs.existsSync(path.join(dist, artifact))) fail(`dist is missing ${artifact}`);
   if (!llms.includes(`${base}${artifact}`)) fail(`llms.txt does not list ${artifact}`);
+}
+
+/*
+ * helia-ui files any page it cannot give a sidebar trail under "Other pages".
+ * That is silent: the page is still listed, still counted, and still has a
+ * rendition, so nothing in a build log says an agent reading llms.txt by
+ * section will never arrive at it. Only two routes are allowed there, and
+ * both are deliberately outside the sidebar; anything a generator emits has
+ * to be placed by the generator that emits it.
+ */
+const OTHER_PAGES_ALLOWED = new Set([`${base}`, `${base}404/`]);
+const otherPages = llms.split(/^## /m).find((section) => section.startsWith('Other pages'));
+if (otherPages) {
+  for (const [, url] of otherPages.matchAll(/\]\((\S+?)index\.md\)/g)) {
+    const route = url.slice(origin.length);
+    if (!OTHER_PAGES_ALLOWED.has(route)) {
+      fail(`llms.txt files ${route} under "Other pages"; give it a sidebar entry`);
+    }
+  }
 }
 
 // ------------------------------------------------------------ renditions

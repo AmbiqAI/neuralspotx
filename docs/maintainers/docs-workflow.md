@@ -53,9 +53,16 @@ generated one tracks the parser.
 ## Adding a page
 
 1. Write it as `.md` under `astro-site/src/content/docs/<section>/`, with
-   `title` and `description` in the front matter.
+   `title` and `description` in the front matter. `description` is not
+   optional: the build fails and names every page missing one, because the
+   description is what a search result, an Open Graph card and the page's line
+   in `llms.txt` all show. A generator that emits pages has to supply one for
+   every page it emits.
 2. Add it to the section's sidebar in `astro-site/astro.config.mjs`. A page with
-   no sidebar entry is reachable but invisible.
+   no sidebar entry still builds, but it gets no sidebar trail, so `llms.txt`
+   files it under "Other pages" where a reader working through the sections
+   never reaches it. `check-discoverability-output.mjs` fails on any route
+   there except Home and the 404, which are deliberately outside the sidebar.
 3. Run `check`, `build` and `validate`.
 
 Use plain Markdown with Starlight asides unless the page genuinely needs a
