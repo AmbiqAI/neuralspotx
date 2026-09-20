@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright (c) 2026, Ambiq
 /*
  * Post-build contract check over dist/.
  *
@@ -35,6 +37,17 @@ if (htmlFiles.length === 0) throw new Error('No built HTML found in dist/.');
 /* Script and style bodies hold unescaped `<`, which would read as markup. */
 const TAG = /<([a-zA-Z][-a-zA-Z0-9]*)((?:\s+[^\s"'>/=]+(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'`=<>]+))?)*)\s*\/?>/g;
 const ATTR = /([^\s"'>/=]+)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'`=<>]+)))?/g;
+const CHECKED_RELS = new Set([
+  'canonical',
+  'alternate',
+  'stylesheet',
+  'icon',
+  'shortcut icon',
+  'apple-touch-icon',
+  'sitemap',
+  'manifest',
+  'preload',
+]);
 
 const parse = (html) => {
   const body = html
@@ -53,8 +66,12 @@ const parse = (html) => {
       ids.add(attrs.id);
     }
     if (attrs.src) links.push(attrs.src);
-    /* Only the hrefs that have to resolve: anchors and the sheets they load. */
-    if (attrs.href && (tag === 'a' || attrs.rel === 'stylesheet')) links.push(attrs.href);
+    /* Anchors, plus the <link rel> targets a broken build silently points at
+       a route that was never emitted: canonical and alternate are what a
+       crawler follows, and the rest are what the browser fetches. */
+    if (attrs.href && (tag === 'a' || (tag === 'link' && CHECKED_RELS.has(attrs.rel ?? '')))) {
+      links.push(attrs.href);
+    }
   }
   return { ids, duplicates, links };
 };

@@ -1,6 +1,6 @@
 ---
 title: Guides
-description: Task guides for building apps with NSX — modules, memory, startup, toolchains and the concepts behind app generation.
+description: Task guides for building apps with NSX, covering modules, memory, startup, toolchains and the concepts behind app generation.
 ---
 
 The guides cover the work that happens after your first app builds: declaring and pinning
@@ -14,7 +14,5 @@ pages explain the generated project rather than hiding it.
 
 :::note[This section is still being filled in]
 The user guide, the architecture concepts and the examples are being reorganised and moved
-here in [#260](https://github.com/AmbiqAI/neuralspotx/issues/260). Until that lands, the
-published site at <https://ambiqai.github.io/neuralspotx/> remains the complete
-documentation.
+here in [#260](https://github.com/AmbiqAI/neuralspotx/issues/260).
 :::

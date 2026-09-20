@@ -12,12 +12,14 @@ on:
     paths:
       - "astro-site/**"
       - "docs/**"
+      - "src/neuralspotx/**"
       - ".github/workflows/docs.yml"
       - "pyproject.toml"
   pull_request:
     paths:
       - "astro-site/**"
       - "docs/**"
+      - "src/neuralspotx/**"
       - ".github/workflows/docs.yml"
       - "pyproject.toml"
   workflow_dispatch:
@@ -38,17 +40,26 @@ jobs:
     name: Build and validate
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    env:
+      # The pull_request checkout is a merge commit that exists on no branch,
+      # so the footer's provenance link has to name the head commit instead.
+      DOCS_SOURCE_COMMIT: ${{ github.event.pull_request.head.sha || github.sha }}
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
         with:
-          node-version: "24"
+          node-version-file: astro-site/.nvmrc
           cache: npm
           cache-dependency-path: astro-site/package-lock.json
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d4b2f3b6ecc6e67c4457f6d3e41ec42d3d0fcb86 # v5
+        with:
+          enable-cache: true
 
       - name: Install locked site dependencies
         working-directory: astro-site
@@ -70,24 +81,32 @@ jobs:
         working-directory: astro-site
         run: npm run validate
 
-      - name: Summarize the build
+      # Proves the reference toolchain runs against the real package. Nothing
+      # it writes is published or committed; the generated reference lands with
+      # AmbiqAI/neuralspotx#258.
+      - name: Smoke test the Python reference toolchain
         working-directory: astro-site
-        env:
-          BUILD_SECONDS: ${{ steps.build.outputs.seconds }}
+        run: npm run smoke:pyref
+
+      - name: Summarize the build
+        if: always()
+        working-directory: astro-site
         run: |
           {
             echo "### Docs site"
             echo
             echo "| Measure | Value |"
             echo "| --- | --- |"
-            echo "| Build time | ${BUILD_SECONDS}s |"
-            echo "| HTML pages | $(find dist -name '*.html' | wc -l | tr -d ' ') |"
-            echo "| Artifact size | $(du -sh dist | cut -f1) |"
+            echo "| Build time | ${BUILD_SECONDS:-n/a}s |"
+            echo "| HTML pages | $(find dist -name '*.html' 2>/dev/null | wc -l | tr -d ' ') |"
+            echo "| Artifact size | $(du -sh dist 2>/dev/null | cut -f1) |"
             echo "| helia-ui | $(node -p "require('./package.json').dependencies['@ambiqai/helia-ui']") |"
           } >> "$GITHUB_STEP_SUMMARY"
+        env:
+          BUILD_SECONDS: ${{ steps.build.outputs.seconds }}
 
       - name: Upload the built site
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: neuralspotx-docs-site
           path: astro-site/dist/

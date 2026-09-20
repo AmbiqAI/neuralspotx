@@ -1,6 +1,6 @@
 ---
 title: Modules
-description: The neuralSPOT-X module registry — what each module provides and which SoCs, boards and toolchains it declares compatibility with.
+description: What each neuralSPOT-X module provides, and which SoCs, boards and toolchains it declares compatibility with.
 ---
 
 An NSX app is a thin project plus the modules it depends on. The registry pins each module
@@ -14,7 +14,6 @@ the author's statement of intent and validate on your own target before you rely
 :::note[This section is still being filled in]
 The generated module catalog, the per-module pages and the board matrix are being built in
 [#259](https://github.com/AmbiqAI/neuralspotx/issues/259) from the registry lock and the
-module manifests, so the pages cannot drift from what `nsx` reports. Until that lands, use
-`nsx module list --registry-only` and the published site at
-<https://ambiqai.github.io/neuralspotx/>.
+module manifests, so the pages cannot drift from what `nsx` reports. Until that lands,
+`nsx module list --registry-only` reports the same data.
 :::

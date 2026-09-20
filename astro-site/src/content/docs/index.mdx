@@ -4,6 +4,11 @@ description: The single CLI that scaffolds, builds, flashes and profiles firmwar
 tableOfContents: false
 prev: false
 next: false
+head:
+  # Starlight's default is "<page title> | <site title>", which on the index
+  # page is the site name twice.
+  - tag: title
+    content: neuralSPOT-X
 helia:
   pageTitle: false
 ---
@@ -19,7 +24,7 @@ import LinkCard from '@ambiqai/helia-ui/astro/LinkCard';
 export const demo = [
   { kind: 'command', text: 'pipx install neuralspotx' },
   { kind: 'command', text: 'nsx create-app hello_ap510 --board apollo510_evb' },
-  { kind: 'success', text: "Created app 'hello_ap510' at: ./hello_ap510" },
+  { kind: 'success', text: "Created app 'hello_ap510' at: /home/you/hello_ap510" },
   { kind: 'command', text: 'cd hello_ap510 && nsx configure' },
   { kind: 'command', text: 'nsx build' },
   { kind: 'command', text: 'nsx flash' },

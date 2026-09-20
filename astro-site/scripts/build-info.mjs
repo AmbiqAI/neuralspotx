@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright (c) 2026, Ambiq
 /*
  * Provenance for the footer: which neuralSPOT-X release the prose describes,
  * and which commit produced the HTML.
@@ -32,8 +34,12 @@ const projectTable = pyproject.split(/^\[/m).find((table) => table.startsWith('p
 const version = projectTable?.match(/^version\s*=\s*"([^"]+)"/m)?.[1];
 if (!version) throw new Error('No version in the [project] table of pyproject.toml');
 
-/* GITHUB_SHA is the fallback for a checkout without git history. */
-const commit = git('rev-parse', 'HEAD') || process.env.GITHUB_SHA || '';
+/*
+ * DOCS_SOURCE_COMMIT wins over the checkout: on a pull_request event the
+ * checkout is an ephemeral merge commit that exists on no branch, so a footer
+ * built from it links to a tree nobody can reach.
+ */
+const commit = process.env.DOCS_SOURCE_COMMIT || git('rev-parse', 'HEAD') || '';
 if (!/^[0-9a-f]{40}$/.test(commit)) throw new Error('No source commit for the docs build');
 
 const buildInfo = {
@@ -41,7 +47,7 @@ const buildInfo = {
   commit,
   shortCommit: commit.slice(0, 8),
   sourceUrl: `https://github.com/AmbiqAI/neuralspotx/tree/${commit}`,
-  commitTime: git('show', '-s', '--format=%cI', 'HEAD') || null,
+  commitTime: git('show', '-s', '--format=%cI', commit) || null,
   modified: Boolean(git('status', '--porcelain', '--untracked-files=normal')),
 };
 

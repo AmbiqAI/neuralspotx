@@ -4,8 +4,8 @@ description: Install the NSX CLI, check your environment, and build and flash yo
 ---
 
 NSX is installed once and then used per app. After `pipx install neuralspotx`, `nsx doctor`
-checks the things a firmware build needs — Python, CMake, Ninja, the Arm toolchain and
-SEGGER J-Link — and tells you which are missing before a build or a flash fails on them.
+checks the things a firmware build needs (Python, CMake, Ninja, the Arm toolchain and
+SEGGER J-Link) and tells you which are missing before a build or a flash fails on them.
 
 From there every app follows the same lifecycle: `nsx create-app` scaffolds a project
 against a real board, `nsx configure` resolves its module dependencies and generates the
@@ -16,6 +16,5 @@ hardware; only `flash` and `view` need a probe attached.
 :::note[This section is still being filled in]
 The install guides, the environment check, the first-app walkthrough and the migration
 notes from neuralSPOT are being moved here from the MkDocs site in
-[#260](https://github.com/AmbiqAI/neuralspotx/issues/260). Until that lands, the published
-site at <https://ambiqai.github.io/neuralspotx/> remains the complete documentation.
+[#260](https://github.com/AmbiqAI/neuralspotx/issues/260).
 :::

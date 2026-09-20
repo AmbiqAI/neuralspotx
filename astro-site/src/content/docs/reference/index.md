@@ -16,6 +16,6 @@ currently marked Provisional. And the configuration schemas for `nsx.yml`,
 :::note[This section is still being filled in]
 The generated CLI pages, the Python API reference and the configuration schemas are being
 built in [#258](https://github.com/AmbiqAI/neuralspotx/issues/258), with completeness
-checks so no command or exported name can go missing. Until that lands, run `nsx <command>
---help` or see the published site at <https://ambiqai.github.io/neuralspotx/>.
+checks so no command or exported name can go missing. Until that lands, `nsx <command>
+--help` is the authoritative answer.
 :::
