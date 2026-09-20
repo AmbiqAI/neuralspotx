@@ -3017,5 +3017,8 @@
     }
   ],
   "registry_schema_version": 1,
-  "schema_version": 1
+  "schema_version": 1,
+  "unchecked_projects": {
+    "helia-dsp": "a private repository, so a run without credentials cannot read its manifests"
+  }
 }

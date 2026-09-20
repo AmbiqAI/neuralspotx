@@ -320,7 +320,22 @@ def test_the_check_reports_a_missing_snapshot(builder, tmp_path, capsys):
     assert "does not exist" in capsys.readouterr().err
 
 
-def test_an_unreadable_manifest_is_reported_rather_than_compared(builder, modules):
+def _unreadable(builder, snapshot: dict[str, Any], project: str) -> dict[str, Any]:
+    """Blank one module's manifest fields the way a failed fetch leaves them."""
+
+    target = next(
+        entry
+        for entry in snapshot["modules"]
+        if entry["project"] == project and entry["manifest_source"] != "unavailable"
+    )
+    target["manifest_source"] = "unavailable"
+    target["manifest_error"] = "repository not found"
+    for field in builder.MANIFEST_FIELDS:
+        target[field] = None
+    return target
+
+
+def test_an_unreadable_manifest_from_an_allowlisted_project_is_reported(builder, modules):
     """A private project answers a credential-less run with an access error.
 
     That is not drift, so the check carries the committed manifest fields over
@@ -328,15 +343,78 @@ def test_an_unreadable_manifest_is_reported_rather_than_compared(builder, module
     """
 
     regenerated = copy.deepcopy(modules)
-    target = next(entry for entry in regenerated["modules"] if entry["manifest_source"] == "git")
-    target["manifest_source"] = "unavailable"
-    target["manifest_error"] = "repository not found"
-    for field in builder.MANIFEST_FIELDS:
-        target[field] = None
+    target = _unreadable(builder, regenerated, next(iter(builder.UNCHECKED_PROJECTS)))
 
-    reconciled, skipped = builder.reconcile_unavailable(regenerated, modules)
+    reconciled, skipped, unexpected = builder.reconcile_unavailable(regenerated, modules)
     assert skipped == [target["name"]]
+    assert unexpected == []
     assert builder.serialize(reconciled) == builder.serialize(modules)
+
+
+def test_an_unreadable_manifest_off_the_allowlist_is_not_reconciled(builder, modules):
+    """A fetch that failed on a public project has to be a failure, not a skip.
+
+    Carrying the committed fields over it is what would let a network problem
+    pass --check with nothing compared.
+    """
+
+    regenerated = copy.deepcopy(modules)
+    target = _unreadable(builder, regenerated, "nsx-ambiq-sdk")
+    assert "nsx-ambiq-sdk" not in builder.UNCHECKED_PROJECTS
+
+    reconciled, skipped, unexpected = builder.reconcile_unavailable(regenerated, modules)
+    assert skipped == []
+    assert unexpected == [target["name"]]
+    assert builder.diff_summary(
+        "modules.json", builder.serialize(reconciled), builder.serialize(modules)
+    )
+
+
+def test_allow_unchecked_reconciles_a_project_off_the_allowlist(builder, modules):
+    """The opt out is explicit, for a run that never intended to fetch."""
+
+    regenerated = copy.deepcopy(modules)
+    target = _unreadable(builder, regenerated, "nsx-ambiq-sdk")
+
+    reconciled, skipped, unexpected = builder.reconcile_unavailable(
+        regenerated, modules, allow_all=True
+    )
+    assert skipped == [target["name"]]
+    assert unexpected == []
+    assert builder.serialize(reconciled) == builder.serialize(modules)
+
+
+def test_a_check_that_read_nothing_fails(builder, tmp_path, capsys):
+    """--offline reads no remote manifest, which is the shape of a failed fetch."""
+
+    exit_code = builder.check(
+        MODULES_SNAPSHOT,
+        BOARDS_SNAPSHOT,
+        workspace=tmp_path / "workspace",
+        offline=True,
+    )
+    assert exit_code == 1
+    assert "not on the unchecked allowlist" in capsys.readouterr().err
+
+    assert (
+        builder.check(
+            MODULES_SNAPSHOT,
+            BOARDS_SNAPSHOT,
+            workspace=tmp_path / "workspace",
+            offline=True,
+            allow_unchecked=True,
+        )
+        == 0
+    )
+
+
+def test_the_snapshot_names_the_projects_it_does_not_recheck(builder, modules):
+    """The site drives its own note off this list, so it has to be in the file."""
+
+    assert modules["unchecked_projects"] == builder.UNCHECKED_PROJECTS
+    projects = {entry["project"] for entry in modules["modules"]}
+    for project in modules["unchecked_projects"]:
+        assert project in projects
 
 
 def test_a_module_missing_from_a_reachable_project_is_still_drift(builder, modules):
@@ -344,8 +422,9 @@ def test_a_module_missing_from_a_reachable_project_is_still_drift(builder, modul
 
     regenerated = copy.deepcopy(modules)
     regenerated["modules"][0]["version"] = "99.0.0"
-    reconciled, skipped = builder.reconcile_unavailable(regenerated, modules)
+    reconciled, skipped, unexpected = builder.reconcile_unavailable(regenerated, modules)
     assert skipped == []
+    assert unexpected == []
     assert builder.diff_summary(
         "modules.json", builder.serialize(reconciled), builder.serialize(modules)
     )

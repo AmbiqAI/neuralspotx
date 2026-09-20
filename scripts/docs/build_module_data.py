@@ -14,9 +14,11 @@ families, ``validate_module_metadata`` for each manifest it fetches, and
 ``load_board_descriptors`` for the board matrix.
 
 One project in the registry is private (``helia-dsp``), so a run without
-credentials cannot read its manifest. ``--check`` reports those modules as not
-checked and compares the rest rather than failing on an access problem it
-cannot distinguish from drift; writing a snapshot with a manifest missing
+credentials cannot read its manifest. ``UNCHECKED_PROJECTS`` names the projects
+allowed to go unread for that reason: ``--check`` reports their modules as not
+checked and compares the rest. A manifest this run could not read from any
+other project fails the check, because a network problem is otherwise
+indistinguishable from a clean run. Writing a snapshot with a manifest missing
 needs ``--allow-missing``.
 """
 
@@ -50,6 +52,14 @@ DEFAULT_WORKSPACE = REPO_ROOT / "astro-site/.astro/module-sources"
 SOURCE_PACKAGED = "packaged"
 SOURCE_GIT = "git"
 SOURCE_UNAVAILABLE = "unavailable"
+
+# The projects a public, credential-less run is not expected to be able to read,
+# and why. A module whose manifest could not be read from one of these is
+# reported as not checked; one from any other project fails --check, so a
+# network failure cannot pass as a snapshot nobody needs to look at.
+UNCHECKED_PROJECTS = {
+    "helia-dsp": "a private repository, so a run without credentials cannot read its manifests",
+}
 
 # Fields that come out of a module's nsx-module.yaml. --check can only compare
 # these for a module whose manifest the run actually read.
@@ -241,6 +251,10 @@ def build_modules(
         "schema_version": SCHEMA_VERSION,
         "registry_schema_version": registry.get("schema_version"),
         "module_count": len(modules),
+        # Carried into the snapshot so the site can say on the page which
+        # modules the public build does not re-read, without a second copy of
+        # the list to keep in step.
+        "unchecked_projects": dict(sorted(UNCHECKED_PROJECTS.items())),
         "modules": modules,
     }
 
@@ -335,19 +349,29 @@ def serialize(payload: dict[str, Any]) -> str:
 
 
 def reconcile_unavailable(
-    generated: dict[str, Any], committed: dict[str, Any]
-) -> tuple[dict[str, Any], list[str]]:
-    """Carry committed manifest fields over the ones this run could not read.
+    generated: dict[str, Any], committed: dict[str, Any], *, allow_all: bool = False
+) -> tuple[dict[str, Any], list[str], list[str]]:
+    """Carry committed manifest fields over the ones this run was allowed to skip.
 
     A private project answers a credential-less run with an access error, which
     looks nothing like drift but would compare as if every manifest field had
-    been deleted. Those modules are taken from the committed snapshot and named
-    in the report instead, so the check still fails on a real change to every
-    module it could read.
+    been deleted. Modules from a project in ``UNCHECKED_PROJECTS`` are taken
+    from the committed snapshot and named in the report instead, so the check
+    still fails on a real change to every module it could read.
+
+    A manifest that could not be read from any other project is left as this
+    run produced it and returned as unexpected: carrying the committed fields
+    over it is what would let a failed fetch pass as a clean check. Passing
+    ``allow_all`` is the explicit opt out, for a local run that never intended
+    to reach the network.
+
+    Returns the reconciled payload, the modules skipped by the allowlist, and
+    the modules that could not be read and are not on it.
     """
 
     committed_by_name = {entry["name"]: entry for entry in committed.get("modules", [])}
     skipped: list[str] = []
+    unexpected: list[str] = []
     modules = []
     for entry in generated.get("modules", []):
         if entry.get("manifest_source") != SOURCE_UNAVAILABLE:
@@ -357,6 +381,10 @@ def reconcile_unavailable(
         if previous is None or previous.get("manifest_source") == SOURCE_UNAVAILABLE:
             modules.append(entry)
             continue
+        if not (allow_all or entry.get("project") in UNCHECKED_PROJECTS):
+            modules.append(entry)
+            unexpected.append(entry["name"])
+            continue
         merged = dict(entry)
         merged["manifest_source"] = previous["manifest_source"]
         merged["manifest_error"] = previous.get("manifest_error")
@@ -365,7 +393,7 @@ def reconcile_unavailable(
         modules.append(merged)
         skipped.append(entry["name"])
 
-    return {**generated, "modules": modules}, skipped
+    return {**generated, "modules": modules}, skipped, unexpected
 
 
 def diff_summary(label: str, generated: str, committed: str, *, context: int = 2) -> list[str]:
@@ -390,7 +418,14 @@ def diff_summary(label: str, generated: str, committed: str, *, context: int = 2
     return head
 
 
-def check(modules_out: Path, boards_out: Path, *, workspace: Path, offline: bool) -> int:
+def check(
+    modules_out: Path,
+    boards_out: Path,
+    *,
+    workspace: Path,
+    offline: bool,
+    allow_unchecked: bool = False,
+) -> int:
     problems: list[str] = []
     for path in (modules_out, boards_out):
         if not path.exists():
@@ -401,8 +436,10 @@ def check(modules_out: Path, boards_out: Path, *, workspace: Path, offline: bool
         return 1
 
     committed_modules = json.loads(modules_out.read_text(encoding="utf-8"))
-    generated_modules, skipped = reconcile_unavailable(
-        build_modules(workspace=workspace, offline=offline), committed_modules
+    generated_modules, skipped, unexpected = reconcile_unavailable(
+        build_modules(workspace=workspace, offline=offline),
+        committed_modules,
+        allow_all=allow_unchecked,
     )
     generated_boards = build_boards()
 
@@ -417,10 +454,29 @@ def check(modules_out: Path, boards_out: Path, *, workspace: Path, offline: bool
     if skipped:
         print(
             "build_module_data: manifest fields not checked for "
-            f"{len(skipped)} module(s) whose project this run could not read: "
+            f"{len(skipped)} module(s) whose manifest this run did not read: "
             f"{', '.join(sorted(skipped))}",
             file=sys.stderr,
         )
+
+    if unexpected:
+        print(
+            "build_module_data: could not read the manifest of "
+            f"{len(unexpected)} module(s) from a project that is not on the unchecked "
+            f"allowlist ({', '.join(sorted(UNCHECKED_PROJECTS))}): "
+            f"{', '.join(sorted(unexpected))}.",
+            file=sys.stderr,
+        )
+        generated_by_name = {entry["name"]: entry for entry in generated_modules["modules"]}
+        for name in sorted(unexpected):
+            print(f"  {name}: {generated_by_name[name]['manifest_error']}", file=sys.stderr)
+        print(
+            "build_module_data: those manifests were not compared, so this run proves nothing "
+            "about them. Restore the network or the credentials, or pass --allow-unchecked to "
+            "compare only what this run could read.",
+            file=sys.stderr,
+        )
+        return 1
 
     if lines:
         print("build_module_data: the committed snapshot is out of date.", file=sys.stderr)
@@ -441,7 +497,7 @@ def check(modules_out: Path, boards_out: Path, *, workspace: Path, offline: bool
         f"build_module_data: snapshot is current, {generated_modules['module_count']} modules and "
         f"{generated_boards['board_count']} boards"
         + (f", {len(unavailable)} without a manifest" if unavailable else "")
-        + (f", {len(skipped)} not checked" if skipped else "")
+        + (f", {len(skipped)} not checked ({', '.join(sorted(skipped))})" if skipped else "")
         + "."
     )
     return 0
@@ -468,6 +524,14 @@ def main(argv: list[str] | None = None) -> int:
         help="write the snapshot even though a manifest could not be read",
     )
     parser.add_argument(
+        "--allow-unchecked",
+        action="store_true",
+        help=(
+            "let --check pass with manifests it could not read from a project outside the "
+            "unchecked allowlist; a local convenience, never a CI setting"
+        ),
+    )
+    parser.add_argument(
         "--check",
         action="store_true",
         help="regenerate in memory and exit 1 when the committed snapshot differs",
@@ -476,7 +540,11 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.check:
         return check(
-            args.modules_out, args.boards_out, workspace=args.workspace, offline=args.offline
+            args.modules_out,
+            args.boards_out,
+            workspace=args.workspace,
+            offline=args.offline,
+            allow_unchecked=args.allow_unchecked,
         )
 
     modules = build_modules(workspace=args.workspace, offline=args.offline)

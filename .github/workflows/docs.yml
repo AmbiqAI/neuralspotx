@@ -94,7 +94,9 @@ jobs:
       # registry pins and fails when the committed JSON disagrees. Every
       # project it clones is public except helia-dsp, which a job with no
       # credentials reports as not checked rather than as drift, so the step
-      # needs no secret.
+      # needs no secret. Anything else it cannot read fails the step, so a
+      # network problem cannot pass as a check that compared nothing;
+      # --allow-unchecked exists for local runs and must not be used here.
       - name: Check the module snapshot for drift
         id: snapshot
         run: |
