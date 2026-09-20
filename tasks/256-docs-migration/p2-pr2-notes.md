@@ -101,9 +101,11 @@ resolver then rejects (`module_registry/_profile.py`), which the lock and sync p
   the board fragment and the startup source. **Surfaced to the owner** (section 7).
 - **The NBL MRAM origin.** Only the SBL variant's MEMORY block is present in this
   repository. The page names both variants and gives numbers only for the one it can cite.
-- **All other memory sizes.** The page quotes exactly one MEMORY block, from
-  `examples/power_benchmark/linker_script_itcm.ld`, names that file, and says the numbers
-  are that file's for that SoC and that profile.
+- **Memory sizes beyond the one block this repository carries.** The page is not
+  size-free: it quotes one MEMORY block in full, from
+  `examples/power_benchmark/linker_script_itcm.ld`, names that file inline, and says the
+  four numbers are that file's for that SoC and that linker profile. Sizes for any other
+  part, and the source's unattributed figures, are dropped.
 - **`_nsx/` in the Windows section of `docs/user-guide/troubleshooting.md`.** The path does
   not appear anywhere in `src/neuralspotx`. Dropped.
 - **`docs/user-guide/module-catalog.md`** is not migrated, per the content map. The

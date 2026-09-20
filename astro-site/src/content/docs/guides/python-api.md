@@ -53,9 +53,11 @@ request = AppBuildRequest(app_dir=app_dir, board="apollo510_evb", frozen=True)
 build_app(request)
 ```
 
-There is a request type per operation: `AppCreateRequest`, `AppActionRequest`,
-`AppBuildRequest`, `AppFlashRequest`, `AppViewRequest`, `AppCleanRequest`,
-`ModuleChangeRequest`, `ModuleUpdateRequest` and `ModuleRegisterRequest`.
+There is a request type per operation. Fifteen are exported: `AppActionRequest`,
+`AppBuildRequest`, `AppCleanRequest`, `AppCreateRequest`, `AppFlashRequest`,
+`AppLockRequest`, `AppOutdatedRequest`, `AppSyncRequest`, `AppUpdateRequest`,
+`AppViewRequest`, `BoardCreateRequest`, `ModuleChangeRequest`, `ModuleInitRequest`,
+`ModuleRegisterRequest` and `ModuleUpdateRequest`.
 
 ## What comes back
 

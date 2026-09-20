@@ -38,9 +38,10 @@ baked into the generated SEGGER command files.
 is enough. It drives Ninja through CMake and leaves the linked image, the `.bin` and the
 `.map` in `build/<board>/`.
 
-Three flags are build-only: `--jobs` for parallelism, `--target` to build one explicit
-CMake target, and `--update` to re-resolve constraints to upstream tip and re-vendor
-before building.
+`--jobs`, `--target` and `--update` are accepted by both `build` and `flash`. `--jobs`
+sets the parallelism, `--update` re-resolves constraints to upstream tip and re-vendors
+first, and `--target` selects a CMake target to build and an executable to flash
+respectively.
 
 :::caution[`--sdk-root` and `--frozen` are mutually exclusive]
 `--sdk-root` points the build at an SDK tree on your machine instead of the vendored one.

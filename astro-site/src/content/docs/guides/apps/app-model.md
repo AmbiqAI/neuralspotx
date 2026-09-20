@@ -39,8 +39,9 @@ This costs disk space and buys three things:
 - **The app outlives NSX.** The generated tree is ordinary CMake and Ninja. If you want to
   graduate an app into your own build system, you already have all the sources.
 
-`modules/` and `build/` are gitignored by the generated `.gitignore`, because `nsx.lock`
-is enough to reconstruct them. Commit `nsx.yml` and `nsx.lock`; let NSX re-fetch the rest.
+`build/` and `.nsx/` are gitignored by the generated `.gitignore`, and `modules/` by the
+`modules/.gitignore` that `nsx configure` writes, because `nsx.lock` is enough to
+reconstruct them. Commit `nsx.yml` and `nsx.lock`; let NSX re-fetch the rest.
 
 :::note[When you do want module sources in git]
 Declaring a module as `vendored` in `nsx.yml` flips that default: the module's tree becomes

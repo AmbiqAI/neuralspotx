@@ -97,7 +97,7 @@ uint32_t nsx_system_init(const nsx_system_config_t *cfg);
 typedef struct {
     nsx_perf_mode_e    perf_mode;      ///< CPU performance mode
     bool               enable_cache;   ///< Enable I/D cache on staged R5 targets
-    bool               enable_sram;    ///< Reserved - keep shared SRAM powered (not yet wired)
+    bool               enable_sram;    ///< Reserved — keep shared SRAM powered (not yet wired)
     nsx_debug_config_t debug;          ///< Debug output config
     bool               skip_bsp_init;  ///< Skip am_bsp_low_power_init() (use minimal HW init)
     bool               spot_mgr_profile;///< Enable SpotManager profile (Apollo5 family only)

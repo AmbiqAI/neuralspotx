@@ -30,7 +30,7 @@ my_app/
 | `nsx.yml` | The app manifest: board and SoC target, toolchain, release channel, starter profile, and the list of modules you depend on directly. | Yes. This is the file you change. |
 | `CMakeLists.txt` | An ordinary top-level CMake file. Declares `cmake_minimum_required(VERSION 3.24)`, includes the packaged NSX support and links your executable. | Yes. NSX writes it once and does not rewrite it. |
 | `src/main.c` | The generated application. `npu-tflm` writes `src/main.cc` instead. | Yes. |
-| `.gitignore` | Excludes `modules/`, `build/` and `.nsx/`, which are all reconstructible from `nsx.lock`. | Yes, but keep those three entries. |
+| `.gitignore` | Excludes `build/` and `.nsx/`. Module and CMake glue ignores are handled by their own files, `modules/.gitignore` and `cmake/.gitignore`, which `nsx configure` generates. | Yes, but keep both entries. |
 | `README.md` | A short readme for the app, including its build and flash sequence. | Yes. |
 | `cmake/nsx/` | Packaged CMake support: module wiring, the toolchain files, the SEGGER flash and reset templates. | No. Overwritten on every `create-app` and refreshed as NSX updates. |
 | `cmake/presets/` | `CMakePresets.json`, so an IDE can open the project directly. Defines `gcc-ninja`, `armclang-ninja` and `atfe-ninja`. | No. |
@@ -85,9 +85,13 @@ Commit `nsx.yml`, `nsx.lock`, `CMakeLists.txt`, `src/` and `README.md`. That is 
 anyone with the same NSX version to reproduce your build exactly, because `nsx.lock`
 records commits and content hashes rather than version ranges.
 
-Leave `modules/`, `boards/`, `build/` and `.nsx/` out, which is what the generated
-`.gitignore` already does. `boards/` is re-vendored from the packaged board definition and
-`modules/` from the lock, so neither carries information the lock does not already have.
+Leave `modules/`, `build/` and `.nsx/` out. The root `.gitignore` covers the last two, and
+`nsx configure` generates a `modules/.gitignore` listing the registry modules it re-acquires
+and a `cmake/.gitignore` covering `cmake/nsx/`.
+
+`boards/` is not ignored by anything, so `git add -A` will stage it. It is re-vendored by
+`nsx sync` from the packaged board definition, so exclude it yourself if you do not want
+it tracked.
 
 :::tip[Checking a clone builds the same thing]
 `nsx sync --frozen` fails rather than correcting when `modules/` does not match `nsx.lock`,

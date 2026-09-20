@@ -36,8 +36,9 @@ only covers the parts that catch people out.
 
 - **`build.cmake.package` and `build.cmake.targets`** are how the rest of the build reaches
   your code. The package name is the module name with hyphens turned into underscores:
-  `my-sensor` becomes `my_sensor`. The conventional target is `nsx::sensor`, the package
-  name with the `nsx_` prefix dropped.
+  `my-sensor` becomes `my_sensor`. The conventional target is the package name under the
+  `nsx::` namespace, with an `nsx_` prefix dropped if present: `my-sensor` gives
+  `nsx::my_sensor`, `nsx-timer` gives `nsx::timer`. `nsx module init` writes both for you.
 - **`depends.required` is resolved; `depends.optional` is not.** Optional dependencies are
   searchable metadata that tell a reader what your module can work with. Nothing installs
   them.

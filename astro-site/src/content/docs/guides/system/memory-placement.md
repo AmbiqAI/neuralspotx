@@ -121,9 +121,10 @@ uint32_t nsx_cache_sync_shared_data(void);
 ```
 
 Not every part implements every operation. The header exposes capability macros, so
-portable code can test before calling:
+portable code can test before calling. Each macro is always defined, as `1` or `0`, so
+test it with `#if` rather than `#ifdef`:
 
-| Macro | Meaning when defined |
+| Macro | Meaning when 1 |
 | --- | --- |
 | `NSX_CACHE_HAS_PUBLISH_WRITES` | `nsx_cache_publish_writes()` is implemented. |
 | `NSX_CACHE_HAS_INVALIDATE_OBSERVED` | `nsx_cache_invalidate_observed_data()` is implemented. |

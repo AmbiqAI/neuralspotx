@@ -6,7 +6,7 @@ description: The three cross compilers NSX generates for, how one is selected, w
 NSX generates a CMake toolchain file per build and points CMake at it. Three cross
 compilers are wired, and which one you get is a per-app setting you can override per run.
 
-## The three
+## The names NSX accepts
 
 | Name | Toolchain file | Compiler |
 | --- | --- | --- |

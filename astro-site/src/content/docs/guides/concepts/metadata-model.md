@@ -89,5 +89,5 @@ instead of a field being silently ignored.
 ## What to commit
 
 Commit `nsx.yml` and `nsx.lock`. Together they are the complete description of what your
-firmware is built from. `boards/` and `modules/` are reconstructible from the lock, which
-is why the generated `.gitignore` leaves them out.
+firmware is built from. `modules/` is reconstructible from the lock, which is why the
+generated `modules/.gitignore` leaves it out.

@@ -77,7 +77,7 @@ to reach them:
 
 ```text
 Unable to resolve dependency metadata for nsx.yml modules [nsx-audio]: ...
-Run 'nsx lock' with the required module sources available so nsx.lock can record the
+Run `nsx lock` with the required module sources available so nsx.lock can record the
 full dependency closure.
 ```
 

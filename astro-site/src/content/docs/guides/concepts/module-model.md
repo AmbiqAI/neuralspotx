@@ -22,8 +22,9 @@ Two parts of it do most of the work.
 
 **The CMake contract.** `build.cmake.package` and `build.cmake.targets` are how the rest
 of the graph reaches your code. The package name is the module name with hyphens turned
-into underscores, and the conventional target is that name with the `nsx_` prefix dropped
-and `nsx::` in front: `nsx-timer` becomes package `nsx_timer` and target `nsx::timer`.
+into underscores, and the conventional target is that name under the `nsx::` namespace
+with an `nsx_` prefix dropped if present: `nsx-timer` becomes package `nsx_timer` and
+target `nsx::timer`, while `my-sensor` becomes `my_sensor` and `nsx::my_sensor`.
 
 **The compatibility block.** `compatibility.boards`, `compatibility.socs` and
 `compatibility.toolchains` are enforced at resolution. They are also the only thing

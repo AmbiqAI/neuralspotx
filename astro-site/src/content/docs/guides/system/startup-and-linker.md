@@ -64,7 +64,7 @@ if(COMMAND nsx_select_linker_script)
         ITCM "${_nsx_linker_script_itcm}"
     )
 else()
-    # SDK predates named linker profiles - fall back to the default script.
+    # SDK predates named linker profiles — fall back to the default script.
     set(NSX_LINKER_SCRIPT "${_nsx_linker_script_default}")
 endif()
 ```

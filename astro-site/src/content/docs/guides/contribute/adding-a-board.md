@@ -3,8 +3,9 @@ title: Adding a board
 description: Scaffold a board definition, fill in its five CMake fragments and its descriptor, and get an app building against hardware NSX does not package.
 ---
 
-NSX packages 17 boards. Adding one means writing a board module: a descriptor that says
-what the board is, and the CMake fragments that wire it up.
+NSX packages a board definition for every board in the
+[board matrix](/neuralspotx/modules/boards/). Adding one of your own means writing a board
+module: a descriptor that says what the board is, and the CMake fragments that wire it up.
 
 Do this for a custom board or a variant of a packaged one. For a board that only differs
 from a packaged one in a pin or two, starting from that board's definition and changing

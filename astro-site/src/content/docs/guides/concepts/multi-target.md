@@ -4,8 +4,8 @@ description: How one app source tree builds for several boards, what stays share
 ---
 
 An NSX app can declare several boards and build for each of them from one source tree. The
-packaged examples do it, which is why `hello_world` runs on an Apollo510 EVB and an
-Apollo4P board without two copies of the source.
+packaged examples do it, which is why `hello_world` declares both an Apollo510 EVB and an
+Apollo4P board as targets from one source tree.
 
 ## Declaring more than one target
 
