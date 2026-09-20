@@ -22,8 +22,7 @@ nsx flash --target hpx_profiler_power
 upward from the current directory. The positional `app` argument overrides `--app-dir` and
 is resolved under the current directory and under `examples/`.
 
-{/* TODO(#260): link the SDK provider selection guide once it is migrated. */}
-The out-of-tree SDK escape hatch is described under SDK provider selection in the guides.
+The out-of-tree SDK escape hatch is described under [SDK provider selection](/neuralspotx/guides/modules/sdk-providers/) in the guides.
 
 `--target` names an executable to flash; omitting it selects the app's primary
 executable.

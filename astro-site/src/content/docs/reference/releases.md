@@ -23,8 +23,7 @@ pin a version.
 
 There is no release calendar. Changes accumulate on `main` into a pending
 release pull request, and a release happens when a maintainer merges it. Expect
-releases in batches rather than on a fixed day, and expect fixes to reach PyPI
-within days rather than weeks.
+releases in batches rather than on a fixed day.
 
 Each release carries a changelog entry derived from the commit titles that went
 into it. The full history is in

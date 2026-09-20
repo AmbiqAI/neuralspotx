@@ -14,5 +14,4 @@ nsx build --jobs 8
 
 Run `nsx commands --json` for the authoritative machine-readable argument schema.
 
-{/* TODO(#260): link the SDK provider selection guide once it is migrated. */}
-The out-of-tree SDK escape hatch is described under SDK provider selection in the guides.
+The out-of-tree SDK escape hatch is described under [SDK provider selection](/neuralspotx/guides/modules/sdk-providers/) in the guides.
