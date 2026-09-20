@@ -16,13 +16,27 @@ import modulesSidebar from './src/data/modules-sidebar.json' with { type: 'json'
 // Written by scripts/build-examples.mjs from the example front matter and each
 // example's README, in the same pass (AmbiqAI/neuralspotx#260).
 import examplesSidebar from './src/data/examples-sidebar.json' with { type: 'json' };
+// Every route the MkDocs site published, mapped to its successor
+// (AmbiqAI/neuralspotx#261). Authored from the fate table in
+// tasks/256-docs-migration/p2-content-map.md; checked against dist by
+// scripts/check-discoverability-output.mjs.
+import oldRoutes from './src/data/redirects.json' with { type: 'json' };
 
 const base = '/neuralspotx';
 const basePath = `${base}/`;
 
+/* Seven of the 67 old routes kept their path, so they are pages rather than
+   redirects and Astro would refuse a redirect that collides with one. They stay
+   in the map because the check reads it as the list of routes that must still
+   resolve, not as the list of stubs to emit. */
+const redirects = Object.fromEntries(
+  Object.entries(oldRoutes).filter(([from, to]) => to !== `${base}${from}`),
+);
+
 export default defineConfig({
   site: 'https://ambiqai.github.io',
   base,
+  redirects,
   integrations: [
     /* The module catalog's filter is the site's one island
        (src/components/ModuleCatalogFilter.tsx). */
