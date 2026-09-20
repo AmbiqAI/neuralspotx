@@ -69,6 +69,13 @@ const FACETS: { id: FacetId; label: string; of: (module: CatalogModule) => strin
   { id: 'toolchain', label: 'Toolchain', of: (module) => module.toolchains },
 ];
 
+const COLUMNS = [
+  { label: 'Module', width: 'w-[22%]' },
+  { label: 'Type', width: 'w-[14%]' },
+  { label: 'Summary', width: 'w-[44%]' },
+  { label: 'Boards', width: 'w-[20%]' },
+];
+
 const SORTS = [
   { id: 'name', label: 'Name' },
   { id: 'type', label: 'Type' },
@@ -265,13 +272,19 @@ export default function ModuleBrowser({ modules, wildcard = '*' }: ModuleBrowser
             <TableCaption className="sr-only">Modules matching these filters</TableCaption>
             <TableHeader>
               <TableRow>
-                {['Module', 'Type', 'Summary', 'Version', 'SoCs', 'Boards', 'Toolchains'].map(
-                  (heading) => (
-                    <TableHead key={heading} className="sticky top-0 bg-background">
-                      {heading}
-                    </TableHead>
-                  ),
-                )}
+                {/* Four columns fit the content width with the sidebar in
+                    place. What a module declares beyond its boards is a row
+                    the reader opens, not a column they scroll to. The widths
+                    are hints: left to itself the table gives the name column
+                    the space and wraps the summary into a ribbon. */}
+                {COLUMNS.map((column) => (
+                  <TableHead
+                    key={column.label}
+                    className={`sticky top-0 bg-background ${column.width}`}
+                  >
+                    {column.label}
+                  </TableHead>
+                ))}
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -306,26 +319,26 @@ export default function ModuleBrowser({ modules, wildcard = '*' }: ModuleBrowser
                         </span>
                       </TableCell>
                       <TableCell className="align-top whitespace-nowrap">{module.type}</TableCell>
-                      <TableCell className="min-w-[16rem] align-top text-muted-foreground">
+                      {/* The table part sets whitespace-nowrap on every cell,
+                          and `cn` merges Tailwind classes, so wrapping is asked
+                          for rather than fought with a width. */}
+                      <TableCell className="align-top whitespace-normal text-muted-foreground">
                         {module.summary}
                       </TableCell>
-                      <TableCell className="align-top whitespace-nowrap">
-                        {module.version || '—'}
-                      </TableCell>
-                      <TableCell className="max-w-[14rem] align-top text-sm">
-                        {show(module.socs, wildcard)}
-                      </TableCell>
-                      <TableCell className="max-w-[14rem] align-top text-sm">
+                      <TableCell className="align-top text-sm whitespace-normal">
                         {show(module.boards, wildcard)}
-                      </TableCell>
-                      <TableCell className="max-w-[12rem] align-top text-sm">
-                        {show(module.toolchains, wildcard)}
                       </TableCell>
                     </TableRow>
                     {open && (
                       <TableRow data-slot="module-detail" id={detailId}>
-                        <TableCell colSpan={7} className="bg-muted/40">
+                        <TableCell colSpan={4} className="bg-muted/40 whitespace-normal">
                           <dl className="grid gap-2 text-sm md:grid-cols-[10rem_1fr]">
+                            <dt className="text-muted-foreground">Version</dt>
+                            <dd>{module.version || '—'}</dd>
+                            <dt className="text-muted-foreground">SoCs</dt>
+                            <dd>{show(module.socs, wildcard)}</dd>
+                            <dt className="text-muted-foreground">Toolchains</dt>
+                            <dd>{show(module.toolchains, wildcard)}</dd>
                             {module.capabilities.length > 0 && (
                               <>
                                 <dt className="text-muted-foreground">Capabilities</dt>

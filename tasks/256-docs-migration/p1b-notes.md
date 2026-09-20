@@ -94,8 +94,11 @@ in the built HTML and in the Markdown rendition with JavaScript disabled, and
 they want a filter. `ModuleIndex.astro` builds the rows from the same committed
 snapshot the table is generated from and mounts `ModuleBrowser.tsx`: a search
 field, a dropdown each for type, SoC, board and toolchain, a sort order, a live
-count with a clear control, and the results as a table with a detail row per
-module. Every control is a package primitive -- `react/input`, `react/select`,
+count with a clear control, and the results as a table of module, type,
+summary and declared boards, with version, SoCs, toolchains, capabilities and
+dependencies in a detail row the reader opens. Four columns is what fits the
+content width beside the sidebar; seven meant a horizontal scrollbar and a
+summary clipped to one line. Every control is a package primitive -- `react/input`, `react/select`,
 `react/button`, the table parts -- with Tailwind utilities for layout and no
 CSS of its own.
 
