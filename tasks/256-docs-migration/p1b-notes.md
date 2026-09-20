@@ -88,30 +88,44 @@ setting. Writing a snapshot that is missing a manifest still needs
 carries the allowlist, so the note on a module page saying its manifest is not
 re-read goes when the allowlist does.
 
-**The filter is the package's `RefIndex`; the static table is what a reader
-without it gets.** The acceptance criteria want the full table in the built
-HTML and in the Markdown rendition with JavaScript disabled, and they want a
-filter. `ModuleIndex.astro` builds `RefIndexRow[]` from the same committed
-snapshot the table is generated from and mounts
-`@ambiqai/helia-ui/react/ref-index`, which owns its rows, its chips and its
-search. The page still carries the ordinary Markdown table under **All
-modules**, and a script hides that table once the island has actually rendered,
-so a failed hydration leaves the reader the catalog rather than nothing.
+**The filter is a toolbar built from the package's primitives; the static table
+is what a reader without it gets.** The acceptance criteria want the full table
+in the built HTML and in the Markdown rendition with JavaScript disabled, and
+they want a filter. `ModuleIndex.astro` builds the rows from the same committed
+snapshot the table is generated from and mounts `ModuleBrowser.tsx`: a search
+field, a dropdown each for type, SoC, board and toolchain, a sort order, a live
+count with a clear control, and the results as a table with a detail row per
+module. Every control is a package primitive -- `react/input`, `react/select`,
+`react/button`, the table parts -- with Tailwind utilities for layout and no
+CSS of its own.
 
-The island mounts `client:only`. Server-rendering it put all fifty modules in
-the page twice and took the catalog to 349 KB against a 250 KB budget; with the
-rows arriving as props the page is 176 KB and 24 KB gzipped. The `.md`
-rendition carries all fifty rows, as before, and Pagefind indexes the table
-rather than the island.
+The package's `RefIndex` was tried first and rejected: it renders a chip per
+facet value, and seventeen boards, eleven SoCs and a hundred capabilities put
+three screens of chips above the answer. That is draft 7 in
+helia-ui-gaps-259.md, with the wording it cannot be told ("50 of 50 symbols",
+a first column headed "Symbol") and the URL state it does not keep, which is
+why the overview's type cards link to the catalog rather than to a selection of
+it.
 
-What `RefIndex` costs is recorded in helia-ui-gaps-259.md drafts 6 to 8: the
-count reads "50 of 50 symbols", the first column is headed "Symbol", the facet
-order is the package's, no facet can be collapsed, and nothing about a
-selection reaches the URL. Capability is on every row, where the search reads
-it, but not in the chips: a facet cannot be collapsed and a hundred chips are a
-wall rather than a control. The island is 258 KB of JavaScript against
-the previous 225 KB, the difference being `RefIndex`, its table and input
-primitives and its icons; React is 213 KB of both figures.
+A module that declares every target of a kind reads as **any** and answers
+every selection for that kind, which is what the wildcard means and what a chip
+could not say.
+
+The page still carries the ordinary Markdown table, with no heading, so nothing
+hidden reaches the table of contents; a script hides it once the island has
+actually rendered, so a failed hydration leaves the reader the catalog rather
+than nothing. The island mounts `client:only`: server-rendering it put all
+fifty modules in the page twice and took the catalog to 349 KB against a 250 KB
+budget, and with the rows arriving as props the page is 156 KB and 20 KB
+gzipped. The `.md` rendition carries all fifty rows and Pagefind indexes the
+table rather than the island.
+
+The island's JavaScript is 350 KB uncompressed and 113 KB gzipped. React and
+react-dom are 221 KB of it, and `react/select` brings Radix's select, portal
+and dismissable layer for most of the rest; `RefIndex` was 258 KB and the first
+hand-written island 225 KB. Native `<select>` elements would take about 90 KB
+back and leave the package's vocabulary, which is the owner's call rather than
+a saving to take quietly.
 
 **Budgets are the 250 KB / 40 KB class, with the same 80% warning.** Unlike the
 Python API pages there was no reason to deviate: the catalog is one table and

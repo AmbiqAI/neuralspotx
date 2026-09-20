@@ -18,7 +18,8 @@ What NSX ended up writing locally, and why:
 
 | NSX component | Reason |
 | --- | --- |
-| `astro-site/src/components/ModuleIndex.astro` | A wrapper only: it builds `RefIndexRow[]` from the module snapshot and mounts the package's `react/ref-index`. Drafts 6 and 7 are what that cost |
+| `astro-site/src/components/ModuleIndex.astro` | Builds the catalog's rows from the module snapshot and mounts the island |
+| `astro-site/src/components/ModuleBrowser.tsx` | Drafts 1 and 7: the toolbar the package has no part for, assembled from `react/input`, `react/select`, `react/button` and the table parts |
 | `astro-site/src/components/ModuleCard.astro` | Composed from the package's `Card`, `CardHeader`, `CardContent` and `Chip`; no gap, recorded for completeness |
 
 Everything else on the Modules section is a package part or plain Markdown:
@@ -51,13 +52,21 @@ search) plus the reference-specific row builder that already lives in
 `ref-index-model.ts`. The second is a refactor of shipped code and would give
 `RefIndex` and a catalog one implementation.
 
-**NSX workaround.** `RefIndex` itself, through `ModuleIndex.astro`. A module
-row is a `RefIndexRow` with `kind: 'module'`, which is the one `SymbolKind`
-that is true of a module rather than borrowed, `module` carrying the registry
-project and `group` the type label. What it costs is in draft 7. The static
-Markdown table stays below the island and is hidden once the island renders,
-because it is what the rendition, Pagefind and a reader without JavaScript
-get.
+**NSX workaround.** `RefIndex` was tried first and rejected on sight: see
+draft 7. The catalog now mounts `ModuleBrowser.tsx`, a toolbar assembled from
+`react/input`, `react/select`, `react/button` and the table parts, with
+Tailwind utilities for layout and no CSS of its own. It is about a hundred and
+fifty lines, and every one of them is the filtering logic a `FilterRail` or a
+`FacetedTable` would own. The static Markdown table stays below the island and
+is hidden once the island renders, because it is what the rendition, Pagefind
+and a reader without JavaScript get.
+
+**What the part would need.** Rows, a column set, a facet set rendered as
+dropdowns rather than chips, a sort control, a live count, a clear control and
+an optional detail row. That is #24 widened from a grid to a table, and it is
+the same shape heliaCORE's `KernelBrowser.tsx` and heliaRT's `OperatorBrowser`
+each wrote for themselves: three products, three implementations, one part
+missing.
 
 ---
 
@@ -209,11 +218,17 @@ cannot escape for a consumer it does not control.
 
 ## Draft 7: RefIndex is a reference index in its wording and its controls
 
-**Title:** `RefIndex` cannot be labelled, and a facet with a hundred values is a
-hundred chips
+**Title:** `RefIndex` cannot be labelled, and chip facets do not scale past a
+dozen values
 
-**What happened.** Using `RefIndex` for the module catalog works, and these are
-what a reader sees that a catalog would not:
+**What happened.** `RefIndex` rendered the module catalog correctly and was
+rejected on sight, because a chip per value is a control that only works while
+the values are few. The catalog's board facet is seventeen values, its SoC
+facet eleven and its capability facet about a hundred; the reader scrolled
+three screens of chips to reach the table. A dozen values is the most a row of
+chips holds before it stops being a row.
+
+These are the rest of what a reader saw that a catalog would not:
 
 - The count reads `50 of 50 symbols`, from `{visible.length} of {rows.length}
   symbols` (`react/ref-index.tsx`). There is no prop for the noun.
@@ -224,10 +239,8 @@ what a reader sees that a catalog would not:
   gets Board, Capability, SoC, Toolchain, Type.
 - The same array drives the chips and the table columns, so a facet cannot be
   filterable without also being a column.
-- There is no collapsed or limited facet. The catalog's `capability` facet has
-  about a hundred values, so the reader scrolled a wall of chips before
-  reaching the table, on desktop and worse on mobile. NSX stopped passing that
-  facet; the values stay on the row, where the free-text search reads them.
+- There is no collapsed or limited facet, and no way to ask for a dropdown
+  instead of chips.
 - No state reaches the URL. A link cannot open the index with a facet selected
   and a reader cannot share what they are looking at, so the overview's type
   cards link to the catalog rather than to a selection of it.
@@ -243,13 +256,17 @@ collapsed when it has more values than a row of chips.
 **Source location.** `react/ref-index.tsx` (count, headers, facet rendering),
 `ref-index-model.ts` (`refIndexFacets`, `RefIndexRow`, `RefIndexContract`).
 
-**Proposal.** Add `noun`, `columns: { name, summary }`, an optional facet order
-or a `collapsedAt` on `RefIndexFacet`, `kind` optional, and query-string state
-for the selection. None of it changes a reference index that passes nothing.
+**Proposal.** Add `noun`, `columns: { name, summary }`, an optional facet order,
+a `control: 'chips' | 'select'` or a `collapsedAt` on `RefIndexFacet`, `kind`
+optional, and query-string state for the selection. None of it changes a
+reference index that passes nothing. The control question is the one that
+matters: chips and a dropdown are the same facet at different sizes, and only
+the part knows how many values there are.
 
-**NSX workaround.** The package's wording and ordering are on the page as
-shipped. The capability facet is left out of the chips, which is a choice the
-props allow rather than a change to the part.
+**NSX workaround.** `ModuleBrowser.tsx`. The cost of not using `RefIndex` is
+the filtering logic, about a hundred and fifty lines, and the island's
+JavaScript: 350 KB against `RefIndex`'s 258 KB, because `react/select` brings
+Radix's select, portal and dismissable-layer with it.
 
 ---
 

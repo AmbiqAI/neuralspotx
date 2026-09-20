@@ -9,7 +9,7 @@
 @import '@ambiqai/helia-ui/starlight-tailwind.css';
 
 @source '../content/**/*.{md,mdx}';
-@source '../components/**/*.astro';
+@source '../components/**/*.{astro,tsx}';
 @source '../../node_modules/@ambiqai/helia-ui/astro/**/*.astro';
 @source '../../node_modules/@ambiqai/helia-ui/starlight/**/*.astro';
 /* The catalog's filter is the package's own React island, so its classes
