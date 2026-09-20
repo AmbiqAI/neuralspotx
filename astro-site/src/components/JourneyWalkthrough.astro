@@ -222,6 +222,8 @@ const BEHAVIOR = `
      never jumps when the active one changes. */
   .journey {
     display: grid;
+    min-width: 0;
+    overflow: hidden;
     gap: var(--helia-space-4);
     padding: var(--helia-space-5);
   }
@@ -249,11 +251,16 @@ const BEHAVIOR = `
     font-size: var(--helia-text-sm);
     cursor: pointer;
   }
+  /* Grid children default to min-width auto, which lets a wide transcript
+     push the frame past the card edge on a phone; zero lets the terminal's
+     own horizontal scroll take over instead. */
   .journey__stages {
     display: grid;
+    min-width: 0;
   }
   .journey__stage {
     grid-area: 1 / 1;
+    min-width: 0;
   }
   .journey__stage[data-active='false'] {
     visibility: hidden;
