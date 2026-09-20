@@ -1,0 +1,133 @@
+---
+title: Configure and build
+description: Resolve the module graph, generate the CMake tree and link a firmware image with nsx configure and nsx build. No board required.
+---
+
+import AsciiTerminal from '@ambiqai/helia-ui/astro/AsciiTerminal';
+
+export const configureRun = [
+  { kind: 'command', text: 'nsx configure' },
+  { kind: 'output', text: 'All modules already match nsx.lock.' },
+  { kind: 'output', text: '-- The C compiler identification is GNU 15.2.1' },
+  { kind: 'output', text: '-- The CXX compiler identification is GNU 15.2.1' },
+  { kind: 'output', text: '-- The ASM compiler identification is GNU' },
+  { kind: 'muted', text: '-- (compiler ABI and feature detection, 12 lines)' },
+  { kind: 'output', text: '-- Configuring done (0.3s)' },
+  { kind: 'output', text: '-- Generating done (0.0s)' },
+  { kind: 'output', text: '-- Build files have been written to: /home/you/hello_ap510/build/apollo510_evb' },
+  { kind: 'success', text: 'Configured app at: /home/you/hello_ap510' },
+  { kind: 'output', text: 'Build directory: /home/you/hello_ap510/build/apollo510_evb' },
+];
+
+export const buildRun = [
+  { kind: 'command', text: 'nsx build' },
+  { kind: 'output', text: '[1/24] Building C object _nsx/nsx_core/CMakeFiles/nsx_system.dir/src/nsx_retarget.c.obj' },
+  { kind: 'output', text: '[2/24] Building C object _nsx/nsx_core/CMakeFiles/nsx_core_lifecycle.dir/src/nsx_core_lifecycle.c.obj' },
+  { kind: 'muted', text: '[..] (20 more compile and archive steps)' },
+  { kind: 'output', text: '[23/24] Linking C executable hello_ap510; Generating hello_ap510.bin; Printing image size' },
+  { kind: 'output', text: '   text    data     bss     dec     hex filename' },
+  { kind: 'output', text: '  19080     592  507312  526984   80a88 build/apollo510_evb/hello_ap510' },
+];
+
+Neither of these commands needs a board. Run them from inside the app directory: NSX walks
+up from your working directory to the nearest `nsx.yml`, so `--app-dir` is only needed when
+you want to act on an app somewhere else.
+
+## Configure
+
+```bash
+cd hello_ap510
+nsx configure
+```
+
+`nsx configure` does three things in order. It resolves every module constraint in
+`nsx.yml` to an exact commit and writes `nsx.lock`. It makes `modules/` match that lock,
+cloning anything missing. Then it runs CMake to generate a Ninja build tree under
+`build/<board>/`.
+
+<AsciiTerminal
+  title="nsx configure"
+  lines={configureRun}
+  animated
+  copy
+/>
+
+Captured on macOS 26 with the Arm GNU toolchain, in an app created by `nsx create-app`.
+CMake's compiler detection block is collapsed and the app path is replaced by
+`/home/you/hello_ap510`. Because `create-app` already vendored the starter modules, the
+sync step reports that they match; on an app created with `--no-bootstrap`, or after you
+edit `nsx.yml`, this is where the clones happen instead.
+
+Afterwards the app has three things it did not have before:
+
+| Path | What it is |
+| --- | --- |
+| `nsx.lock` | The resolved graph: every module pinned to a commit. Commit this file. |
+| `build/apollo510_evb/` | The generated CMake and Ninja tree, one directory per board. |
+| `.nsx/` | NSX's own bookkeeping, including the sync lock file. |
+
+Both `build/` and `modules/` are gitignored by the generated `.gitignore`, so your source
+tree stays clean.
+
+## Build
+
+```bash
+nsx build
+```
+
+`nsx build` drives CMake and Ninja. If no build tree exists yet it configures first, so
+`nsx build` on a fresh app is enough on its own.
+
+<AsciiTerminal
+  title="nsx build"
+  lines={buildRun}
+  animated
+  copy
+/>
+
+Same host and app as above, with the middle of the Ninja log collapsed and the artifact
+path shortened. The section sizes are from that one build; yours will differ as soon as
+the app does.
+
+The artifacts land in `build/apollo510_evb/`:
+
+- `hello_ap510`, the linked ELF. Under GCC it has no file extension.
+- `hello_ap510.bin`, the raw image that gets programmed.
+- `hello_ap510.map`, the linker map.
+- `jlink/`, the generated SEGGER command files that `nsx flash` and `nsx view` use.
+
+## Options you are likely to reach for
+
+Both commands take the same core set. Full tables are on the
+[`nsx configure`](/neuralspotx/reference/cli/configure/) and
+[`nsx build`](/neuralspotx/reference/cli/build/) reference pages.
+
+- A positional `app` argument instead of `cd`. It takes an app name or directory and is
+  resolved under `./` and `./examples`, so `nsx build hello_world` from a source checkout
+  builds the packaged example of that name.
+- `--board` overrides the board in `nsx.yml` for one run, which is how you build the same
+  app for a second target.
+- `--toolchain` takes `gcc`, `armclang` or `atfe`.
+- `--frozen` turns any drift between `nsx.yml`, `nsx.lock` and `modules/` into an error
+  instead of silently correcting it. This is the flag for CI.
+- `--timeout SECONDS` puts a wall clock budget on each subprocess.
+
+`nsx build` adds three of its own: `--jobs` for parallelism, `--target` to build one
+explicit CMake target, and `--update` to re-resolve constraints to upstream tip and
+re-vendor before building.
+
+## Starting over
+
+```bash
+nsx clean          # run the build system's clean target
+nsx clean --full   # remove the build directory outright
+nsx clean --reset  # also remove modules/ and .nsx/, back to a freshly cloned state
+```
+
+`--reset` prompts before discarding locally modified files under `modules/`; `--force`
+skips the prompt. See [`nsx clean`](/neuralspotx/reference/cli/clean/).
+
+## Next
+
+You have an image. [Flash, reset and view](/neuralspotx/getting-started/flash-and-view/)
+puts it on a board.

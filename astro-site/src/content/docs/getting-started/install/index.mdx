@@ -1,0 +1,202 @@
+---
+title: Install
+description: Install the host tools, the Arm GNU toolchain, the SEGGER J-Link pack and the nsx CLI on macOS, Linux or Windows.
+---
+
+import CodeTabs from '@ambiqai/helia-ui/astro/CodeTabs';
+import AsciiTerminal from '@ambiqai/helia-ui/astro/AsciiTerminal';
+
+export const hostTools = [
+  {
+    label: 'macOS',
+    language: 'bash',
+    code: 'brew install python uv cmake ninja git',
+  },
+  {
+    label: 'Linux',
+    language: 'bash',
+    code: `# Debian and Ubuntu
+sudo apt update
+sudo apt install python3 python3-pip cmake ninja-build git
+
+# Fedora
+sudo dnf install python3 python3-pip cmake ninja-build git
+
+# uv, from the official installer, on either
+curl -LsSf https://astral.sh/uv/install.sh | sh`,
+  },
+  {
+    // helia-ui's CodeLanguage union has no PowerShell member, so the Windows
+    // tabs stay unhighlighted rather than being mislabeled as another shell.
+    label: 'Windows',
+    language: 'plaintext',
+    code: 'winget install Python.Python.3.12 astral-sh.uv Kitware.CMake Ninja-build.Ninja Git.Git',
+  },
+];
+
+export const toolchain = [
+  {
+    label: 'macOS',
+    language: 'bash',
+    code: `brew install --cask gcc-arm-embedded
+arm-none-eabi-gcc --version`,
+  },
+  {
+    label: 'Linux',
+    language: 'bash',
+    code: `# Download the arm-none-eabi Linux build from
+# https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads
+# then extract it somewhere stable and put its bin/ on PATH.
+echo 'export PATH="/opt/arm-gnu-toolchain/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+arm-none-eabi-gcc --version`,
+  },
+  {
+    label: 'Windows',
+    language: 'plaintext',
+    code: `# Run the official Arm GNU Toolchain installer from
+# https://developer.arm.com/downloads/-/arm-gnu-toolchain-downloads
+# and tick "Add path to environment variable" on the last page.
+# Open a new terminal so the updated PATH is picked up, then:
+arm-none-eabi-gcc --version`,
+  },
+];
+
+export const probe = [
+  {
+    label: 'macOS',
+    language: 'bash',
+    code: 'brew install --cask segger-jlink',
+  },
+  {
+    label: 'Linux',
+    language: 'bash',
+    code: `# Download the .deb or .rpm J-Link Software and Documentation Pack from
+# https://www.segger.com/downloads/jlink/ and install the downloaded file with
+# your package manager, for example:
+sudo apt install ./<downloaded-jlink-package>.deb`,
+  },
+  {
+    label: 'Windows',
+    language: 'plaintext',
+    code: `# Run the J-Link Software and Documentation Pack installer from
+# https://www.segger.com/downloads/jlink/`,
+  },
+];
+
+export const doctorRun = [
+  { kind: 'command', text: 'nsx doctor' },
+  { kind: 'success', text: '[OK] Python' },
+  { kind: 'success', text: '[OK] uv' },
+  { kind: 'success', text: '[OK] cmake' },
+  { kind: 'success', text: '[OK] ninja' },
+  { kind: 'success', text: '[OK] git' },
+  { kind: 'success', text: '[OK] Board registry' },
+  { kind: 'output', text: '  packaged board descriptors are consistent' },
+  { kind: 'success', text: '[OK] arm-none-eabi-gcc' },
+  { kind: 'muted', text: '  (armclang toolchain not detected — optional)' },
+  { kind: 'muted', text: '  (ATfE toolchain not detected — set ATFE_ROOT to enable; optional)' },
+  { kind: 'success', text: '[OK] SEGGER J-Link' },
+  { kind: 'success', text: '[OK] SEGGER JLinkSWOViewerCL' },
+  { kind: 'success', text: '[OK] SEGGER J-Link runtime' },
+  { kind: 'output', text: '  JLinkExe launched successfully.' },
+  { kind: 'output', text: 'Next: nsx create-app my_app' },
+];
+
+Installing NSX has four parts: the host tools, a cross compiler, the debug probe software,
+and the `nsx` CLI itself. Only the first three differ by operating system.
+
+:::tip[No board yet?]
+You can install everything except the J-Link pack and still get as far as a linked
+firmware image. `nsx configure` and `nsx build` never touch hardware. `nsx doctor` will
+keep reporting the SEGGER checks as failures until you install the pack, which is a
+correct report rather than a problem with your setup.
+:::
+
+## 1. Host tools
+
+Python, uv, CMake, Ninja and Git. NSX generates CMake projects that cross compile for Arm
+Cortex-M targets, so these are the tools that drive the build on your machine rather than
+anything that runs on the board.
+
+<CodeTabs tabs={hostTools} ariaLabel="Install the host tools" />
+
+## 2. Arm GNU toolchain
+
+GCC is the default compiler and builds every packaged example, so one toolchain is enough
+to get started. On Linux the distribution package is often several years behind, so the
+official download is the better starting point.
+
+<CodeTabs tabs={toolchain} ariaLabel="Install the Arm GNU toolchain" />
+
+Arm Compiler for Embedded (`armclang`) and Arm Toolchain for Embedded (ATfE) are optional
+alternates. Their setup differs enough per platform that it stays on the per-platform
+pages: [macOS](/neuralspotx/getting-started/install/macos/),
+[Linux](/neuralspotx/getting-started/install/linux/) and
+[Windows](/neuralspotx/getting-started/install/windows/).
+
+## 3. SEGGER J-Link
+
+The J-Link Software and Documentation Pack provides `JLinkExe` and `JLinkSWOViewerCL`,
+which `nsx flash` and `nsx view` drive. The Apollo510 EVB carries an onboard J-Link, so
+you do not need a separate probe for it. Skip this step if you do not have a board yet.
+
+<CodeTabs tabs={probe} ariaLabel="Install the SEGGER J-Link pack" />
+
+## 4. The nsx CLI
+
+This part is identical on every platform. [pipx](https://pipx.pypa.io) puts `nsx` on your
+`PATH` in its own environment, which keeps it away from the Python environments your
+projects use.
+
+```bash
+python3 -m pip install --user pipx
+python3 -m pipx ensurepath
+```
+
+Open a new terminal so `ensurepath` takes effect, then install the package:
+
+```bash
+pipx install neuralspotx
+```
+
+To pin a published version:
+
+```bash
+pipx install 'neuralspotx==<version>'
+```
+
+:::note[Working from a source checkout]
+Contributors clone the repository and let uv own the environment instead:
+
+```bash
+git clone https://github.com/AmbiqAI/neuralspotx.git
+cd neuralspotx
+uv sync
+```
+
+Then either activate the virtual environment with `source .venv/bin/activate`, or prefix
+every command with `uv run`, as in `uv run nsx doctor`.
+:::
+
+`nsx --version` is not a thing. The top-level parser takes `-h`, `-v` for verbosity and
+`-q` for quiet, and nothing else; asking for `--version` fails with
+`the following arguments are required: command`. Use `nsx doctor` to confirm the install,
+which is what you want to run next anyway.
+
+## 5. Confirm the install
+
+<AsciiTerminal
+  title="nsx doctor"
+  lines={doctorRun}
+  animated
+  copy
+/>
+
+Captured on macOS 26 with the host tools, the Arm GNU toolchain and the SEGGER pack
+installed, and neither optional compiler present. Each check also prints the path it
+resolved on the line below it; those are omitted here because they are specific to the
+machine that ran it.
+
+[Check your environment](/neuralspotx/getting-started/doctor/) explains what each check
+covers, what a failure looks like and how to read the JSON report.
