@@ -7,30 +7,32 @@ tree.
 
 Schema (YAML, v4):
 
-    schema_version: 4
-    targets:
-      <board>:                      # one resolution section per board
-        generated_at: <ISO 8601 UTC>
-        nsx_tool: { version: <pkg version> }
-        manifest: { path: nsx.yml, hash: sha256:<hex> }
-        target: { board, soc, toolchain }
-        modules:
-          <module-name>:
-            project: <project-key>
-            kind: git | packaged | local | vendored | unresolved
-            constraint: <revision string from nsx.yml>
-            resolved:
-              # git only:
-              url: <repo url>
-              tag: <tag name>           # set when constraint resolved through a tag
-              commit: <40-char SHA>     # ALWAYS the underlying commit SHA, not
-                                        # the annotated-tag-object SHA
-              # all kinds:
-              vendored_at: <relpath under app dir>
-              content_hash: sha256:<hex>
-              acquired_at: <ISO 8601 UTC>
-              # packaged only:
-              tool_version: <neuralspotx pkg version>
+```yaml
+schema_version: 4
+targets:
+  <board>:                      # one resolution section per board
+    generated_at: <ISO 8601 UTC>
+    nsx_tool: { version: <pkg version> }
+    manifest: { path: nsx.yml, hash: sha256:<hex> }
+    target: { board, soc, toolchain }
+    modules:
+      <module-name>:
+        project: <project-key>
+        kind: git | packaged | local | vendored | unresolved
+        constraint: <revision string from nsx.yml>
+        resolved:
+          # git only:
+          url: <repo url>
+          tag: <tag name>           # set when constraint resolved through a tag
+          commit: <40-char SHA>     # ALWAYS the underlying commit SHA, not
+                                    # the annotated-tag-object SHA
+          # all kinds:
+          vendored_at: <relpath under app dir>
+          content_hash: sha256:<hex>
+          acquired_at: <ISO 8601 UTC>
+          # packaged only:
+          tool_version: <neuralspotx pkg version>
+```
 
 Every app — single- or multi-target — keeps exactly one ``nsx.lock``
 whose ``targets`` map holds a resolution section per board, so the app

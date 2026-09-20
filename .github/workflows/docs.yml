@@ -12,6 +12,7 @@ on:
     paths:
       - "astro-site/**"
       - "docs/**"
+      - "scripts/docs/**"
       - "src/neuralspotx/**"
       - ".github/workflows/docs.yml"
       - "pyproject.toml"
@@ -19,6 +20,7 @@ on:
     paths:
       - "astro-site/**"
       - "docs/**"
+      - "scripts/docs/**"
       - "src/neuralspotx/**"
       - ".github/workflows/docs.yml"
       - "pyproject.toml"
@@ -65,9 +67,32 @@ jobs:
         working-directory: astro-site
         run: npm ci
 
+      # The reference is generated from the installed package, so the Python
+      # environment has to exist before anything under astro-site runs. The
+      # docs group carries griffe, which build-reference.mjs runs out of the
+      # lock rather than provisioning per build.
+      - name: Install the package with its docs and test dependencies
+        run: uv sync --group docs --group test
+
+      # Generated explicitly, and timed, so the job summary records how long
+      # extraction takes independently of the Astro build that follows it.
+      # build-reference.mjs appends its own per-stage table to the summary.
+      - name: Generate the reference
+        id: reference
+        working-directory: astro-site
+        run: |
+          start=$(date +%s)
+          npm run build:reference
+          echo "seconds=$(( $(date +%s) - start ))" >> "$GITHUB_OUTPUT"
+
+      - name: Check reference completeness
+        run: uv run --group docs --group test pytest tests/test_reference_generation.py tests/test_public_surface_doc.py -q
+
       - name: Astro check
         working-directory: astro-site
         run: npm run check
+        env:
+          NSX_DOCS_REFERENCE_PREBUILT: '1'
 
       - name: Build the site
         id: build
@@ -76,17 +101,12 @@ jobs:
           start=$(date +%s)
           npm run build
           echo "seconds=$(( $(date +%s) - start ))" >> "$GITHUB_OUTPUT"
+        env:
+          NSX_DOCS_REFERENCE_PREBUILT: '1'
 
       - name: Validate the built site
         working-directory: astro-site
         run: npm run validate
-
-      # Proves the reference toolchain runs against the real package. Nothing
-      # it writes is published or committed; the generated reference lands with
-      # AmbiqAI/neuralspotx#258.
-      - name: Smoke test the Python reference toolchain
-        working-directory: astro-site
-        run: npm run smoke:pyref
 
       - name: Summarize the build
         if: always()
@@ -97,6 +117,7 @@ jobs:
             echo
             echo "| Measure | Value |"
             echo "| --- | --- |"
+            echo "| Reference generation | ${REFERENCE_SECONDS:-n/a}s |"
             echo "| Build time | ${BUILD_SECONDS:-n/a}s |"
             echo "| HTML pages | $(find dist -name '*.html' 2>/dev/null | wc -l | tr -d ' ') |"
             echo "| Artifact size | $(du -sh dist 2>/dev/null | cut -f1) |"
@@ -104,6 +125,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
         env:
           BUILD_SECONDS: ${{ steps.build.outputs.seconds }}
+          REFERENCE_SECONDS: ${{ steps.reference.outputs.seconds }}
 
       - name: Upload the built site
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

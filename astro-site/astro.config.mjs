@@ -7,6 +7,9 @@ import react from '@astrojs/react';
 import tailwindcss from '@tailwindcss/vite';
 import { heliaStarlight } from '@ambiqai/helia-ui/starlight';
 import buildInfo from './src/data/build-info.json' with { type: 'json' };
+// Written by scripts/build-reference.mjs, which every dev, check and build run
+// invokes through prepare:docs before Astro starts.
+import referenceSidebar from './src/data/reference-sidebar.json' with { type: 'json' };
 
 const base = '/neuralspotx';
 const basePath = `${base}/`;
@@ -61,7 +64,12 @@ export default defineConfig({
             {
               label: 'Reference',
               href: `${basePath}reference/`,
-              sidebar: [{ label: 'Overview', slug: 'reference' }],
+              sidebar: [
+                { label: 'Overview', slug: 'reference' },
+                { label: 'CLI', collapsed: false, items: referenceSidebar.cli },
+                { label: 'Python API', collapsed: true, items: referenceSidebar.api },
+                { label: 'Configuration', collapsed: true, items: referenceSidebar.config },
+              ],
             },
           ],
           /* llms.txt and the agent-facing bundle are AmbiqAI/neuralspotx#261;

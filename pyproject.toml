@@ -36,6 +36,11 @@ Changelog = "https://github.com/AmbiqAI/neuralspotx/blob/main/CHANGELOG.md"
 
 [dependency-groups]
 docs = [
+    # Pinned exactly: the reference generator in astro-site/scripts and
+    # scripts/docs/prune_griffe.py read griffe's dump schema directly, so a
+    # schema change between releases is a silent breakage. Upgrades are
+    # deliberate, with a regeneration and a diff of the rendered reference.
+    "griffe==1.7.3",
     "mkdocs-material>=9.0",
     "pymdown-extensions>=10.15",
     "zensical>=0.0.11",
