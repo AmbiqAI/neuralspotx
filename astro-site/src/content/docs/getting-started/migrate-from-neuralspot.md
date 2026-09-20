@@ -89,23 +89,6 @@ registered as standalone entries, so they do not appear in the
 depend on.
 :::
 
-## What comes next
-
-The order of work, roughly:
-
-1. Keep hardening the core baseline.
-2. Finish the module vendoring, registration and update workflows.
-3. Migrate broadly useful optional modules.
-4. Migrate specialized application stacks only where they carry clear reusable value.
-
-Of the optional wave, USB, BLE and audio capture are done; sensor abstraction is partial
-(`nsx-sensors` carries ICM-45605, MPU6050, MAX86150, INA228 and an LED stick); RPC and
-model or runtime integration were dropped.
-
-Specialized legacy stacks such as camera support and the NNSP-specific pipelines are
-judged case by case, and the bar is higher: a module that is too application-specific or
-too tightly coupled to old assumptions is better redesigned than ported.
-
 ## Deciding whether to migrate something
 
 Before porting a legacy module, ask:

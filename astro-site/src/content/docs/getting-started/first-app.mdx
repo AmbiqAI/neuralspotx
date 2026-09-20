@@ -100,7 +100,8 @@ int main(void)
 | `default` | The minimal app above: a SWO printf loop. |
 | `npu-tflm` | TFLite Micro inference on the Ethos-U85 NPU. It seeds `nsx-helia-rt` and `nsx-npu`, turns on heliaRT's Ethos-U dispatch, and ships a Vela model harness plus a `tools/tflite_to_header.py` converter. The generated README covers the offline Vela compilation step. |
 
-The NPU template needs a board whose SoC has an Ethos-U85:
+The NPU template targets boards whose SoC NSX registers as carrying an Ethos-U85 NPU,
+which today is `atomiq110_fpga_turbo`:
 
 ```bash
 nsx create-app pd_npu --board atomiq110_fpga_turbo --template npu-tflm

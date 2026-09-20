@@ -52,8 +52,13 @@ Transcript handling, so a reader knows what is verbatim:
 
 - Absolute app paths are replaced with `/home/you/<app>`, matching the Home page's existing
   convention. Every other character of a transcript line is as captured.
-- `nsx doctor` transcripts omit the indented path line under each check, because those are
-  specific to the machine that ran it. Nothing else is removed.
+- `nsx doctor` transcripts omit the indented path line that most checks print beneath
+  themselves, because those are specific to the machine that ran it. Nothing else is
+  removed; the `git` protocol allow-list line and the two status lines are kept.
+- The failing `nsx doctor` transcript prints its checks, then the `Next:` line, then the
+  `error:` line. That is the order the code emits (`cli/__init__.py`); a capture that
+  redirects stdout and stderr to one file shows the error first, because stdout is block
+  buffered when it is not a terminal.
 - The `nsx configure` and `nsx build` transcripts collapse CMake's compiler-detection block
   and the middle of the Ninja log into a single `muted` line that says how many lines are
   missing.
@@ -94,10 +99,10 @@ Two claims that did check out: the `MicroProfilerInterface` glue really does liv
 
 ## 4. Transcripts still owed, all needing hardware
 
-Each is marked in the source with a `TODO(#260)` comment in
-`astro-site/src/content/docs/getting-started/flash-and-view.mdx`. None of them is invented
-in the meantime; the page says in a `:::caution` that its output is described rather than
-captured.
+This list is the only record of them. The page itself carries no `TODO` marker: MDX
+comments survive into the `.md` rendition the site publishes, so a marker there would ship
+to readers. None of the output is invented in the meantime; the page says in a
+`:::caution` that its output is described rather than captured.
 
 1. `nsx probes` with a connected apollo510_evb, showing a probe serial.
 2. `nsx flash` against a connected apollo510_evb, including the J-Link connect, program
@@ -119,3 +124,21 @@ tests`.
 
 Desktop screenshots of the Install and first-app pages were captured headless at 1440 px
 against `astro preview`.
+
+## 6. Claims awaiting a source of record
+
+`TODO(verify)` in prose, surfaced here rather than left in a page.
+
+1. **Which Ambiq EVBs carry an onboard J-Link.** The previous documentation stated that
+   the Apollo510 EVB has one. Nothing in this repository records it: `board.yaml` and the
+   board `debug.cmake` fragments carry the SEGGER device name, interface speed and SWO
+   settings, but nothing about whether the probe is onboard. The install and flash pages
+   now say "many Ambiq EVBs" and point the reader at the board user guide. If the owner
+   confirms it against a board user guide, the specific claim can go back.
+2. **Ethos-U85 on atomiq110.** `templates/npu_tflm_app/README.md.j2` says the
+   `ethos-u85-256` Vela configuration "matches the 256-MAC Ethos-U85 configuration on
+   atomiq110", so the repository does assert it. The Getting started page still does not
+   repeat it as a silicon fact: it says the npu-tflm template targets boards whose SoC NSX
+   registers as carrying an Ethos-U85 NPU, today `atomiq110_fpga_turbo`. Worth confirming
+   the template README's wording against a datasheet separately, since that file is the
+   one making the independent claim.

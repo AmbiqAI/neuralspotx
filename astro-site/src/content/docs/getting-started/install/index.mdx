@@ -91,6 +91,7 @@ export const doctorRun = [
   { kind: 'success', text: '[OK] cmake' },
   { kind: 'success', text: '[OK] ninja' },
   { kind: 'success', text: '[OK] git' },
+  { kind: 'output', text: '  git protocol allow-list: -c protocol.allow=user -c protocol.ext.allow=never -c protocol.file.allow=never' },
   { kind: 'success', text: '[OK] Board registry' },
   { kind: 'output', text: '  packaged board descriptors are consistent' },
   { kind: 'success', text: '[OK] arm-none-eabi-gcc' },
@@ -111,6 +112,12 @@ You can install everything except the J-Link pack and still get as far as a link
 firmware image. `nsx configure` and `nsx build` never touch hardware. `nsx doctor` will
 keep reporting the SEGGER checks as failures until you install the pack, which is a
 correct report rather than a problem with your setup.
+:::
+
+:::caution[Windows steps are unverified]
+Every command on this page was executed on macOS. The Windows tabs are carried over from
+the previous documentation and have not been re-run on a Windows host, so treat the winget
+identifiers and the installer wording as unverified.
 :::
 
 ## 1. Host tools
@@ -138,8 +145,9 @@ pages: [macOS](/neuralspotx/getting-started/install/macos/),
 ## 3. SEGGER J-Link
 
 The J-Link Software and Documentation Pack provides `JLinkExe` and `JLinkSWOViewerCL`,
-which `nsx flash` and `nsx view` drive. The Apollo510 EVB carries an onboard J-Link, so
-you do not need a separate probe for it. Skip this step if you do not have a board yet.
+which `nsx flash` and `nsx view` drive. If your board has an onboard J-Link, as many Ambiq
+EVBs do, you do not need a separate probe; check the board's user guide. Skip this step if
+you do not have a board yet.
 
 <CodeTabs tabs={probe} ariaLabel="Install the SEGGER J-Link pack" />
 
@@ -194,9 +202,9 @@ which is what you want to run next anyway.
 />
 
 Captured on macOS 26 with the host tools, the Arm GNU toolchain and the SEGGER pack
-installed, and neither optional compiler present. Each check also prints the path it
-resolved on the line below it; those are omitted here because they are specific to the
-machine that ran it.
+installed, and neither optional compiler present. The only lines removed are the resolved
+tool paths that most checks print beneath themselves, which are specific to the machine
+that ran it. Every other line is as captured.
 
 [Check your environment](/neuralspotx/getting-started/doctor/) explains what each check
 covers, what a failure looks like and how to read the JSON report.

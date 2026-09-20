@@ -11,7 +11,7 @@ export const probesNone = [
 ];
 
 This is the first page in the section that needs hardware: a board with a SEGGER J-Link,
-which on the Apollo510 EVB is onboard rather than a separate probe. It also needs the
+which on many Ambiq EVBs is onboard rather than a separate probe. It also needs the
 J-Link Software and Documentation Pack, so if
 [`nsx doctor`](/neuralspotx/getting-started/doctor/) still reports the SEGGER checks as
 failures, fix that first.
@@ -39,8 +39,6 @@ nothing attached it says so and still exits successfully:
   copy
 />
 
-{/* TODO(#260): replace with a captured `nsx probes` run against a connected apollo510_evb. */}
-
 With a board attached it lists one line per probe. `--json` gives the same list in
 machine-readable form. If exactly one probe is connected you never need to name it; with
 more than one, pass `--probe-serial <serial>` to every command that touches hardware. The
@@ -60,11 +58,8 @@ lines you already saw from `nsx build`, if anything needed rebuilding, followed 
 J-Link's own connect, program and verify output, and then a reset that starts the
 firmware.
 
-{/* TODO(#260): replace this prose with a captured `nsx flash` run against a connected apollo510_evb. */}
-
-`nsx flash` takes the same `--board`, `--toolchain`, `--jobs`, `--update` and `--frozen`
-options as `nsx build`, plus `--target` to flash one explicit executable and
-`--probe-serial`.
+`nsx flash` takes the same `--board`, `--toolchain`, `--target`, `--jobs`, `--update` and
+`--frozen` options as `nsx build`, plus `--probe-serial`.
 
 :::note[--probe-serial always reconfigures]
 The probe serial is baked into the generated SEGGER command files, so passing
@@ -89,8 +84,6 @@ nsx hello from generated app
 nsx hello from generated app
 nsx hello from generated app
 ```
-
-{/* TODO(#260): replace with a captured `nsx view` session against a connected apollo510_evb, including the viewer's own attach banner. */}
 
 Press Ctrl-C to stop.
 
@@ -130,8 +123,6 @@ nsx reset --device AP510NFA-CBR
 `AP510NFA-CBR` is the device the Apollo510 EVB resolves to. Other boards set their own;
 the value NSX uses for your board appears in the generated
 `build/<board>/build.ninja` as the `-device` argument.
-
-{/* TODO(#260): replace with a captured `nsx reset` run against a connected apollo510_evb. */}
 
 `--kind` picks the reset primitive, `debug` or `swpoi`. `--interface` and `--speed-khz`
 set the debug interface and its speed, and `--verify-reconnect` reconnects afterwards and

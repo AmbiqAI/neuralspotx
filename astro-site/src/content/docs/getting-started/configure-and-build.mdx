@@ -108,8 +108,10 @@ Both commands take the same core set. Full tables are on the
 - `--board` overrides the board in `nsx.yml` for one run, which is how you build the same
   app for a second target.
 - `--toolchain` takes `gcc`, `armclang` or `atfe`.
-- `--frozen` turns any drift between `nsx.yml`, `nsx.lock` and `modules/` into an error
-  instead of silently correcting it. This is the flag for CI.
+- `--frozen` turns drift between `nsx.yml`, `nsx.lock` and `modules/` into an error
+  instead of silently correcting it. `nsx configure --frozen` always checks; on
+  `nsx build`, `nsx flash` and `nsx view` it only applies when a reconfigure is needed, so
+  run `nsx configure --frozen` as the CI gate.
 - `--timeout SECONDS` puts a wall clock budget on each subprocess.
 
 `nsx build` adds three of its own: `--jobs` for parallelism, `--target` to build one
