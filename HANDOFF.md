@@ -136,10 +136,32 @@ the source-to-page mapping and the four items needing an owner decision are in
 `tasks/256-docs-migration/p2-pr2-notes.md`. No new helia-ui gaps; every page is plain
 Markdown with Starlight asides and no components.
 
+## P3 PR1 (#261) discoverability and routes: done, verified locally
+
+Branch `261-discoverability`, stacked on `260-guides`, not pushed. `discoverability.llms`
+is on, and `astro-site/scripts/publish-agent-bundle.mjs` runs as npm's `postbuild` to
+rewrite what it publishes: the plugin builds llms.txt, llms-full.txt and the per-route
+`.md` renditions from authored source with every tag stripped, so the 94 generated routes
+arrive with no option tables, no field tables and no signatures. The composer re-renders
+them from the argparse dump, the schema manifest, pyref's text bundle and the module
+snapshot, recomposes llms-full.txt (473 KiB, 149 sections) and appends the eleven
+machine-readable artifacts to llms.txt. `src/data/redirects.json` maps all 67 MkDocs
+routes; 60 emit meta-refresh stubs, 7 kept their path.
+`astro-site/scripts/check-discoverability-output.mjs` reads it all back: 80 public
+symbols, 35 commands, 50 modules, an H1 and every internal link per rendition, all 67 old
+routes resolving, the sitemap, the 404 and every JSON-LD block. `npm run check`,
+`npm run build`, `npm run validate`, the pytest suite, `pre-commit --hook-stage manual`
+and `ty check` all pass. Detail in `tasks/256-docs-migration/p3-notes.md`; new upstream
+drafts in `tasks/256-docs-migration/helia-ui-gaps-261.md`.
+
+Seven old routes have no published successor and point at the nearest published page. The
+table of what each one points at, and what would change it, is in p3-notes.md section 3.
+Those are owner decisions, not settled ones.
+
 ## Next steps
 
 1. #260's third PR does Modules prose and the maintainer-docs move.
-2. #261 does discoverability (llms), redirects, the real 404, and the deploy cutover.
+2. #261's second PR does the deploy cutover and removes the MkDocs and zensical stack.
 
 Getting started's and Guides' placeholder notes are both gone; the Modules index is
 generated and carries none.
@@ -151,7 +173,10 @@ generated and carries none.
   `dist/<route>/index.md`, and an `export const` body is emitted as page text. Guides
   pages are therefore plain `.md`, and the example READMEs are inlined at build time
   rather than imported. An MDX import of a file outside the site root does work in the
-  HTML; it is the rendition that comes out empty.
+  HTML; it is the rendition that comes out empty. `publish-agent-bundle.mjs` (#261) now
+  repairs the generated routes and the component links after the build, but the rule
+  still holds for anything authored: content that lives in a prop does not reach the
+  rendition unless that script is taught about it.
 - **`docs/examples/*.md` is a build input now.** The ten stubs carry the only copy of the
   tier, status, capabilities and `boards_tested` front matter, and `build-examples.mjs`
   reads them. #261 must give that front matter a home before it deletes the MkDocs tree.
