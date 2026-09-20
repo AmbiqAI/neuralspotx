@@ -95,3 +95,30 @@ as a badge, plus a page-level default so a caller can set it once.
 **Workaround used.** `build-reference.mjs` injects a Starlight `banner` into
 the frontmatter of every generated page after pyref writes it, which gives the
 once-per-page placement #258 asks for.
+
+---
+
+## Draft 4: signature types are not linked across pages
+
+**Title:** pyref renders a signature type as plain text when its definition is
+on another page
+
+**What happened.** `create_board` returns `BoardDescriptor`, which is
+documented on the package root page. On the `neuralspotx.api` page the return
+type renders as plain text four times, with no link, even though the symbol is
+in the model and carries the anchor `neuralspotx.BoardDescriptor`. Linking
+appears to be within-page only.
+
+**Expected.** A type that exists in the model links to wherever it is
+documented, the same way an explicit `[Text][target]` cross-reference does.
+
+**Source location.** `scripts/lib/reference-render.mjs`, the signature
+rendering path, versus the `[Text][target]` resolver at lines 173 to 189 which
+does consult the whole index.
+
+**Proposal.** Resolve identifiers in rendered signatures through the same index
+the cross-reference resolver uses, and emit an anchor when the id is known.
+
+**Workaround used.** None. `prune_griffe.py` now makes sure such types are
+documented and anchored, so the information is reachable, but the signature
+itself stays unlinked.

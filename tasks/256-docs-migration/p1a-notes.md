@@ -69,22 +69,48 @@ pages behind them are not one-per-group.
 frontmatter after pyref writes it.
 
 **Budgets are split by area.** Gzip is held at the helia-rt figure of 40 KB for
-every page and is the binding constraint. The uncompressed budget is 250 KB for
-CLI and configuration pages but 550 KB for Python API pages: a Starlight page
-shell measures about 100 KB before any content, and a rendered Python signature
-with its parameter table costs roughly 10 KB, so 250 KB would cap a page at
-about ten symbols and break any sensible grouping. **This is a deviation from
-the 250 KB starting point in the brief and needs a decision.**
+every page. The uncompressed budget is 250 KB for CLI and configuration pages
+but 640 KB for Python API pages: a Starlight page shell measures about 100 KB
+before any content, and a rendered Python signature with its parameter table
+costs roughly 10 KB, so 250 KB would cap a page at about ten symbols and break
+the grouping the reference is organized around. This is a deliberate deviation
+from the 250 KB starting point in the brief.
 
-**Configuration tables come from a manifest.** Only `board.yaml` and the lock
-are backed by dataclasses; `nsx.yml` keeps unknown keys in `extra` and
-`nsx-module.yaml` validates imperatively, so the field tables cannot be
-introspected. `scripts/docs/config_schema.yaml` holds them and the tests push
-each documented example through the real loader, then remove one documented
-required field at a time and assert the loader objects. Writing that test
-found two manifest claims that were wrong: the lock reader defaults a missing
-`schema_version` and returns an empty lock for missing `targets` rather than
-raising, so the manifest now says so.
+Neither budget is comfortably slack and it would be wrong to claim either one
+is binding. The largest page, `neuralspotx.api`, measures 493,110 bytes against
+the 640 KB HTML budget (77%) and 31,111 bytes against the 40 KB gzip budget
+(78%), so the two are about equally close and either could trip first.
+`check-reference-output.mjs` therefore prints a warning at 80% of either
+budget: that page is meant to be split when it crosses the warning line, not
+when it fails.
+
+**Configuration tables come from a manifest, checked against the loaders.**
+Only `board.yaml` and the lock are backed by dataclasses; `nsx.yml` keeps
+unknown keys in `extra` and `nsx-module.yaml` validates imperatively, so the
+field tables cannot be introspected. `scripts/docs/config_schema.yaml` holds
+them, and the manifest is not allowed to ship as an unverified mirror. Each
+schema carries a `coverage_example`, a multi-document block because some fields
+are only enforced in some shapes, and the tests check it both ways:
+
+* the loader must accept the example shown on the page and every fixture,
+* every documented path must appear in a fixture, so an invented field fails,
+* removing each path of each fixture in turn gives the set the loader really
+  enforces, and that must equal the set marked `required: true`,
+* each documented type must match the fixture value at that path,
+* where a dataclass backs the file, `model_field` maps documented paths onto
+  attributes and the two sets must match exactly.
+
+Mutation testing confirms it: flipping a required flag, flipping a type,
+deleting a documented field and adding a fake required field each fail the
+suite.
+
+Writing these found four manifest claims that were wrong. The lock reader
+defaults a missing `schema_version` and returns an empty lock for a missing
+`targets` rather than raising. A `board.yaml` that sets `inherits` takes its
+name, SoC and SDK provider from its parent, so those three are only enforced
+for a standalone descriptor, which is what the second board fixture covers.
+And the three `integrations.zephyr` fields are enforced only when
+`support.zephyr` is true. All are now recorded with `required_when`.
 
 ## Stable published paths
 
@@ -114,8 +140,11 @@ raising, so the manifest now says so.
 ## Not done
 
 - The MkDocs docs under `docs/` are untouched and stay live until #261.
-  `docs/reference/public-api.md` was not retired; the issue asks for that, the
-  P1a brief says to leave it.
+  Retiring `docs/reference/public-api.md` and replacing
+  `tests/test_public_surface_doc.py` with a check against the generated model
+  is a deliberate carry-over to #261, the cutover, decided by Adam. Issue #258
+  asks for both; doing them now would delete a page the live MkDocs site still
+  serves.
 - Prose for the Reference section beyond the index and the merged CLI notes is
   #260.
 - Two source docstrings changed: a fenced code block in
