@@ -1,0 +1,132 @@
+---
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright (c) 2026, Ambiq
+/**
+ * The module catalog's search and filter, on helia-ui's RefIndex.
+ *
+ * The rows are built here, at build time, from the committed module snapshot,
+ * which is the same file the static table below the island is generated from.
+ * RefIndex holds no model and fetches nothing: it takes rows, derives its
+ * chips from them, and filters in the browser.
+ *
+ * The static table stays on the page. It is what Pagefind indexes, what the
+ * markdown rendition carries and what a reader without JavaScript gets; the
+ * script below hides it only once the island has actually rendered, so a
+ * failed hydration leaves the reader the full catalog rather than nothing.
+ *
+ * The island mounts `client:only` for the same reason: server-rendering it
+ * would put all fifty modules in the page twice, once as the island's table
+ * and once as the static one, and the page is held to a size budget that the
+ * pair breaks (AmbiqAI/neuralspotx#259).
+ *
+ * Where RefIndex says "symbol" it means a row, and the wording is the
+ * package's: see tasks/256-docs-migration/helia-ui-gaps-259.md.
+ */
+import { RefIndex } from '@ambiqai/helia-ui/react/ref-index';
+import { refIndexFacets } from '@ambiqai/helia-ui/ref-index-model';
+import type { RefIndexRow } from '@ambiqai/helia-ui/ref-index-model';
+import snapshot from '../data/modules.json';
+import { declaredValues, typeLabel } from '../../scripts/lib/module-types.mjs';
+
+interface Props {
+  /** The site's base path, with its trailing slash, so the hrefs are routes. */
+  base: string;
+  /** The id of the element wrapping the static table this replaces on screen. */
+  tableId: string;
+}
+
+const { base, tableId } = Astro.props;
+
+const FACET_LABELS = {
+  type: 'Type',
+  soc: 'SoC',
+  board: 'Board',
+  toolchain: 'Toolchain',
+  capability: 'Capability',
+};
+
+/*
+ * The detail panel carries what the manifest says beyond the row: the modules
+ * an app gets with this one, and the sentences the manifest writes about using
+ * it. RefIndexContract also has `bufferSize` and `tolerances`, which describe a
+ * kernel rather than a module, so they are left unset rather than filled with
+ * something that would read as a measurement.
+ */
+function contractFor(module: (typeof snapshot.modules)[number]) {
+  const required = module.depends?.required ?? [];
+  const optional = module.depends?.optional ?? [];
+  const prerequisites = [
+    ...required,
+    ...optional.map((name: string) => `${name} (optional)`),
+  ];
+  const notes = [
+    module.use_cases?.length ? `Use cases: ${module.use_cases.join('; ')}.` : '',
+    Object.keys(module.constraints ?? {}).length
+      ? `Constraints: ${Object.entries(module.constraints)
+          .map(([key, value]) => `${key} ${typeof value === 'object' ? JSON.stringify(value) : value}`)
+          .join('; ')}.`
+      : '',
+  ]
+    .filter(Boolean)
+    .join(' ');
+
+  if (prerequisites.length === 0 && !notes) return undefined;
+  return { ...(prerequisites.length ? { prerequisites } : {}), ...(notes ? { notes } : {}) };
+}
+
+const rows: RefIndexRow[] = [...snapshot.modules]
+  .sort((a, b) => a.name.localeCompare(b.name))
+  .map((module) => ({
+    id: module.name,
+    name: module.name,
+    /* RefIndex does not render `kind`, and `module` is the one value in
+       SymbolKind that is true of a module rather than borrowed to look like
+       one. */
+    kind: 'module' as const,
+    module: module.project,
+    group: typeLabel(module.type),
+    href: `${base}modules/${module.name}/`,
+    summary: module.summary ?? '',
+    facets: {
+      type: [typeLabel(module.type)],
+      soc: declaredValues(module.compatibility?.socs),
+      board: declaredValues(module.compatibility?.boards),
+      toolchain: declaredValues(module.compatibility?.toolchains),
+      capability: module.capabilities ?? [],
+    },
+    contract: contractFor(module),
+  }));
+
+const facets = refIndexFacets(rows, FACET_LABELS);
+---
+
+<div data-module-index data-hides={tableId}>
+  <RefIndex
+    client:only="react"
+    rows={rows}
+    facets={facets}
+    label="Module catalog"
+    placeholder="Filter modules by name, summary or declared target"
+    emptyMessage="No modules match these filters."
+  />
+</div>
+
+<script>
+  /* The static table is the surface for a reader the island cannot reach, so
+     it is hidden on evidence that the island rendered rather than on the
+     script having run at all. */
+  for (const host of document.querySelectorAll<HTMLElement>('[data-module-index]')) {
+    const table = document.getElementById(host.dataset.hides ?? '');
+    if (!table) continue;
+    const hideWhenMounted = () => {
+      if (!host.querySelector('[data-slot="ref-index"]')) return false;
+      table.hidden = true;
+      return true;
+    };
+    if (hideWhenMounted()) continue;
+    const observer = new MutationObserver(() => {
+      if (hideWhenMounted()) observer.disconnect();
+    });
+    observer.observe(host, { childList: true, subtree: true });
+  }
+</script>

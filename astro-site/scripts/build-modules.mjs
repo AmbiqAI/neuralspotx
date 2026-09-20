@@ -20,51 +20,12 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
+import { TYPE_GROUPS, TYPE_ORDER, typeLabel } from './lib/module-types.mjs';
+
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 const BASE = '/neuralspotx/';
 const ROUTE = 'modules';
-
-// The wildcard a manifest uses to declare every target of a kind. It is a
-// facet-free value: a row carrying it matches whatever the reader selects.
-const WILDCARD = '*';
-
-// Above this many values a facet is a list rather than a row of chips, so the
-// generator collapses it. Capabilities are the only facet that reaches it.
-const COLLAPSE_FACET_AT = 16;
-
-const TYPE_ORDER = [
-  'sdk_provider',
-  'soc',
-  'board',
-  'runtime',
-  'portable_api',
-  'algorithm',
-  'tooling',
-  'backend_specific',
-];
-
-const TYPE_GROUPS = {
-  sdk_provider: 'SDK providers',
-  soc: 'SoC support',
-  board: 'Board support',
-  runtime: 'Runtimes',
-  portable_api: 'Portable APIs',
-  algorithm: 'Algorithms',
-  tooling: 'Tooling',
-  backend_specific: 'Backend specific',
-};
-
-const TYPE_LABELS = {
-  sdk_provider: 'SDK provider',
-  soc: 'SoC',
-  board: 'Board',
-  runtime: 'Runtime',
-  portable_api: 'Portable API',
-  algorithm: 'Algorithm',
-  tooling: 'Tooling',
-  backend_specific: 'Backend specific',
-};
 
 /* One wording, used on the catalog and on every module page. The manifest is
    the only thing that says a module and a target go together, and the site is
@@ -219,57 +180,6 @@ const frontmatter = (title, description, { quotedDescription = false, extra = []
     '---',
   ].join('\n');
 
-function typeLabel(type) {
-  return TYPE_LABELS[type] ?? type ?? 'Unclassified';
-}
-
-function facetValues(modules, pick) {
-  const values = new Set();
-  for (const module of modules) {
-    for (const value of pick(module) ?? []) {
-      if (value !== WILDCARD) values.add(value);
-    }
-  }
-  return [...values].sort((a, b) => a.localeCompare(b));
-}
-
-function buildFacets(modules) {
-  const raw = [
-    {
-      id: 'type',
-      label: 'Type',
-      values: TYPE_ORDER.filter((type) => modules.some((module) => module.type === type)).map(
-        typeLabel,
-      ),
-    },
-    { id: 'soc', label: 'SoC', values: facetValues(modules, (m) => m.compatibility.socs) },
-    { id: 'board', label: 'Board', values: facetValues(modules, (m) => m.compatibility.boards) },
-    {
-      id: 'toolchain',
-      label: 'Toolchain',
-      values: facetValues(modules, (m) => m.compatibility.toolchains),
-    },
-    { id: 'capability', label: 'Capability', values: facetValues(modules, (m) => m.capabilities) },
-  ];
-  return raw
-    .filter((facet) => facet.values.length > 0)
-    .map((facet) => ({ ...facet, collapsed: facet.values.length > COLLAPSE_FACET_AT }));
-}
-
-function facetRows(modules) {
-  const rows = {};
-  for (const module of modules) {
-    rows[module.name] = {
-      type: [typeLabel(module.type)],
-      soc: module.compatibility.socs,
-      board: module.compatibility.boards,
-      toolchain: module.compatibility.toolchains,
-      capability: module.capabilities,
-    };
-  }
-  return rows;
-}
-
 function catalogTable(modules) {
   const header = [
     '| Module | Type | Summary | Version | SoCs (declared) | Boards (declared) | Repo |',
@@ -380,26 +290,23 @@ function catalogPage(modules) {
       `All ${modules.length} modules the neuralSPOT-X registry pins, filterable by type, SoC, board, toolchain and capability.`,
     ),
     '',
-    "import ModuleCatalogFilter from '../../../components/ModuleCatalogFilter.tsx';",
-    "import catalogFacets from '../../../data/modules-facets.json';",
+    "import ModuleIndex from '../../../components/ModuleIndex.astro';",
     '',
-    `The registry pins ${modules.length} modules. Every row below is in the page whether the filter`,
-    'runs or not, so search, the Markdown rendition and an agent reading the HTML all see the full',
-    'catalog. Each module name links to its own page.',
+    `The registry pins ${modules.length} modules. Search and the chips below filter the list; the`,
+    'same modules are in the page as a table whether the filter runs or not, so the Markdown',
+    'rendition and an agent reading the HTML see the full catalog either way. Each module name',
+    'links to its own page.',
     '',
     DECLARED_NOTE,
     '',
-    'A `*` in the SoC, board or toolchain column means the manifest declares every target of that',
-    'kind rather than a list, and a row carrying it matches whatever you filter by.',
+    'A module whose manifest declares every target of a kind rather than a list carries **any** in',
+    'that facet, and the table below shows the `*` the manifest writes.',
     '',
-    '<ModuleCatalogFilter',
-    '  client:only="react"',
-    '  facets={catalogFacets.facets}',
-    '  rows={catalogFacets.rows}',
-    '  tableId="module-catalog"',
-    '/>',
+    `<ModuleIndex base={${JSON.stringify(BASE)}} tableId="module-catalog" />`,
     '',
     '<div id="module-catalog">',
+    '',
+    '## All modules',
     '',
     catalogTable(modules),
     '',
@@ -644,14 +551,6 @@ function main() {
   fs.mkdirSync(dirs.content, { recursive: true });
   fs.mkdirSync(dirs.public, { recursive: true });
 
-  const facets = buildFacets(modules);
-  const rows = facetRows(modules);
-  fs.writeFileSync(
-    path.join(dirs.data, 'modules-facets.json'),
-    `${JSON.stringify({ facets, rows }, null, 2)}\n`,
-    'utf8',
-  );
-
   timed('render pages', () => {
     fs.writeFileSync(path.join(dirs.content, 'index.mdx'), overviewPage(modules, boards), 'utf8');
     fs.writeFileSync(path.join(dirs.content, 'catalog.mdx'), catalogPage(modules), 'utf8');
@@ -694,7 +593,6 @@ function main() {
       manifestSource: module.manifest_source,
     })),
     boards: boards.boards.map((board) => board.name),
-    facets: facets.map((facet) => ({ id: facet.id, values: facet.values.length })),
     artifacts: {
       catalog: `${ROUTE}/catalog.json`,
       boards: `${ROUTE}/boards.json`,
@@ -710,8 +608,7 @@ function main() {
   const total = timings.reduce((sum, entry) => sum + entry.ms, 0);
   const withoutManifest = modules.filter((module) => module.manifest_source === 'unavailable');
   console.log(
-    `modules: ${modules.length} modules on ${report.pages} pages, ${boards.boards.length} boards, ` +
-      `${facets.length} facets` +
+    `modules: ${modules.length} modules on ${report.pages} pages, ${boards.boards.length} boards` +
       (withoutManifest.length ? `, ${withoutManifest.length} without a manifest` : '') +
       `, ${total} ms total.`,
   );

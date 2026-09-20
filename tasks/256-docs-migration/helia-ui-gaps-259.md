@@ -18,7 +18,7 @@ What NSX ended up writing locally, and why:
 
 | NSX component | Reason |
 | --- | --- |
-| `astro-site/src/components/ModuleCatalogFilter.tsx` | Drafts 1 and 2 |
+| `astro-site/src/components/ModuleIndex.astro` | A wrapper only: it builds `RefIndexRow[]` from the module snapshot and mounts the package's `react/ref-index`. Drafts 6 and 7 are what that cost |
 | `astro-site/src/components/ModuleCard.astro` | Composed from the package's `Card`, `CardHeader`, `CardContent` and `Chip`; no gap, recorded for completeness |
 
 Everything else on the Modules section is a package part or plain Markdown:
@@ -51,8 +51,13 @@ search) plus the reference-specific row builder that already lives in
 `ref-index-model.ts`. The second is a refactor of shipped code and would give
 `RefIndex` and a catalog one implementation.
 
-**NSX workaround.** `ModuleCatalogFilter.tsx`, which filters the page's own
-Markdown table rather than owning rows.
+**NSX workaround.** `RefIndex` itself, through `ModuleIndex.astro`. A module
+row is a `RefIndexRow` with `kind: 'module'`, which is the one `SymbolKind`
+that is true of a module rather than borrowed, `module` carrying the registry
+project and `group` the type label. What it costs is in draft 7. The static
+Markdown table stays below the island and is hidden once the island renders,
+because it is what the rendition, Pagefind and a reader without JavaScript
+get.
 
 ---
 
@@ -103,7 +108,9 @@ same thing on screen.
 with the same `tone` and `size` props, and a pressed state for filter use.
 This is the React half of #79 and #40, which cover the Astro layout part.
 
-**NSX workaround.** Tailwind utilities in `ModuleCatalogFilter.tsx`.
+**NSX workaround.** None now: the catalog's chips are `RefIndex`'s own, which
+are Tailwind utilities in the package rather than the `.helia-chip` recipe. The
+gap stands for any island that is not `RefIndex`.
 
 ---
 
@@ -134,9 +141,11 @@ root.
 `src/content/docs/modules/**` is the whole ask here.
 
 **NSX workaround.** An explicit `QUOTED_TERMS` list in
-`astro-site/scripts/build-modules.mjs`, applying the per-line escape only where
-it is needed. It fails closed: a manifest introducing a new British spelling
-fails the site's spell check until somebody looks at it.
+`astro-site/scripts/build-modules.mjs`, marking only the values that need it,
+with `<span data-quoted="spelling: allow" />` rather than an MDX comment so the
+mark does not reach the rendition (draft 5). It fails closed: a manifest
+introducing a new British spelling fails the site's spell check until somebody
+looks at it.
 
 ---
 
@@ -160,5 +169,106 @@ value is only a comment. The wider question, whether a rendition should carry
 what a component rendered rather than dropping it, is heliaRT's lesson recorded
 in `tasks/256-docs-migration/plan.md` §1 and is bigger than this.
 
-**NSX workaround.** Apply the escape narrowly, so one marker reaches the
-rendition instead of two hundred and fifty.
+**NSX workaround.** The marker is an empty inline element instead of an
+expression. Tags are dropped from the rendition, so nothing reaches it. The
+same pass drops an escaped `\<img src=x\>` as though it were a tag, which is
+why manifest prose is escaped with character references rather than
+backslashes.
+
+---
+
+## Draft 6: the JSON-LD block escapes nothing
+
+**Title:** `discoverability.jsonLd` writes a page description into a script
+body without escaping it
+
+**What happened.** A generated module page takes its description from another
+repository's `nsx-module.yaml`. With `jsonLd` on, the description is written
+into `<script type="application/ld+json">` as-is: a description containing
+`</script>` ends the block and everything after it is markup the browser
+parses. Observed on a fixture page, where
+`"description":"Summary <img src=x onerror=alert(1)> ..."` reached the built
+JSON-LD verbatim. The meta attribute on the same page is escaped correctly, so
+the two paths disagree.
+
+**Expected.** A string written into a JSON-LD script has `<` escaped, which is
+what `\u003c` is for; nothing a page's frontmatter says should be able to end
+the block.
+
+**Source location.** `starlight/discoverability.ts`, the JSON-LD serialization
+that feeds `Discoverability.astro`.
+
+**Proposal.** Serialize with `JSON.stringify(...).replace(/</g, '\\u003c')`, the
+standard treatment for JSON in a script element. It changes no rendered output.
+
+**NSX workaround.** `metaText` in `astro-site/scripts/build-modules.mjs` drops
+angle brackets from a page description before it is written, because the site
+cannot escape for a consumer it does not control.
+
+---
+
+## Draft 7: RefIndex is a reference index in its wording and its controls
+
+**Title:** `RefIndex` cannot be labelled, and a facet with a hundred values is a
+hundred chips
+
+**What happened.** Using `RefIndex` for the module catalog works, and these are
+what a reader sees that a catalog would not:
+
+- The count reads `50 of 50 symbols`, from `{visible.length} of {rows.length}
+  symbols` (`react/ref-index.tsx`). There is no prop for the noun.
+- The first column header is `Symbol`. There is no prop for it, or for the
+  `Summary` header.
+- Facet order is the package's: known ids by rank, then alphabetical by id
+  (`refIndexFacets` in `ref-index-model.ts`). A catalog wants Type first; it
+  gets Board, Capability, SoC, Toolchain, Type.
+- The same array drives the chips and the table columns, so a facet cannot be
+  filterable without also being a column.
+- There is no collapsed or limited facet. The catalog's `capability` facet has
+  about a hundred values, so the reader scrolls a wall of chips before reaching
+  the table, on desktop and worse on mobile.
+- `RefIndexContract` is kernel-shaped: `prerequisites`, `bufferSize`,
+  `tolerances`, `notes`. A module has capabilities, use cases and constraints,
+  of which only two map honestly.
+- `kind: SymbolKind` is required and never rendered.
+
+**Expected.** The vocabulary is the consumer's: a noun for the count, labels
+for the first two columns, an order for the facets, and a facet that can be
+collapsed when it has more values than a row of chips.
+
+**Source location.** `react/ref-index.tsx` (count, headers, facet rendering),
+`ref-index-model.ts` (`refIndexFacets`, `RefIndexRow`, `RefIndexContract`).
+
+**Proposal.** Add `noun`, `columns: { name, summary }`, an optional facet order
+or a `collapsedAt` on `RefIndexFacet`, and make `kind` optional. None of it
+changes a reference index that passes nothing.
+
+**NSX workaround.** None. The package's wording and ordering are on the page as
+shipped; the capability facet is passed because the catalog is meant to filter
+by it.
+
+---
+
+## Draft 8: a package React island is not in the consumer's Tailwind scan
+
+**Title:** Using a `react/` part means knowing to add a `@source` glob for it
+
+**What happened.** `starlight-tailwind.css` documents that the scan list is the
+consumer's, and the site listed the package's `astro/` and `starlight/`
+directories. Mounting `react/ref-index` produced a working, entirely unstyled
+island: the chips were boxes and the search field a bare input, because every
+class the component names is in `node_modules` and nothing scanned it.
+
+**Expected.** The failure is silent and looks like a broken component rather
+than a missing glob. Either the package's own `@source` covers its React parts,
+or the README says the glob is required with the parts it applies to.
+
+**Source location.** `tailwind.css` (the scan-list comment),
+`starlight-tailwind.css`, `react/*.tsx`.
+
+**Proposal.** Document the glob next to the React exports, or ship it: a
+`@source` in the package resolves against the file that declares it, which is
+in `node_modules`, so `@source '../react/**/*.tsx'` from the package's own CSS
+would cover it without a consumer edit.
+
+**NSX workaround.** One line in `astro-site/src/styles/tailwind.css`.

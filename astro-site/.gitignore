@@ -21,7 +21,6 @@ public/reference/
 # (AmbiqAI/neuralspotx#259). modules.json and boards.json are the snapshot and
 # stay tracked; everything below is derived from them.
 src/content/docs/modules/
-src/data/modules-facets.json
 src/data/modules-sidebar.json
 src/data/modules-report.json
 public/modules/

@@ -88,15 +88,28 @@ setting. Writing a snapshot that is missing a manifest still needs
 carries the allowlist, so the note on a module page saying its manifest is not
 re-read goes when the allowlist does.
 
-**The static table is the catalog; the island only hides rows.** The
-acceptance criteria want the full table in the built HTML and in the Markdown
-rendition with JavaScript disabled, and they want a filter. Rendering the rows
-inside the island would have put fifty modules on the page twice, because the
-Markdown rendition is derived from the MDX source and strips components. So the
-page carries an ordinary Markdown table, the island mounts with
-`client:only="react"` and toggles `hidden` on the rows it finds by module name
-in the first cell, and a reader with no JavaScript sees the table and no inert
-controls. The `.md` rendition carries all fifty rows.
+**The filter is the package's `RefIndex`; the static table is what a reader
+without it gets.** The acceptance criteria want the full table in the built
+HTML and in the Markdown rendition with JavaScript disabled, and they want a
+filter. `ModuleIndex.astro` builds `RefIndexRow[]` from the same committed
+snapshot the table is generated from and mounts
+`@ambiqai/helia-ui/react/ref-index`, which owns its rows, its chips and its
+search. The page still carries the ordinary Markdown table under **All
+modules**, and a script hides that table once the island has actually rendered,
+so a failed hydration leaves the reader the catalog rather than nothing.
+
+The island mounts `client:only`. Server-rendering it put all fifty modules in
+the page twice and took the catalog to 349 KB against a 250 KB budget; with the
+rows arriving as props the page is 176 KB and 24 KB gzipped. The `.md`
+rendition carries all fifty rows, as before, and Pagefind indexes the table
+rather than the island.
+
+What `RefIndex` costs is recorded in helia-ui-gaps-259.md drafts 6 to 8: the
+count reads "50 of 50 symbols", the first column is headed "Symbol", the facet
+order is the package's, and the capability facet renders about a hundred chips
+because a facet cannot be collapsed. The island is 258 KB of JavaScript against
+the previous 225 KB, the difference being `RefIndex`, its table and input
+primitives and its icons; React is 213 KB of both figures.
 
 **Budgets are the 250 KB / 40 KB class, with the same 80% warning.** Unlike the
 Python API pages there was no reason to deviate: the catalog is one table and

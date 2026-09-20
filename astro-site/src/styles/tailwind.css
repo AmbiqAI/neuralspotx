@@ -13,3 +13,6 @@
 @source '../islands/**/*.tsx';
 @source '../../node_modules/@ambiqai/helia-ui/astro/**/*.astro';
 @source '../../node_modules/@ambiqai/helia-ui/starlight/**/*.astro';
+/* The catalog's filter is the package's own React island, so its classes
+   are in node_modules and nowhere in this repository to be scanned. */
+@source '../../node_modules/@ambiqai/helia-ui/react/**/*.tsx';
