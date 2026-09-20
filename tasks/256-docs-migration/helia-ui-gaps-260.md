@@ -1,7 +1,8 @@
 # helia-ui gaps found during P2 PR1, Getting started (issue #260)
 
 Drafts only. Nothing below has been filed; Adam files or discards each one.
-Checked against `v0.1.0-alpha.14`, the version pinned in
+Checked against `v0.1.0-alpha.14`, the version pinned when this pass ran. Each
+draft carries its own status; the pin itself lives in
 `astro-site/package-lock.json`.
 
 Nothing in this phase needed a local component. Every page is Markdown or MDX built from
@@ -200,8 +201,8 @@ the package's own link-bearing parts, so `LinkCard`, `Card` and `Button` emit
 
 # Second pass: the landing page rebuild (issue #260)
 
-Checked against `v0.1.0-alpha.15`, the version now pinned in
-`astro-site/package-lock.json`. Same rule as above: drafts only, nothing filed.
+Checked against `v0.1.0-alpha.15`, the version pinned when this pass ran. Same
+rule as above: drafts only, nothing filed.
 
 **Update to Draft 5, second defect.** Rebuilding the capability cards as `Card` +
 `CardHeader` + `CardContent` instead of `LinkCard` turned out to fix half of it by
