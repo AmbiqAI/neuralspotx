@@ -146,6 +146,12 @@ jobs:
           NSX_DOCS_REFERENCE_PREBUILT: '1'
           NSX_DOCS_MODULES_PREBUILT: '1'
 
+      # Links, anchors, provenance and budgets, then the agent-facing contract:
+      # the llms bundle read back for every public symbol, command and module
+      # name, a Markdown rendition per route, all 67 MkDocs routes resolving,
+      # the sitemap, the 404 and every JSON-LD block. The bundle itself is
+      # rebuilt from the models by the build's postbuild hook, so a validate
+      # run always reads what a deploy would publish.
       - name: Validate the built site
         working-directory: astro-site
         run: npm run validate
@@ -164,6 +170,9 @@ jobs:
             echo "| Modules generation | ${MODULES_SECONDS:-n/a}s |"
             echo "| Build time | ${BUILD_SECONDS:-n/a}s |"
             echo "| HTML pages | $(find dist -name '*.html' 2>/dev/null | wc -l | tr -d ' ') |"
+            echo "| Redirect stubs | $(node -p "Object.entries(require('./src/data/redirects.json')).filter(([f,t])=>t!=='/neuralspotx'+f).length" 2>/dev/null) |"
+            echo "| Markdown renditions | $(find dist -name 'index.md' 2>/dev/null | wc -l | tr -d ' ') |"
+            echo "| llms-full.txt | $(wc -c < dist/llms-full.txt 2>/dev/null | awk '{printf "%.0f KiB", $1/1024}') |"
             echo "| Artifact size | $(du -sh dist 2>/dev/null | cut -f1) |"
             echo "| helia-ui | $(node -p "require('./package.json').dependencies['@ambiqai/helia-ui']") |"
           } >> "$GITHUB_STEP_SUMMARY"
