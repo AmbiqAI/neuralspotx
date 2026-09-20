@@ -30,3 +30,4 @@ public/modules/
 # build run (AmbiqAI/neuralspotx#260). The READMEs are the source of record.
 src/content/docs/guides/examples/
 src/data/examples-sidebar.json
+src/data/examples.json

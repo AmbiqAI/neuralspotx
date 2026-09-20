@@ -1,6 +1,9 @@
 ---
-title: neuralSPOT-X
-description: The single CLI that scaffolds, builds, flashes and profiles firmware for Ambiq SoCs.
+# The rendition check holds this to the page's own <h1>, which is the hero
+# headline, so the two are one string; head.title below keeps the tab and the
+# search result on the product name.
+title: 'neuralSPOT-X: the modular developer SDK and CLI for bare-metal Ambiq applications'
+description: The modular developer SDK and CLI for bare-metal Ambiq applications, from scaffolding an app for a board to flashing it and reading its output.
 tableOfContents: false
 prev: false
 next: false
@@ -15,39 +18,33 @@ helia:
 
 import Hero from '@ambiqai/helia-ui/astro/Hero';
 import Band from '@ambiqai/helia-ui/astro/Band';
+import EditorialBand from '@ambiqai/helia-ui/astro/EditorialBand';
 import Button from '@ambiqai/helia-ui/astro/Button';
 import AsciiTerminal from '@ambiqai/helia-ui/astro/AsciiTerminal';
 import SectionHeader from '@ambiqai/helia-ui/astro/SectionHeader';
 import CardGrid from '@ambiqai/helia-ui/astro/CardGrid';
 import LinkCard from '@ambiqai/helia-ui/astro/LinkCard';
-
-export const demo = [
-  { kind: 'command', text: 'pipx install neuralspotx' },
-  { kind: 'command', text: 'nsx create-app hello_ap510 --board apollo510_evb' },
-  { kind: 'success', text: "Created app 'hello_ap510' at: /home/you/hello_ap510" },
-  { kind: 'command', text: 'cd hello_ap510 && nsx configure' },
-  { kind: 'command', text: 'nsx build' },
-  { kind: 'command', text: 'nsx flash' },
-  { kind: 'command', text: 'nsx view' },
-  { kind: 'output', text: 'nsx hello from generated app' },
-  { kind: 'output', text: 'nsx hello from generated app' },
-];
+import CodeBlock from '@ambiqai/helia-ui/astro/CodeBlock';
+import Callout from '@ambiqai/helia-ui/astro/Callout';
+import HomeStats from '../../components/HomeStats.astro';
+import ExampleCards from '../../components/ExampleCards.astro';
+import transcripts from '../../data/transcripts/index.json';
 
 <Hero eyebrow="AI on Ambiq" variant="contrast">
-  neuralSPOT-X
+  neuralSPOT-X: the modular developer SDK and CLI for <em>bare-metal Ambiq applications</em>
   <Fragment slot="summary">
-    The single CLI, **NSX** for short, that scaffolds, builds, flashes and profiles firmware
-    for Ambiq SoCs, with first-class paths into the Helia runtime, ahead-of-time and
-    profiling stack.
+    Scaffold an app for a real board, resolve its modules and lock the versions NSX picked,
+    then build the result with ordinary CMake and Ninja. Flash it over SEGGER J-Link and
+    stream the running firmware's output back to your terminal, all from one CLI.
   </Fragment>
   <Fragment slot="actions">
     <Button href="/neuralspotx/getting-started/">Get started</Button>
-    <Button href="/neuralspotx/guides/" variant="secondary">Read the guides</Button>
+    <Button href="/neuralspotx/modules/" variant="secondary">Browse modules</Button>
   </Fragment>
   <Fragment slot="media">
     <AsciiTerminal
       title="nsx"
-      lines={demo}
+      lines={transcripts.quickstart}
       animated
       autoplay
       copy
@@ -59,47 +56,204 @@ export const demo = [
 
 <Band density="compact">
   <SectionHeader
-    eyebrow="Workflow"
-    title="Install, create, flash."
-    description="Three commands take you from an empty shell to firmware running on a board. Everything NSX generates is ordinary CMake and Ninja you can read and edit."
-    href="/neuralspotx/getting-started/"
-    linkLabel="Walk the full lifecycle"
+    eyebrow="Capabilities"
+    title="What NSX does."
+    description="Six things, each one a command you can run and a file you can read afterwards. Nothing NSX generates is hidden from you."
   />
   <CardGrid columns={3} equalize>
     <LinkCard
-      title="Install"
+      title="Scaffold an app"
       titleAs="h3"
-      eyebrow="Step 1"
-      href="/neuralspotx/getting-started/"
-      meta="pipx install neuralspotx"
-    >
-      Put `nsx` on your PATH, then let `nsx doctor` check CMake, Ninja, the Arm toolchain
-      and J-Link before you need them.
-    </LinkCard>
-    <LinkCard
-      title="Create"
-      titleAs="h3"
-      eyebrow="Step 2"
-      href="/neuralspotx/getting-started/"
+      eyebrow="Create"
+      href="/neuralspotx/getting-started/first-app/"
       meta="nsx create-app --board apollo510_evb"
+      lift
     >
-      Scaffold an app against a real Ambiq board, then `nsx configure` resolves its module
-      dependencies and locks the versions it picked.
+      `nsx create-app` writes a complete app directory for a real board: an `nsx.yml`, a
+      `CMakeLists.txt` and sources. Pass `--template npu-tflm` to start from a
+      model-inference app instead of a blank one.
     </LinkCard>
     <LinkCard
-      title="Flash"
+      title="Pull in modules"
       titleAs="h3"
-      eyebrow="Step 3"
-      href="/neuralspotx/getting-started/"
-      meta="nsx build && nsx flash && nsx view"
+      eyebrow="Registry"
+      href="/neuralspotx/guides/modules/using-modules/"
+      meta="nsx module add"
+      lift
     >
-      Build the image, program the board over SWD and stream live SWO output back from the
-      running firmware.
+      The packaged registry pins 50 firmware modules. `nsx module search` finds one,
+      `nsx module add` writes it into your `nsx.yml`, and the catalog records what each
+      module provides and which boards its manifest declares.
+    </LinkCard>
+    <LinkCard
+      title="Lock and sync"
+      titleAs="h3"
+      eyebrow="Reproducibility"
+      href="/neuralspotx/guides/modules/lock-and-sync/"
+      meta="nsx lock"
+      lift
+    >
+      `nsx lock` records a content hash for every resolved module in `nsx.lock`, so the
+      next `nsx sync` fetches the same trees on another machine. `nsx sbom` exports the
+      resolved set.
+    </LinkCard>
+    <LinkCard
+      title="Build with plain CMake"
+      titleAs="h3"
+      eyebrow="Toolchains"
+      href="/neuralspotx/guides/system/toolchains/"
+      meta="nsx build"
+      lift
+    >
+      A generated app is ordinary CMake and Ninja that you can read, edit and build
+      yourself. Board descriptors declare three toolchains: `arm-none-eabi-gcc`, `armclang`
+      and ATfE.
+    </LinkCard>
+    <LinkCard
+      title="Flash it and watch"
+      titleAs="h3"
+      eyebrow="On the board"
+      href="/neuralspotx/guides/apps/build-flash-view/"
+      meta="nsx flash && nsx view"
+      lift
+    >
+      `nsx probes` lists the SEGGER J-Link probes it can see, `nsx flash` programs the
+      board over SWD, and `nsx view` streams SWO output back from the firmware while it
+      runs.
+    </LinkCard>
+    <LinkCard
+      title="Check before you debug"
+      titleAs="h3"
+      eyebrow="Environment"
+      href="/neuralspotx/getting-started/doctor/"
+      meta="nsx doctor"
+      lift
+    >
+      `nsx doctor` reports what it found for CMake, Ninja, the Arm toolchain and J-Link,
+      and what each missing piece would cost you. `nsx doctor --json` hands the same report
+      to a script.
     </LinkCard>
   </CardGrid>
+
+  In order: [Create your first app](/neuralspotx/getting-started/first-app/),
+  [Using modules](/neuralspotx/guides/modules/using-modules/),
+  [Lock and sync](/neuralspotx/guides/modules/lock-and-sync/),
+  [Toolchain support](/neuralspotx/guides/system/toolchains/),
+  [Build, flash and view](/neuralspotx/guides/apps/build-flash-view/) and
+  [Check your environment](/neuralspotx/getting-started/doctor/).
 </Band>
 
 <Band tone="muted" density="compact">
+  <SectionHeader
+    eyebrow="Coverage"
+    title="What ships today."
+    description="Counted from the board and module snapshots this site is built from, not from a roadmap."
+  />
+
+  <HomeStats />
+
+  The packaged registry pins 50 modules. NSX ships 17 board descriptors across 11 SoC
+  families, declaring 3 toolchains between them, and this repository carries 10 example
+  apps. The [module catalog](/neuralspotx/modules/catalog/) lists every module and the
+  [board matrix](/neuralspotx/modules/boards/) lists every board, with the SoC, tier, SDK
+  provider, CPU and toolchains each one declares.
+</Band>
+
+<EditorialBand tone="paper">
+  <SectionHeader
+    eyebrow="HELIA"
+    title="Part of the HELIA stack."
+    description="NSX is where you integrate the HELIA pieces into a bare-metal app and get that app onto a board."
+  />
+  <CardGrid columns={3} equalize>
+    <LinkCard
+      title="heliaRT"
+      titleAs="h3"
+      eyebrow="Runtime"
+      href="https://ambiqai.github.io/helia-rt/"
+      meta="nsx-helia-rt"
+      lift
+    >
+      LiteRT for Micro / TFLM-compatible runtime with Reference, CMSIS-NN, and heliaCORE
+      backends.
+    </LinkCard>
+    <LinkCard
+      title="heliaCORE"
+      titleAs="h3"
+      eyebrow="Kernels"
+      href="https://ambiqai.github.io/ns-cmsis-nn/"
+      meta="ns-cmsis-nn"
+      lift
+    >
+      Optimized neural-network kernel library for Ambiq SoCs.
+    </LinkCard>
+    <LinkCard
+      title="heliaAOT"
+      titleAs="h3"
+      eyebrow="Compiler"
+      href="https://ambiqai.github.io/helia-aot/"
+      meta="helia-aot"
+      lift
+    >
+      Ahead-of-time compiler producing standalone C inference modules.
+    </LinkCard>
+  </CardGrid>
+
+  Each one reaches your app as a module you add and lock like any other:
+  [heliaRT](https://ambiqai.github.io/helia-rt/),
+  [heliaCORE](https://ambiqai.github.io/ns-cmsis-nn/) and
+  [heliaAOT](https://ambiqai.github.io/helia-aot/). The
+  [KWS Inference example](/neuralspotx/guides/examples/kws_infer/) is a working app that
+  does exactly that.
+</EditorialBand>
+
+<Band density="compact">
+  <SectionHeader
+    eyebrow="Agents"
+    title="Built for agents too."
+    description="The command graph and the environment report are both machine-readable, and every route on this site answers as Markdown."
+  />
+  <CardGrid columns={2}>
+    <CodeBlock variant="terminal" language="bash" label="The command graph" code="nsx commands --json" />
+    <CodeBlock variant="terminal" language="bash" label="The environment report" code="nsx doctor --json" />
+  </CardGrid>
+
+  `nsx commands --json` prints the whole command graph, including which command each one
+  leads to next, and `nsx doctor --json` prints the environment report in the same form.
+  Append `.md` to any page URL on this site to get that page as Markdown, or start from
+  [llms.txt](/neuralspotx/llms.txt). The module snapshot behind the catalog is published
+  as [modules/catalog.json](/neuralspotx/modules/catalog.json), and every command, option,
+  Python symbol and manifest field is in the [Reference](/neuralspotx/reference/). There is
+  also [agent guidance](/neuralspotx/guides/contribute/agent-guidance/) for working in the
+  repository itself.
+</Band>
+
+<Band tone="muted" density="compact">
+  <SectionHeader
+    eyebrow="Examples"
+    title="Start from a working app."
+    description="Every example is a real NSX app with its own nsx.yml and CMakeLists.txt, built by the same commands as one you generate. Its tier, status and tested boards are the author's own declaration."
+    href="/neuralspotx/guides/examples/"
+    linkLabel="All examples"
+  />
+
+  <ExampleCards tier="basics" />
+  <ExampleCards tier="capabilities" />
+  <ExampleCards tier="integrations" />
+
+  Basics: [Hello World](/neuralspotx/guides/examples/hello_world/),
+  [FreeRTOS Blinky](/neuralspotx/guides/examples/freertos_blinky/) and
+  [USB Serial](/neuralspotx/guides/examples/usb_serial/).
+  Capabilities: [Audio Capture](/neuralspotx/guides/examples/audio_capture/),
+  [CoreMark](/neuralspotx/guides/examples/coremark/),
+  [PMU Profiling](/neuralspotx/guides/examples/pmu_profiling/) and
+  [Power Benchmark](/neuralspotx/guides/examples/power_benchmark/).
+  Integrations: [BLE Webble](/neuralspotx/guides/examples/ble_webble/),
+  [KWS Inference](/neuralspotx/guides/examples/kws_infer/) and
+  [USB RPC](/neuralspotx/guides/examples/usb_rpc/).
+</Band>
+
+<Band density="compact">
   <SectionHeader
     eyebrow="Documentation"
     title="Find your way around."
@@ -123,4 +277,21 @@ export const demo = [
       NSX reads.
     </LinkCard>
   </CardGrid>
+
+  The four sections are [Getting started](/neuralspotx/getting-started/),
+  [Guides](/neuralspotx/guides/), [Modules](/neuralspotx/modules/) and
+  [Reference](/neuralspotx/reference/).
+</Band>
+
+<Band density="compact">
+  <Callout title="NSX is Beta, supported for evaluation" tone="important">
+    NSX is Beta and is supported for evaluation: use it for bring-up, profiling,
+    validation and demos rather than for production you cannot revise. Public symbols
+    carry the
+    **Provisional** stability tier: the name is public and supported, and it may still
+    change before 1.0. Pin an exact version of `neuralspotx` anywhere it is a dependency of
+    something you ship, and record that version alongside the artifacts it produced. See
+    [Releases and versioning](/neuralspotx/reference/releases/) for how versions are
+    numbered and what pins separately from the CLI.
+  </Callout>
 </Band>

@@ -1,0 +1,13 @@
+{
+  "quickstart": [
+    { "kind": "command", "text": "pipx install neuralspotx" },
+    { "kind": "command", "text": "nsx create-app hello_ap510 --board apollo510_evb" },
+    { "kind": "success", "text": "Created app 'hello_ap510' at: /home/you/hello_ap510" },
+    { "kind": "command", "text": "cd hello_ap510 && nsx configure" },
+    { "kind": "command", "text": "nsx build" },
+    { "kind": "command", "text": "nsx flash" },
+    { "kind": "command", "text": "nsx view" },
+    { "kind": "output", "text": "nsx hello from generated app" },
+    { "kind": "output", "text": "nsx hello from generated app" }
+  ]
+}

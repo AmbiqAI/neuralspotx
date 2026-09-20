@@ -131,6 +131,63 @@ if (!fs.existsSync(buildInfoPath)) {
   if (!home.includes(build.version)) errors.push('The footer does not carry the package version');
 }
 
+/*
+ * Home's Markdown rendition.
+ *
+ * The rendition is derived from MDX source, so anything a component holds in a
+ * prop reaches an agent as nothing at all (AmbiqAI/helia-ui#143). Home answers
+ * that by carrying the figures and links in prose beside the cards, which only
+ * works while the prose and the snapshots agree. This is the pass that makes a
+ * stale figure a build failure rather than a number nobody rechecked.
+ */
+const homeMarkdown = path.join(dist, 'index.md');
+if (!fs.existsSync(homeMarkdown)) {
+  errors.push('No index.md in dist/. Home has no Markdown rendition.');
+} else {
+  const rendition = fs.readFileSync(homeMarkdown, 'utf8');
+  const dataDir = path.join(site, 'src', 'data');
+  const readData = (name) => JSON.parse(fs.readFileSync(path.join(dataDir, name), 'utf8'));
+  const modules = readData('modules.json');
+  const boards = readData('boards.json');
+  const examples = readData('examples.json');
+  const toolchains = new Set(boards.boards.flatMap((board) => board.toolchains));
+
+  for (const [what, count] of [
+    ['modules in the registry', modules.module_count],
+    ['board descriptors', boards.board_count],
+    ['SoC families', Object.keys(boards.soc_families).length],
+    ['toolchains', toolchains.size],
+    ['example apps', examples.examples.length],
+  ]) {
+    if (!new RegExp(String.raw`\b${count}\b`).test(rendition)) {
+      errors.push(`index.md does not state the ${what} count (${count})`);
+    }
+  }
+
+  /* Every card grid on Home is duplicated as a link list underneath it. An
+     example added under examples/ shows up in the grid on its own and has to
+     be added to that list by hand, so this is what catches the omission. */
+  const required = [
+    ...examples.examples.map((example) => example.href),
+    '/neuralspotx/modules/catalog/',
+    '/neuralspotx/modules/boards/',
+    '/neuralspotx/modules/catalog.json',
+    '/neuralspotx/llms.txt',
+    '/neuralspotx/reference/releases/',
+    '/neuralspotx/getting-started/',
+    '/neuralspotx/guides/',
+    '/neuralspotx/reference/',
+  ].map((route) => ORIGIN + route);
+  for (const link of [
+    ...required,
+    'https://ambiqai.github.io/helia-rt/',
+    'https://ambiqai.github.io/ns-cmsis-nn/',
+    'https://ambiqai.github.io/helia-aot/',
+  ]) {
+    if (!rendition.includes(`(${link})`)) errors.push(`index.md has no Markdown link to ${link}`);
+  }
+}
+
 if (errors.length > 0) throw new Error([...new Set(errors)].sort().join('\n'));
 
 const bytes = files.reduce((total, file) => total + fs.statSync(file).size, 0);

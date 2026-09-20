@@ -1,0 +1,37 @@
+---
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright (c) 2026, Ambiq
+/*
+ * The coverage figures on Home, counted from the same snapshots the module
+ * pages are built from rather than typed into the page.
+ *
+ * It exists as a component because the discoverability plugin derives each
+ * route's Markdown rendition from MDX source: an expression written in the
+ * page would reach an agent as its own source text, not as a number
+ * (AmbiqAI/helia-ui#143). A self-closing tag reduces to nothing instead, and
+ * the sentence under it carries the figures for that reader. Those two are
+ * held together by scripts/check-output.mjs, which fails the build when they
+ * disagree with these snapshots.
+ */
+import CardGrid from '@ambiqai/helia-ui/astro/CardGrid';
+import StatCard from '@ambiqai/helia-ui/astro/StatCard';
+import modules from '../data/modules.json';
+import boards from '../data/boards.json';
+import examples from '../data/examples.json';
+
+/* Every board names the toolchains its descriptor declares; the set across
+   them is what NSX can actually build with today. */
+const toolchains = new Set(boards.boards.flatMap((board) => board.toolchains));
+
+const stats = [
+  { label: 'Modules in the registry', value: modules.module_count },
+  { label: 'Board descriptors', value: boards.board_count },
+  { label: 'SoC families', value: Object.keys(boards.soc_families).length },
+  { label: 'Toolchains', value: toolchains.size },
+  { label: 'Example apps', value: examples.examples.length },
+];
+---
+
+<CardGrid columns="auto" min="10rem" density="compact" equalize>
+  {stats.map((stat) => <StatCard label={stat.label}>{stat.value}</StatCard>)}
+</CardGrid>

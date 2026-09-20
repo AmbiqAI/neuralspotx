@@ -241,6 +241,30 @@ repository, and each page below carries that example's README.
   await writeFile(path.join(outDir, 'index.md'), index, 'utf8');
 
   await mkdir(dataDir, { recursive: true });
+  /* The sidebar carries only what a sidebar needs. Home groups the examples by
+     tier and prints each summary, so it reads this instead of the READMEs: one
+     front-matter reader, and a card that cannot disagree with its page. */
+  await writeFile(
+    path.join(dataDir, 'examples.json'),
+    `${JSON.stringify(
+      {
+        tierOrder: TIER_ORDER,
+        tierLabels: TIER_LABEL,
+        examples: examples.map((ex) => ({
+          name: ex.name,
+          title: ex.title,
+          tier: ex.tier,
+          summary: ex.summary,
+          status: ex.status,
+          href: `/neuralspotx/guides/examples/${ex.name}/`,
+        })),
+      },
+      null,
+      2,
+    )}\n`,
+    'utf8',
+  );
+
   await writeFile(
     path.join(dataDir, 'examples-sidebar.json'),
     `${JSON.stringify(
