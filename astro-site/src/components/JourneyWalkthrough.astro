@@ -92,7 +92,19 @@ const BEHAVIOR = `
         this.dataset.stage = String(active);
         if (!play) return;
 
-        const terminal = panels[active].querySelector('helia-ascii-terminal');
+        /* A terminal parsed after the element definition is upgraded before
+           its children exist, so its setup finds no lines (helia-ui gap, see
+           the gaps file). Re-inserting a clone upgrades it with children in
+           place; the ready markers are dropped so setup runs again. */
+        const stale = panels[active].querySelector('helia-ascii-terminal');
+        let terminal = stale;
+        if (stale) {
+          terminal = stale.cloneNode(true);
+          delete terminal.dataset.ready;
+          delete terminal.dataset.enhanced;
+          terminal.removeAttribute('data-playing');
+          stale.replaceWith(terminal);
+        }
         const button = terminal?.querySelector('[data-replay-button]');
         if (reducedMotion.matches || !terminal || !button) {
           schedule();
@@ -206,6 +218,7 @@ const BEHAVIOR = `
           lines={stage.lines}
           animated
           replay
+          autoplay={false}
           typingSpeed={typingSpeed}
           lineDelay={lineDelay}
         />
