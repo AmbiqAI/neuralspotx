@@ -58,7 +58,7 @@ const BEHAVIOR = `
 
       const tabs = Array.from(this.querySelectorAll('[data-stage-tab]'));
       const panels = Array.from(this.querySelectorAll('[data-stage-panel]'));
-      const caption = this.querySelector('[data-caption]');
+      const caption = this.querySelector('[data-caption-live]');
       const replay = this.querySelector('[data-walkthrough-replay]');
       const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
       const dwell = Number(this.dataset.dwell ?? 2200);
@@ -88,7 +88,7 @@ const BEHAVIOR = `
           panel.dataset.active = on ? 'true' : 'false';
           panel.setAttribute('aria-hidden', on ? 'false' : 'true');
         });
-        if (caption) caption.textContent = panels[active].dataset.caption || '';
+        if (caption) caption.textContent = panels[active].dataset.stageCaption || '';
         this.dataset.stage = String(active);
         if (!play) return;
 
@@ -199,7 +199,7 @@ const BEHAVIOR = `
         aria-hidden={i === 0 ? 'false' : 'true'}
         data-stage-panel
         data-active={i === 0 ? 'true' : 'false'}
-        data-caption={stage.caption}
+        data-stage-caption={stage.caption}
       >
         <AsciiTerminal
           title={stage.title}
@@ -212,7 +212,7 @@ const BEHAVIOR = `
       </div>
     ))}
   </div>
-  <p class="journey__caption" data-caption aria-live="polite">{stages[0]?.caption}</p>
+  <p class="journey__caption" data-caption-live aria-live="polite">{stages[0]?.caption}</p>
   <script is:inline set:html={BEHAVIOR} />
 </nsx-journey-walkthrough>
 
