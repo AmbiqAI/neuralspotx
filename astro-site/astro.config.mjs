@@ -44,14 +44,35 @@ export default defineConfig({
           },
           /* Home carries no pages of its own, so it renders at the full width
              of the frame and the other four are reached from the top bar.
-             Each section's sidebar is an Overview entry until its content
-             lands: getting started and guides in #260. */
+             Guides is still an Overview entry until its content lands in
+             #260's second PR. */
           sections: [
             { label: 'Home', href: basePath, sidebar: false },
             {
               label: 'Getting started',
               href: `${basePath}getting-started/`,
-              sidebar: [{ label: 'Overview', slug: 'getting-started' }],
+              /* The three per-OS pages sit under Install rather than beside it:
+                 the tabbed page is the one to read, and they exist so the old
+                 MkDocs routes still land somewhere (#261). */
+              sidebar: [
+                { label: 'Overview', slug: 'getting-started' },
+                {
+                  label: 'Install',
+                  collapsed: false,
+                  items: [
+                    { label: 'All platforms', slug: 'getting-started/install' },
+                    { label: 'macOS', slug: 'getting-started/install/macos' },
+                    { label: 'Linux', slug: 'getting-started/install/linux' },
+                    { label: 'Windows', slug: 'getting-started/install/windows' },
+                  ],
+                },
+                { label: 'Check your environment', slug: 'getting-started/doctor' },
+                { label: 'Create your first app', slug: 'getting-started/first-app' },
+                { label: 'Configure and build', slug: 'getting-started/configure-and-build' },
+                { label: 'Flash, reset and view', slug: 'getting-started/flash-and-view' },
+                { label: 'Next steps', slug: 'getting-started/next-steps' },
+                { label: 'Migrating from neuralSPOT', slug: 'getting-started/migrate-from-neuralspot' },
+              ],
             },
             {
               label: 'Guides',
