@@ -21,15 +21,34 @@ interface Props {
   tier: string;
 }
 
+/*
+ * The example front matter carries no ordering, so the generator sorts by name
+ * and the grid would open Basics on FreeRTOS Blinky. Hello World is the one the
+ * Getting started path builds, so it leads its tier; the rest stay alphabetical
+ * rather than acquire a ranking nobody declared.
+ */
+const LEADS: Record<string, string> = { basics: 'hello_world' };
+
 const { tier } = Astro.props;
 const label = data.tierLabels[tier as keyof typeof data.tierLabels];
 if (!label) throw new Error(`ExampleCards: unknown tier '${tier}'`);
 
-const examples = data.examples.filter((example) => example.tier === tier);
-if (!examples.length) throw new Error(`ExampleCards: no examples in tier '${tier}'`);
+const inTier = data.examples.filter((example) => example.tier === tier);
+if (!inTier.length) throw new Error(`ExampleCards: no examples in tier '${tier}'`);
+
+const lead = LEADS[tier];
+if (lead && !inTier.some((example) => example.name === lead)) {
+  throw new Error(`ExampleCards: tier '${tier}' no longer holds its lead example '${lead}'`);
+}
+const examples = lead
+  ? [...inTier].sort((a, b) => Number(b.name === lead) - Number(a.name === lead))
+  : inTier;
+
+/* Three across leaves a four-example tier with an orphan on its second row. */
+const columns = examples.length === 4 ? 2 : 3;
 ---
 
-<CardGrid columns={3} density="compact" equalize>
+<CardGrid columns={columns} density="compact" equalize>
   {
     examples.map((example) => (
       <LinkCard

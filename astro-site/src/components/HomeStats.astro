@@ -24,7 +24,7 @@ import examples from '../data/examples.json';
 const toolchains = new Set(boards.boards.flatMap((board) => board.toolchains));
 
 const stats = [
-  { label: 'Modules in the registry', value: modules.module_count },
+  { label: 'Registry modules', value: modules.module_count },
   { label: 'Board descriptors', value: boards.board_count },
   { label: 'SoC families', value: Object.keys(boards.soc_families).length },
   { label: 'Toolchains', value: toolchains.size },

@@ -30,7 +30,7 @@ import HomeStats from '../../components/HomeStats.astro';
 import ExampleCards from '../../components/ExampleCards.astro';
 import transcripts from '../../data/transcripts/index.json';
 
-<Hero eyebrow="AI on Ambiq" variant="contrast">
+<Hero eyebrow="AI on Ambiq" variant="contrast" data-pagefind-meta="title:neuralSPOT-X">
   neuralSPOT-X: the modular developer SDK and CLI for <em>bare-metal Ambiq applications</em>
   <Fragment slot="summary">
     Scaffold an app for a real board, resolve its modules and lock the versions NSX picked,
@@ -58,7 +58,7 @@ import transcripts from '../../data/transcripts/index.json';
   <SectionHeader
     eyebrow="Capabilities"
     title="What NSX does."
-    description="Six things, each one a command you can run and a file you can read afterwards. Nothing NSX generates is hidden from you."
+    description="Six things, each one a command you can run. Nothing NSX generates is hidden from you."
   />
   <CardGrid columns={3} equalize>
     <LinkCard
@@ -81,9 +81,9 @@ import transcripts from '../../data/transcripts/index.json';
       meta="nsx module add"
       lift
     >
-      The packaged registry pins 50 firmware modules. `nsx module search` finds one,
+      The packaged registry lists 50 firmware modules. `nsx module search` finds one,
       `nsx module add` writes it into your `nsx.yml`, and the catalog records what each
-      module provides and which boards its manifest declares.
+      module's manifest declares: its summary, capabilities and boards.
     </LinkCard>
     <LinkCard
       title="Lock and sync"
@@ -107,7 +107,7 @@ import transcripts from '../../data/transcripts/index.json';
     >
       A generated app is ordinary CMake and Ninja that you can read, edit and build
       yourself. Board descriptors declare three toolchains: `arm-none-eabi-gcc`, `armclang`
-      and ATfE.
+      and `atfe` (Arm Toolchain for Embedded).
     </LinkCard>
     <LinkCard
       title="Flash it and watch"
@@ -135,7 +135,7 @@ import transcripts from '../../data/transcripts/index.json';
     </LinkCard>
   </CardGrid>
 
-  In order: [Create your first app](/neuralspotx/getting-started/first-app/),
+  Read more: [Create your first app](/neuralspotx/getting-started/first-app/),
   [Using modules](/neuralspotx/guides/modules/using-modules/),
   [Lock and sync](/neuralspotx/guides/modules/lock-and-sync/),
   [Toolchain support](/neuralspotx/guides/system/toolchains/),
@@ -152,9 +152,11 @@ import transcripts from '../../data/transcripts/index.json';
 
   <HomeStats />
 
-  The packaged registry pins 50 modules. NSX ships 17 board descriptors across 11 SoC
+  The packaged registry lists 50 modules. NSX ships 17 board descriptors across 11 SoC
   families, declaring 3 toolchains between them, and this repository carries 10 example
-  apps. The [module catalog](/neuralspotx/modules/catalog/) lists every module and the
+  apps.
+
+  Read more: the [module catalog](/neuralspotx/modules/catalog/) lists every module and the
   [board matrix](/neuralspotx/modules/boards/) lists every board, with the SoC, tier, SDK
   provider, CPU and toolchains each one declares.
 </Band>
@@ -199,12 +201,11 @@ import transcripts from '../../data/transcripts/index.json';
     </LinkCard>
   </CardGrid>
 
-  Each one reaches your app as a module you add and lock like any other:
-  [heliaRT](https://ambiqai.github.io/helia-rt/),
-  [heliaCORE](https://ambiqai.github.io/ns-cmsis-nn/) and
-  [heliaAOT](https://ambiqai.github.io/helia-aot/). The
-  [KWS Inference example](/neuralspotx/guides/examples/kws_infer/) is a working app that
-  does exactly that.
+  Read more: [heliaRT](https://ambiqai.github.io/helia-rt/),
+  [heliaCORE](https://ambiqai.github.io/ns-cmsis-nn/),
+  [heliaAOT](https://ambiqai.github.io/helia-aot/), and the
+  [KWS Inference example](/neuralspotx/guides/examples/kws_infer/), which declares the
+  `nsx-helia-rt` module and builds like any other app here.
 </EditorialBand>
 
 <Band density="compact">
@@ -220,11 +221,12 @@ import transcripts from '../../data/transcripts/index.json';
 
   `nsx commands --json` prints the whole command graph, including which command each one
   leads to next, and `nsx doctor --json` prints the environment report in the same form.
-  Append `.md` to any page URL on this site to get that page as Markdown, or start from
-  [llms.txt](/neuralspotx/llms.txt). The module snapshot behind the catalog is published
-  as [modules/catalog.json](/neuralspotx/modules/catalog.json), and every command, option,
-  Python symbol and manifest field is in the [Reference](/neuralspotx/reference/). There is
-  also [agent guidance](/neuralspotx/guides/contribute/agent-guidance/) for working in the
+  Append `.md` to any page URL on this site to get that page as Markdown.
+
+  Read more: [llms.txt](/neuralspotx/llms.txt), the module snapshot behind the catalog at
+  [modules/catalog.json](/neuralspotx/modules/catalog.json), every command, option, Python
+  symbol and manifest field in the [Reference](/neuralspotx/reference/), and
+  [agent guidance](/neuralspotx/guides/contribute/agent-guidance/) for working in the
   repository itself.
 </Band>
 
@@ -241,16 +243,17 @@ import transcripts from '../../data/transcripts/index.json';
   <ExampleCards tier="capabilities" />
   <ExampleCards tier="integrations" />
 
-  Basics: [Hello World](/neuralspotx/guides/examples/hello_world/),
-  [FreeRTOS Blinky](/neuralspotx/guides/examples/freertos_blinky/) and
-  [USB Serial](/neuralspotx/guides/examples/usb_serial/).
-  Capabilities: [Audio Capture](/neuralspotx/guides/examples/audio_capture/),
+  Read more: [Hello World](/neuralspotx/guides/examples/hello_world/),
+  [FreeRTOS Blinky](/neuralspotx/guides/examples/freertos_blinky/),
+  [USB Serial](/neuralspotx/guides/examples/usb_serial/),
+  [Audio Capture](/neuralspotx/guides/examples/audio_capture/),
   [CoreMark](/neuralspotx/guides/examples/coremark/),
-  [PMU Profiling](/neuralspotx/guides/examples/pmu_profiling/) and
-  [Power Benchmark](/neuralspotx/guides/examples/power_benchmark/).
-  Integrations: [BLE Webble](/neuralspotx/guides/examples/ble_webble/),
+  [PMU Profiling](/neuralspotx/guides/examples/pmu_profiling/),
+  [Power Benchmark](/neuralspotx/guides/examples/power_benchmark/),
+  [BLE Webble](/neuralspotx/guides/examples/ble_webble/),
   [KWS Inference](/neuralspotx/guides/examples/kws_infer/) and
-  [USB RPC](/neuralspotx/guides/examples/usb_rpc/).
+  [USB RPC](/neuralspotx/guides/examples/usb_rpc/). All of them are listed under
+  [Examples](/neuralspotx/guides/examples/).
 </Band>
 
 <Band density="compact">
@@ -278,7 +281,7 @@ import transcripts from '../../data/transcripts/index.json';
     </LinkCard>
   </CardGrid>
 
-  The four sections are [Getting started](/neuralspotx/getting-started/),
+  Read more: [Getting started](/neuralspotx/getting-started/),
   [Guides](/neuralspotx/guides/), [Modules](/neuralspotx/modules/) and
   [Reference](/neuralspotx/reference/).
 </Band>
@@ -286,11 +289,11 @@ import transcripts from '../../data/transcripts/index.json';
 <Band density="compact">
   <Callout title="NSX is Beta, supported for evaluation" tone="important">
     NSX is Beta and is supported for evaluation: use it for bring-up, profiling,
-    validation and demos rather than for production you cannot revise. Public symbols
-    carry the
-    **Provisional** stability tier: the name is public and supported, and it may still
-    change before 1.0. Pin an exact version of `neuralspotx` anywhere it is a dependency of
-    something you ship, and record that version alongside the artifacts it produced. See
+    validation and demos. Production support is not committed before 1.0. Every name
+    exported from the `neuralspotx` Python package carries the **Provisional** stability
+    tier: the name is public and supported, and it may still change before 1.0. Pin an
+    exact version of `neuralspotx` anywhere it is a dependency of something you ship, and
+    record that version alongside the artifacts it produced. See
     [Releases and versioning](/neuralspotx/reference/releases/) for how versions are
     numbered and what pins separately from the CLI.
   </Callout>

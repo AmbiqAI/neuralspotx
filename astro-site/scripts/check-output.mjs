@@ -152,16 +152,19 @@ if (!fs.existsSync(homeMarkdown)) {
   const examples = readData('examples.json');
   const toolchains = new Set(boards.boards.flatMap((board) => board.toolchains));
 
-  for (const [what, count] of [
-    ['modules in the registry', modules.module_count],
-    ['board descriptors', boards.board_count],
-    ['SoC families', Object.keys(boards.soc_families).length],
-    ['toolchains', toolchains.size],
-    ['example apps', examples.examples.length],
-  ]) {
-    if (!new RegExp(String.raw`\b${count}\b`).test(rendition)) {
-      errors.push(`index.md does not state the ${what} count (${count})`);
-    }
+  /* The whole sentence, not the digits in it: a loose search for each number
+     passes on a drifted count as soon as the old value survives anywhere else
+     on the page, which it does. Whitespace is normalized on both sides because
+     the sentence is wrapped in the MDX and rewrapped in the rendition. */
+  const flatten = (text) => text.replace(/\s+/g, ' ');
+  const coverage =
+    `The packaged registry lists ${modules.module_count} modules. ` +
+    `NSX ships ${boards.board_count} board descriptors across ` +
+    `${Object.keys(boards.soc_families).length} SoC families, declaring ` +
+    `${toolchains.size} toolchains between them, and this repository carries ` +
+    `${examples.examples.length} example apps.`;
+  if (!flatten(rendition).includes(flatten(coverage))) {
+    errors.push(`index.md does not carry the coverage sentence verbatim: ${coverage}`);
   }
 
   /* Every card grid on Home is duplicated as a link list underneath it. An
@@ -169,6 +172,7 @@ if (!fs.existsSync(homeMarkdown)) {
      be added to that list by hand, so this is what catches the omission. */
   const required = [
     ...examples.examples.map((example) => example.href),
+    '/neuralspotx/guides/examples/',
     '/neuralspotx/modules/catalog/',
     '/neuralspotx/modules/boards/',
     '/neuralspotx/modules/catalog.json',
