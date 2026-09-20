@@ -55,12 +55,29 @@ publish documentation before this PR and it does not now. Docs-only changes
 reach the site from `main` with no release, which is the point of deploying
 from `docs.yml` rather than from the release path.
 
-### Path filters
+### No path filters
 
-`docs/**` leaves the build and pull request filters, because `docs/` now holds
-only unpublished maintainer Markdown. `examples/**/README.md` joins them,
-because each README is now both the page body and the front matter its row in
-the Examples table is built from.
+The `paths:` lists are gone from both the push and the pull request triggers, so
+`docs.yml` runs on every push to `main` and every pull request. Adversarial
+review found the reason, and it is a real failure rather than a preference: the
+freshness guard publishes only when the commit it built is still the tip of
+`main`, so with a filtered trigger a docs commit followed by a non-docs commit
+strands the site. The docs run holds a commit that is no longer the tip and
+stands down, and the non-docs commit never starts a run to take over. The site
+would stop updating with nothing failing.
+
+A second reason stands on its own. This workflow is the only place
+`tests/test_reference_generation.py` and `tests/test_public_surface_doc.py`
+execute, because both need the generated reference and skip without it. A
+filtered job skips rather than passes, so it cannot serve as a required check.
+With the filters gone, "Build and validate" is eligible to be one, which is the
+recommendation in `HANDOFF.md`.
+
+The cost is about a minute of CI on every pull request. The alternative
+considered and rejected was keeping the filters and having the deploy job
+compare against the newest *docs-relevant* commit rather than the tip of
+`main`, which means reimplementing GitHub's path matching in shell against the
+same filter list, in two places that can disagree.
 
 ## 2. What was removed, with the grep proof
 
@@ -288,8 +305,13 @@ Still to do before merge:
 
 - Visual review, desktop and mobile, light and dark. The plan schedules it here;
   it has not happened.
-- Moving the helia-ui pin from commit `266f614` to tag `v0.1.0-alpha.15`, which
-  is being cut to carry it. `HANDOFF.md` has the procedure and the checks.
+- Making "Build and validate" a required check on `main`. It is the only job
+  that runs the reference-completeness and public-surface tests, so a change
+  that breaks the public surface can merge on a green `ci.yml` today. This is a
+  branch-protection setting, so it is the owner's to make.
+
+The helia-ui pin has moved from commit `266f614` to the released tag
+`v0.1.0-alpha.15`.
 
 Deliberately out of scope, by owner decision on 2026-09-20: Windows execution is
 waived for this pass, the four hardware transcripts ship as described output
@@ -298,6 +320,6 @@ claim stays out, and the migration matrix labels stand.
 
 Deferred with a tracking issue: splitting the Python API page that sits at 82%
 of its HTML budget, and the five product findings the migration surfaced,
-AmbiqAI/neuralspotx#265 to #269. One owner decision is open, on whether the
-docs job gets a read token for the private `helia-dsp` repository or its
-manifest stays unchecked; both are recorded in `HANDOFF.md`.
+AmbiqAI/neuralspotx#265 to #269. `helia-dsp` stays unchecked by the drift check,
+decided rather than open: it is a private repository and the docs job is not
+getting a read token for it.

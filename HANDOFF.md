@@ -26,32 +26,23 @@ what to check live, in order, the first time it publishes.
 
 Content state: all five sections are written, the Reference and Modules
 sections are generated on every build, and all 67 MkDocs routes redirect.
+helia-ui is pinned to the released tag `v0.1.0-alpha.15`, not to a commit.
 Per-phase detail is in `tasks/256-docs-migration/p1a-notes.md`, `p1b-notes.md`,
 `p2-pr1-notes.md`, `p2-pr2-notes.md`, `p3-notes.md` and `p4-notes.md`.
 
 ## Before merge
 
-**Move the helia-ui pin to `v0.1.0-alpha.15`.** `astro-site/package.json`
-pins `github:AmbiqAI/helia-ui#266f614958eae8ace4ada151c9d0bed0677203d1`, the
-Markdown-callouts commit (AmbiqAI/helia-ui#128), because it landed after
-`v0.1.0-alpha.14` and the site's asides need it. `v0.1.0-alpha.15` is being cut
-to carry it. Do not merge on the commit pin: a commit is not a release, so
-nothing guarantees it stays reachable.
-
-```bash
-# confirm the tag exists and contains 266f614 before switching
-gh api repos/AmbiqAI/helia-ui/git/ref/tags/v0.1.0-alpha.15 --jq .object.sha
-gh api repos/AmbiqAI/helia-ui/compare/v0.1.0-alpha.15...266f614 --jq .status  # want behind or identical
-cd astro-site
-npm pkg set 'dependencies.@ambiqai/helia-ui=github:AmbiqAI/helia-ui#v0.1.0-alpha.15'
-npm install && npm run check && npm run build && npm run validate
-```
-
-Commit `package.json` and `package-lock.json` together.
-
 **Visual review.** The plan schedules it at P4 and it has not happened.
 Desktop and mobile, light and dark, at least Home, a Guides page, the module
 catalog and a Python API page.
+
+**Make "Build and validate" a required check on `main`.** `docs.yml` now runs
+unfiltered, on every push and every pull request, so the job always reports a
+real result instead of skipping. It is the only place
+`tests/test_reference_generation.py` and `tests/test_public_surface_doc.py`
+execute, because both read generated output and skip without it, so today a
+change that breaks the public surface can merge on a green `ci.yml`. This is a
+branch-protection setting, not a repository change, so it is yours to make.
 
 ## Decided, so do not reopen these in review
 
@@ -71,15 +62,17 @@ Owner decisions taken 2026-09-20:
   `p3-notes.md` section 3 has the table and what would change each one.
 - **Release mechanics leave the public site.** The user-facing half is
   `/reference/releases/`; the workflow detail is `docs/maintainers/releases.md`.
+- **`helia-dsp` stays unchecked.** It is a private repository, so the docs
+  drift check cannot read its manifest without a token. The allowlist marks it
+  unchecked and its module page says so, which means its manifest fields are
+  not covered by CI. Accepted as it stands rather than granting the docs job a
+  read token; nothing else in that job needs credentials. Revisit only if a
+  docs read token is granted for another reason.
 
-## Open owner decision
+## Open owner decisions
 
-**`helia-dsp` is a private repository.** The docs drift check cannot read its
-manifest without a token, so the allowlist marks it unchecked and its module
-page says so. Its manifest fields are therefore not covered by CI. Two options:
-accept unchecked, or grant the docs job a read token. Nothing else in the
-snapshot check needs credentials, so granting one changes the job's threat
-model for a single module.
+None outstanding. Everything above is decided; the two items under "Before
+merge" are actions, not decisions.
 
 ## Product findings from the migration, now tracked
 

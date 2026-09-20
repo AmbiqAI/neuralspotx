@@ -6,6 +6,15 @@ on the shared `@ambiqai/helia-ui` package and deployed to GitHub Pages by
 publish step and no release gate: a docs-only change reaches the site as soon as
 it lands on `main`.
 
+That workflow has no `paths:` filters, so it runs on every push to `main` and
+every pull request. Do not add them. The deploy job publishes only when the
+commit it built is still the tip of `main`, so a filtered trigger would let a
+docs commit followed by a non-docs commit strand the site: the docs run stands
+down and no later run takes over. This workflow is also the only place the
+reference-completeness and public-surface tests execute, because they read
+generated output, and a filtered job skips rather than passes, which cannot be
+a required check.
+
 ## Run it
 
 Node 24 is required; the version is pinned in `astro-site/.nvmrc`. The reference

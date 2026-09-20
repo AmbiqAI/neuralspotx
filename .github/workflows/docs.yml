@@ -4,30 +4,26 @@ name: Docs site
 # same validated artifact to GitHub Pages on a push to main. The build job runs
 # with `contents: read` and nothing else, so a pull request from a fork needs no
 # credentials; Pages permissions are scoped to the deploy job alone.
+#
+# There are deliberately no `paths:` filters. Two reasons, and either alone is
+# enough:
+#
+#   1. The deploy job only publishes when its source commit is still the tip of
+#      main. A filtered trigger breaks that: a docs commit followed by a
+#      non-docs commit leaves the docs run holding a commit that is no longer
+#      the tip, so it stands down, while the non-docs commit never starts a run
+#      to take over. The site would silently stop updating.
+#   2. This is the only job that runs the reference-completeness and
+#      public-surface tests, because they need the generated output. Filtering
+#      it makes it skip rather than pass, which cannot be a required check.
+#
+# The build is about a minute, which is the price of both.
 
 on:
   push:
     branches:
       - main
-    paths:
-      - "astro-site/**"
-      # Each example README is both the page body and the front matter the
-      # Examples table renders from, so a README edit is a docs change.
-      - "examples/**/README.md"
-      - "scripts/docs/**"
-      - "src/neuralspotx/**"
-      - ".github/workflows/docs.yml"
-      - "pyproject.toml"
   pull_request:
-    paths:
-      - "astro-site/**"
-      # Each example README is both the page body and the front matter the
-      # Examples table renders from, so a README edit is a docs change.
-      - "examples/**/README.md"
-      - "scripts/docs/**"
-      - "src/neuralspotx/**"
-      - ".github/workflows/docs.yml"
-      - "pyproject.toml"
   workflow_dispatch:
 
 permissions:
