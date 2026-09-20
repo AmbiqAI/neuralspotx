@@ -1,0 +1,95 @@
+name: Docs site
+
+# Build and validate the Astro site only. The MkDocs site in deploy-pages.yml
+# is still the published one, so nothing here needs Pages permissions, an
+# environment or a secret. Deploy arrives with the cutover
+# (AmbiqAI/neuralspotx#261).
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "astro-site/**"
+      - "docs/**"
+      - ".github/workflows/docs.yml"
+      - "pyproject.toml"
+  pull_request:
+    paths:
+      - "astro-site/**"
+      - "docs/**"
+      - ".github/workflows/docs.yml"
+      - "pyproject.toml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-site-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  build:
+    name: Build and validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: astro-site/package-lock.json
+
+      - name: Install locked site dependencies
+        working-directory: astro-site
+        run: npm ci
+
+      - name: Astro check
+        working-directory: astro-site
+        run: npm run check
+
+      - name: Build the site
+        id: build
+        working-directory: astro-site
+        run: |
+          start=$(date +%s)
+          npm run build
+          echo "seconds=$(( $(date +%s) - start ))" >> "$GITHUB_OUTPUT"
+
+      - name: Validate the built site
+        working-directory: astro-site
+        run: npm run validate
+
+      - name: Summarize the build
+        working-directory: astro-site
+        env:
+          BUILD_SECONDS: ${{ steps.build.outputs.seconds }}
+        run: |
+          {
+            echo "### Docs site"
+            echo
+            echo "| Measure | Value |"
+            echo "| --- | --- |"
+            echo "| Build time | ${BUILD_SECONDS}s |"
+            echo "| HTML pages | $(find dist -name '*.html' | wc -l | tr -d ' ') |"
+            echo "| Artifact size | $(du -sh dist | cut -f1) |"
+            echo "| helia-ui | $(node -p "require('./package.json').dependencies['@ambiqai/helia-ui']") |"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload the built site
+        uses: actions/upload-artifact@v4
+        with:
+          name: neuralspotx-docs-site
+          path: astro-site/dist/
+          if-no-files-found: error
+          retention-days: 14
