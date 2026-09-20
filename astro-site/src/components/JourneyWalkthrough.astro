@@ -58,18 +58,22 @@ const BEHAVIOR = `
 
       const tabs = Array.from(this.querySelectorAll('[data-stage-tab]'));
       const panels = Array.from(this.querySelectorAll('[data-stage-panel]'));
-      const caption = this.querySelector('[data-caption-live]');
+      const captions = Array.from(this.querySelectorAll('[data-stage-caption-text]'));
       const replay = this.querySelector('[data-walkthrough-replay]');
       const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
       const dwell = Number(this.dataset.dwell ?? 2200);
       let active = 0;
-      let paused = false;
+      let hovering = false;
+      let focused = false;
       let auto = !reducedMotion.matches;
       let timer = 0;
+      let watchdog = 0;
       let watching = null;
+      const paused = () => hovering || focused;
 
       const stop = () => {
         window.clearTimeout(timer);
+        window.clearTimeout(watchdog);
         if (watching) watching.disconnect();
         watching = null;
       };
@@ -88,7 +92,7 @@ const BEHAVIOR = `
           panel.dataset.active = on ? 'true' : 'false';
           panel.setAttribute('aria-hidden', on ? 'false' : 'true');
         });
-        if (caption) caption.textContent = panels[active].dataset.stageCaption || '';
+        captions.forEach((text, i) => { text.dataset.active = i === active ? 'true' : 'false'; });
         this.dataset.stage = String(active);
         if (!play) return;
 
@@ -99,6 +103,9 @@ const BEHAVIOR = `
         const stale = panels[active].querySelector('helia-ascii-terminal');
         let terminal = stale;
         if (stale) {
+          /* The old instance keeps typing into a detached tree unless its run
+             counter moves; the terminal aborts a run whose id is stale. */
+          stale.runId = (stale.runId || 0) + 1;
           terminal = stale.cloneNode(true);
           delete terminal.dataset.ready;
           delete terminal.dataset.enhanced;
@@ -119,10 +126,17 @@ const BEHAVIOR = `
           schedule();
         });
         watching.observe(terminal, { attributes: true, attributeFilter: ['data-playing'] });
+        /* If the terminal never raises or clears the marker, the walkthrough
+           still moves on once the transcript could have finished. */
+        const typed = Array.from(terminal.querySelectorAll('[data-line]'))
+          .reduce((sum, line) => sum + (line.dataset.text || '').length, 0);
+        watchdog = window.setTimeout(() => { stop(); schedule(); }, typed * 40 + 4000);
       };
 
       const schedule = () => {
-        if (!auto || paused) return;
+        if (!auto || paused()) return;
+        /* Autoplay rests on the last stage; only the rail and the arrow keys wrap. */
+        if (active >= panels.length - 1) return;
         window.clearTimeout(timer);
         timer = window.setTimeout(() => show(active + 1, true), dwell);
       };
@@ -147,13 +161,15 @@ const BEHAVIOR = `
         show(0, true);
       });
 
-      const pause = () => { paused = true; window.clearTimeout(timer); };
-      const resume = () => { if (!paused) return; paused = false; schedule(); };
-      this.addEventListener('mouseenter', pause);
-      this.addEventListener('mouseleave', resume);
-      this.addEventListener('focusin', pause);
+      const hold = () => window.clearTimeout(timer);
+      const release = () => { if (!paused()) schedule(); };
+      this.addEventListener('mouseenter', () => { hovering = true; hold(); });
+      this.addEventListener('mouseleave', () => { hovering = false; release(); });
+      this.addEventListener('focusin', () => { focused = true; hold(); });
       this.addEventListener('focusout', (event) => {
-        if (!this.contains(event.relatedTarget)) resume();
+        if (this.contains(event.relatedTarget)) return;
+        focused = false;
+        release();
       });
       reducedMotion.addEventListener('change', (event) => {
         if (event.matches) { auto = false; stop(); }
@@ -197,9 +213,6 @@ const BEHAVIOR = `
         {stage.label}
       </button>
     ))}
-    <button type="button" class="journey__replay helia-focus-ring" data-walkthrough-replay>
-      Replay
-    </button>
   </div>
   <div class="journey__stages">
     {stages.map((stage, i) => (
@@ -211,7 +224,6 @@ const BEHAVIOR = `
         aria-hidden={i === 0 ? 'false' : 'true'}
         data-stage-panel
         data-active={i === 0 ? 'true' : 'false'}
-        data-stage-caption={stage.caption}
       >
         <AsciiTerminal
           title={stage.title}
@@ -225,7 +237,16 @@ const BEHAVIOR = `
       </div>
     ))}
   </div>
-  <p class="journey__caption" data-caption-live aria-live="polite">{stages[0]?.caption}</p>
+  <div class="journey__foot">
+    <div class="journey__captions">
+      {stages.map((stage, i) => (
+        <p class="journey__caption" data-stage-caption-text data-active={i === 0 ? 'true' : 'false'}>{stage.caption}</p>
+      ))}
+    </div>
+    <button type="button" class="journey__replay helia-focus-ring" data-walkthrough-replay>
+      Replay
+    </button>
+  </div>
   <script is:inline set:html={BEHAVIOR} />
 </nsx-journey-walkthrough>
 
@@ -248,12 +269,26 @@ const BEHAVIOR = `
   }
   .journey__rail [role='tab'] {
     cursor: pointer;
-    background: transparent;
   }
   .journey__step {
     font-variant-numeric: tabular-nums;
     opacity: 0.7;
     margin-inline-end: var(--helia-space-1);
+  }
+  .journey__foot {
+    display: flex;
+    align-items: start;
+    gap: var(--helia-space-3);
+  }
+  /* Captions stack in one cell for the same reason the stages do: the card
+     must not grow and shrink as the active caption changes length. */
+  .journey__captions {
+    display: grid;
+    flex: 1;
+    min-width: 0;
+  }
+  .journey__caption[data-active='false'] {
+    visibility: hidden;
   }
   .journey__replay {
     margin-inline-start: auto;
@@ -283,8 +318,8 @@ const BEHAVIOR = `
     visibility: visible;
   }
   .journey__caption {
+    grid-area: 1 / 1;
     margin: 0;
     color: var(--helia-ink-secondary);
-    min-height: 2.5em;
   }
 </style>

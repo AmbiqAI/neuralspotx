@@ -171,16 +171,23 @@ if (!fs.existsSync(homeMarkdown)) {
      example added under examples/ shows up in the grid on its own and has to
      be added to that list by hand, so this is what catches the omission. */
   /* The hero walkthrough is a component, so its stage commands reach the
-     rendition only through the sentence under it. */
+     rendition only through the sentence under it; the sentence is built from
+     the same stage list and matched whole, so it cannot drift from the card. */
   const walkthrough = JSON.parse(
     fs.readFileSync(path.join(site, 'src/data/transcripts/index.json'), 'utf8'),
   );
+  const commands = walkthrough.stages.map((stage) => `\`${stage.command}\``);
+  const loop =
+    `The whole loop in six commands: ${commands.slice(0, -1).join(', ')} and ${commands.at(-1)}.`;
+  if (!flatten(rendition).includes(flatten(loop))) {
+    errors.push(`index.md does not carry the walkthrough sentence verbatim: ${loop}`);
+  }
   for (const stage of walkthrough.stages) {
-    const command = stage.lines.find((line) => line.kind === 'command');
-    if (!command) errors.push(`walkthrough stage ${stage.id} has no command line`);
-    /* A stage may chain a `cd`; the command the sentence names is the nsx or uv one. */
-    const named = command ? /(?:^|&& )((?:uv tool|nsx \S+))/.exec(command.text)?.[1] : '';
-    if (named && !rendition.includes(named)) errors.push(`index.md does not mention the ${stage.id} stage command ${named}`);
+    const lines = stage.lines.filter((line) => line.kind === 'command');
+    if (lines.length === 0) errors.push(`walkthrough stage ${stage.id} has no command line`);
+    if (!lines.some((line) => line.text.includes(stage.command))) {
+      errors.push(`walkthrough stage ${stage.id} names ${stage.command} but no command line runs it`);
+    }
   }
 
   const required = [
