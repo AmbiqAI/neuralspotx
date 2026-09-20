@@ -1,0 +1,28 @@
+/* SPDX-License-Identifier: BSD-3-Clause */
+/* Copyright (c) 2026, Ambiq */
+/*
+ * The site theme dials, copied from @ambiqai/helia-ui/site-theme.css and set
+ * for neuralSPOT-X. Only the dials that differ from the package default are
+ * kept here; anything this site wants that is not a dial is a package change,
+ * not a site one.
+ *
+ * helia-ui's `accent` plugin option only accepts the product accents the
+ * package names, and neuralSPOT-X is not one of them, so the teal identity is
+ * carried on the dial instead. The value is the accent the MkDocs site used
+ * (docs/stylesheets/extra.css, --l-accent), so the two sites read as one
+ * product while both are live.
+ */
+
+:root {
+  --helia-product-accent: #0d8f88;
+  --helia-accent-secondary: #0b6b78;
+}
+
+/*
+ * Teal at full strength sits too dark against the inked surfaces, where the
+ * accent is used for the terminal prompt and heading rules.
+ */
+:root[data-theme='dark'] {
+  --helia-product-accent: #2fbdb1;
+  --helia-accent-secondary: #4fd1c5;
+}

@@ -1,0 +1,126 @@
+---
+title: neuralSPOT-X
+description: The single CLI that scaffolds, builds, flashes and profiles firmware for Ambiq SoCs.
+tableOfContents: false
+prev: false
+next: false
+head:
+  # Starlight's default is "<page title> | <site title>", which on the index
+  # page is the site name twice.
+  - tag: title
+    content: neuralSPOT-X
+helia:
+  pageTitle: false
+---
+
+import Hero from '@ambiqai/helia-ui/astro/Hero';
+import Band from '@ambiqai/helia-ui/astro/Band';
+import Button from '@ambiqai/helia-ui/astro/Button';
+import AsciiTerminal from '@ambiqai/helia-ui/astro/AsciiTerminal';
+import SectionHeader from '@ambiqai/helia-ui/astro/SectionHeader';
+import CardGrid from '@ambiqai/helia-ui/astro/CardGrid';
+import LinkCard from '@ambiqai/helia-ui/astro/LinkCard';
+
+export const demo = [
+  { kind: 'command', text: 'pipx install neuralspotx' },
+  { kind: 'command', text: 'nsx create-app hello_ap510 --board apollo510_evb' },
+  { kind: 'success', text: "Created app 'hello_ap510' at: /home/you/hello_ap510" },
+  { kind: 'command', text: 'cd hello_ap510 && nsx configure' },
+  { kind: 'command', text: 'nsx build' },
+  { kind: 'command', text: 'nsx flash' },
+  { kind: 'command', text: 'nsx view' },
+  { kind: 'output', text: 'nsx hello from generated app' },
+  { kind: 'output', text: 'nsx hello from generated app' },
+];
+
+<Hero eyebrow="AI on Ambiq" variant="contrast">
+  neuralSPOT-X
+  <Fragment slot="summary">
+    The single CLI, **NSX** for short, that scaffolds, builds, flashes and profiles firmware
+    for Ambiq SoCs, with first-class paths into the Helia runtime, ahead-of-time and
+    profiling stack.
+  </Fragment>
+  <Fragment slot="actions">
+    <Button href="/neuralspotx/getting-started/">Get started</Button>
+    <Button href="/neuralspotx/guides/" variant="secondary">Read the guides</Button>
+  </Fragment>
+  <Fragment slot="media">
+    <AsciiTerminal
+      title="nsx"
+      lines={demo}
+      animated
+      autoplay
+      copy
+      typingSpeed={22}
+      lineDelay={110}
+    />
+  </Fragment>
+</Hero>
+
+<Band density="compact">
+  <SectionHeader
+    eyebrow="Workflow"
+    title="Install, create, flash."
+    description="Three commands take you from an empty shell to firmware running on a board. Everything NSX generates is ordinary CMake and Ninja you can read and edit."
+    href="/neuralspotx/getting-started/"
+    linkLabel="Walk the full lifecycle"
+  />
+  <CardGrid columns={3} equalize>
+    <LinkCard
+      title="Install"
+      titleAs="h3"
+      eyebrow="Step 1"
+      href="/neuralspotx/getting-started/"
+      meta="pipx install neuralspotx"
+    >
+      Put `nsx` on your PATH, then let `nsx doctor` check CMake, Ninja, the Arm toolchain
+      and J-Link before you need them.
+    </LinkCard>
+    <LinkCard
+      title="Create"
+      titleAs="h3"
+      eyebrow="Step 2"
+      href="/neuralspotx/getting-started/"
+      meta="nsx create-app --board apollo510_evb"
+    >
+      Scaffold an app against a real Ambiq board, then `nsx configure` resolves its module
+      dependencies and locks the versions it picked.
+    </LinkCard>
+    <LinkCard
+      title="Flash"
+      titleAs="h3"
+      eyebrow="Step 3"
+      href="/neuralspotx/getting-started/"
+      meta="nsx build && nsx flash && nsx view"
+    >
+      Build the image, program the board over SWD and stream live SWO output back from the
+      running firmware.
+    </LinkCard>
+  </CardGrid>
+</Band>
+
+<Band tone="muted" density="compact">
+  <SectionHeader
+    eyebrow="Documentation"
+    title="Find your way around."
+    description="Four sections: how to start, how to do the work, what ships in the module registry, and what every command and API actually accepts."
+  />
+  <CardGrid columns={2} equalize>
+    <LinkCard title="Getting started" titleAs="h3" href="/neuralspotx/getting-started/" lift>
+      Install NSX on macOS, Linux or Windows, check your environment and build your first
+      board app.
+    </LinkCard>
+    <LinkCard title="Guides" titleAs="h3" href="/neuralspotx/guides/" lift>
+      Apps, modules, memory placement, startup and linker behavior, toolchains, and the
+      concepts behind app generation.
+    </LinkCard>
+    <LinkCard title="Modules" titleAs="h3" href="/neuralspotx/modules/" lift>
+      The module registry: what each module provides, which SoCs and boards it declares
+      compatibility with, and how to add it.
+    </LinkCard>
+    <LinkCard title="Reference" titleAs="h3" href="/neuralspotx/reference/" lift>
+      Every CLI command and option, the public Python API, and the schema of each manifest
+      NSX reads.
+    </LinkCard>
+  </CardGrid>
+</Band>
