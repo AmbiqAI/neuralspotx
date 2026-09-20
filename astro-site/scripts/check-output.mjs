@@ -170,6 +170,19 @@ if (!fs.existsSync(homeMarkdown)) {
   /* Every card grid on Home is duplicated as a link list underneath it. An
      example added under examples/ shows up in the grid on its own and has to
      be added to that list by hand, so this is what catches the omission. */
+  /* The hero walkthrough is a component, so its stage commands reach the
+     rendition only through the sentence under it. */
+  const walkthrough = JSON.parse(
+    fs.readFileSync(path.join(site, 'src/data/transcripts/index.json'), 'utf8'),
+  );
+  for (const stage of walkthrough.stages) {
+    const command = stage.lines.find((line) => line.kind === 'command');
+    if (!command) errors.push(`walkthrough stage ${stage.id} has no command line`);
+    /* A stage may chain a `cd`; the command the sentence names is the nsx or uv one. */
+    const named = command ? /(?:^|&& )((?:uv tool|nsx \S+))/.exec(command.text)?.[1] : '';
+    if (named && !rendition.includes(named)) errors.push(`index.md does not mention the ${stage.id} stage command ${named}`);
+  }
+
   const required = [
     ...examples.examples.map((example) => example.href),
     '/neuralspotx/guides/examples/',

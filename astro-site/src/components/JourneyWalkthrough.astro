@@ -1,0 +1,270 @@
+---
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright (c) 2026, Ambiq
+/**
+ * A staged walkthrough: a rail of stages over one terminal frame, played one
+ * stage at a time. Every stage is rendered server-side so a reader without
+ * JavaScript, and the Markdown rendition, see all of them; the behavior layer
+ * only decides which one is showing.
+ *
+ * Composed from helia-ui parts (Surface, the chip recipe, AsciiTerminal). The
+ * package has no walkthrough part yet; the shape here is the proposal for one
+ * (see tasks/256-docs-migration/helia-ui-gaps-260.md).
+ */
+import type { AsciiTerminalLine } from '@ambiqai/helia-ui/astro/AsciiTerminal';
+import AsciiTerminal from '@ambiqai/helia-ui/astro/AsciiTerminal';
+
+export interface WalkthroughStage {
+  id: string;
+  label: string;
+  title: string;
+  caption: string;
+  lines: readonly AsciiTerminalLine[];
+}
+
+interface Props {
+  /** The stages, in order. */
+  stages: readonly WalkthroughStage[];
+  /** Accessible name for the whole card. */
+  label?: string;
+  /** Milliseconds a finished stage stays before the next one starts. */
+  dwell?: number;
+  /** Milliseconds per typed character in a command line. */
+  typingSpeed?: number;
+  /** Milliseconds of pause after each line. */
+  lineDelay?: number;
+}
+
+const {
+  stages,
+  label = 'From install to running firmware',
+  dwell = 2200,
+  typingSpeed = 18,
+  lineDelay = 90,
+} = Astro.props;
+
+/*
+ * Same reasoning as AsciiTerminal: the behavior must cost nothing when it is
+ * not used, so it ships inline and defines the element once.
+ */
+const BEHAVIOR = `
+(() => {
+  if (customElements.get('nsx-journey-walkthrough')) return;
+
+  class NsxJourneyWalkthrough extends HTMLElement {
+    connectedCallback() {
+      if (this.dataset.ready === 'true') return;
+      this.dataset.ready = 'true';
+
+      const tabs = Array.from(this.querySelectorAll('[data-stage-tab]'));
+      const panels = Array.from(this.querySelectorAll('[data-stage-panel]'));
+      const caption = this.querySelector('[data-caption]');
+      const replay = this.querySelector('[data-walkthrough-replay]');
+      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
+      const dwell = Number(this.dataset.dwell ?? 2200);
+      let active = 0;
+      let paused = false;
+      let auto = !reducedMotion.matches;
+      let timer = 0;
+      let watching = null;
+
+      const stop = () => {
+        window.clearTimeout(timer);
+        if (watching) watching.disconnect();
+        watching = null;
+      };
+
+      const show = (index, play) => {
+        stop();
+        active = (index + panels.length) % panels.length;
+        tabs.forEach((tab, i) => {
+          const on = i === active;
+          tab.setAttribute('aria-selected', on ? 'true' : 'false');
+          tab.tabIndex = on ? 0 : -1;
+          tab.classList.toggle('helia-chip--accent', on);
+        });
+        panels.forEach((panel, i) => {
+          const on = i === active;
+          panel.dataset.active = on ? 'true' : 'false';
+          panel.setAttribute('aria-hidden', on ? 'false' : 'true');
+        });
+        if (caption) caption.textContent = panels[active].dataset.caption || '';
+        this.dataset.stage = String(active);
+        if (!play) return;
+
+        const terminal = panels[active].querySelector('helia-ascii-terminal');
+        const button = terminal?.querySelector('[data-replay-button]');
+        if (reducedMotion.matches || !terminal || !button) {
+          schedule();
+          return;
+        }
+        /* The terminal owns its typing; it raises data-playing while it runs,
+           so the hand-off waits for that attribute to clear. */
+        button.click();
+        watching = new MutationObserver(() => {
+          if (terminal.hasAttribute('data-playing')) return;
+          stop();
+          schedule();
+        });
+        watching.observe(terminal, { attributes: true, attributeFilter: ['data-playing'] });
+      };
+
+      const schedule = () => {
+        if (!auto || paused) return;
+        window.clearTimeout(timer);
+        timer = window.setTimeout(() => show(active + 1, true), dwell);
+      };
+
+      tabs.forEach((tab, i) => {
+        tab.addEventListener('click', () => {
+          auto = false;
+          show(i, !reducedMotion.matches);
+        });
+        tab.addEventListener('keydown', (event) => {
+          if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+          event.preventDefault();
+          auto = false;
+          const next = event.key === 'ArrowRight' ? i + 1 : i - 1;
+          show(next, !reducedMotion.matches);
+          tabs[(next + tabs.length) % tabs.length].focus();
+        });
+      });
+
+      replay?.addEventListener('click', () => {
+        auto = !reducedMotion.matches;
+        show(0, true);
+      });
+
+      const pause = () => { paused = true; window.clearTimeout(timer); };
+      const resume = () => { if (!paused) return; paused = false; schedule(); };
+      this.addEventListener('mouseenter', pause);
+      this.addEventListener('mouseleave', resume);
+      this.addEventListener('focusin', pause);
+      this.addEventListener('focusout', (event) => {
+        if (!this.contains(event.relatedTarget)) resume();
+      });
+      reducedMotion.addEventListener('change', (event) => {
+        if (event.matches) { auto = false; stop(); }
+      });
+
+      const observer = new IntersectionObserver((entries) => {
+        if (!entries.some((entry) => entry.isIntersecting)) return;
+        observer.disconnect();
+        show(0, true);
+      }, { threshold: 0.4 });
+      show(0, false);
+      observer.observe(this);
+    }
+  }
+
+  customElements.define('nsx-journey-walkthrough', NsxJourneyWalkthrough);
+})();
+`;
+---
+
+<nsx-journey-walkthrough
+  class="journey helia-surface not-content"
+  role="region"
+  aria-label={label}
+  data-dwell={dwell}
+  data-stage="0"
+>
+  <div class="journey__rail" role="tablist" aria-label="Stages">
+    {stages.map((stage, i) => (
+      <button
+        type="button"
+        role="tab"
+        id={`journey-tab-${stage.id}`}
+        aria-controls={`journey-panel-${stage.id}`}
+        aria-selected={i === 0 ? 'true' : 'false'}
+        tabindex={i === 0 ? 0 : -1}
+        class:list={['helia-chip', 'helia-chip--md', 'helia-focus-ring', { 'helia-chip--accent': i === 0 }]}
+        data-stage-tab
+      >
+        <span class="journey__step">{i + 1}</span>
+        {stage.label}
+      </button>
+    ))}
+    <button type="button" class="journey__replay helia-focus-ring" data-walkthrough-replay>
+      Replay
+    </button>
+  </div>
+  <div class="journey__stages">
+    {stages.map((stage, i) => (
+      <div
+        class="journey__stage"
+        id={`journey-panel-${stage.id}`}
+        role="tabpanel"
+        aria-labelledby={`journey-tab-${stage.id}`}
+        aria-hidden={i === 0 ? 'false' : 'true'}
+        data-stage-panel
+        data-active={i === 0 ? 'true' : 'false'}
+        data-caption={stage.caption}
+      >
+        <AsciiTerminal
+          title={stage.title}
+          lines={stage.lines}
+          animated
+          replay
+          typingSpeed={typingSpeed}
+          lineDelay={lineDelay}
+        />
+      </div>
+    ))}
+  </div>
+  <p class="journey__caption" data-caption aria-live="polite">{stages[0]?.caption}</p>
+  <script is:inline set:html={BEHAVIOR} />
+</nsx-journey-walkthrough>
+
+<style>
+  /* No helia recipe stacks siblings in one cell; the stages sit on top of
+     each other so the card keeps the height of its tallest stage and the page
+     never jumps when the active one changes. */
+  .journey {
+    display: grid;
+    gap: var(--helia-space-4);
+    padding: var(--helia-space-5);
+  }
+  .journey__rail {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--helia-space-2);
+  }
+  .journey__rail [role='tab'] {
+    cursor: pointer;
+    background: transparent;
+  }
+  .journey__step {
+    font-variant-numeric: tabular-nums;
+    opacity: 0.7;
+    margin-inline-end: var(--helia-space-1);
+  }
+  .journey__replay {
+    margin-inline-start: auto;
+    border: 0;
+    background: transparent;
+    color: var(--helia-ink-secondary);
+    font: inherit;
+    font-size: var(--helia-text-sm);
+    cursor: pointer;
+  }
+  .journey__stages {
+    display: grid;
+  }
+  .journey__stage {
+    grid-area: 1 / 1;
+  }
+  .journey__stage[data-active='false'] {
+    visibility: hidden;
+    pointer-events: none;
+  }
+  .journey__stage[data-active='true'] {
+    visibility: visible;
+  }
+  .journey__caption {
+    margin: 0;
+    color: var(--helia-ink-secondary);
+    min-height: 2.5em;
+  }
+</style>

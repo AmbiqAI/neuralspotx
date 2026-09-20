@@ -20,7 +20,6 @@ import Hero from '@ambiqai/helia-ui/astro/Hero';
 import Band from '@ambiqai/helia-ui/astro/Band';
 import EditorialBand from '@ambiqai/helia-ui/astro/EditorialBand';
 import Button from '@ambiqai/helia-ui/astro/Button';
-import AsciiTerminal from '@ambiqai/helia-ui/astro/AsciiTerminal';
 import SectionHeader from '@ambiqai/helia-ui/astro/SectionHeader';
 import CardGrid from '@ambiqai/helia-ui/astro/CardGrid';
 import LinkCard from '@ambiqai/helia-ui/astro/LinkCard';
@@ -32,6 +31,7 @@ import CodeBlock from '@ambiqai/helia-ui/astro/CodeBlock';
 import Callout from '@ambiqai/helia-ui/astro/Callout';
 import HomeStats from '../../components/HomeStats.astro';
 import ExampleCards from '../../components/ExampleCards.astro';
+import JourneyWalkthrough from '../../components/JourneyWalkthrough.astro';
 import transcripts from '../../data/transcripts/index.json';
 
 <Hero eyebrow="AI on Ambiq" variant="plain" data-pagefind-meta="title:neuralSPOT-X">
@@ -45,19 +45,12 @@ import transcripts from '../../data/transcripts/index.json';
     <Button href="/neuralspotx/getting-started/">Start in five minutes</Button>
     <Button href="/neuralspotx/modules/catalog/" variant="secondary">Browse the modules</Button>
   </Fragment>
-  <Fragment slot="media">
-    <AsciiTerminal
-      title="From install to running firmware"
-      lines={transcripts.quickstart}
-      animated
-      autoplay
-      replay
-      copy
-      typingSpeed={16}
-      lineDelay={70}
-    />
-  </Fragment>
 </Hero>
+
+<JourneyWalkthrough stages={transcripts.stages} />
+
+The whole loop in six commands: `uv tool install neuralspotx`, `nsx doctor`, `nsx create-app`,
+`nsx build`, `nsx flash` and `nsx view`. Each one is a step in [Getting started](/neuralspotx/getting-started/).
 
 <Band tone="muted" density="compact">
   <SectionHeader

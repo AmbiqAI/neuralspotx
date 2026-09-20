@@ -1,26 +1,76 @@
 {
-  "_note": "Captured runs, not written by hand: the uv lines from a throwaway UV_TOOL_DIR install, the doctor lines from the same run transcripts/doctor.json was cut from, the create-app lines from transcripts/first-app.json, the configure and build lines from transcripts/configure-and-build.json. Two abridgements, both so the frame fits the hero column without clipping: the per-step ninja lines are replaced by the collapsed muted line, and the size line keeps its columns but drops the leading build/apollo510_evb/ from the filename. The two lines after nsx flash and nsx view are placeholders and say so: NSX prints device output only with a board attached, and nothing may stand in for a capture we do not have (AmbiqAI/neuralspotx#260).",
-  "quickstart": [
-    { "kind": "command", "text": "uv tool install neuralspotx" },
-    { "kind": "success", "text": "Installed 1 executable: nsx" },
-    { "kind": "command", "text": "nsx doctor" },
-    { "kind": "success", "text": "[OK] cmake" },
-    { "kind": "success", "text": "[OK] ninja" },
-    { "kind": "success", "text": "[OK] SEGGER J-Link" },
-    { "kind": "command", "text": "nsx create-app hello_ap510 --board apollo510_evb" },
-    { "kind": "success", "text": "Created app 'hello_ap510' at: /home/you/hello_ap510" },
-    { "kind": "output", "text": "Next steps:" },
-    { "kind": "output", "text": "  1) cd /home/you/hello_ap510" },
-    { "kind": "command", "text": "cd hello_ap510" },
-    { "kind": "command", "text": "nsx configure" },
-    { "kind": "success", "text": "Configured app at: /home/you/hello_ap510" },
-    { "kind": "command", "text": "nsx build" },
-    { "kind": "muted", "text": "[..] (24 compile, archive and link steps)" },
-    { "kind": "output", "text": "   text    data     bss     dec     hex filename" },
-    { "kind": "output", "text": "  19080     592  507312  526984   80a88 hello_ap510" },
-    { "kind": "command", "text": "nsx flash" },
-    { "kind": "muted", "text": "(device output: captured transcript pending)" },
-    { "kind": "command", "text": "nsx view" },
-    { "kind": "muted", "text": "(device output: captured transcript pending)" }
+  "_note": "Captured runs, not written by hand: the uv lines from a throwaway UV_TOOL_DIR install, the doctor lines from the same run transcripts/doctor.json was cut from, the create-app lines from transcripts/first-app.json, the configure and build lines from transcripts/configure-and-build.json. Two abridgements, both so a stage fits the walkthrough frame without clipping: the per-step ninja lines are replaced by the collapsed muted line, and the size line keeps its columns but drops the leading build/apollo510_evb/ from the filename. The device lines after nsx flash and nsx view are placeholders and say so: NSX prints device output only with a board attached, and nothing may stand in for a capture we do not have (AmbiqAI/neuralspotx#260).",
+  "stages": [
+    {
+      "id": "install",
+      "label": "Install",
+      "title": "Install the CLI",
+      "caption": "One tool on your path. uv is already a host requirement, so there is nothing else to set up.",
+      "lines": [
+        { "kind": "command", "text": "uv tool install neuralspotx" },
+        { "kind": "success", "text": "Installed 1 executable: nsx" }
+      ]
+    },
+    {
+      "id": "check",
+      "label": "Check",
+      "title": "Check the environment",
+      "caption": "nsx doctor names every host tool it needs and what a missing one would cost you.",
+      "lines": [
+        { "kind": "command", "text": "nsx doctor" },
+        { "kind": "success", "text": "[OK] cmake" },
+        { "kind": "success", "text": "[OK] ninja" },
+        { "kind": "success", "text": "[OK] arm-none-eabi-gcc" },
+        { "kind": "success", "text": "[OK] SEGGER J-Link" }
+      ]
+    },
+    {
+      "id": "create",
+      "label": "Create",
+      "title": "Create an app for a board",
+      "caption": "A complete app directory for a real board: nsx.yml, CMakeLists.txt, sources and the starter modules.",
+      "lines": [
+        { "kind": "command", "text": "nsx create-app hello_ap510 --board apollo510_evb" },
+        { "kind": "success", "text": "Created app 'hello_ap510' at: /home/you/hello_ap510" },
+        { "kind": "output", "text": "Next steps:" },
+        { "kind": "output", "text": "  1) cd /home/you/hello_ap510" },
+        { "kind": "output", "text": "  2) Run `nsx configure --app-dir .`" }
+      ]
+    },
+    {
+      "id": "build",
+      "label": "Build",
+      "title": "Configure and build",
+      "caption": "Modules resolve and lock, CMake generates, Ninja builds. The result is an ordinary project you own.",
+      "lines": [
+        { "kind": "command", "text": "cd hello_ap510 && nsx configure" },
+        { "kind": "success", "text": "Configured app at: /home/you/hello_ap510" },
+        { "kind": "command", "text": "nsx build" },
+        { "kind": "muted", "text": "[..] (24 compile, archive and link steps)" },
+        { "kind": "output", "text": "   text    data     bss     dec     hex filename" },
+        { "kind": "output", "text": "  19080     592  507312  526984   80a88 hello_ap510" }
+      ]
+    },
+    {
+      "id": "flash",
+      "label": "Flash",
+      "title": "Flash it over J-Link",
+      "caption": "nsx flash builds if needed, then programs the board over SWD through the SEGGER tools nsx doctor checked.",
+      "lines": [
+        { "kind": "command", "text": "nsx flash" },
+        { "kind": "muted", "text": "(device output: captured transcript pending)" }
+      ]
+    },
+    {
+      "id": "view",
+      "label": "View",
+      "title": "Watch it run",
+      "caption": "nsx view opens the SWO viewer and streams the firmware's output back to your terminal.",
+      "lines": [
+        { "kind": "command", "text": "nsx view" },
+        { "kind": "output", "text": "nsx hello from generated app" },
+        { "kind": "output", "text": "nsx hello from generated app" }
+      ]
+    }
   ]
 }
