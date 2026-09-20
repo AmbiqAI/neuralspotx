@@ -63,7 +63,7 @@ def default_emitter(event: Event) -> None:
     """Write *event* to stderr (info/warn/error/step) or stdout (line).
 
     Output is intentionally identical to the legacy ``print(message)``
-    behaviour modulo the destination stream.
+    behavior modulo the destination stream.
     """
 
     stream = sys.stdout if event.kind == "line" else sys.stderr

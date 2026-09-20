@@ -99,7 +99,7 @@ class NsxLock:
         }
 
     def to_section_dict(self) -> dict[str, Any]:
-        """Serialise as a per-board section of a combined :class:`LockFile`.
+        """Serialize as a per-board section of a combined :class:`LockFile`.
 
         Identical to :meth:`to_yaml_dict` minus ``schema_version`` — the
         schema version is hoisted to the combined document root so it is
