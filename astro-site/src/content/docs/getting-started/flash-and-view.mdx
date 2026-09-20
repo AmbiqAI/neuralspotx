@@ -109,8 +109,8 @@ See [`nsx view`](/neuralspotx/reference/cli/view/).
 
 ## 4. Reset on its own
 
-`nsx reset` is the one command in this group that is not app-aware: it talks to a probe
-directly, so it needs the SEGGER device name rather than an app directory.
+`nsx reset` talks to the probe directly, so it takes the SEGGER device name rather than
+an app directory.
 
 ```bash
 nsx reset --device AP510NFA-CBR

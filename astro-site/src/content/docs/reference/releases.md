@@ -31,9 +31,10 @@ that version with a package prefix:
 | `0.9.0` | `neuralspotx-v0.9.0` |
 
 Tags are annotated and immutable. A published tag is never moved, deleted or
-reused, so a tag you pin today points at the same commit indefinitely. Tags
-older than `neuralspotx-v0.7.9` may be lightweight or use a bare `v0.6.3` form;
-those stay as they are and are not rewritten.
+reused, so a tag you pin today points at the same commit indefinitely. Every
+tag from `neuralspotx-v0.7.10` onward is annotated; most earlier ones are
+lightweight, and the oldest is a bare `v0.1.0` with no package prefix. Those
+stay as they are.
 
 Numbering follows the usual major, minor, patch shape, driven by the kind of
 change that landed: a new capability moves the minor, a fix moves the patch.
