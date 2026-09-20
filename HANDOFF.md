@@ -144,12 +144,14 @@ rewrite what it publishes: the plugin builds llms.txt, llms-full.txt and the per
 `.md` renditions from authored source with every tag stripped, so the 94 generated routes
 arrive with no option tables, no field tables and no signatures. The composer re-renders
 them from the argparse dump, the schema manifest, pyref's text bundle and the module
-snapshot, recomposes llms-full.txt (473 KiB, 149 sections) and appends the eleven
+snapshot, recomposes llms-full.txt (477 KiB, 148 sections) and appends the eleven
 machine-readable artifacts to llms.txt. `src/data/redirects.json` maps all 67 MkDocs
 routes; 60 emit meta-refresh stubs, 7 kept their path.
 `astro-site/scripts/check-discoverability-output.mjs` reads it all back: 80 public
-symbols, 35 commands, 50 modules, an H1 and every internal link per rendition, all 67 old
-routes resolving, the sitemap, the 404 and every JSON-LD block. `npm run check`,
+symbols, 35 commands, 50 modules, an H1, every internal link and every link card per
+rendition, all 67 old routes resolving, the sitemap, the 404 and every JSON-LD block.
+Every bundle assertion is keyed to the route that owns the fact, not searched across the
+file, and the composer's idempotence is asserted by re-running it and comparing hashes. `npm run check`,
 `npm run build`, `npm run validate`, the pytest suite, `pre-commit --hook-stage manual`
 and `ty check` all pass. Detail in `tasks/256-docs-migration/p3-notes.md`; new upstream
 drafts in `tasks/256-docs-migration/helia-ui-gaps-261.md`.

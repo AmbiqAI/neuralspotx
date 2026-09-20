@@ -10,6 +10,7 @@ here:
 | --- | --- | --- |
 | gaps-259 Draft 5, Markdown renditions keep MDX expressions | `starlight/discoverability.ts` | Confirmed on four CLI pages, whose `{/* TODO(#260): ... */}` notes reached `dist/<route>/index.md` as page text. `scripts/check-discoverability-output.mjs` now fails on it and `publish-agent-bundle.mjs` strips it. |
 | gaps-259 Draft 6, the JSON-LD block escapes nothing | `starlight/discoverability.ts` | Confirmed. Worked around by checking the input rather than the output: no page description may carry `<`, `>` or `</script`. |
+| gaps-260 Draft 5, `export const` bodies leak and `LinkCard` content vanishes | `starlight/discoverability.ts`, `stripEsm` and `reduceTags` | Both confirmed again on Home and `/modules/`, with the `description` prop lost as well. Recorded as a second instance in that draft rather than repeated here; the workaround and its check are named there. |
 
 ---
 
@@ -51,29 +52,7 @@ hook.
 
 ---
 
-## Draft 2: a rendition drops the links a page makes through LinkCard
-
-**Title.** `discoverability`: `LinkCard` and `Button` hrefs do not survive into
-the Markdown rendition
-
-**What happens.** An index page that points at its sections with `<LinkCard
-title="Catalog" href="/modules/catalog/" />` renders those links in the HTML and
-none of them in `dist/<route>/index.md`. On this site the Home page and
-`/modules/` lost four and three links, so the agent-facing copy of the two
-pages whose only job is navigation says where to go and not how to get there.
-
-**Expected.** The stripper keeps `href` from link-shaped parts, or the plugin
-documents that a navigational page should repeat its links in prose.
-
-**Source location.** `starlight/discoverability.ts`, `reduceTags()`.
-
-**Workaround here.** `componentLinksMarkdown()` in
-`astro-site/scripts/lib/render-agent-markdown.mjs` reads the hrefs back out of
-the authored props and appends a `## Links` section.
-
----
-
-## Draft 3: no hook for extra llms.txt entries
+## Draft 2: no hook for extra llms.txt entries
 
 **Title.** `discoverability`: llms.txt cannot list a site's machine-readable
 artifacts
@@ -92,7 +71,7 @@ section listing eleven artifacts.
 
 ---
 
-## Draft 4: the 404 is indexed as a content route
+## Draft 3: the 404 is indexed as a content route
 
 **Title.** `discoverability`: `content-index.json` and llms.txt list `/404/`
 
@@ -107,6 +86,11 @@ rendition at `/404/index.md` and a line in llms.txt, and there is no
 **Source location.** `starlight/discoverability.ts` against
 `scripts/check-discoverability.mjs`.
 
-**Workaround here.** `check-discoverability-output.mjs` filters the route out
-before it compares renditions against HTML. The bundle still carries the 404
-section, which is harmless and not worth a second divergence.
+**Workaround here.** `publish-agent-bundle.mjs` removes the route from
+`content-index.json`, deletes its rendition, and drops it from llms-full.txt and
+llms.txt. All four together, because the package's own checker reads
+`content-index.json` and requires a llms.txt line for every route in it: taking
+the line out on its own turns the inconsistency into a failing check.
+`check-discoverability-output.mjs` then asserts that neither llms file mentions
+it. An agent reading the bundle has no use for the page that says a page is
+missing.

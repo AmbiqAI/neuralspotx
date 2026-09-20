@@ -186,29 +186,60 @@ export function readNotes(notesDir, slug) {
 }
 
 /**
- * Internal links an authored page declares only through component props.
+ * The link cards an authored page carries, in the order the source writes them.
  *
- * `<LinkCard href=... title=...>` is a link on the page and nothing in the
- * rendition, because the stripper removes the tag and keeps the children. The
- * props are authored data, not rendered output, so reading them back is the
- * same move as re-rendering a table from its model: it recovers what the page
- * says, not what the browser drew.
+ * `<LinkCard title="Catalog" href="/modules/catalog/" description="..." />` is a
+ * labeled link on the page and nothing at all in the rendition: the stripper
+ * removes the tag and keeps the children, so a card whose text is a prop leaves
+ * an empty section behind. The props are authored data, not rendered output, so
+ * reading them back recovers what the page says.
+ *
+ * Every card is returned, including repeats of one href, because seven cards
+ * pointing at the catalog are seven different statements about it. Each carries
+ * the Markdown heading it sits under, so the composer can put it back where the
+ * page puts it rather than in a list at the end.
  */
-export function componentLinksMarkdown(source, { base, origin, rendition }) {
-  const seen = new Map();
-  const attribute = (chunk, name) =>
-    new RegExp(`\\b${name}=(?:"([^"]*)"|\\{"([^"]*)"\\})`).exec(chunk);
-  for (const match of source.matchAll(/<(LinkCard|Button|Card)\b([^>]*)>/g)) {
-    const href = attribute(match[2], 'href')?.slice(1).find(Boolean);
-    if (!href?.startsWith(base)) continue;
-    if (rendition.includes(href)) continue;
-    const title = attribute(match[2], 'title')?.slice(1).find(Boolean);
-    /* A Button carries its label as children rather than a prop, so the same
-       href reached from a titled card gets the readable label either way. */
-    if (title || !seen.has(href)) seen.set(href, title ?? href);
+export function componentCards(source) {
+  const cards = [];
+  const headings = [...source.matchAll(/^(#{2,6})[ \t]+(.+?)[ \t]*$/gm)];
+  const headingAt = (offset) => {
+    const previous = headings.filter((heading) => heading.index < offset).pop();
+    return previous ? previous[2] : null;
+  };
+  const attribute = (chunk, name) => {
+    const match = new RegExp(`\\b${name}=(?:"([^"]*)"|\\{"([^"]*)"\\})`).exec(chunk);
+    return match ? (match[1] ?? match[2]) : null;
+  };
+  for (const match of source.matchAll(/<(LinkCard|Button|Card)\b([\s\S]*?)(\/?)>/g)) {
+    const [, tag, props, selfClosing] = match;
+    const href = attribute(props, 'href');
+    if (!href) continue;
+    const title = attribute(props, 'title');
+    let description = attribute(props, 'description');
+    if (!description && !selfClosing) {
+      const close = source.indexOf(`</${tag}>`, match.index + match[0].length);
+      if (close !== -1) {
+        description = source
+          .slice(match.index + match[0].length, close)
+          .replace(/\s+/g, ' ')
+          .trim();
+      }
+    }
+    cards.push({
+      heading: headingAt(match.index),
+      href,
+      title: title ?? description ?? href,
+      description: title ? description : null,
+    });
   }
-  if (seen.size === 0) return '';
-  return `\n## Links\n\n${[...seen]
-    .map(([href, label]) => `- [${label}](${origin}${href})`)
-    .join('\n')}\n`;
+  return cards;
+}
+
+export function cardsMarkdown(cards, { origin }) {
+  return cards
+    .map(({ title, href, description }) => {
+      const target = href.startsWith('http') ? href : `${origin}${href}`;
+      return `- [${title}](${target})${description ? `: ${description}` : ''}`;
+    })
+    .join('\n');
 }

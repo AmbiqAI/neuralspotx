@@ -150,6 +150,24 @@ some authoring shapes. These are two concrete cases of that warning, and the sec
 silently loses information rather than adding noise, which makes it the more serious of
 the two.
 
+**Second instance, found in P3 (#261).** Both defects reappear outside Getting started,
+so neither is specific to one authoring style.
+
+- `export const` still leaks: `dist/index.md` opens with the tail of the Home page's
+  transcript array, ten lines of object literals, before the first sentence.
+- `LinkCard` content still vanishes, and now with a measurable cost to the pages whose
+  only job is navigation. `dist/modules/index.md` rendered `## Start here` and
+  `## Module types` as empty headings, losing all ten cards, and `dist/index.md` lost
+  nine. Beyond the title and href named above, the `description` prop is dropped too, so
+  a card that says "17 modules: nsx-board-apollo2-evb, ..." reaches an agent as nothing
+  at all.
+
+Worked around in `astro-site/scripts/lib/render-agent-markdown.mjs`
+(`componentCards`), which reads title, href and description back out of the props and
+files each card under the heading the source puts it under.
+`astro-site/scripts/check-discoverability-output.mjs` then fails when a page of N cards
+renders as fewer than N entries.
+
 **What the pages do instead.** Transcript arrays moved into
 `astro-site/src/data/transcripts/*.json` and are imported, because a single-line `import`
 is stripped cleanly. The Getting started index dropped its `CardGrid` of `LinkCard`s for

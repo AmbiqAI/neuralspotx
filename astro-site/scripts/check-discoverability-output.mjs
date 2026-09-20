@@ -18,7 +18,10 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { execFileSync } from 'node:child_process';
+import crypto from 'node:crypto';
 import { flatten } from './lib/render-cli.mjs';
+import { componentCards } from './lib/render-agent-markdown.mjs';
 
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dist = path.join(siteRoot, 'dist');
@@ -32,7 +35,10 @@ const fail = (message) => errors.push(message);
 const index = readJson(path.join(dist, 'content-index.json'));
 const base = index.base.endsWith('/') ? index.base : `${index.base}/`;
 const origin = index.site.replace(/\/$/, '');
-/* Astro's 404 has no built route directory, so it is not a content route. */
+/* The plugin indexes /404/ as a content route and writes it a rendition, while
+   emitting the page itself as dist/404.html and excluding it from its own
+   checker. It is not content, so it is checked as a 404 below and nowhere as a
+   route. */
 const routes = index.routes.filter((entry) => entry.route !== `${base}404/`);
 const dirFor = (route) => path.join(dist, route.slice(base.length).replace(/\/$/, ''));
 
@@ -41,50 +47,97 @@ const dirFor = (route) => path.join(dist, route.slice(base.length).replace(/\/$/
 const bundle = read(path.join(dist, 'llms-full.txt'));
 const llms = read(path.join(dist, 'llms.txt'));
 
-const missingFrom = (label, names, haystack) => {
-  const missing = names.filter((name) => !haystack.includes(name));
-  if (missing.length > 0) {
-    fail(`llms-full.txt is missing ${missing.length} ${label}: ${missing.slice(0, 8).join(', ')}`);
-  }
-  return names.length - missing.length;
+/*
+ * Cut the bundle at its section markers and assert against the section a fact
+ * belongs to, never against the file.
+ *
+ * A corpus-wide substring search is not a completeness check: `nsx-audio` is
+ * named on a dozen other pages, so deleting its page and its index entry leaves
+ * every `bundle.includes('nsx-audio')` true and the build green. Keyed by route,
+ * the same deletion is a failure with the route in the message.
+ */
+const sectionsOf = (text) => {
+  /* Only the absolute-URL markers open a section; the composer's own nsx: block
+     markers are page content. */
+  const marks = [...text.matchAll(/^<!-- (https:\/\/\S+) -->$/gm)];
+  return new Map(
+    marks.map((mark, position) => [
+      mark[1],
+      text.slice(mark.index + mark[0].length, marks[position + 1]?.index ?? text.length),
+    ]),
+  );
 };
+const sections = sectionsOf(bundle);
+
+/** The section for a route, or a recorded failure and null. */
+const sectionFor = (route, what) => {
+  const url = `${origin}${route}`;
+  const section = sections.get(url);
+  if (section === undefined) fail(`llms-full.txt has no section for ${route}, which ${what}`);
+  return section ?? null;
+};
+
+const present = (section, needle) => section !== null && section.includes(needle);
 
 const symbols = readJson(path.join(siteRoot, 'public/reference/python-symbols.json'));
 /* python-symbols.json is generated from neuralspotx.__all__ and pinned to it by
    tests/test_reference_generation.py, so asserting against it asserts against
    __all__ without importing the package from a Node check. */
-const symbolNames = symbols.symbols.map((symbol) => symbol.path);
-const symbolsFound = missingFrom('public Python symbols', symbolNames, bundle);
+let symbolsFound = 0;
+for (const symbol of symbols.symbols) {
+  const route = `${base}reference/api/${symbol.module.split('.').join('/')}/`;
+  const section = sectionFor(route, `documents ${symbol.path}`);
+  if (present(section, symbol.path)) symbolsFound += 1;
+  else if (section !== null) fail(`${route}: the bundle section does not name ${symbol.path}`);
+}
 
 const cli = readJson(path.join(siteRoot, 'public/reference/cli.json'));
-const commandNames = flatten(cli).map((node) => `nsx ${node.name}`);
-const commandsFound = missingFrom('CLI commands', commandNames, bundle);
-
-const snapshot = readJson(path.join(siteRoot, 'src/data/modules.json'));
-const moduleNames = snapshot.modules.map((module) => module.name);
-const modulesFound = missingFrom('module names', moduleNames, bundle);
-
-/* An option table that survived as a Markdown table, not as prose about one. */
+let commandsFound = 0;
 for (const node of flatten(cli)) {
+  const route = `${base}reference/cli/${node.slug}/`;
+  const section = sectionFor(route, `documents nsx ${node.name}`);
+  if (section === null) continue;
+  if (!section.includes(`# nsx ${node.name}`)) {
+    fail(`${route}: the bundle section does not open on nsx ${node.name}`);
+    continue;
+  }
+  commandsFound += 1;
+  /* An option table that survived as a table, not as prose about one. */
   for (const argument of node.arguments.filter((entry) => !entry.positional)) {
     const flag = argument.flags[0];
-    if (!bundle.includes(`| ${flag}`)) {
-      fail(`llms-full.txt has no option row for ${flag} of nsx ${node.name}`);
-    }
+    if (!section.includes(`| ${flag}`)) fail(`${route}: no option row for ${flag}`);
   }
 }
 
 const config = readJson(path.join(siteRoot, 'public/reference/config.json'));
 for (const schema of config.schemas) {
+  const route = `${base}reference/config/${schema.id}/`;
+  const section = sectionFor(route, `documents ${schema.file}`);
+  if (section === null) continue;
   for (const field of schema.fields) {
-    if (!bundle.includes(`| ${field.path} |`)) {
-      fail(`llms-full.txt has no field row for ${field.path} of ${schema.file}`);
-    }
+    if (!section.includes(`| ${field.path} |`)) fail(`${route}: no field row for ${field.path}`);
   }
 }
 
+const snapshot = readJson(path.join(siteRoot, 'src/data/modules.json'));
+let modulesFound = 0;
+for (const module of snapshot.modules) {
+  const route = `${base}modules/${module.slug}/`;
+  const section = sectionFor(route, `is a module the registry pins`);
+  if (present(section, module.name)) modulesFound += 1;
+  else if (section !== null) fail(`${route}: the bundle section does not name ${module.name}`);
+}
+
 for (const entry of routes) {
-  if (!bundle.includes(`<!-- ${entry.url} -->`)) fail(`llms-full.txt has no section for ${entry.url}`);
+  if (!sections.has(entry.url)) fail(`llms-full.txt has no section for ${entry.url}`);
+}
+for (const url of sections.keys()) {
+  if (!routes.some((entry) => entry.url === url)) fail(`llms-full.txt carries ${url}, which is not a route`);
+}
+
+/* The page that says a page is missing is not content. */
+for (const [name, text] of [['llms.txt', llms], ['llms-full.txt', bundle]]) {
+  if (text.includes(`${base}404/`)) fail(`${name} lists the 404 page`);
 }
 
 const ARTIFACTS = [
@@ -179,6 +232,30 @@ for (const entry of routes) {
   );
   for (const href of links) {
     if (!rendition.includes(href)) fail(`${entry.route}: the rendition drops the link to ${href}`);
+  }
+
+  /*
+   * A page of N link cards must render as N entries, not as one per distinct
+   * href. Seven cards pointing at the catalog are seven statements about it,
+   * and deduplicating them leaves the reader a catalog link labeled with
+   * whichever card happened to come last.
+   */
+  const source = path.join(siteRoot, entry.sourcePath);
+  if (!fs.existsSync(source)) continue;
+  const cards = componentCards(read(source));
+  if (cards.length === 0) continue;
+  const entries = rendition.split('\n').filter((line) => line.startsWith('- ['));
+  for (const card of cards) {
+    const target = card.href.startsWith('http') ? card.href : `${origin}${card.href}`;
+    if (!entries.some((line) => line.startsWith(`- [${card.title}](${target})`))) {
+      fail(`${entry.route}: no entry titled "${card.title}" pointing at ${card.href}`);
+    }
+  }
+  const fromCards = entries.filter((line) =>
+    cards.some((card) => line.startsWith(`- [${card.title}](`)),
+  );
+  if (fromCards.length < cards.length) {
+    fail(`${entry.route}: ${fromCards.length} entries for ${cards.length} link cards, so some were merged`);
   }
 }
 
@@ -299,13 +376,39 @@ for (const entry of routes) {
   }
 }
 
+/*
+ * Idempotence. The composer replaces rather than appends, so running it a second
+ * time over one dist must change nothing. An appending pass would double every
+ * module's facts block and the machine-readable section, and every assertion
+ * above would still pass on the doubled file, which is why this is checked
+ * rather than reasoned about.
+ */
+const digest = () => {
+  const hash = crypto.createHash('sha256');
+  for (const file of ['llms.txt', 'llms-full.txt'].map((name) => path.join(dist, name))) {
+    hash.update(read(file));
+  }
+  for (const entry of routes) hash.update(read(path.join(dirFor(entry.route), 'index.md')));
+  return hash.digest('hex');
+};
+const before = digest();
+try {
+  execFileSync(process.execPath, [path.join(siteRoot, 'scripts/publish-agent-bundle.mjs')], {
+    cwd: siteRoot,
+    stdio: ['ignore', 'ignore', 'pipe'],
+  });
+  if (digest() !== before) fail('publish-agent-bundle.mjs is not idempotent: a second run changed dist.');
+} catch (error) {
+  fail(`publish-agent-bundle.mjs does not survive a second run: ${String(error.stderr ?? error.message).trim()}`);
+}
+
 if (errors.length > 0) throw new Error([...new Set(errors)].sort().join('\n'));
 
 const bundleBytes = Buffer.byteLength(bundle);
 console.log(
-  `Agent bundle: ${(bundleBytes / 1024).toFixed(0)} KiB over ${routes.length + 1} sections, ` +
+  `Agent bundle: ${(bundleBytes / 1024).toFixed(0)} KiB over ${sections.size} sections, ` +
     `${symbolsFound} public symbols, ${commandsFound} CLI commands, ${modulesFound} modules.\n` +
-    `Renditions: ${renditions} routes, each carrying its H1 and every internal link on the page.\n` +
+    `Renditions: ${renditions} routes, each carrying its H1, every internal link and every link card.\n` +
     `Redirects: ${stubs} stubs plus ${unchanged} old routes that kept their path, ` +
     `${stubs + unchanged} of ${Object.keys(oldRoutes).length} resolved.\n` +
     'Sitemap, robots.txt, the 404 and every JSON-LD block check out.',
