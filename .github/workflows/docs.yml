@@ -118,6 +118,16 @@ jobs:
       - name: Check the module snapshot against the tree
         run: uv run --group docs --group test pytest tests/test_module_data_snapshot.py -q
 
+      # Manifest prose is written in other repositories and rendered into MDX.
+      # This builds the section from a fixture snapshot carrying the payloads a
+      # manifest can carry and reads the built pages back, so the escaping is
+      # proved rather than reviewed. It regenerates the section from the
+      # committed snapshot when it finishes, which is why it runs before the
+      # build the rest of the job checks.
+      - name: Build the Modules section from a hostile snapshot
+        working-directory: astro-site
+        run: npm run test:modules
+
       - name: Astro check
         working-directory: astro-site
         run: npm run check

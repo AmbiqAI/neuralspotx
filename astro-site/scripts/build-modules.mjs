@@ -83,6 +83,14 @@ const dirs = {
   public: path.join(siteRoot, 'public', ROUTE),
 };
 
+/* Where the committed snapshot is read from. Only the input moves:
+   scripts/test-modules-escaping.mjs points it at a fixture carrying the
+   payloads a manifest can carry, so the pages it inspects come out of this
+   site's own build rather than a scratch imitation of it. */
+const snapshotDir = process.env.NSX_DOCS_MODULES_SNAPSHOT
+  ? path.resolve(process.env.NSX_DOCS_MODULES_SNAPSHOT)
+  : dirs.data;
+
 const timings = [];
 
 function timed(label, fn) {
@@ -108,26 +116,94 @@ function timed(label, fn) {
  * See tasks/256-docs-migration/helia-ui-gaps-259.md.
  */
 const QUOTED_TERMS = ['serialisation']; // spelling: allow
-const QUOTED_MDX = '{/* spelling: allow */}';
+/* An empty inline element rather than an MDX comment: the checker reads the
+   line the mark sits on, the page renders nothing for it, and the rendition
+   writer drops tags, so the marked cell and the marked bullet are still a
+   cell and a bullet in the page's markdown rendition. */
+const QUOTED_MARK = '<span data-quoted="spelling: allow" />';
 const QUOTED_YAML = ' # spelling: allow';
 
-const needsEscape = (text) => {
-  const lowered = String(text ?? '').toLowerCase();
+const needsEscape = (value) => {
+  const lowered = String(value ?? '').toLowerCase();
   return QUOTED_TERMS.some((term) => lowered.includes(term));
 };
 
-/** Mark an emitted line as quoting a module manifest the checker would reject. */
-const quoted = (line) => (needsEscape(line) ? `${line} ${QUOTED_MDX}` : line);
-
-/** The same escape inside a JSX expression container, where it is a comment. */
+/** The same mark inside a JSX expression container, where it is a comment. */
 const jsxEscape = (value) => (needsEscape(JSON.stringify(value)) ? ' /* spelling: allow */' : '');
 
-/** Escape the two characters that end a cell or a row in a Markdown table. */
-const cell = (value) =>
+const collapse = (value) => String(value ?? '').replace(/\s+/g, ' ').trim();
+
+/*
+ * Every string that comes out of a manifest goes through one of the three
+ * helpers below before it reaches the page, because the page is MDX and the
+ * manifest is another repository's file.
+ *
+ * In MDX a `<` opens a tag, a `{` opens an expression the build evaluates, a
+ * backtick opens a code span and a `|` ends a table cell. A summary nobody
+ * here writes reaches all four: an unclosed attribute fails the build, and
+ * anything that parsed as a tag would reach the reader as markup rather than
+ * as the text the manifest declares.
+ *
+ * Angle brackets become character references and the rest take a backslash.
+ * Both render as the character the manifest wrote, but the markdown rendition
+ * is produced by dropping anything shaped like a tag, and a backslash in front
+ * of one does not stop it being dropped: `\<img src=x\>` would reach the
+ * rendition as a lone backslash. An entity is not that shape, so the text
+ * survives the trip.
+ */
+const escape = (value) =>
   String(value ?? '')
-    .replace(/\s+/g, ' ')
-    .replace(/\|/g, '\\|')
-    .trim();
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/[\\`{}|]/g, (char) => `\\${char}`);
+
+const mark = (source, rendered) =>
+  needsEscape(source) && rendered ? `${rendered} ${QUOTED_MARK}` : rendered;
+
+/** Manifest prose as text: one line, escaped, marked when it quotes upstream. */
+const text = (value) => {
+  const one = collapse(value);
+  return mark(one, escape(one));
+};
+
+/*
+ * Manifest prose as an inline code span. Markdown code carries no MDX
+ * expressions and no JSX, so the span itself is the escape; the fence grows
+ * past the longest run of backticks in the value, which is the rule CommonMark
+ * gives for the same problem, and a value that starts or ends with a backtick
+ * is padded so the fence still closes where it should.
+ */
+const code = (value) => {
+  const one = collapse(value);
+  if (!one) return '';
+  const runs = [...one.matchAll(/`+/g)].map((match) => match[0].length);
+  const fence = '`'.repeat(Math.max(0, ...runs) + 1);
+  const pad = one.startsWith('`') || one.endsWith('`') ? ' ' : '';
+  return mark(one, `${fence}${pad}${one}${pad}${fence}`);
+};
+
+/* A pipe inside a code span still ends the cell, and GFM reads the escape
+   through the span; outside a table the backslash would be literal, so only
+   the cells pay for it. */
+const codeCell = (value) => code(value).replace(/\|/g, '\\|');
+
+/* A markdown destination ends at a space or a bracket. The registry's URLs
+   carry neither, and this is what keeps that true when one does. */
+const target = (value) => encodeURI(String(value ?? '')).replace(/[()<>]/g, encodeURIComponent);
+
+const link = (label, url) => `[${label}](${target(url)})`;
+
+/*
+ * A page description leaves MDX behind: Starlight writes it into a meta
+ * attribute, where a quotation mark is escaped for us, and helia-ui's
+ * discoverability block writes it into a JSON-LD script, where nothing is --
+ * a manifest summary carrying `</script>` would end that block and the rest of
+ * it would be markup. This site writes neither emitter, so the characters that
+ * can end one are dropped from a description rather than escaped for whichever
+ * context it lands in. See tasks/256-docs-migration/helia-ui-gaps-259.md.
+ */
+const metaText = (value) => collapse(value).replace(/[<>]/g, '');
 
 const list = (values) => (values && values.length ? values.join(', ') : '');
 
@@ -201,23 +277,23 @@ function catalogTable(modules) {
   ];
   const rows = modules.map((module) => {
     const repo = module.source_url
-      ? `[${cell(module.project)}](${module.source_url})`
-      : cell(module.project);
+      ? link(text(module.project), module.source_url)
+      : text(module.project);
     return [
       '',
-      `[${cell(module.name)}](${href(module.name)})`,
-      cell(typeLabel(module.type)),
-      cell(module.summary),
-      cell(module.version),
-      cell(list(module.compatibility.socs)),
-      cell(list(module.compatibility.boards)),
+      link(text(module.name), href(module.name)),
+      text(typeLabel(module.type)),
+      text(module.summary),
+      text(module.version),
+      text(list(module.compatibility.socs)),
+      text(list(module.compatibility.boards)),
       repo,
       '',
     ]
       .join(' | ')
       .trim();
   });
-  return [...header, ...rows.map(quoted)].join('\n');
+  return [...header, ...rows].join('\n');
 }
 
 function overviewPage(modules, boards) {
@@ -264,13 +340,23 @@ function overviewPage(modules, boards) {
     'are the libraries an app actually calls.',
     '',
     '<CardGrid>',
-    ...byType.map(
-      (group) =>
-        `  <LinkCard title="${group.label}" href="${BASE}${ROUTE}/catalog/?type=${encodeURIComponent(typeLabel(group.type))}" description="${group.members.length} module${group.members.length === 1 ? '' : 's'}: ${group.members
-          .slice(0, 4)
-          .map((module) => module.name)
-          .join(', ')}${group.members.length > 4 ? ' and more' : ''}." />`,
-    ),
+    /* Props as expression containers, not quoted attributes: the description
+       carries module names, and a quoted attribute has no escape for a
+       quotation mark the way a JSON string does. */
+    ...byType.map((group) => {
+      const names = group.members
+        .slice(0, 4)
+        .map((module) => module.name)
+        .join(', ');
+      const description =
+        `${group.members.length} module${group.members.length === 1 ? '' : 's'}: ` +
+        `${names}${group.members.length > 4 ? ' and more' : ''}.`;
+      const url = `${BASE}${ROUTE}/catalog/?type=${encodeURIComponent(typeLabel(group.type))}`;
+      return (
+        `  <LinkCard title={${JSON.stringify(group.label)}} href={${JSON.stringify(url)}} ` +
+        `description={${JSON.stringify(description)}${jsxEscape(description)}} />`
+      );
+    }),
     '</CardGrid>',
     '',
     '## Adding a module',
@@ -328,13 +414,13 @@ function boardsPage(boards, modules) {
   const rows = boards.boards.map((board) =>
     [
       '',
-      `\`${board.name}\``,
-      board.soc,
-      board.tier,
-      board.sdk_provider,
-      board.cpu.core,
-      board.cpu.abi,
-      list(board.toolchains),
+      codeCell(board.name),
+      text(board.soc),
+      text(board.tier),
+      text(board.sdk_provider),
+      text(board.cpu.core),
+      text(board.cpu.abi),
+      text(list(board.toolchains)),
       '',
     ]
       .join(' | ')
@@ -344,11 +430,11 @@ function boardsPage(boards, modules) {
   const families = Object.entries(boards.soc_families).map(([soc, family]) =>
     [
       '',
-      soc,
-      family.provider ? `\`${family.provider}\`` : '',
-      family.project ?? '',
-      family.revision ?? '',
-      cell(list(family.modules)),
+      text(soc),
+      family.provider ? codeCell(family.provider) : '',
+      text(family.project ?? ''),
+      text(family.revision ?? ''),
+      text(list(family.modules)),
       '',
     ]
       .join(' | ')
@@ -388,7 +474,7 @@ function boardsPage(boards, modules) {
     `Each board is also a module, so an app depends on its board the same way it depends on`,
     `anything else. The registry pins ${boardModules.length} of them:`,
     '',
-    ...boardModules.map((module) => `- [\`${module.name}\`](${href(module.name)})`),
+    ...boardModules.map((module) => `- ${link(code(module.name), href(module.name))}`),
     '',
   ].join('\n');
 }
@@ -399,29 +485,34 @@ function section(title, lines) {
 }
 
 function bullets(values) {
-  return (values ?? []).map((value) => quoted(`- ${value}`));
+  return (values ?? []).map((value) => `- ${text(value)}`);
 }
 
 function pairs(object) {
-  return Object.entries(object ?? {}).map(([key, value]) =>
-    quoted(`- \`${key}\`: ${typeof value === 'object' ? `\`${JSON.stringify(value)}\`` : value}`),
-  );
+  return Object.entries(object ?? {}).map(([key, value]) => {
+    const rendered =
+      value !== null && typeof value === 'object' ? code(JSON.stringify(value)) : text(value);
+    return `- ${code(key)}: ${rendered}`;
+  });
 }
 
-function modulePage(module, known) {
+function modulePage(module, known, uncheckedProjects) {
   const declared = module.manifest_source !== 'unavailable';
   const description = module.summary
-    ? cell(module.summary).slice(0, 160)
+    ? metaText(module.summary).slice(0, 160)
     : `What the ${module.name} module declares: type, dependencies and the boards, SoCs and toolchains in its manifest.`;
 
   const depends = (names) =>
-    names.map((name) =>
-      known.has(name) ? `- [\`${name}\`](${href(name)})` : `- \`${name}\``,
-    );
+    names.map((name) => (known.has(name) ? `- ${link(code(name), href(name))}` : `- ${code(name)}`));
 
   const exampleRefs = (module.example_refs ?? []).map((ref) =>
-    quoted(typeof ref === 'string' ? `- ${ref}` : `- \`${JSON.stringify(ref)}\``),
+    typeof ref === 'string' ? `- ${text(ref)}` : `- ${code(JSON.stringify(ref))}`,
   );
+
+  /* The snapshot names the projects the public build is not expected to read
+     again, so a reader is told which page carries fields nothing re-checked.
+     Driven by that list: it goes when the list does. */
+  const unchecked = uncheckedProjects?.[module.project];
 
   return [
     frontmatter(module.name, description, { quotedDescription: needsEscape(description) }),
@@ -445,11 +536,21 @@ function modulePage(module, known) {
       ? []
       : [
           ':::caution[No manifest in this snapshot]',
-          `The snapshot could not read this module's \`nsx-module.yaml\`: ${cell(module.manifest_error)}.`,
+          `The snapshot could not read this module's \`nsx-module.yaml\`: ${text(module.manifest_error)}.`,
           'Only the registry entry is shown below.',
           ':::',
           '',
         ]),
+    ...(unchecked
+      ? [
+          ':::note[Read from a private repository]',
+          `${code(module.project)} is ${text(unchecked)}.`,
+          'This page carries the fields the committed snapshot recorded, and the public docs',
+          'build does not read the manifest again.',
+          ':::',
+          '',
+        ]
+      : []),
     '## Add it to an app',
     '',
     '```bash',
@@ -468,27 +569,27 @@ function modulePage(module, known) {
     '',
     '| Kind | Declared |',
     '| --- | --- |',
-    `| Boards | ${cell(list(module.compatibility.boards)) || 'none declared'} |`,
-    `| SoCs | ${cell(list(module.compatibility.socs)) || 'none declared'} |`,
-    `| Toolchains | ${cell(list(module.compatibility.toolchains)) || 'none declared'} |`,
+    `| Boards | ${text(list(module.compatibility.boards)) || 'none declared'} |`,
+    `| SoCs | ${text(list(module.compatibility.socs)) || 'none declared'} |`,
+    `| Toolchains | ${text(list(module.compatibility.toolchains)) || 'none declared'} |`,
     '',
     ...section('Constraints', pairs(module.constraints)),
     ...section('Integrations', pairs(module.integrations)),
     ...section('Examples', exampleRefs),
     ...section(
       'Agent keywords',
-      [(module.agent_keywords ?? []).map((k) => `\`${k}\``).join(', ')].filter(Boolean).map(quoted),
+      [(module.agent_keywords ?? []).map((keyword) => code(keyword)).join(', ')].filter(Boolean),
     ),
     '## Source',
     '',
     `| Field | Value |`,
     `| --- | --- |`,
-    `| Type | ${cell(typeLabel(module.type))} |`,
-    `| Version | ${cell(module.version) || 'not declared'} |`,
-    `| Project | ${cell(module.project)} |`,
-    `| Revision | \`${cell(module.revision)}\` |`,
-    `| Manifest | \`${cell(module.metadata_path)}\` |`,
-    `| Repository | ${module.source_url ? `[${cell(module.project)}](${module.source_url})` : 'not published'} |`,
+    `| Type | ${text(typeLabel(module.type))} |`,
+    `| Version | ${text(module.version) || 'not declared'} |`,
+    `| Project | ${text(module.project)} |`,
+    `| Revision | ${codeCell(module.revision)} |`,
+    `| Manifest | ${codeCell(module.metadata_path)} |`,
+    `| Repository | ${module.source_url ? link(text(module.project), module.source_url) : 'not published'} |`,
     '',
     `Back to the [module catalog](${BASE}${ROUTE}/catalog/).`,
     '',
@@ -534,10 +635,8 @@ function main() {
     console.log('modules: NSX_DOCS_MODULES_PREBUILT is set but no report exists, generating.');
   }
 
-  const snapshot = JSON.parse(
-    fs.readFileSync(path.join(dirs.data, 'modules.json'), 'utf8'),
-  );
-  const boards = JSON.parse(fs.readFileSync(path.join(dirs.data, 'boards.json'), 'utf8'));
+  const snapshot = JSON.parse(fs.readFileSync(path.join(snapshotDir, 'modules.json'), 'utf8'));
+  const boards = JSON.parse(fs.readFileSync(path.join(snapshotDir, 'boards.json'), 'utf8'));
   const modules = [...snapshot.modules].sort((a, b) => a.name.localeCompare(b.name));
   const known = new Set(modules.map((module) => module.name));
 
@@ -560,18 +659,15 @@ function main() {
     for (const module of modules) {
       fs.writeFileSync(
         path.join(dirs.content, `${module.name}.mdx`),
-        modulePage(module, known),
+        modulePage(module, known, snapshot.unchecked_projects),
         'utf8',
       );
     }
   });
 
   timed('publish artifacts', () => {
-    fs.copyFileSync(
-      path.join(dirs.data, 'modules.json'),
-      path.join(dirs.public, 'catalog.json'),
-    );
-    fs.copyFileSync(path.join(dirs.data, 'boards.json'), path.join(dirs.public, 'boards.json'));
+    fs.copyFileSync(path.join(snapshotDir, 'modules.json'), path.join(dirs.public, 'catalog.json'));
+    fs.copyFileSync(path.join(snapshotDir, 'boards.json'), path.join(dirs.public, 'boards.json'));
   });
 
   fs.writeFileSync(
