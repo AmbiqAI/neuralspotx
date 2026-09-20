@@ -139,3 +139,18 @@ change, and each has its own issue:
 - Reference implementation: `AmbiqAI/helia-rt`, `astro-site/` on `main`.
 - Maintainer docs, unpublished: `docs/maintainers/`. Contributor entry point:
   `CONTRIBUTING.md`.
+
+## Visual pass (handed over)
+
+The owner will have a separate session improve the look and feel once this
+branch is merged. Content, generation and checks are the contract of this
+branch; visual choices are open. Known items for that pass, none of them
+blocking: the "Read more:" link rows under each Home card grid (they exist
+only for the Markdown rendition until helia-ui#143 ships in alpha.16, then
+they go); the hero walkthrough (`astro-site/src/components/JourneyWalkthrough.astro`,
+proposed upstream as a helia-ui part in `tasks/256-docs-migration/helia-ui-gaps-260.md`
+Draft 8); capability cards on Home (Card + IconTile composition); the plain
+hero ground; the catalog toolbar (`ModuleBrowser.tsx`, helia-ui React parts).
+Rules that must survive the pass: helia-ui parts only, no local CSS beyond a
+justified component rule, every claim on Home traces to a file, and the
+rendition and count checks in `astro-site/scripts/check-output.mjs` stay green.
