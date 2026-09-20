@@ -7,6 +7,18 @@ NSX is published to PyPI as `neuralspotx`. Every release is cut from `main` by a
 automated workflow, so what you install is always a commit that passed CI as it
 stands, not a branch snapshot.
 
+## Maturity and support
+
+NSX is **Beta**, and it is supported for **evaluation**: bring-up, profiling,
+validation and demos. Production support is not committed before 1.0. That is the
+maturity and support tier Ambiq records for it in the HELIA portfolio, and it is
+what the stability tier below and the pinning advice further down follow from.
+
+Beta is a statement about the interface, not about whether the tool works: the
+commands and the module registry are in daily use inside Ambiq. It means the
+names are still allowed to move, so anything you automate against them should
+pin a version.
+
 ## Cadence
 
 There is no release calendar. Changes accumulate on `main` into a pending

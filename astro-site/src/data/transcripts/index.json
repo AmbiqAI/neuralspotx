@@ -1,10 +1,9 @@
 {
-  "_note": "Captured runs, not written by hand: the uv lines from a throwaway UV_TOOL_DIR install, the doctor lines from the same run transcripts/doctor.json was cut from, the create-app lines from transcripts/first-app.json, the configure and build lines from transcripts/configure-and-build.json. The two lines after nsx flash and nsx view are placeholders and say so: NSX prints device output only with a board attached, and nothing may stand in for a capture we do not have (AmbiqAI/neuralspotx#260).",
+  "_note": "Captured runs, not written by hand: the uv lines from a throwaway UV_TOOL_DIR install, the doctor lines from the same run transcripts/doctor.json was cut from, the create-app lines from transcripts/first-app.json, the configure and build lines from transcripts/configure-and-build.json. Two abridgements, both so the frame fits the hero column without clipping: the per-step ninja lines are replaced by the collapsed muted line, and the size line keeps its columns but drops the leading build/apollo510_evb/ from the filename. The two lines after nsx flash and nsx view are placeholders and say so: NSX prints device output only with a board attached, and nothing may stand in for a capture we do not have (AmbiqAI/neuralspotx#260).",
   "quickstart": [
     { "kind": "command", "text": "uv tool install neuralspotx" },
     { "kind": "success", "text": "Installed 1 executable: nsx" },
     { "kind": "command", "text": "nsx doctor" },
-    { "kind": "success", "text": "[OK] uv" },
     { "kind": "success", "text": "[OK] cmake" },
     { "kind": "success", "text": "[OK] ninja" },
     { "kind": "success", "text": "[OK] SEGGER J-Link" },
@@ -16,20 +15,9 @@
     { "kind": "command", "text": "nsx configure" },
     { "kind": "success", "text": "Configured app at: /home/you/hello_ap510" },
     { "kind": "command", "text": "nsx build" },
-    {
-      "kind": "output",
-      "text": "[1/24] Building C object _nsx/nsx_core/CMakeFiles/nsx_system.dir/src/nsx_retarget.c.obj"
-    },
-    {
-      "kind": "output",
-      "text": "[2/24] Building C object _nsx/nsx_core/CMakeFiles/nsx_core_lifecycle.dir/src/nsx_core_lifecycle.c.obj"
-    },
-    { "kind": "muted", "text": "[..] (steps 3 to 22, compiles and archives)" },
+    { "kind": "muted", "text": "[..] (24 compile, archive and link steps)" },
     { "kind": "output", "text": "   text    data     bss     dec     hex filename" },
-    {
-      "kind": "output",
-      "text": "  19080     592  507312  526984   80a88 build/apollo510_evb/hello_ap510"
-    },
+    { "kind": "output", "text": "  19080     592  507312  526984   80a88 hello_ap510" },
     { "kind": "command", "text": "nsx flash" },
     { "kind": "muted", "text": "(device output: captured transcript pending)" },
     { "kind": "command", "text": "nsx view" },

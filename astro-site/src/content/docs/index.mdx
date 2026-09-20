@@ -2,7 +2,7 @@
 # The rendition check holds this to the page's own <h1>, which is the hero
 # headline, so the two are one string; head.title below keeps the tab and the
 # search result on the product name.
-title: Firmware for Ambiq SoCs, composed not copied.
+title: The modular firmware platform for Ambiq SoCs.
 description: The modular developer SDK and CLI for bare-metal Ambiq applications, from scaffolding an app for a board to flashing it and reading its output.
 tableOfContents: false
 prev: false
@@ -35,9 +35,9 @@ import ExampleCards from '../../components/ExampleCards.astro';
 import transcripts from '../../data/transcripts/index.json';
 
 <Hero eyebrow="AI on Ambiq" variant="plain" data-pagefind-meta="title:neuralSPOT-X">
-  Firmware for Ambiq SoCs, <em>composed</em> not copied.
+  The <em>modular</em> firmware platform for Ambiq SoCs.
   <Fragment slot="summary">
-    neuralSPOT-X scaffolds an app for any Ambiq board, pulls in exactly the modules it
+    neuralSPOT-X scaffolds an app for your Ambiq board, pulls in exactly the modules it
     needs, locks them, and builds an ordinary CMake project you own. One workflow from
     Apollo2 to Apollo510 and Atomiq.
   </Fragment>
@@ -246,14 +246,14 @@ import transcripts from '../../data/transcripts/index.json';
   <SectionHeader
     eyebrow="Coverage"
     title="One workflow, across the Ambiq line."
-    description="The same five commands, whichever part you are bringing up."
+    description="The same commands, whichever part you are bringing up."
   />
 
   NSX ships board descriptors for 11 SoC families: `apollo2`, `apollo3`, `apollo3p`,
-  `apollo4l`, `apollo4p`, `apollo5b`, `apollo510`, `apollo510b`, `apollo510L` and
-  `apollo330P`, plus the `atomiq110` platform. Each descriptor declares which of the three
-  toolchains that board builds with, so what a board supports is what its descriptor says,
-  not what this page says.
+  `apollo4l`, `apollo4p`, `apollo5b`, `apollo510`, `apollo510b`, `apollo510L`, `apollo330P`
+  and `atomiq110`, whose descriptor today is an FPGA platform rather than silicon. Each
+  descriptor declares which of the three toolchains that board builds with, so what a board
+  supports is what its descriptor says, not what this page says.
 
   Read more: the [board matrix](/neuralspotx/modules/boards/) lists all 17 descriptors with
   the SoC, tier, SDK provider, CPU and toolchains each one declares, and
@@ -270,7 +270,7 @@ import transcripts from '../../data/transcripts/index.json';
     linkLabel="All examples"
   />
 
-  NSX is how Ambiq builds Ambiq firmware. The
+  Ambiq builds firmware with NSX. The
   [HeartKit vitals demo](https://github.com/AmbiqAI/heartkit-vitals-demo) is a public app
   with an `nsx.yml` at its root, and this repository carries ten more. Nine of the ten build
   in CI on macOS, Linux and Windows on every change. The tenth, `kws_infer`, carries a
@@ -296,7 +296,7 @@ import transcripts from '../../data/transcripts/index.json';
 <Band density="compact">
   <SectionHeader
     eyebrow="Extend it"
-    title="Grow it."
+    title="Add your own modules."
     description="The packaged registry is a starting point, not the boundary."
   />
 
