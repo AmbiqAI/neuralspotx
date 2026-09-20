@@ -1,11 +1,20 @@
 # helia-ui gaps found during P1a (issue #258)
 
-Drafts only. Nothing here has been filed. The pinned version is
-`v0.1.0-alpha.14`, which is the latest release; `gh release list -R
-AmbiqAI/helia-ui -L 5` shows nothing newer, so no version bump is available
-and every gap below needed an NSX-side workaround.
+Every gap below is filed upstream and open. The pinned version is
+`v0.1.0-alpha.14`, which is still the latest release, so no version bump is
+available and each gap needed an NSX-side workaround. Each section records the
+issue it was filed as and the workaround that comes out when it lands.
 
-Already filed and still open, both confirmed against alpha.14:
+| Gap | Filed as | State | NSX workaround to remove |
+| --- | --- | --- | --- |
+| Private module pages | AmbiqAI/helia-ui#120 | open | `scripts/docs/prune_griffe.py` |
+| Chained re-exports unresolved | AmbiqAI/helia-ui#121 | open | `scripts/docs/prune_griffe.py` |
+| Escaping in indented code blocks | AmbiqAI/helia-ui#125 | open | fenced docstring in `src/neuralspotx/nsx_lock/__init__.py` |
+| No page grouping | comment on AmbiqAI/helia-ui#74 | open | catalog-driven sidebar in `astro-site/scripts/build-reference.mjs` |
+| No per-page stability status | AmbiqAI/helia-ui#126 | open | banner injection in `astro-site/scripts/build-reference.mjs` |
+| Signature types not linked across pages | AmbiqAI/helia-ui#127 | open | none |
+
+Pre-existing, both confirmed against alpha.14:
 
 - **#120 pyref emits pages for private modules.** Confirmed: a raw dump of
   `neuralspotx` produced 79 pages, 59 of them for `_module` paths.
@@ -14,12 +23,16 @@ Already filed and still open, both confirmed against alpha.14:
 
 Both are closed on the NSX side by `scripts/docs/prune_griffe.py`, which
 rewrites the griffe dump into the public surface before pyref sees it. The
-result is 5 pages and 0 unresolved references. That workaround should be
-deleted when #120 and #121 land.
+result is 5 pages and 0 unresolved references. Delete that script and its
+wiring only when **both** #120 and #121 have landed in a release this site can
+pin; either one alone is not enough, because the dump needs both the private
+pages dropped and the re-export chains resolved.
 
 ---
 
-## Draft 1: pyref escapes docstring content inside indented code blocks
+## Gap 1: pyref escapes docstring content inside indented code blocks
+
+**Filed as** AmbiqAI/helia-ui#125, open.
 
 **Title:** pyref escapes `<` and `{` inside indented code blocks, and can emit
 MDX that fails to compile
@@ -46,11 +59,15 @@ escape unless a matching `>` closes a syntactically valid tag.
 **Workaround used.** Converted the one affected docstring
 (`src/neuralspotx/nsx_lock/__init__.py`) to a fenced block. The site build
 fails loudly if another docstring hits this, which is an acceptable guard but
-not a fix.
+not a fix. The docstring can go back to an indented block once #125 lands.
 
 ---
 
-## Draft 2: no way to group generated pages
+## Gap 2: no way to group generated pages
+
+**Filed as** a comment on AmbiqAI/helia-ui#74, open. Folded into that
+issue rather than filed separately, because #74 already covers grouping
+configuration and a rendered group index.
 
 **Title:** pyref cannot group pages or sidebar entries by anything but module
 path
@@ -63,19 +80,22 @@ fragment that mirrors the module tree, with no flag to group otherwise.
 pattern to a label, applied to the emitted sidebar fragment.
 
 **Source location.** `scripts/lib/reference-render.mjs`, `buildSidebar`. This
-is the same ground as the open #74 ("Reference generators grouping config and
-index"), so it may be a comment on #74 rather than a new issue.
+is the same ground as #74 ("Reference generators: grouping config and a
+rendered group index").
 
 **Proposal.** Fold into #74: let the caller supply group labels and a
 predicate, and emit symbol-level entries so a group can span modules.
 
 **Workaround used.** `prune_griffe.py` emits a symbol catalog with a category
 per symbol, and `astro-site/scripts/build-reference.mjs` builds its own
-grouped sidebar from it. Pages stay per-module.
+grouped sidebar from it. Pages stay per-module. The hand-built sidebar comes
+out when #74 ships grouping the generator can drive.
 
 ---
 
-## Draft 3: no per-page stability status
+## Gap 3: no per-page stability status
+
+**Filed as** AmbiqAI/helia-ui#126, open.
 
 **Title:** pyref has no way to mark a page or a symbol as provisional
 
@@ -94,11 +114,14 @@ as a badge, plus a page-level default so a caller can set it once.
 
 **Workaround used.** `build-reference.mjs` injects a Starlight `banner` into
 the frontmatter of every generated page after pyref writes it, which gives the
-once-per-page placement #258 asks for.
+once-per-page placement #258 asks for. The injection comes out when #126 gives
+pyref a status of its own.
 
 ---
 
-## Draft 4: signature types are not linked across pages
+## Gap 4: signature types are not linked across pages
+
+**Filed as** AmbiqAI/helia-ui#127, open.
 
 **Title:** pyref renders a signature type as plain text when its definition is
 on another page
@@ -119,6 +142,6 @@ does consult the whole index.
 **Proposal.** Resolve identifiers in rendered signatures through the same index
 the cross-reference resolver uses, and emit an anchor when the id is known.
 
-**Workaround used.** None. `prune_griffe.py` now makes sure such types are
-documented and anchored, so the information is reachable, but the signature
-itself stays unlinked.
+**Workaround used.** None, and none is needed. `prune_griffe.py` already makes
+sure such types are documented and anchored, so the information is reachable;
+the signature itself stays unlinked until #127 lands.

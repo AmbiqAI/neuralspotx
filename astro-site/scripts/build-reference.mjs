@@ -27,7 +27,6 @@ const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..'
 const repoRoot = path.resolve(siteRoot, '..');
 
 const BASE = '/neuralspotx/';
-const GRIFFE_VERSION = '1.7.3';
 const SOURCE_URL = 'https://github.com/AmbiqAI/neuralspotx/blob/{commit}/{path}#L{line}';
 
 // Every name in neuralspotx.__all__ carries the same status, so the site says
@@ -84,6 +83,16 @@ function run(command, args, options = {}) {
     maxBuffer: 64 * 1024 * 1024,
     ...options,
   });
+}
+
+// griffe is pinned in the docs dependency group, so every extraction resolves
+// through uv.lock and needs no package index once the project is synced.
+function uvRun(args, options = {}) {
+  return run('uv', ['run', '--group', 'docs', ...args], options);
+}
+
+function griffeVersion() {
+  return uvRun(['griffe', '--version']).trim().split(/\s+/).pop();
 }
 
 function commitSha() {
@@ -224,25 +233,13 @@ function main() {
   const configPath = path.join(dirs.work, 'config.json');
 
   timed('griffe dump', () => {
-    const dump = run('uv', [
-      'run',
-      '--with',
-      `griffe==${GRIFFE_VERSION}`,
-      'griffe',
-      'dump',
-      'neuralspotx',
-      '--docstyle',
-      'google',
-      '-f',
-    ]);
+    const dump = uvRun(['griffe', 'dump', 'neuralspotx', '--docstyle', 'google', '-f']);
     fs.writeFileSync(griffeDump, dump, 'utf8');
   });
 
   timed('prune griffe', () =>
-    run(
-      'uv',
+    uvRun(
       [
-        'run',
         'python',
         'scripts/docs/prune_griffe.py',
         '--input',
@@ -322,7 +319,7 @@ function main() {
   );
 
   const cli = timed('dump cli', () => {
-    run('uv', ['run', 'python', 'scripts/docs/dump_cli.py', '--output', cliPath]);
+    uvRun(['python', 'scripts/docs/dump_cli.py', '--output', cliPath]);
     return JSON.parse(fs.readFileSync(cliPath, 'utf8'));
   });
 
@@ -337,7 +334,7 @@ function main() {
   );
 
   const config = timed('dump config', () => {
-    run('uv', ['run', 'python', 'scripts/docs/dump_config.py', '--output', configPath]);
+    uvRun(['python', 'scripts/docs/dump_config.py', '--output', configPath]);
     return JSON.parse(fs.readFileSync(configPath, 'utf8'));
   });
 
@@ -371,7 +368,7 @@ function main() {
   const cliNodes = flatten(cli);
   const report = {
     commit,
-    griffeVersion: GRIFFE_VERSION,
+    griffeVersion: griffeVersion(),
     base: BASE,
     unresolvedReferences: warnings,
     provisionalBanners: bannered + 1,

@@ -112,20 +112,25 @@ def test_every_symbol_has_a_category(report: dict[str, Any]) -> None:
         )
 
 
+# Named by public signatures but absent from ``__all__``, so nothing else in
+# this file would notice them going missing. Spelled out rather than derived:
+# recomputing them from the annotations would restate prune_griffe.py's own
+# resolution, and a fourth one appearing is a decision, not an accident.
+SUPPORTING_TYPES = {"BoardDescriptor", "EventKind", "PathLike"}
+
+
 def test_supporting_types_are_documented(report: dict[str, Any]) -> None:
     """Types named by public signatures have to be reachable, not bare text.
 
-    They are not in ``__all__``, so nothing else in this file would notice them
-    going missing; a reader meeting ``BoardDescriptor`` in a return type needs
-    somewhere to click.
+    A reader meeting ``BoardDescriptor`` in a return type needs somewhere to
+    click.
     """
     supporting = set(report["python"]["supporting"])
-    assert supporting, "no supporting types were documented at all"
-    for name in ("BoardDescriptor", "EventKind"):
-        assert name in supporting, (
-            f"{name} is named by a public signature but is not documented; "
-            f"documented supporting types are {sorted(supporting)}"
-        )
+    assert supporting == SUPPORTING_TYPES, (
+        "the documented supporting types changed: "
+        f"missing {sorted(SUPPORTING_TYPES - supporting)}, "
+        f"unexpected {sorted(supporting - SUPPORTING_TYPES)}"
+    )
 
 
 # --- CLI -------------------------------------------------------------------

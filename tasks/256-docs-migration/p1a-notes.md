@@ -7,7 +7,7 @@ before every `dev`, `check` and `build`. Three areas in one pass:
 
 | Area | Extraction | Render |
 | --- | --- | --- |
-| Python API | `griffe dump neuralspotx --docstyle google -f` (griffe 1.7.3, via `uv run --with`) then `scripts/docs/prune_griffe.py` | `helia-ui-pyref` |
+| Python API | `griffe dump neuralspotx --docstyle google -f` (griffe pinned at 1.7.3 in the `docs` dependency group, run as `uv run --group docs`) then `scripts/docs/prune_griffe.py` | `helia-ui-pyref` |
 | CLI | `scripts/docs/dump_cli.py` walks the argparse tree | `astro-site/scripts/lib/render-cli.mjs` |
 | Configuration | `scripts/docs/dump_config.py` reads `scripts/docs/config_schema.yaml` | `astro-site/scripts/lib/render-config.mjs` |
 

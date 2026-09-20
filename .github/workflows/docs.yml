@@ -68,9 +68,11 @@ jobs:
         run: npm ci
 
       # The reference is generated from the installed package, so the Python
-      # environment has to exist before anything under astro-site runs.
-      - name: Install the package and its test dependencies
-        run: uv sync --group test
+      # environment has to exist before anything under astro-site runs. The
+      # docs group carries griffe, which build-reference.mjs runs out of the
+      # lock rather than provisioning per build.
+      - name: Install the package with its docs and test dependencies
+        run: uv sync --group docs --group test
 
       # Generated explicitly, and timed, so the job summary records how long
       # extraction takes independently of the Astro build that follows it.
@@ -84,7 +86,7 @@ jobs:
           echo "seconds=$(( $(date +%s) - start ))" >> "$GITHUB_OUTPUT"
 
       - name: Check reference completeness
-        run: uv run --group test pytest tests/test_reference_generation.py tests/test_public_surface_doc.py -q
+        run: uv run --group docs --group test pytest tests/test_reference_generation.py tests/test_public_surface_doc.py -q
 
       - name: Astro check
         working-directory: astro-site

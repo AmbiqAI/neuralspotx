@@ -61,7 +61,7 @@ Nothing generated is committed. Completeness is enforced by
 `tests/test_reference_generation.py` (37 tests)
 and `astro-site/scripts/check-reference-output.mjs` (wired into `npm run validate`).
 Full detail, decisions and measurements in `tasks/256-docs-migration/p1a-notes.md`;
-new upstream gap drafts in `tasks/256-docs-migration/helia-ui-gaps-258.md`.
+the upstream gaps this phase filed in `tasks/256-docs-migration/helia-ui-gaps-258.md`.
 
 Budgets, decided rather than open: the per-page uncompressed HTML budget for Python API
 pages is 640 KB rather than the 250 KB the C++ reference uses, because a Starlight shell
@@ -83,6 +83,9 @@ note when the section's content lands.
 
 ## Gotchas
 
+- The reference build shells out to `uv run --group docs`, because griffe is pinned in
+  the `docs` dependency group. A tree synced without that group regenerates it on the
+  first build; a tree with no package index reachable needs `uv sync --group docs` first.
 - `astro.config.mjs` imports `src/data/build-info.json`, which is generated. Every script
   that loads the config needs the `pre*` hook, `check` included. `npm run check` fails
   with "Unable to load your Astro config" without it.
@@ -118,9 +121,18 @@ files named below and should be revisited when an issue closes.
 - AmbiqAI/helia-ui#121: pyref leaves cross-references unresolved for types re-exported
   through the package root. The raw griffe dump showed 105 unresolved references; see
   `tasks/256-docs-migration/helia-ui-gaps-258.md`.
+- AmbiqAI/helia-ui#125: pyref escapes `<` and `{` inside indented code blocks. Worked
+  around by fencing the one affected docstring in `src/neuralspotx/nsx_lock/__init__.py`.
+- AmbiqAI/helia-ui#74 (comment): no way to group generated pages. Worked around by the
+  catalog-driven sidebar in `astro-site/scripts/build-reference.mjs`.
+- AmbiqAI/helia-ui#126: no per-page stability status, so `build-reference.mjs` injects
+  the Provisional banner into each generated page's frontmatter.
+- AmbiqAI/helia-ui#127: signature types render as plain text when documented on another
+  page. No workaround; the types are anchored but the signature stays unlinked.
 
-#120 and #121 are the two that matter for #258; both are recorded in plan §8 with the
-measurements behind them.
+All of these are open against `v0.1.0-alpha.14`, which is still the newest release.
+#120 and #121 are the two that matter most for #258; both are recorded in plan §8 with
+the measurements behind them, and `prune_griffe.py` comes out only when both land.
 
 ## Refs
 
