@@ -163,6 +163,7 @@ def test_every_alias_dispatches_to_its_target(cli_tree: dict[str, Any]) -> None:
         for part in name.split(" "):
             target = current.choices[part]
             current = dump_cli._subparsers_action(target) or current
+        assert target is not None
         return target.get_default("func")
 
     for alias, command in cli_tree["aliases"].items():
