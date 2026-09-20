@@ -188,8 +188,9 @@ provider module, and how to read the installed version.
 
 One claim was cut during drafting: the page first said `nsx doctor` reports the
 version. It does not. `nsx doctor` prints tool paths only, and `nsx --version`
-does not exist either, so the page says to ask the package through
-`importlib.metadata`.
+does not exist either, which is AmbiqAI/neuralspotx#266, so the page says to ask
+the package through `importlib.metadata`. When #266 lands the page should say
+`nsx --version` instead.
 
 ## 5. Redirect changes
 
@@ -202,9 +203,9 @@ successor" list in `p3-notes.md` section 3, or moved within it:
 | `/contributing/docs-workflow/` | `/guides/contribute/agent-guidance/` | `/guides/` | Open question 4 in `p2-content-map.md` section 6 is answered the other way: docs-workflow is maintainer material and is not published. The Contribute group has no index page, so `/guides/` is the nearest published landing point. |
 
 `/guides/contribute/` is not a route. If a Contribute overview page is ever
-written, three entries should be repointed at it: `/contributing/`,
-`/contributing/docs-workflow/` and `/contributing/repo-layout/`. That is an
-owner decision, recorded in `HANDOFF.md`.
+written, three entries could be repointed at it: `/contributing/`,
+`/contributing/docs-workflow/` and `/contributing/repo-layout/`. That is future
+work, not a blocker: the owner has signed the 67-route map off as final.
 
 Count is unchanged: 67 entries, 7 identity, 60 stubs.
 
@@ -283,10 +284,20 @@ Then, and only then, the owner's final review before the cutover is called done
 
 ## 9. Not in this PR
 
+Still to do before merge:
+
 - Visual review, desktop and mobile, light and dark. The plan schedules it here;
   it has not happened.
-- Switching the helia-ui pin from the commit to the next alpha tag. No tag
-  contains `266f614` yet. `HANDOFF.md` has the procedure.
-- Splitting the Python API page that sits at 82% of its HTML budget.
-- The four transcripts that need a connected `apollo510_evb`, and the Windows
-  install steps that need a Windows host.
+- Moving the helia-ui pin from commit `266f614` to tag `v0.1.0-alpha.15`, which
+  is being cut to carry it. `HANDOFF.md` has the procedure and the checks.
+
+Deliberately out of scope, by owner decision on 2026-09-20: Windows execution is
+waived for this pass, the four hardware transcripts ship as described output
+until someone captures them on a connected `apollo510_evb`, the onboard J-Link
+claim stays out, and the migration matrix labels stand.
+
+Deferred with a tracking issue: splitting the Python API page that sits at 82%
+of its HTML budget, and the five product findings the migration surfaced,
+AmbiqAI/neuralspotx#265 to #269. One owner decision is open, on whether the
+docs job gets a read token for the private `helia-dsp` repository or its
+manifest stays unchecked; both are recorded in `HANDOFF.md`.

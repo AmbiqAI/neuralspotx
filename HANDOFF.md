@@ -31,64 +31,74 @@ Per-phase detail is in `tasks/256-docs-migration/p1a-notes.md`, `p1b-notes.md`,
 
 ## Before merge
 
-**Switch the helia-ui pin from a commit to a tag.**
-`astro-site/package.json` pins
-`github:AmbiqAI/helia-ui#266f614958eae8ace4ada151c9d0bed0677203d1`, the
+**Move the helia-ui pin to `v0.1.0-alpha.15`.** `astro-site/package.json`
+pins `github:AmbiqAI/helia-ui#266f614958eae8ace4ada151c9d0bed0677203d1`, the
 Markdown-callouts commit (AmbiqAI/helia-ui#128), because it landed after
-`v0.1.0-alpha.14` and the site's asides need it. No tag contains it yet.
-When the next alpha is cut:
+`v0.1.0-alpha.14` and the site's asides need it. `v0.1.0-alpha.15` is being cut
+to carry it. Do not merge on the commit pin: a commit is not a release, so
+nothing guarantees it stays reachable.
 
 ```bash
-gh api repos/AmbiqAI/helia-ui/releases --jq '.[0].tag_name'   # confirm it exists
-# confirm the tag contains 266f614:
-gh api repos/AmbiqAI/helia-ui/compare/<tag>...266f614 --jq .status   # want "identical" or "behind"
+# confirm the tag exists and contains 266f614 before switching
+gh api repos/AmbiqAI/helia-ui/git/ref/tags/v0.1.0-alpha.15 --jq .object.sha
+gh api repos/AmbiqAI/helia-ui/compare/v0.1.0-alpha.15...266f614 --jq .status  # want behind or identical
 cd astro-site
-npm pkg set 'dependencies.@ambiqai/helia-ui=github:AmbiqAI/helia-ui#<tag>'
+npm pkg set 'dependencies.@ambiqai/helia-ui=github:AmbiqAI/helia-ui#v0.1.0-alpha.15'
 npm install && npm run check && npm run build && npm run validate
 ```
 
-Commit `package.json` and `package-lock.json` together. Do not merge on the
-commit pin: it is not a release, so nothing guarantees it stays reachable.
+Commit `package.json` and `package-lock.json` together.
 
 **Visual review.** The plan schedules it at P4 and it has not happened.
 Desktop and mobile, light and dark, at least Home, a Guides page, the module
 catalog and a Python API page.
 
-## Needs hardware or another host
+## Decided, so do not reopen these in review
 
-- **Four transcripts.** `nsx probes`, `nsx flash`, `nsx reset` and `nsx view`
-  are described rather than captured, and
-  `astro-site/src/content/docs/getting-started/flash-and-view.mdx` carries a
-  caution saying so. Replacing them needs a session on a connected
-  `apollo510_evb`.
-- **Windows install steps.** Never executed on a Windows host.
+Owner decisions taken 2026-09-20:
+
+- **Windows execution is waived for this pass.**
   `astro-site/src/content/docs/getting-started/install/windows.md` and the
-  Windows tab of the install page are unvalidated.
-- **`helia-dsp` manifest fields.** The module is private, so a CI job with no
-  credentials reports it as not checked rather than as drift. Its manifest
-  prose is not covered by the snapshot check.
+  Windows tab ship unvalidated against a Windows host.
+- **Hardware transcripts ship as described output** until someone captures
+  them. `nsx probes`, `nsx flash`, `nsx reset` and `nsx view` are described
+  rather than captured, and `flash-and-view.mdx` carries a caution saying so.
+  Capturing them needs a connected `apollo510_evb`.
+- **The onboard J-Link claim stays out** of the install and flash pages.
+- **The migration matrix labels stand** as written.
+- **The 67-route redirect map is final**, including the seven routes with no
+  published successor, which point at the nearest published page.
+  `p3-notes.md` section 3 has the table and what would change each one.
+- **Release mechanics leave the public site.** The user-facing half is
+  `/reference/releases/`; the workflow detail is `docs/maintainers/releases.md`.
 
-## Open owner decisions
+## Open owner decision
 
-1. **Seven old routes have no published successor** and point at the nearest
-   published page. The table of what each points at and what would change it is
-   in `p3-notes.md` section 3. Two moved in this PR: `/contributing/releases/`
-   now lands on the new `/reference/releases/`, and
-   `/contributing/docs-workflow/` lands on `/guides/` because the rewritten
-   docs-workflow is maintainer material and the Contribute group has no index
-   page. Writing a Contribute overview page would settle three of the seven.
-2. **`/user-guide/module-catalog/` was dropped**, the single largest old page,
-   in favor of the generated catalog. Its twenty anchors are unrecoverable;
-   `p3-notes.md` lists what answers each question now.
-3. **Four declared dependencies name modules the registry does not pin:**
-   `nsx-timer` (required by `nsx-power` and `nsx-usb`), `nsx-interrupt`
-   (required by `nsx-uart`) and `nsx-harness` (optional for
-   `nsx-ethos-u-driver`). The catalog renders an unknown dependency as a plain
-   name. The set is pinned in `tests/test_module_data_snapshot.py`, so a fifth
-   is a decision rather than a silent change.
-4. **The Python API page is at 82% of its HTML budget and 84% of its gzip
-   budget**, warning by design so it gets split before it fails. Splitting it
-   is not in this PR.
+**`helia-dsp` is a private repository.** The docs drift check cannot read its
+manifest without a token, so the allowlist marks it unchecked and its module
+page says so. Its manifest fields are therefore not covered by CI. Two options:
+accept unchecked, or grant the docs job a read token. Nothing else in the
+snapshot check needs credentials, so granting one changes the job's threat
+model for a single module.
+
+## Product findings from the migration, now tracked
+
+Each of these is a product bug or gap the migration surfaced, not a docs
+change, and each has its own issue:
+
+- AmbiqAI/neuralspotx#265: four SDK modules are absent from the registry's
+  top-level map, so they have no catalog page. `nsx-timer` (required by
+  `nsx-power` and `nsx-usb`), `nsx-interrupt` (required by `nsx-uart`) and
+  `nsx-harness` (optional for `nsx-ethos-u-driver`) render as plain names. The
+  set is pinned in `tests/test_module_data_snapshot.py`, so a fifth is a
+  decision rather than a silent change.
+- AmbiqAI/neuralspotx#266: there is no `nsx --version`.
+- AmbiqAI/neuralspotx#267: the `STACK_SIZE` comment in `board.cmake` is wrong
+  by a factor of four.
+- AmbiqAI/neuralspotx#268: `nsx.yml` `source.git` is accepted by the loader and
+  rejected by the resolver.
+- AmbiqAI/neuralspotx#269: the npu template README states a silicon MAC count
+  with no source of record.
 
 ## Gotchas
 
@@ -130,8 +140,9 @@ catalog and a Python API page.
 - Plan: `tasks/256-docs-migration/plan.md`. Cutover notes:
   `tasks/256-docs-migration/p4-notes.md`.
 - Upstream gaps filed against helia-ui, per phase:
-  `tasks/256-docs-migration/helia-ui-gaps-{258,259,260,261}.md`. All are open
-  against `v0.1.0-alpha.14`.
+  `tasks/256-docs-migration/helia-ui-gaps-{258,259,260,261}.md`. Filed:
+  AmbiqAI/helia-ui#115 to #121 from the earlier phases and #133 to #143 from
+  this one. #124 is merged; #131 was closed as not a bug. The rest are open.
 - Reference implementation: `AmbiqAI/helia-rt`, `astro-site/` on `main`.
 - Maintainer docs, unpublished: `docs/maintainers/`. Contributor entry point:
   `CONTRIBUTING.md`.
