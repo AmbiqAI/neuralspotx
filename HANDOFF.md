@@ -106,13 +106,27 @@ Two things for Adam, neither a docs change:
    the drift check reports it as not checked rather than failing. That module's manifest
    fields are therefore not covered by CI.
 
+## P2 PR1 (#260) Getting started: done, verified locally
+
+Branch `260-getting-started`, stacked on `259-module-catalog`, not pushed. Nine pages
+under `astro-site/src/content/docs/getting-started/`, the sidebar wired in
+`astro.config.mjs`, and the placeholder note deleted. Every command was run against the
+current CLI on macOS with no board attached; `create-app`, `configure` and `build`
+succeeded end to end and their transcripts are captured runs. Flash, reset, view and
+probes need hardware, so those pages describe the expected output and carry `TODO(#260)`
+markers where a captured transcript goes. Source-to-page mapping, the validation runs and
+the nine current-doc claims that turned out to be wrong are in
+`tasks/256-docs-migration/p2-pr1-notes.md`; upstream drafts in
+`tasks/256-docs-migration/helia-ui-gaps-260.md`.
+
 ## Next steps
 
 1. #260 migrates the 67 MkDocs pages into Getting started and Guides.
 2. #261 does discoverability (llms), redirects, the real 404, and the deploy cutover.
 
-The Getting started and Guides index pages carry a `:::note` pointing at #260. Delete the
-note when the section's content lands. The Modules index is generated and carries none.
+The Guides index page still carries a `:::note` pointing at #260. Delete it when that
+section's content lands. Getting started's note is gone; the Modules index is generated
+and carries none.
 
 ## Gotchas
 
