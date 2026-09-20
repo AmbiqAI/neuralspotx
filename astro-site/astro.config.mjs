@@ -25,10 +25,10 @@ import oldRoutes from './src/data/redirects.json' with { type: 'json' };
 const base = '/neuralspotx';
 const basePath = `${base}/`;
 
-/* Seven of the 67 old routes kept their path, so they are pages rather than
-   redirects and Astro would refuse a redirect that collides with one. They stay
-   in the map because the check reads it as the list of routes that must still
-   resolve, not as the list of stubs to emit. */
+/* An old route that kept its path is a page, not a redirect, and Astro would
+   refuse a redirect that collides with one. Those entries stay in the map
+   because the check reads it as the list of routes that must still resolve,
+   not as the list of stubs to emit. */
 const redirects = Object.fromEntries(
   Object.entries(oldRoutes).filter(([from, to]) => to !== `${base}${from}`),
 );

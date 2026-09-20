@@ -235,7 +235,7 @@ const ARTIFACTS = [
   ['reference/api/llms-full.txt', 'reference/api/llms-full.txt', 'the Python API as Markdown'],
   ['reference/reference.txt', 'reference/reference.txt', 'the whole reference as text'],
   ['reference/cli.json', 'reference/cli.json', 'every command, subcommand and option'],
-  ['reference/config.json', 'reference/config.json', 'the four configuration schemas'],
+  ['reference/config.json', 'reference/config.json', `the ${config.schemas.length} configuration schemas`],
   ['reference/python-symbols.json', 'reference/python-symbols.json', 'every public Python name'],
   ['content-index.json', 'content-index.json', 'every route with its title and headings'],
   ['build-info.json', 'build-info.json', 'the package version and the source commit'],

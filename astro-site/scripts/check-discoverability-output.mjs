@@ -140,7 +140,7 @@ for (const [name, text] of [['llms.txt', llms], ['llms-full.txt', bundle]]) {
   if (text.includes(`${base}404/`)) fail(`${name} lists the 404 page`);
 }
 
-const ARTIFACTS = [
+const REQUIRED_ARTIFACTS = [
   'modules/catalog.json',
   'modules/boards.json',
   'reference/api/reference.json',
@@ -149,7 +149,7 @@ const ARTIFACTS = [
   'reference/config.json',
   'build-info.json',
 ];
-for (const artifact of ARTIFACTS) {
+for (const artifact of REQUIRED_ARTIFACTS) {
   if (!fs.existsSync(path.join(dist, artifact))) fail(`dist is missing ${artifact}`);
   if (!llms.includes(`${base}${artifact}`)) fail(`llms.txt does not list ${artifact}`);
 }

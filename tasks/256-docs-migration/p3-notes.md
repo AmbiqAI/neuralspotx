@@ -39,7 +39,7 @@ An authored page is not automatically safe either. `componentCards()` reads
 props and puts each card back under the heading the source files it under, in
 source order, one entry per card. Deduplicating by href was wrong: `/modules/`
 has seven cards pointing at the catalog, one per module type, and collapsing
-them left a single link labelled "Backend specific" under two empty headings.
+them left a single link labeled "Backend specific" under two empty headings.
 Home has no Markdown headings at all, so its nine cards land in a `## Links`
 section at the end. The per-module `reference.json` link is also added to each
 Python API rendition, because pyref's bundle does not carry it and it is the
@@ -64,7 +64,7 @@ real 404 page itself, `dist/404.html`, is untouched and still checked.
 
 `llms-full.txt` is then recomposed from the renditions on disk, in the plugin's
 sidebar order, with its `<!-- url -->` section markers kept so the file reads as
-one format whichever pass wrote a given section. 477 KiB, 148 sections, one per
+one format whichever pass wrote a given section. 481 KiB, 149 sections, one per
 content route.
 
 `llms.txt` keeps everything the plugin wrote and gains a `## Machine-readable`
@@ -190,7 +190,7 @@ away.
 
 Starlight installs `@astrojs/sitemap` itself, so `sitemap-index.xml` and
 `sitemap-0.xml` come out without extra configuration and the plugin writes the
-`robots.txt` that points at the index. Verified and checked: 148 locations, all
+`robots.txt` that points at the index. Verified and checked: 149 locations, all
 under `https://ambiqai.github.io/neuralspotx/`, the 404 absent, every redirect
 stub absent, and every content route present.
 
@@ -211,9 +211,9 @@ from the rendered footer. `build-info.json` is also listed in llms.txt now, so
 an agent can name the commit it read the docs at.
 
 Per-page budgets are unchanged: 640 KB HTML and 40 KB gzip for Python API pages,
-250 KB and 40 KB elsewhere, warning at 80 per cent.
-`reference/api/neuralspotx/api` sits at 81 per cent of its HTML budget and 83
-per cent of its gzip budget and is warning, as designed, so it gets split before
+250 KB and 40 KB elsewhere, warning at 80 percent.
+`reference/api/neuralspotx/api` sits at 82 percent of its HTML budget and 84
+percent of its gzip budget and is warning, as designed, so it gets split before
 it fails. The job summary already timed reference generation, the snapshot
 check, module generation and the build; it now also records the redirect stub
 count, the rendition count, the size of `llms-full.txt` and the total artifact
@@ -225,17 +225,17 @@ Local, macOS, Node 24.12.0.
 
 | Measure | Value |
 | --- | --- |
-| Routes | 149 indexed, of which 148 are content routes; the 404 is not one |
-| HTML files in dist | 209, that is 149 pages plus 60 redirect stubs |
+| Routes | 150 indexed, of which 149 are content routes; the 404 is not one |
+| HTML files in dist | 210, that is 149 content pages, the 404 and 60 redirect stubs |
 | Markdown renditions | 149 |
 | Renditions rebuilt from a model | 94 |
 | Renditions given back their link cards | 2, carrying 19 cards |
-| `llms-full.txt` | 477 KiB, 148 sections |
+| `llms-full.txt` | 481 KiB, 149 sections |
 | Public symbols asserted in the bundle | 80 |
 | CLI commands asserted | 35 |
 | Modules asserted | 50 |
 | Redirect entries | 67, of which 60 emit a stub |
-| dist | 716 files, 21.4 MiB |
+| dist | 718 files, 21.9 MiB |
 
 ## 7. Left for PR 2
 

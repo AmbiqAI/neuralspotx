@@ -3,8 +3,8 @@
 Drafts only. Nothing below has been filed; Adam files or discards each one.
 Checked against the pin in `astro-site/package-lock.json`.
 
-Two drafts from P1b cover ground this phase walked again and are not repeated
-here:
+Three drafts from earlier phases cover ground this phase walked again and are
+not repeated here:
 
 | Draft | Where | Status in P3 |
 | --- | --- | --- |

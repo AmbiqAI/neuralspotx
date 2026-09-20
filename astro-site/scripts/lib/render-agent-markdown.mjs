@@ -24,7 +24,7 @@ import { rows as configRows } from './render-config.mjs';
 /** A pipe inside a cell would start a new column. */
 const cell = (value) => String(value ?? '').replace(/\|/g, '\\|').replace(/\n+/g, ' ').trim();
 
-export function table(headers, bodyRows) {
+function table(headers, bodyRows) {
   if (bodyRows.length === 0) return '';
   return [
     `| ${headers.join(' | ')} |`,
