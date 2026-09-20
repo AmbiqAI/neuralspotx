@@ -290,7 +290,7 @@ After the first publish from `main`:
    `application/json`.
 7. **llms content.** `/neuralspotx/llms.txt` lists all eleven machine-readable
    artifacts and every one resolves; `/neuralspotx/llms-full.txt` is about
-   473 KiB and contains a signature from the Python API, an option table row
+   477 KiB and contains a signature from the Python API, an option table row
    from a CLI page and a version line from a module page, which is the
    composition the postbuild pass exists to guarantee.
 8. **One public site.** The old MkDocs routes no longer serve their old content,
