@@ -157,14 +157,15 @@ export default defineConfig({
               ],
             },
           ],
-          /* llms.txt and the agent-facing bundle are AmbiqAI/neuralspotx#261;
-             the rest costs nothing on a site that already has an absolute
-             `site` and per-page frontmatter. */
+          /* The plugin reads authored source, so its llms.txt, llms-full.txt
+             and per-route renditions miss everything the generated pages hold
+             in component props. scripts/publish-agent-bundle.mjs rewrites both
+             from the reference and module models after the build. */
           discoverability: {
             ogImage: true,
             jsonLd: true,
             markdown: true,
-            llms: false,
+            llms: true,
           },
           footer: {
             links: [

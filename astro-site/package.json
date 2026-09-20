@@ -14,6 +14,7 @@
     "dev": "astro dev",
     "prebuild": "npm run prepare:docs",
     "build": "astro build",
+    "postbuild": "node scripts/publish-agent-bundle.mjs",
     "preview": "astro preview",
     "precheck": "npm run prepare:docs",
     "check": "astro check",
@@ -24,7 +25,8 @@
     "build:modules": "node scripts/build-modules.mjs",
     "build:examples": "node scripts/build-examples.mjs",
     "check:modules": "node scripts/check-modules-output.mjs",
-    "test:modules": "node scripts/test-modules-escaping.mjs"
+    "test:modules": "node scripts/test-modules-escaping.mjs",
+    "bundle:agent": "node scripts/publish-agent-bundle.mjs"
   },
   "dependencies": {
     "@ambiqai/helia-ui": "github:AmbiqAI/helia-ui#266f614958eae8ace4ada151c9d0bed0677203d1",
