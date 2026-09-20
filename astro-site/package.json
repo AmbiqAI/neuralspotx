@@ -9,7 +9,7 @@
     "npm": ">=11"
   },
   "scripts": {
-    "prepare:docs": "node scripts/build-info.mjs && node scripts/build-reference.mjs && node scripts/build-modules.mjs",
+    "prepare:docs": "node scripts/build-info.mjs && node scripts/build-reference.mjs && node scripts/build-modules.mjs && node scripts/build-examples.mjs",
     "predev": "npm run prepare:docs",
     "dev": "astro dev",
     "prebuild": "npm run prepare:docs",
@@ -22,6 +22,7 @@
     "build:reference": "node scripts/build-reference.mjs",
     "check:reference": "node scripts/check-reference-output.mjs",
     "build:modules": "node scripts/build-modules.mjs",
+    "build:examples": "node scripts/build-examples.mjs",
     "check:modules": "node scripts/check-modules-output.mjs",
     "test:modules": "node scripts/test-modules-escaping.mjs"
   },
