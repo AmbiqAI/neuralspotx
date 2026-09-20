@@ -44,7 +44,16 @@ Local, macOS, Node 24.12.0:
 | snapshot, warm (`--check`) | ~0.2 s |
 | render pages | 7 ms |
 | publish artifacts | 1 ms |
-| `npm run build` end to end | ~2.0 s, 105 pages |
+| Astro's own page build | ~1.9 s, 105 pages |
+| `npm run build` wall clock | ~3.8 s |
+
+The Astro figure is the `105 page(s) built in` line the build prints, which
+covers rendering and bundling and nothing else. The wall clock is what `time
+npm run build` reports: the same work plus `prepare:docs` (build info, the
+reference section and this one, about 1.2 s), Pagefind (about 0.1 s), the
+discoverability pass and npm's own startup. A cold run, after `npm run clean`,
+measured the same to a tenth of a second; the caches that matter here were
+filled by `npm ci`.
 
 Counts: 50 modules over 7 declared types, 53 generated pages (overview,
 catalog, board matrix and one per module), 17 boards, 11 SoC families, 5
@@ -63,14 +72,21 @@ decision, plan §7.4. `--check` regenerates in memory and diffs. It is
 mutation-tested in `tests/test_module_data_snapshot.py`: a changed version, a
 removed module, an added field and a changed board tier each have to register.
 
-**A private project cannot be told apart from drift, so it is reported instead
-of failed on.** `helia-dsp` is private. A CI job with no credentials gets an
-access error for it, which would otherwise compare as if every manifest field
-had been deleted. `reconcile_unavailable` carries the committed fields over for
-exactly those modules and names them in the run's output; everything else is
-still compared, and a test proves the reconciliation does not hide a real
-change elsewhere. Writing a snapshot that is missing a manifest needs
-`--allow-missing`, so the committed artifact stays complete.
+**A named private project is reported instead of failed on; anything else that
+cannot be read is a failure.** `helia-dsp` is private. A CI job with no
+credentials gets an access error for it, which would otherwise compare as if
+every manifest field had been deleted. `UNCHECKED_PROJECTS` in
+`build_module_data.py` names the projects allowed to go unread, with the
+reason: `reconcile_unavailable` carries the committed fields over for those
+modules and `--check` names them in its summary. A manifest it could not read
+from any other project fails the check, because carrying the committed fields
+over a failed fetch is what would let a network problem pass as a run that
+compared nothing. `--offline` therefore exits non-zero unless
+`--allow-unchecked` is passed, which is a local convenience and not a CI
+setting. Writing a snapshot that is missing a manifest still needs
+`--allow-missing`, so the committed artifact stays complete. The snapshot
+carries the allowlist, so the note on a module page saying its manifest is not
+re-read goes when the allowlist does.
 
 **The static table is the catalog; the island only hides rows.** The
 acceptance criteria want the full table in the built HTML and in the Markdown
@@ -99,12 +115,27 @@ manifest (`nsx-nanopb`) spells a capability `serialisation`, which the site's
 American-English check rejects. Rewriting another repository's words would make
 the page disagree with `nsx module describe`, and helia-ui's checker has no way
 for a site to mark a generated file as quoting upstream. So `build-modules.mjs`
-carries an explicit `QUOTED_TERMS` list and appends the per-line escape only to
-the lines that need it. Two consequences worth knowing: the escape survives
-into the Markdown rendition, which is why it is applied narrowly rather than to
-every manifest-derived line; and a manifest introducing a new British spelling
-fails the site's spell check, which is the intended failure mode. The fix is an
-issue on the module's own repository.
+carries an explicit `QUOTED_TERMS` list and marks only the values that need it.
+The mark is an empty inline element rather than an MDX comment: the checker
+reads the line the mark sits on, so it has to be on that line, and inside a
+table cell or a list item an MDX comment reaches the page's Markdown rendition
+while a tag does not. A manifest introducing a new British spelling fails the
+site's spell check, which is the intended failure mode. The fix is an issue on
+the module's own repository.
+
+**Manifest prose is escaped once, on the way into MDX.** `escape` in
+`build-modules.mjs` is the only way a manifest string reaches a page: angle
+brackets become character references, and backslashes, braces, backticks and
+pipes take a backslash. Nothing here is written in this repository, and in MDX
+each of those characters either opens markup or ends a cell. Values that read
+better as code go through `code`, which grows the fence past any backticks in
+the value rather than escaping inside it. The page description is the one
+string that leaves MDX: Starlight puts it in a meta attribute and helia-ui's
+discoverability block puts it in JSON-LD, which escapes nothing, so angle
+brackets are dropped from a description rather than escaped for a context that
+varies. `scripts/test-modules-escaping.mjs` builds the site from a fixture
+snapshot carrying a tag, an expression, an unclosed attribute and a
+`</script>`, and reads the built HTML and the renditions back.
 
 ## Found while building this
 
@@ -146,9 +177,15 @@ gets the section without a code change.
   mutation.
 - `astro-site/scripts/check-modules-output.mjs`, wired into `npm run validate`:
   a page and a catalog row per module, a link back to the catalog and an
-  `nsx module add` snippet on each page, the static table's row count, the
-  board matrix in the package's order, the wording pass, the served JSON
-  against the committed snapshot, and the per-page budgets.
+  `nsx module add` snippet on each page, the static table's row count exactly,
+  the board matrix in the package's order, the wording pass, the served JSON
+  against the committed snapshot, and the per-page budgets. The rows and the
+  links are read from inside the table the island filters, so a sidebar entry
+  cannot stand in for a row.
+- `astro-site/scripts/test-modules-escaping.mjs`, run as `npm run test:modules`:
+  the site built from a hostile fixture snapshot, asserting that the payloads
+  reach the page as text and the renditions as the characters the manifest
+  wrote.
 - `.github/workflows/docs.yml`: the drift check, the modules pytest, and the
   generation and build durations in the job summary.
 
