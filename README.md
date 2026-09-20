@@ -54,13 +54,18 @@ and module coverage, design decisions, and how the docs site is built.
 NSX uses an app-first flow. Each app is a self-contained project directory with
 vendored modules, board definitions, and build helpers.
 
-For app users, the cleanest install path is `pipx`:
+For app users, the cleanest install path is `uv`, which `nsx doctor` already
+requires:
 
 ```bash
-pipx install neuralspotx
+uv tool install neuralspotx
 nsx doctor
 nsx create-app hello_ap510 --board apollo510_evb
 ```
+
+`uvx --from neuralspotx nsx doctor` runs a single command without installing
+anything. `pipx install neuralspotx` works too if you already manage your CLI
+tools that way.
 
 For contributors working from a source checkout:
 

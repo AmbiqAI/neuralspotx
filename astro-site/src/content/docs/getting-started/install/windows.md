@@ -13,7 +13,7 @@ In short:
 winget install Python.Python.3.12 astral-sh.uv Kitware.CMake Ninja-build.Ninja Git.Git
 # Arm GNU toolchain: run the official installer, tick "Add path to environment variable"
 # SEGGER J-Link: run the J-Link Software and Documentation Pack installer
-pipx install neuralspotx
+uv tool install neuralspotx
 nsx doctor
 ```
 

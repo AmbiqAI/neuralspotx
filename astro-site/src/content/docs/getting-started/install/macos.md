@@ -13,7 +13,7 @@ In short:
 brew install python uv cmake ninja git
 brew install --cask gcc-arm-embedded
 brew install --cask segger-jlink
-pipx install neuralspotx
+uv tool install neuralspotx
 nsx doctor
 ```
 

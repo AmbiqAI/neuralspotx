@@ -56,26 +56,30 @@ you do not have a board yet.
 
 ## 4. The nsx CLI
 
-This part is identical on every platform. [pipx](https://pipx.pypa.io) puts `nsx` on your
-`PATH` in its own environment, which keeps it away from the Python environments your
-projects use.
+This part is identical on every platform. You installed [uv](https://docs.astral.sh/uv/)
+with the host tools in step 1, and `nsx doctor` checks for it, so it is the install path
+with nothing extra to set up. `uv tool install` puts `nsx` on your `PATH` in its own
+environment, which keeps it away from the Python environments your projects use.
 
 ```bash
-python3 -m pip install --user pipx
-python3 -m pipx ensurepath
-```
-
-Open a new terminal so `ensurepath` takes effect, then install the package:
-
-```bash
-pipx install neuralspotx
+uv tool install neuralspotx
 ```
 
 To pin a published version:
 
 ```bash
-pipx install 'neuralspotx==<version>'
+uv tool install 'neuralspotx==<version>'
 ```
+
+To try NSX without installing anything, `uvx` fetches the package into a throwaway
+environment and runs one command from it:
+
+```bash
+uvx --from neuralspotx nsx doctor
+```
+
+If you already manage your CLI tools with [pipx](https://pipx.pypa.io), `pipx install
+neuralspotx` and `pipx install 'neuralspotx==<version>'` do the same job.
 
 :::note[Working from a source checkout]
 Contributors clone the repository and let uv own the environment instead:

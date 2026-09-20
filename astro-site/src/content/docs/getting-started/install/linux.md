@@ -15,7 +15,7 @@ sudo apt install python3 python3-pip cmake ninja-build git
 curl -LsSf https://astral.sh/uv/install.sh | sh
 # Arm GNU toolchain: extract the official download and put its bin/ on PATH
 # SEGGER J-Link: install the .deb or .rpm pack
-pipx install neuralspotx
+uv tool install neuralspotx
 nsx doctor
 ```
 

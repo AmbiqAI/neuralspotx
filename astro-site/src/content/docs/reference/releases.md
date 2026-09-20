@@ -67,7 +67,7 @@ automate.
 
 ```bash
 # One-off tool install
-pipx install neuralspotx==0.8.1
+uv tool install neuralspotx==0.8.1
 
 # Project dependency
 uv add "neuralspotx==0.8.1"
@@ -104,4 +104,4 @@ The `nsx` command does not print its own version, so ask the package:
 python -c "import importlib.metadata as m; print(m.version('neuralspotx'))"
 ```
 
-or `pipx list` if you installed it as a tool.
+or `uv tool list` if you installed it as a tool, `pipx list` if you used pipx.
