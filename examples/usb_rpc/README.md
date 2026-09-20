@@ -1,3 +1,12 @@
+---
+title: USB RPC
+tier: integrations
+capabilities: [usb, rpc, nanopb]
+summary: USB vendor-class RPC with nanopb protobuf serialization.
+status: tested
+boards_tested: [apollo510_evb]
+---
+
 # usb_rpc
 
 USB CDC RPC (Remote Procedure Call) example for Apollo510 EVB.

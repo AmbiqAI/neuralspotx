@@ -13,8 +13,8 @@ import referenceSidebar from './src/data/reference-sidebar.json' with { type: 'j
 // Written by scripts/build-modules.mjs from the committed module snapshot, in
 // the same prepare:docs pass (AmbiqAI/neuralspotx#259).
 import modulesSidebar from './src/data/modules-sidebar.json' with { type: 'json' };
-// Written by scripts/build-examples.mjs from the example front matter and each
-// example's README, in the same pass (AmbiqAI/neuralspotx#260).
+// Written by scripts/build-examples.mjs from each example README's front matter
+// and body, in the same pass (AmbiqAI/neuralspotx#260).
 import examplesSidebar from './src/data/examples-sidebar.json' with { type: 'json' };
 // Every route the MkDocs site published, mapped to its successor
 // (AmbiqAI/neuralspotx#261). Authored from the fate table in

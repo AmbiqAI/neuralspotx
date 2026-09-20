@@ -1,9 +1,14 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026, Ambiq
 /*
- * Renders the Examples pages under Guides from two sources outside this
- * directory: the front matter in `docs/examples/*.md` and the body of each
- * `examples/<name>/README.md` (AmbiqAI/neuralspotx#260).
+ * Renders the Examples pages under Guides from `examples/<name>/README.md`:
+ * its front matter supplies the table columns, its body is the page
+ * (AmbiqAI/neuralspotx#260).
+ *
+ * The front matter lives beside the code it describes rather than in a docs
+ * tree, so an example and its declared tier, status and tested boards move
+ * together and neither can be edited without the other in view
+ * (AmbiqAI/neuralspotx#261).
  *
  * The READMEs are included at build time rather than imported from MDX. An
  * MDX `import { Content }` of a file outside the site root does render in the
@@ -15,13 +20,13 @@
  * gitignored: the READMEs are the source of record, so a committed copy could
  * only ever be a stale one.
  */
+import { existsSync } from 'node:fs';
 import { mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import process from 'node:process';
 
 const siteRoot = path.resolve(import.meta.dirname, '..');
 const repoRoot = path.resolve(siteRoot, '..');
-const stubDir = path.join(repoRoot, 'docs', 'examples');
 const exampleDir = path.join(repoRoot, 'examples');
 const outDir = path.join(siteRoot, 'src', 'content', 'docs', 'guides', 'examples');
 const dataDir = path.join(siteRoot, 'src', 'data');
@@ -53,11 +58,10 @@ const fail = (message) => {
 };
 
 /**
- * Minimal front matter reader for the example stubs.
+ * Minimal front matter reader for the example READMEs.
  *
- * The stubs only ever carry scalars and flow-style lists, so a YAML
- * dependency would buy nothing. Anything else is an error rather than a
- * silent miss.
+ * They only ever carry scalars and flow-style lists, so a YAML dependency
+ * would buy nothing. Anything else is an error rather than a silent miss.
  */
 const parseFrontMatter = (text, source) => {
   const match = /^---\n([\s\S]*?)\n---/.exec(text);
@@ -87,10 +91,12 @@ const codeList = (values) =>
   values.length ? values.map((v) => `\`${v}\``).join(', ') : 'none declared';
 
 /**
- * Strip the README's own H1 and opt the known quoted spellings out of the
- * site's spelling check. Everything else is the author's text, unchanged.
+ * Strip the README's front matter and its own H1, then opt the known quoted
+ * spellings out of the site's spelling check. Everything else is the author's
+ * text, unchanged.
  */
-const prepareReadme = (body) => {
+const prepareReadme = (text) => {
+  const body = text.replace(/^---\n[\s\S]*?\n---\n/, '');
   const lines = body.replace(/\r\n/g, '\n').split('\n');
   while (lines.length && !lines[0].trim()) lines.shift();
   if (lines[0]?.startsWith('# ')) {
@@ -104,25 +110,29 @@ const prepareReadme = (body) => {
 };
 
 const main = async () => {
-  const stubs = (await readdir(stubDir))
-    .filter((name) => name.endsWith('.md') && name !== 'index.md')
+  /* An example is a directory that carries an nsx.yml, which is what makes it
+     buildable by name; a directory without one is not an app and gets no page. */
+  const names = (await readdir(exampleDir, { withFileTypes: true }))
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .filter((name) => existsSync(path.join(exampleDir, name, 'nsx.yml')))
     .sort();
-  if (!stubs.length) fail(`no example stubs under ${stubDir}`);
+  if (!names.length) fail(`no examples under ${exampleDir}`);
 
   const examples = [];
-  for (const stub of stubs) {
-    const name = stub.replace(/\.md$/, '');
-    const meta = parseFrontMatter(await readFile(path.join(stubDir, stub), 'utf8'), stub);
+  for (const name of names) {
+    const source = `examples/${name}/README.md`;
     let readme;
     try {
       readme = await readFile(path.join(exampleDir, name, 'README.md'), 'utf8');
     } catch {
-      fail(`examples/${name}/README.md is missing but docs/examples/${stub} documents it`);
+      fail(`${source} is missing but examples/${name}/nsx.yml declares an app`);
     }
+    const meta = parseFrontMatter(readme, source);
     for (const field of ['title', 'tier', 'summary', 'status']) {
-      if (!meta[field]) fail(`docs/examples/${stub} is missing '${field}'`);
+      if (!meta[field]) fail(`${source} front matter is missing '${field}'`);
     }
-    if (!TIER_ORDER.includes(meta.tier)) fail(`docs/examples/${stub} has unknown tier '${meta.tier}'`);
+    if (!TIER_ORDER.includes(meta.tier)) fail(`${source} has unknown tier '${meta.tier}'`);
     examples.push({
       name,
       title: meta.title,
