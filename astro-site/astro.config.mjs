@@ -10,6 +10,9 @@ import buildInfo from './src/data/build-info.json' with { type: 'json' };
 // Written by scripts/build-reference.mjs, which every dev, check and build run
 // invokes through prepare:docs before Astro starts.
 import referenceSidebar from './src/data/reference-sidebar.json' with { type: 'json' };
+// Written by scripts/build-modules.mjs from the committed module snapshot, in
+// the same prepare:docs pass (AmbiqAI/neuralspotx#259).
+import modulesSidebar from './src/data/modules-sidebar.json' with { type: 'json' };
 
 const base = '/neuralspotx';
 const basePath = `${base}/`;
@@ -18,8 +21,8 @@ export default defineConfig({
   site: 'https://ambiqai.github.io',
   base,
   integrations: [
-    /* No island ships yet; the integration is here so the module catalog's
-       filter (AmbiqAI/neuralspotx#259) is a page change, not a setup change. */
+    /* The module catalog's filter is the site's one island
+       (src/components/ModuleCatalogFilter.tsx). */
     react(),
     starlight({
       title: 'neuralSPOT-X',
@@ -42,8 +45,7 @@ export default defineConfig({
           /* Home carries no pages of its own, so it renders at the full width
              of the frame and the other four are reached from the top bar.
              Each section's sidebar is an Overview entry until its content
-             lands: getting started and guides in #260, reference in #258,
-             modules in #259. */
+             lands: getting started and guides in #260. */
           sections: [
             { label: 'Home', href: basePath, sidebar: false },
             {
@@ -59,7 +61,7 @@ export default defineConfig({
             {
               label: 'Modules',
               href: `${basePath}modules/`,
-              sidebar: [{ label: 'Overview', slug: 'modules' }],
+              sidebar: modulesSidebar.items,
             },
             {
               label: 'Reference',

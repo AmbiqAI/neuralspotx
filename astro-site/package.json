@@ -9,7 +9,7 @@
     "npm": ">=11"
   },
   "scripts": {
-    "prepare:docs": "node scripts/build-info.mjs && node scripts/build-reference.mjs",
+    "prepare:docs": "node scripts/build-info.mjs && node scripts/build-reference.mjs && node scripts/build-modules.mjs",
     "predev": "npm run prepare:docs",
     "dev": "astro dev",
     "prebuild": "npm run prepare:docs",
@@ -20,7 +20,8 @@
     "validate": "node scripts/check-output.mjs && node scripts/check-reference-output.mjs && helia-ui-check-spdx --root . && helia-ui-check-spelling --root .",
     "clean": "node -e \"const fs=require('node:fs');fs.rmSync('dist',{recursive:true,force:true});fs.rmSync('.astro',{recursive:true,force:true})\"",
     "build:reference": "node scripts/build-reference.mjs",
-    "check:reference": "node scripts/check-reference-output.mjs"
+    "check:reference": "node scripts/check-reference-output.mjs",
+    "build:modules": "node scripts/build-modules.mjs"
   },
   "dependencies": {
     "@ambiqai/helia-ui": "github:AmbiqAI/helia-ui#v0.1.0-alpha.14",

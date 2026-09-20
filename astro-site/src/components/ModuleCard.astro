@@ -1,0 +1,60 @@
+---
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright (c) 2026, Ambiq
+/**
+ * The header block on a generated module page: what the module is, which
+ * version of it the registry pins, and where its source lives.
+ *
+ * It is local rather than a helia-ui part because the package has no card that
+ * carries a version, a pinned revision and a tag list in one header; it is
+ * built out of the package's Card parts so it stays on the shared vocabulary.
+ */
+import Card from '@ambiqai/helia-ui/astro/Card';
+import CardHeader from '@ambiqai/helia-ui/astro/CardHeader';
+import CardContent from '@ambiqai/helia-ui/astro/CardContent';
+import Chip from '@ambiqai/helia-ui/astro/Chip';
+
+interface Props {
+  name: string;
+  typeLabel: string;
+  version: string;
+  summary: string;
+  project: string;
+  revision: string;
+  sourceUrl: string;
+  capabilities: string[];
+}
+
+const { name, typeLabel, version, summary, project, revision, sourceUrl, capabilities } =
+  Astro.props;
+
+const meta = [version ? `v${version}` : null, `${project}@${revision}`]
+  .filter(Boolean)
+  .join(' · ');
+---
+
+<Card tone="muted" density="compact" class="not-content">
+  <CardHeader eyebrow={typeLabel} titleAs="h2">
+    <code>{name}</code>
+    <Fragment slot="meta">{meta}</Fragment>
+  </CardHeader>
+  <CardContent>
+    {summary ? <p>{summary}</p> : <p>This module's manifest declares no summary.</p>}
+    {
+      capabilities.length > 0 && (
+        <p class="flex flex-wrap gap-1.5">
+          {capabilities.map((capability) => (
+            <Chip size="sm">{capability}</Chip>
+          ))}
+        </p>
+      )
+    }
+    {
+      sourceUrl && (
+        <p>
+          <a href={sourceUrl}>{project}</a> at <code>{revision}</code>
+        </p>
+      )
+    }
+  </CardContent>
+</Card>
