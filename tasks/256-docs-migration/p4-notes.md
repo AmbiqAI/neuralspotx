@@ -311,7 +311,14 @@ Still to do before merge:
   branch-protection setting, so it is the owner's to make.
 
 The helia-ui pin has moved from commit `266f614` to the released tag
-`v0.1.0-alpha.15`.
+`v0.1.0-alpha.16`. That release closed #143 and #149, so the component-link
+recovery pass in `publish-agent-bundle.mjs` and the clone-and-replace before
+play in `JourneyWalkthrough.astro` both came out. Two "Read more:" rows on Home
+went with them, the HELIA stack row and the Documentation row, because the
+`LinkCard` grids above them now reach the rendition with their titles, targets
+and descriptions intact. The rows over the `Card` plus `CardHeader` grids stay:
+those cards state their title as children rather than as a literal `title`
+prop, and the pass emits a link only for a component carrying both.
 
 Deliberately out of scope, by owner decision on 2026-09-20: Windows execution is
 waived for this pass, the four hardware transcripts ship as described output

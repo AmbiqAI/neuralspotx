@@ -21,7 +21,6 @@ import { fileURLToPath } from 'node:url';
 import { execFileSync } from 'node:child_process';
 import crypto from 'node:crypto';
 import { flatten } from './lib/render-cli.mjs';
-import { componentCards } from './lib/render-agent-markdown.mjs';
 
 const siteRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dist = path.join(siteRoot, 'dist');
@@ -249,32 +248,10 @@ for (const entry of routes) {
          are assets rather than links a reader or an agent would follow. */
       .filter((href) => href.startsWith(base) && !href.startsWith(`${base}_astro/`)),
   );
+  /* Every link the page offers a reader has to reach an agent too, whether the
+     discoverability pass read it off a card's props or out of the prose. */
   for (const href of links) {
     if (!rendition.includes(href)) fail(`${entry.route}: the rendition drops the link to ${href}`);
-  }
-
-  /*
-   * A page of N link cards must render as N entries, not as one per distinct
-   * href. Seven cards pointing at the catalog are seven statements about it,
-   * and deduplicating them leaves the reader a catalog link labeled with
-   * whichever card happened to come last.
-   */
-  const source = path.join(siteRoot, entry.sourcePath);
-  if (!fs.existsSync(source)) continue;
-  const cards = componentCards(read(source));
-  if (cards.length === 0) continue;
-  const entries = rendition.split('\n').filter((line) => line.startsWith('- ['));
-  for (const card of cards) {
-    const target = card.href.startsWith('http') ? card.href : `${origin}${card.href}`;
-    if (!entries.some((line) => line.startsWith(`- [${card.title}](${target})`))) {
-      fail(`${entry.route}: no entry titled "${card.title}" pointing at ${card.href}`);
-    }
-  }
-  const fromCards = entries.filter((line) =>
-    cards.some((card) => line.startsWith(`- [${card.title}](`)),
-  );
-  if (fromCards.length < cards.length) {
-    fail(`${entry.route}: ${fromCards.length} entries for ${cards.length} link cards, so some were merged`);
   }
 }
 

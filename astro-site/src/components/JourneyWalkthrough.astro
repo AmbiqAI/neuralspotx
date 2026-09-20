@@ -96,30 +96,17 @@ const BEHAVIOR = `
         this.dataset.stage = String(active);
         if (!play) return;
 
-        /* A terminal parsed after the element definition is upgraded before
-           its children exist, so its setup finds no lines (helia-ui gap, see
-           the gaps file). Re-inserting a clone upgrades it with children in
-           place; the ready markers are dropped so setup runs again. */
-        const stale = panels[active].querySelector('helia-ascii-terminal');
-        let terminal = stale;
-        if (stale) {
-          /* The old instance keeps typing into a detached tree unless its run
-             counter moves; the terminal aborts a run whose id is stale. */
-          stale.runId = (stale.runId || 0) + 1;
-          terminal = stale.cloneNode(true);
-          delete terminal.dataset.ready;
-          delete terminal.dataset.enhanced;
-          terminal.removeAttribute('data-playing');
-          stale.replaceWith(terminal);
-        }
-        const button = terminal?.querySelector('[data-replay-button]');
-        if (reducedMotion.matches || !terminal || !button) {
+        const terminal = panels[active].querySelector('helia-ascii-terminal');
+        if (reducedMotion.matches || typeof terminal?.play !== 'function') {
           schedule();
           return;
         }
-        /* The terminal owns its typing; it raises data-playing while it runs,
-           so the hand-off waits for that attribute to clear. */
-        button.click();
+        /* The terminal owns its typing and its readiness: play() waits for the
+           instance to be set up and aborts whatever run was in flight. It
+           raises data-playing while it runs, so the hand-off waits for that
+           attribute to clear rather than on the promise, which also settles on
+           the run this one superseded. */
+        void terminal.play();
         watching = new MutationObserver(() => {
           if (terminal.hasAttribute('data-playing')) return;
           stop();

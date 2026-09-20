@@ -162,11 +162,21 @@ so neither is specific to one authoring style.
   a card that says "17 modules: nsx-board-apollo2-evb, ..." reaches an agent as nothing
   at all.
 
-Worked around in `astro-site/scripts/lib/render-agent-markdown.mjs`
-(`componentCards`), which reads title, href and description back out of the props and
-files each card under the heading the source puts it under.
-`astro-site/scripts/check-discoverability-output.mjs` then fails when a page of N cards
-renders as fewer than N entries.
+**Status: shipped in `v0.1.0-alpha.16` as #143.** Both defects are fixed upstream:
+multi-line `export` bodies, MDX comments and expressions are dropped from the
+rendition, and a component carrying a literal `title` and `href` is emitted as
+`- [title](href): children`. The local workaround
+(`componentCards` in `astro-site/scripts/lib/render-agent-markdown.mjs`, plus the
+relinking pass in `publish-agent-bundle.mjs` and the card-count assertion in
+`check-discoverability-output.mjs`) is removed.
+
+Two residues, neither blocking and both narrower than this draft. The fix reads
+literal attributes only, so it does not recover a value built by an expression;
+that is why the model-based composer for the generated CLI, config and API
+renditions stays. And the description comes from the card's children, so a card
+written with a `description=` prop still reaches an agent with its title and
+link but no description: `dist/modules/index.md` shows exactly that. Worth a
+follow-up draft rather than a reopen.
 
 **What the pages do instead.** Transcript arrays moved into
 `astro-site/src/data/transcripts/*.json` and are imported, because a single-line `import`
@@ -201,6 +211,15 @@ not. The card's `href` is still lost either way. That makes the suggested fix na
 than Draft 5 assumed: a prop-to-markdown rule is needed for `href`, but a part whose text
 lives in a slot already renders correctly. Worth saying in the issue, because it means
 "prefer the slot form" is a real authoring workaround available today.
+
+**Superseded by #143 in `v0.1.0-alpha.16`, and inverted.** The rule that shipped emits a
+link for any component carrying a literal `title` and `href`, so the prop form is now the
+one that renders and the slot form is the one that does not: `CardHeader` carries the
+`href` but states its title as children, so the capability grids on Home reach the
+rendition as prose with no links. That is why Home still carries a "Read more:" row over
+every `Card` + `CardHeader` grid and no longer needs one over its `LinkCard` grids.
+Rewriting those cards to pass a literal `title` would retire the remaining rows; it is a
+Home authoring change, not an upstream one.
 
 ---
 
@@ -280,6 +299,6 @@ section-page one. The second costs nothing and would be enough here.
 
 **Shape that worked.** `stages: { id, label, title, caption, lines }[]`, `dwell`, `typingSpeed`, `lineDelay`. A tablist rail of numbered chips, one terminal per stage stacked in a single grid cell so the card keeps the tallest stage's height, a live caption, Replay. Auto-advance starts on intersection, plays a stage through the terminal's own replay control, waits for `data-playing` to clear, dwells, then moves on; a rail click pauses autoplay; hover and focus pause; reduced motion shows the rail and the first stage with no animation. All stages render server-side for no-JS readers and the Markdown rendition.
 
-**Proposal.** Adopt it as `astro/Walkthrough.astro` with that prop shape. Two things the package would fix better than a consumer: a terminal should expose a play method or event instead of a consumer clicking its replay button, and #149 (instances after the first are set up before their children exist) must land first, since the site works around it by re-inserting a clone before each play.
+**Proposal.** Adopt it as `astro/Walkthrough.astro` with that prop shape. **The two things this draft asked the package for both shipped in `v0.1.0-alpha.16` as #149:** every `AsciiTerminal` on a page is set up rather than only the first, and the element exposes `play()`, which waits for readiness and resolves when the run ends. The site no longer clicks a replay button or re-inserts a clone before each play; it calls `play()` and still hands off on `data-playing`, because the promise also settles for a run a later stage superseded. Nothing upstream now blocks adopting the part itself.
 
 **Consumer context.** AmbiqAI/neuralspotx#260 hero. Related: #118 (output pacing), #149.

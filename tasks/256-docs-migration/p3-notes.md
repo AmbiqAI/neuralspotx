@@ -34,19 +34,26 @@ MDX or the HTML, so the bundle is composed from the model instead. heliaRT
 reached the same conclusion and carries the same postbuild pass for its
 reference section.
 
-An authored page is not automatically safe either. `componentCards()` reads
-`title`, `href` and `description` back out of `LinkCard`, `Button` and `Card`
-props and puts each card back under the heading the source files it under, in
-source order, one entry per card. Deduplicating by href was wrong: `/modules/`
-has seven cards pointing at the catalog, one per module type, and collapsing
-them left a single link labeled "Backend specific" under two empty headings.
-Home has no Markdown headings at all, so its nine cards land in a `## Links`
-section at the end. The per-module `reference.json` link is also added to each
-Python API rendition, because pyref's bundle does not carry it and it is the
-artifact an agent should read instead of the page.
+An authored page was not automatically safe either, and for a while this phase
+carried a second pass for it: `componentCards()` read `title`, `href` and
+`description` back out of `LinkCard`, `Button` and `Card` props and filed each
+card under the heading the source puts it under. helia-ui#143 shipped in
+`v0.1.0-alpha.16` and the pass is gone. The plugin now emits one list entry per
+card, in source order and under the card's own heading, so the two properties
+that pass existed to hold still hold: `/modules/` renders its seven catalog
+cards as seven entries rather than collapsing them to one labeled "Backend
+specific", and Home's cards land where the page puts them.
+
+Two things the plugin does not recover, which is why the model-based composer
+stays. It reads literal attributes only, so a `rows={...}` table is still
+invisible to it; and it takes a card's description from the card's children,
+ignoring a `description=` prop, so cards written that way reach the rendition
+as a title and a link with no description. The per-module `reference.json` link
+is also still added to each Python API rendition, because pyref's bundle does
+not carry it and it is the artifact an agent should read instead of the page.
 
 Every pass replaces rather than appends. Each block it writes is fenced by
-`<!-- nsx:facts -->` or `<!-- nsx:cards -->` markers and the `## Machine-readable`
+`<!-- nsx:facts -->` markers and the `## Machine-readable`
 section is rebuilt, so running the composer twice over one `dist` produces the
 same bytes. That is asserted, not assumed: the check hashes the renditions and
 both llms files, runs the composer again, and fails on any change. An appending

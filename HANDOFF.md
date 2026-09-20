@@ -26,7 +26,10 @@ what to check live, in order, the first time it publishes.
 
 Content state: all five sections are written, the Reference and Modules
 sections are generated on every build, and all 67 MkDocs routes redirect.
-helia-ui is pinned to the released tag `v0.1.0-alpha.15`, not to a commit.
+helia-ui is pinned to the released tag `v0.1.0-alpha.16`, not to a commit. That
+release closed helia-ui#143 and #149, and both local workarounds for them are
+gone: the component-link recovery pass in `publish-agent-bundle.mjs` and the
+clone-and-replace before play in `JourneyWalkthrough.astro`.
 Per-phase detail is in `tasks/256-docs-migration/p1a-notes.md`, `p1b-notes.md`,
 `p2-pr1-notes.md`, `p2-pr2-notes.md`, `p3-notes.md` and `p4-notes.md`.
 
@@ -96,11 +99,15 @@ change, and each has its own issue:
 ## Gotchas
 
 - **The Markdown rendition is derived from the MDX source, not the HTML.**
-  Anything that only exists in a component prop is absent from
-  `dist/<route>/index.md`. Authored pages are therefore plain `.md`, and the
-  example READMEs are inlined at build time.
-  `astro-site/scripts/publish-agent-bundle.mjs` repairs the generated routes
-  after the build; a new generated section has to be taught to it.
+  Since alpha.16 the discoverability pass renders the props it can read, so a
+  card carrying a literal `title` and `href` reaches `dist/<route>/index.md` as
+  a link. It still cannot read a value built by an expression: a table whose
+  rows are a `rows={...}` prop, and a `description=` prop, which it ignores in
+  favor of the card's children. Authored pages are therefore plain `.md`, and
+  the example READMEs are inlined at build time.
+  `astro-site/scripts/publish-agent-bundle.mjs` re-renders the generated routes
+  from their models after the build; a new generated section has to be taught
+  to it.
 - **A page with no sidebar entry is filed under "Other pages" in `llms.txt`,
   silently.** `check-discoverability-output.mjs` now fails on that for
   everything except Home and the 404.
@@ -145,10 +152,14 @@ change, and each has its own issue:
 The owner will have a separate session improve the look and feel once this
 branch is merged. Content, generation and checks are the contract of this
 branch; visual choices are open. Known items for that pass, none of them
-blocking: the "Read more:" link rows under each Home card grid (they exist
-only for the Markdown rendition until helia-ui#143 ships in alpha.16, then
-they go); the hero walkthrough (`astro-site/src/components/JourneyWalkthrough.astro`,
-proposed upstream as a helia-ui part in `tasks/256-docs-migration/helia-ui-gaps-260.md`
+blocking: the "Read more:" link rows still under most Home card grids. Those
+rows exist only for the Markdown rendition, and alpha.16 retired two of them.
+The rest stay because the grids under them are `Card` plus `CardHeader`, which
+carries an `href` but states its title as children, so the pass emits no link;
+rewriting those cards to carry a literal `title` would let the remaining rows
+go. Also for that pass: the hero walkthrough
+(`astro-site/src/components/JourneyWalkthrough.astro`, proposed upstream as a
+helia-ui part in `tasks/256-docs-migration/helia-ui-gaps-260.md`
 Draft 8); capability cards on Home (Card + IconTile composition); the plain
 hero ground; the catalog toolbar (`ModuleBrowser.tsx`, helia-ui React parts).
 Rules that must survive the pass: helia-ui parts only, no local CSS beyond a

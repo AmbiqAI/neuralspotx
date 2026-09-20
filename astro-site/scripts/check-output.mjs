@@ -134,11 +134,13 @@ if (!fs.existsSync(buildInfoPath)) {
 /*
  * Home's Markdown rendition.
  *
- * The rendition is derived from MDX source, so anything a component holds in a
- * prop reaches an agent as nothing at all (AmbiqAI/helia-ui#143). Home answers
- * that by carrying the figures and links in prose beside the cards, which only
- * works while the prose and the snapshots agree. This is the pass that makes a
- * stale figure a build failure rather than a number nobody rechecked.
+ * The rendition is derived from MDX source, so a figure or a link reaches an
+ * agent only if something in the source states it in a form the discoverability
+ * pass can read: a card's own `title` and `href`, or prose beside the grid for
+ * the cards that carry neither. Which of the two a given link comes through is
+ * not this pass's business, so it asserts against the rendition and lets the
+ * mechanism vary. This is what makes a stale figure or a dropped link a build
+ * failure rather than something nobody rechecked.
  */
 const homeMarkdown = path.join(dist, 'index.md');
 if (!fs.existsSync(homeMarkdown)) {
@@ -167,9 +169,6 @@ if (!fs.existsSync(homeMarkdown)) {
     errors.push(`index.md does not carry the coverage sentence verbatim: ${coverage}`);
   }
 
-  /* Every card grid on Home is duplicated as a link list underneath it. An
-     example added under examples/ shows up in the grid on its own and has to
-     be added to that list by hand, so this is what catches the omission. */
   /* The hero walkthrough is a component, so its stage commands reach the
      rendition only through the sentence under it; the sentence is built from
      the same stage list and matched whole, so it cannot drift from the card. */
@@ -190,6 +189,10 @@ if (!fs.existsSync(homeMarkdown)) {
     }
   }
 
+  /* The links Home has to reach an agent through, whether the discoverability
+     pass got them from a card's props or from the prose beside the grid. An
+     example added under examples/ joins this list from examples.json, so a grid
+     that stops carrying it fails here rather than going unnoticed. */
   const required = [
     ...examples.examples.map((example) => example.href),
     '/neuralspotx/guides/examples/',

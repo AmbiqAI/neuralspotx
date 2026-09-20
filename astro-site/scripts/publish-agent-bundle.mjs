@@ -5,10 +5,12 @@
  * Rewrite the agent-facing bundle from the models, after the site build.
  *
  * helia-ui's discoverability pass writes llms.txt, llms-full.txt and a `.md`
- * rendition per route by reading the authored source and stripping every tag.
- * Two thirds of this site is generated MDX whose content is component props, so
- * what that pass publishes for those routes is a heading and a docstring: no
- * option tables, no field tables, no signatures. heliaRT hit the same wall and
+ * rendition per route by reducing the authored source. It renders the props it
+ * can read, so a link card reaches the rendition as a link; it cannot read a
+ * table built from a `rows={...}` expression, and two thirds of this site is
+ * generated MDX whose content is exactly that. What that pass publishes for
+ * those routes is a heading and a docstring: no option tables, no field tables,
+ * no signatures. heliaRT hit the same wall and
  * answered it the same way, by republishing the reference part of the bundle
  * from the reference model after the build (astro-site/scripts/
  * publish-reference-markdown.mjs there).
@@ -24,12 +26,9 @@
  *   /modules/<slug>/           the plugin's rendition, with the ModuleCard
  *                              facts prepended from the committed snapshot
  *
- * An authored page is not automatically safe either: anything it says through a
- * component prop is gone the same way, so a second pass puts every link card
- * back under the heading it sits beneath. llms-full.txt is then recomposed from
- * the renditions on disk in the plugin's own order and format, and llms.txt
- * gains the machine-readable artifacts, which are what an agent should fetch
- * instead of scraping the pages.
+ * llms-full.txt is then recomposed from the renditions on disk in the plugin's
+ * own order and format, and llms.txt gains the machine-readable artifacts,
+ * which are what an agent should fetch instead of scraping the pages.
  *
  * Every pass replaces rather than appends, so running this twice over one dist
  * produces the same bytes; check-discoverability-output.mjs asserts that.
@@ -43,8 +42,6 @@ import { fileURLToPath } from 'node:url';
 import { flatten, routeFor } from './lib/render-cli.mjs';
 import { typeLabel } from './lib/module-types.mjs';
 import {
-  cardsMarkdown,
-  componentCards,
   moduleFactsMarkdown,
   readNotes,
   renderCliPageMarkdown,
@@ -71,7 +68,6 @@ const renditionFor = (route) =>
 /* Markdown comments, so a block this pass wrote can be found and replaced on
    the next run instead of being appended a second time. llms-full.txt already
    marks its sections the same way. */
-const escapeRegExp = (text) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 const block = (name, body) => `<!-- nsx:${name} -->\n${body}\n<!-- /nsx:${name} -->`;
 const withoutBlocks = (markdown, name) =>
   markdown.replace(
@@ -156,47 +152,6 @@ for (const [route, markdown] of replacements) {
 }
 
 /*
- * Whatever the source of a rendition, a link card is still missing from it, and
- * an index page whose whole body is cards renders as a list of empty headings.
- * Each card goes back under the heading the source files it under, so the
- * rendition reads as the page reads; a card written before any heading, as the
- * Home page's are, lands in a Links section at the end.
- */
-let relinked = 0;
-for (const entry of index.routes) {
-  const source = path.join(siteRoot, entry.sourcePath);
-  if (!fs.existsSync(source)) continue;
-  const cards = componentCards(read(source));
-  if (cards.length === 0) continue;
-  const file = renditionFor(entry.route);
-  let rendition = withoutBlocks(read(file), 'cards');
-  const headings = [...new Set(cards.map((card) => card.heading))];
-  const orphans = [];
-  for (const heading of headings) {
-    const group = cards.filter((card) => card.heading === heading);
-    /* [ \t] rather than \\s: `\\s*$` under /m swallows the blank lines after the
-       heading, so how much it consumes depends on what is already there and the
-       pass stops being idempotent. */
-    const anchor =
-      heading && new RegExp(`^#{2,6}[ \\t]+${escapeRegExp(heading)}[ \\t]*$`, 'm').exec(rendition);
-    if (!anchor) {
-      orphans.push(...group);
-      continue;
-    }
-    const at = anchor.index + anchor[0].length;
-    const body = block('cards', cardsMarkdown(group, { origin }));
-    const rest = rendition.slice(at).replace(/^\n+/, '');
-    rendition = `${rendition.slice(0, at)}\n\n${body}\n\n${rest}`;
-  }
-  if (orphans.length > 0) {
-    const body = block('cards', `## Links\n\n${cardsMarkdown(orphans, { origin })}`);
-    rendition = `${rendition.trimEnd()}\n\n${body}\n`;
-  }
-  fs.writeFileSync(file, rendition, 'utf8');
-  relinked += 1;
-}
-
-/*
  * Recompose llms-full.txt from the renditions on disk, keeping the plugin's
  * order and its `<!-- url -->` section markers so the two files stay one
  * format whichever pass wrote a given section.
@@ -269,7 +224,6 @@ fs.writeFileSync(
 const bytes = Buffer.byteLength(bundle);
 console.log(
   `agent bundle: ${rewritten} of ${contentRoutes.length} renditions rebuilt from the models, ` +
-    `${relinked} given back their link cards, ` +
     `llms-full.txt ${(bytes / 1024).toFixed(0)} KiB over ${sections.length} sections, ` +
     `${ARTIFACTS.length} artifacts listed in llms.txt.`,
 );

@@ -4,12 +4,13 @@
  * Model-derived Markdown for the routes whose content lives in component props.
  *
  * helia-ui's discoverability pass builds llms.txt, llms-full.txt and the
- * per-route `.md` renditions by reading the authored source and deleting every
- * tag. That is right for prose, and lossy for anything generated: a CLI page
- * keeps its usage block and loses its option table, a Python API page keeps the
- * module docstring and loses every signature. So the generated routes are
- * rendered here a second time, from the same models the MDX was rendered from,
- * and publish-agent-bundle.mjs swaps the results in after the build.
+ * per-route `.md` renditions by reducing the authored source. It renders the
+ * props it can read, and a table that only ever existed as a `rows={...}`
+ * expression is not one of them: a CLI page keeps its usage block and loses its
+ * option table, a Python API page keeps the module docstring and loses every
+ * signature. So the generated routes are rendered here a second time, from the
+ * same models the MDX was rendered from, and publish-agent-bundle.mjs swaps the
+ * results in after the build.
  *
  * Rendering from the model rather than stripping the MDX is the point: a table
  * that only ever existed as a `rows={...}` prop cannot be recovered from the
@@ -34,8 +35,8 @@ function table(headers, bodyRows) {
 }
 
 /*
- * MDX comments are `{/* ... *\/}` and survive the plugin's tag stripper, which
- * only removes balanced tags. They are authoring notes, not page text.
+ * A notes file is inlined here rather than reduced by the plugin, so its MDX
+ * comments arrive intact. They are authoring notes, not page text.
  */
 const stripMdxComments = (text) => text.replace(/\{\s*\/\*[\s\S]*?\*\/\s*\}/g, '').trim();
 
@@ -183,63 +184,4 @@ export function moduleFactsMarkdown(module, { typeLabel }) {
 export function readNotes(notesDir, slug) {
   const file = path.join(notesDir, `${slug}.md`);
   return fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
-}
-
-/**
- * The link cards an authored page carries, in the order the source writes them.
- *
- * `<LinkCard title="Catalog" href="/modules/catalog/" description="..." />` is a
- * labeled link on the page and nothing at all in the rendition: the stripper
- * removes the tag and keeps the children, so a card whose text is a prop leaves
- * an empty section behind. The props are authored data, not rendered output, so
- * reading them back recovers what the page says.
- *
- * Every card is returned, including repeats of one href, because seven cards
- * pointing at the catalog are seven different statements about it. Each carries
- * the Markdown heading it sits under, so the composer can put it back where the
- * page puts it rather than in a list at the end.
- */
-export function componentCards(source) {
-  const cards = [];
-  const headings = [...source.matchAll(/^(#{2,6})[ \t]+(.+?)[ \t]*$/gm)];
-  const headingAt = (offset) => {
-    const previous = headings.filter((heading) => heading.index < offset).pop();
-    return previous ? previous[2] : null;
-  };
-  const attribute = (chunk, name) => {
-    const match = new RegExp(`\\b${name}=(?:"([^"]*)"|\\{"([^"]*)"\\})`).exec(chunk);
-    return match ? (match[1] ?? match[2]) : null;
-  };
-  for (const match of source.matchAll(/<(LinkCard|Button|Card)\b([\s\S]*?)(\/?)>/g)) {
-    const [, tag, props, selfClosing] = match;
-    const href = attribute(props, 'href');
-    if (!href) continue;
-    const title = attribute(props, 'title');
-    let description = attribute(props, 'description');
-    if (!description && !selfClosing) {
-      const close = source.indexOf(`</${tag}>`, match.index + match[0].length);
-      if (close !== -1) {
-        description = source
-          .slice(match.index + match[0].length, close)
-          .replace(/\s+/g, ' ')
-          .trim();
-      }
-    }
-    cards.push({
-      heading: headingAt(match.index),
-      href,
-      title: title ?? description ?? href,
-      description: title ? description : null,
-    });
-  }
-  return cards;
-}
-
-export function cardsMarkdown(cards, { origin }) {
-  return cards
-    .map(({ title, href, description }) => {
-      const target = href.startsWith('http') ? href : `${origin}${href}`;
-      return `- [${title}](${target})${description ? `: ${description}` : ''}`;
-    })
-    .join('\n');
 }
