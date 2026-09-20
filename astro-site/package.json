@@ -30,7 +30,7 @@
     "check:discoverability": "node scripts/check-discoverability-output.mjs"
   },
   "dependencies": {
-    "@ambiqai/helia-ui": "github:AmbiqAI/helia-ui#266f614958eae8ace4ada151c9d0bed0677203d1",
+    "@ambiqai/helia-ui": "github:AmbiqAI/helia-ui#v0.1.0-alpha.15",
     "@astrojs/react": "^6.0.2",
     "@astrojs/starlight": "^0.41.5",
     "@astrojs/starlight-tailwind": "^5.0.0",
