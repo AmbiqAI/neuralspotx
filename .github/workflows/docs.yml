@@ -89,6 +89,8 @@ jobs:
       - name: Astro check
         working-directory: astro-site
         run: npm run check
+        env:
+          NSX_DOCS_REFERENCE_PREBUILT: '1'
 
       - name: Build the site
         id: build
@@ -97,6 +99,8 @@ jobs:
           start=$(date +%s)
           npm run build
           echo "seconds=$(( $(date +%s) - start ))" >> "$GITHUB_OUTPUT"
+        env:
+          NSX_DOCS_REFERENCE_PREBUILT: '1'
 
       - name: Validate the built site
         working-directory: astro-site

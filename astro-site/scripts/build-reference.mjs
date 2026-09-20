@@ -196,6 +196,19 @@ function textBundle({ catalog, cli, config, pyrefBundle }) {
 }
 
 function main() {
+  // CI generates the reference once, as its own timed step, then runs check
+  // and build; both of those would otherwise regenerate it through their pre*
+  // hooks. The workflow sets this for those later steps only. Locally the
+  // variable is unset, so `npm run build` still generates as it always has.
+  if (process.env.NSX_DOCS_REFERENCE_PREBUILT === '1') {
+    const report = path.join(dirs.data, 'reference-report.json');
+    if (fs.existsSync(report)) {
+      console.log('reference: already generated for this job, skipping regeneration.');
+      return;
+    }
+    console.log('reference: NSX_DOCS_REFERENCE_PREBUILT is set but no report exists, generating.');
+  }
+
   const commit = commitSha();
   fs.mkdirSync(dirs.work, { recursive: true });
   fs.mkdirSync(dirs.data, { recursive: true });

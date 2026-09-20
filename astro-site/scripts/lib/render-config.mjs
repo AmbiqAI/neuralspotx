@@ -20,16 +20,25 @@ function escapeMdx(text) {
   return String(text ?? '').replace(/([{}<>])/g, '\\$1');
 }
 
+// RefParams gives four columns, so required-ness rides in the type cell and
+// the default column holds only actual defaults. A field that is required in
+// some documents carries the condition rather than a bare "required".
+function typeCell(field) {
+  const base = field.values ? `${field.type} (${field.values})` : field.type;
+  if (!field.required) return base;
+  return field.required_when ? `${base}, required when ${field.required_when}` : `${base}, required`;
+}
+
 function rows(fields) {
   return fields.map((field) => ({
     name: field.path,
-    type: field.values ? `${field.type} (${field.values})` : field.type,
-    default: field.default ?? (field.required ? 'required' : 'optional'),
+    type: typeCell(field),
+    default: field.default ?? '',
     description: field.description ?? '',
   }));
 }
 
-function renderSchema(schema, { routePrefix, base }) {
+function renderSchema(schema) {
   const lines = [
     '---',
     `title: ${yamlString(schema.title)}`,
@@ -43,7 +52,7 @@ function renderSchema(schema, { routePrefix, base }) {
     '',
     `<RefSection title="Fields" id=${yamlString(`${schema.id}-fields`)}>`,
     '',
-    `<RefParams caption=${yamlString(`${schema.file} fields`)} density="compact" nameLabel="Field" typeLabel="Type" defaultLabel="Required" descriptionLabel="Meaning" rows={${JSON.stringify(rows(schema.fields))}} />`,
+    `<RefParams caption=${yamlString(`${schema.file} fields`)} density="compact" nameLabel="Field" typeLabel="Type" defaultLabel="Default" descriptionLabel="Meaning" rows={${JSON.stringify(rows(schema.fields))}} />`,
     '',
     '</RefSection>',
     '',
@@ -61,7 +70,7 @@ function renderSchema(schema, { routePrefix, base }) {
     `\`${schema.error}\` when the document is invalid. The supported`,
     `\`schema_version\` is \`${schema.schema_version}\`.`,
     '',
-    escapeMdx(schema.unknown_keys.trim()),
+    `**Unknown keys:** ${escapeMdx(schema.unknown_keys.trim())}`,
     '',
     '</RefSection>',
     '',
@@ -104,7 +113,7 @@ export function renderConfig({ manifest, outDir, routePrefix, base }) {
   for (const schema of manifest.schemas) {
     fs.writeFileSync(
       path.join(outDir, `${schema.id}.mdx`),
-      renderSchema(schema, { routePrefix, base }),
+      renderSchema(schema),
       'utf8',
     );
     pages.push({

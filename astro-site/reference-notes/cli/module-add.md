@@ -1,5 +1,5 @@
 This is the standard way to install a supported first-class module into an app. The module
-is appended to the app's single `modules:` list, its direct dependencies; the resolved
+is appended to the app's single `modules:` list of direct dependencies; the resolved
 closure is recomputed into `nsx.lock`. For built-in modules NSX uses the registry's default
 upstream repo and revision unless the app overrides that source.
 

@@ -34,8 +34,8 @@ Local, macOS, from a warm uv cache:
 Counts: 80 Python symbols on 6 pages, 35 CLI pages (18 distinct commands, 14
 subcommands, 3 aliases) plus an index, 4 configuration schemas plus an index.
 15 CLI pages carry merged hand-written notes. Unresolved cross-references: 0.
-Largest page `reference/api/neuralspotx/api` at 493,110 bytes HTML and 31,111
-bytes gzip.
+Largest page `reference/api/neuralspotx/api` at about 493 KB HTML and 31 KB
+gzip.
 
 ## Decisions
 
@@ -77,9 +77,9 @@ the grouping the reference is organized around. This is a deliberate deviation
 from the 250 KB starting point in the brief.
 
 Neither budget is comfortably slack and it would be wrong to claim either one
-is binding. The largest page, `neuralspotx.api`, measures 493,110 bytes against
-the 640 KB HTML budget (77%) and 31,111 bytes against the 40 KB gzip budget
-(78%), so the two are about equally close and either could trip first.
+is binding. The largest page, `neuralspotx.api`, measures about 493 KB against the 640 KB
+HTML budget (77%) and about 31 KB against the 40 KB gzip budget (78%), so the
+two are about equally close and either could trip first.
 `check-reference-output.mjs` therefore prints a warning at 80% of either
 budget: that page is meant to be split when it crosses the warning line, not
 when it fails.
@@ -127,7 +127,7 @@ And the three `integrations.zephyr` fields are enforced only when
 
 ## Checks
 
-- `tests/test_reference_generation.py`: 22 tests covering `__all__` coverage,
+- `tests/test_reference_generation.py`: 37 tests covering `__all__` coverage,
   anchor resolution, private-path leakage, unresolved references, the full
   argparse tree, alias dispatch, per-command pages and options, and the four
   configuration schemas against their loaders. `tests/test_public_surface_doc.py`

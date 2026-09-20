@@ -33,7 +33,10 @@ function optionLabel(argument) {
   if (argument.positional) return argument.metavar || argument.name;
   const flags = argument.flags.join(', ');
   if (!argument.takes_value) return flags;
-  return `${flags} ${argument.metavar || argument.name.replace(/^--/, '').toUpperCase()}`;
+  // argparse derives a metavar from the dest, which uses underscores, so the
+  // synthesized one has to match the usage line rather than the flag spelling.
+  const synthesized = argument.name.replace(/^--/, '').replace(/-/g, '_').toUpperCase();
+  return `${flags} ${argument.metavar || synthesized}`;
 }
 
 function optionType(argument) {
@@ -57,7 +60,8 @@ function defaultCell(argument) {
 function describe(argument) {
   const help = argument.help ?? '';
   if (!argument.exclusive_with?.length) return help;
-  const others = argument.exclusive_with.map((flag) => `\`${flag}\``).join(', ');
+  // The rows prop is JSON, so markdown in it would render literally.
+  const others = argument.exclusive_with.join(', ');
   return `${help}${help.endsWith('.') || !help ? '' : '.'} Cannot be combined with ${others}.`;
 }
 
