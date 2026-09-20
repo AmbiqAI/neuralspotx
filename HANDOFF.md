@@ -119,17 +119,42 @@ the nine current-doc claims that turned out to be wrong are in
 `tasks/256-docs-migration/p2-pr1-notes.md`; upstream drafts in
 `tasks/256-docs-migration/helia-ui-gaps-260.md`.
 
+## P2 PR2 (#260) Guides: done, verified locally
+
+Branch `260-guides`, stacked on `260-getting-started`, not pushed. 35 Guides pages in
+seven groups (Apps, Modules in your app, System, Concepts, Python API, Examples,
+Contribute), the sidebar wired in `astro.config.mjs`, and the Guides index placeholder
+replaced. 24 pages are hand-written Markdown; the 11 Examples pages are generated at
+prepare time by `astro-site/scripts/build-examples.mjs` from the front matter in
+`docs/examples/*.md` and each `examples/<name>/README.md`, so no example metadata is
+hand-entered and no README is copied. `npm run check`, `npm run build` (149 pages),
+`npm run validate`, `pre-commit --hook-stage manual` and `ty check` all pass.
+
+Ten wrong claims in the current docs were corrected and six dropped as unverifiable,
+including the memory-placement performance figures and the `STACK_SIZE` units. Detail,
+the source-to-page mapping and the four items needing an owner decision are in
+`tasks/256-docs-migration/p2-pr2-notes.md`. No new helia-ui gaps; every page is plain
+Markdown with Starlight asides and no components.
+
 ## Next steps
 
-1. #260 migrates the 67 MkDocs pages into Getting started and Guides.
+1. #260's third PR does Modules prose and the maintainer-docs move.
 2. #261 does discoverability (llms), redirects, the real 404, and the deploy cutover.
 
-The Guides index page still carries a `:::note` pointing at #260. Delete it when that
-section's content lands. Getting started's note is gone; the Modules index is generated
-and carries none.
+Getting started's and Guides' placeholder notes are both gone; the Modules index is
+generated and carries none.
 
 ## Gotchas
 
+- **The Markdown rendition is derived from the MDX source, not the HTML.** Anything that
+  only exists as a component, including `LinkCard` titles and hrefs, is absent from
+  `dist/<route>/index.md`, and an `export const` body is emitted as page text. Guides
+  pages are therefore plain `.md`, and the example READMEs are inlined at build time
+  rather than imported. An MDX import of a file outside the site root does work in the
+  HTML; it is the rendition that comes out empty.
+- **`docs/examples/*.md` is a build input now.** The ten stubs carry the only copy of the
+  tier, status, capabilities and `boards_tested` front matter, and `build-examples.mjs`
+  reads them. #261 must give that front matter a home before it deletes the MkDocs tree.
 - **The module snapshot is committed; the pages built from it are not.**
   `astro-site/src/data/{modules,boards}.json` are tracked. Everything under
   `src/content/docs/modules/`, `src/data/modules-*.json` and `public/modules/` is
