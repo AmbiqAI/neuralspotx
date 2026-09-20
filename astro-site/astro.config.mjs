@@ -13,6 +13,9 @@ import referenceSidebar from './src/data/reference-sidebar.json' with { type: 'j
 // Written by scripts/build-modules.mjs from the committed module snapshot, in
 // the same prepare:docs pass (AmbiqAI/neuralspotx#259).
 import modulesSidebar from './src/data/modules-sidebar.json' with { type: 'json' };
+// Written by scripts/build-examples.mjs from the example front matter and each
+// example's README, in the same pass (AmbiqAI/neuralspotx#260).
+import examplesSidebar from './src/data/examples-sidebar.json' with { type: 'json' };
 
 const base = '/neuralspotx';
 const basePath = `${base}/`;
@@ -77,7 +80,66 @@ export default defineConfig({
             {
               label: 'Guides',
               href: `${basePath}guides/`,
-              sidebar: [{ label: 'Overview', slug: 'guides' }],
+              /* Task groups are open because they are what a reader came for;
+                 Concepts, Examples and Contribute are collapsed so the four
+                 task groups stay visible without scrolling. */
+              sidebar: [
+                { label: 'Overview', slug: 'guides' },
+                {
+                  label: 'Apps',
+                  collapsed: false,
+                  items: [
+                    { label: 'The app model', slug: 'guides/apps/app-model' },
+                    { label: 'App layout', slug: 'guides/apps/app-layout' },
+                    { label: 'Build, flash and view', slug: 'guides/apps/build-flash-view' },
+                    { label: 'Boards and targets', slug: 'guides/apps/boards-and-targets' },
+                    { label: 'Troubleshooting', slug: 'guides/apps/troubleshooting' },
+                  ],
+                },
+                {
+                  label: 'Modules in your app',
+                  collapsed: false,
+                  items: [
+                    { label: 'Using modules', slug: 'guides/modules/using-modules' },
+                    { label: 'Custom modules', slug: 'guides/modules/custom-modules' },
+                    { label: 'Lock and sync', slug: 'guides/modules/lock-and-sync' },
+                    { label: 'SDK providers', slug: 'guides/modules/sdk-providers' },
+                  ],
+                },
+                {
+                  label: 'System',
+                  collapsed: false,
+                  items: [
+                    { label: 'System initialization', slug: 'guides/system/system-init' },
+                    { label: 'Memory placement', slug: 'guides/system/memory-placement' },
+                    { label: 'Startup and linker', slug: 'guides/system/startup-and-linker' },
+                    { label: 'Toolchain support', slug: 'guides/system/toolchains' },
+                  ],
+                },
+                {
+                  label: 'Concepts',
+                  collapsed: true,
+                  items: [
+                    { label: 'Overview', slug: 'guides/concepts' },
+                    { label: 'App generation flow', slug: 'guides/concepts/app-generation-flow' },
+                    { label: 'Dependency model', slug: 'guides/concepts/dependency-model' },
+                    { label: 'Module model', slug: 'guides/concepts/module-model' },
+                    { label: 'Metadata model', slug: 'guides/concepts/metadata-model' },
+                    { label: 'Multi-target and portability', slug: 'guides/concepts/multi-target' },
+                  ],
+                },
+                { label: 'Python API guide', slug: 'guides/python-api' },
+                { label: 'Examples', collapsed: true, items: examplesSidebar.items },
+                {
+                  label: 'Contribute',
+                  collapsed: true,
+                  items: [
+                    { label: 'Agent guidance', slug: 'guides/contribute/agent-guidance' },
+                    { label: 'Adding a board', slug: 'guides/contribute/adding-a-board' },
+                    { label: 'Adding a module', slug: 'guides/contribute/adding-a-module' },
+                  ],
+                },
+              ],
             },
             {
               label: 'Modules',
