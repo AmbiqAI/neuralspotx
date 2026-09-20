@@ -168,6 +168,10 @@ export default defineConfig({
                 { label: 'CLI', collapsed: false, items: referenceSidebar.cli },
                 { label: 'Python API', collapsed: true, items: referenceSidebar.api },
                 { label: 'Configuration', collapsed: true, items: referenceSidebar.config },
+                /* Hand-written, unlike everything above it, because release
+                   policy has no model to generate from. It is the successor
+                   the /contributing/releases/ redirect lands on (#261). */
+                { label: 'Releases and versioning', slug: 'reference/releases' },
               ],
             },
           ],

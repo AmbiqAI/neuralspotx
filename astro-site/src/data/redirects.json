@@ -65,9 +65,9 @@
   "/contributing/agent-guidance/": "/neuralspotx/guides/contribute/agent-guidance/",
   "/contributing/adding-boards/": "/neuralspotx/guides/contribute/adding-a-board/",
   "/contributing/adding-modules/": "/neuralspotx/guides/contribute/adding-a-module/",
-  "/contributing/docs-workflow/": "/neuralspotx/guides/contribute/agent-guidance/",
+  "/contributing/docs-workflow/": "/neuralspotx/guides/",
   "/contributing/migration-from-neuralspot/": "/neuralspotx/getting-started/migrate-from-neuralspot/",
-  "/contributing/releases/": "/neuralspotx/reference/",
+  "/contributing/releases/": "/neuralspotx/reference/releases/",
   "/contributing/repo-layout/": "/neuralspotx/guides/contribute/agent-guidance/",
   "/contributing/module-coverage/": "/neuralspotx/modules/",
   "/contributing/sdk-providers/": "/neuralspotx/guides/modules/sdk-providers/"
