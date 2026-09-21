@@ -26,10 +26,17 @@ what to check live, in order, the first time it publishes.
 
 Content state: all five sections are written, the Reference and Modules
 sections are generated on every build, and all 67 MkDocs routes redirect.
-helia-ui is pinned to the released tag `v0.1.0-alpha.16`, not to a commit. That
-release closed helia-ui#143 and #149, and both local workarounds for them are
-gone: the component-link recovery pass in `publish-agent-bundle.mjs` and the
-clone-and-replace before play in `JourneyWalkthrough.astro`.
+helia-ui is pinned to the released tag `v0.1.0-alpha.19`, not to a commit.
+`v0.1.0-alpha.19` is alpha.18 plus helia-ui#172: a card description that wraps
+across source lines keeps its space in the rendition (helia-ui#171).
+`v0.1.0-alpha.16` closed helia-ui#143 and #149, and both local workarounds for
+them are gone: the component-link recovery pass in `publish-agent-bundle.mjs`
+and the clone-and-replace before play in `JourneyWalkthrough.astro`.
+`v0.1.0-alpha.18` ships #156, #166 and #167. #156 is what retired two of Home's
+"Read more:" rows: a linked `CardHeader` titled by its children now reaches the
+rendition as a link, so the capability grid states its own six links and the
+hero buttons state theirs. #167 adds the rendition sidecar, which this site
+gains little from; see the gotcha below.
 Per-phase detail is in `tasks/256-docs-migration/p1a-notes.md`, `p1b-notes.md`,
 `p2-pr1-notes.md`, `p2-pr2-notes.md`, `p3-notes.md` and `p4-notes.md`.
 
@@ -99,15 +106,28 @@ change, and each has its own issue:
 ## Gotchas
 
 - **The Markdown rendition is derived from the MDX source, not the HTML.**
-  Since alpha.16 the discoverability pass renders the props it can read, so a
-  card carrying a literal `title` and `href` reaches `dist/<route>/index.md` as
-  a link. It still cannot read a value built by an expression: a table whose
-  rows are a `rows={...}` prop, and a `description=` prop, which it ignores in
-  favor of the card's children. Authored pages are therefore plain `.md`, and
-  the example READMEs are inlined at build time.
+  The discoverability pass renders the props it can read, so a card carrying a
+  literal `title` and `href`, a `description=` prop, or a linked `Button`,
+  `Card` or `CardHeader` titled by its children all reach `dist/<route>/index.md`
+  as links. It still cannot read a value built by an expression: a table whose
+  rows are a `rows={...}` prop, for one. Authored pages are therefore plain
+  `.md`, and the example READMEs are inlined at build time.
   `astro-site/scripts/publish-agent-bundle.mjs` re-renders the generated routes
   from their models after the build; a new generated section has to be taught
   to it.
+
+- **A rendition sidecar only splices where the page itself writes the part.**
+  Since alpha.18 `AsciiTerminal`, `LinkCard`, a linked `CardHeader` and a linked
+  `Button` each state their own Markdown in a hidden block, and the pass splices
+  it in at the matching occurrence in the source. A local component that builds
+  those parts from a model is one tag in the source and many blocks on the page,
+  so the pass refuses the whole kind on that route and says so: Home logs two
+  warnings, six `terminal` blocks against no source occurrence
+  (`JourneyWalkthrough`) and seventeen `link-card` blocks against seven
+  (`ExampleCards`). Neither is fixable here, because only `CardHeader` takes a
+  `rendition={false}` opt-out; the prose rows under those two grids are what
+  carries them, and `check-output.mjs` holds them there. Drafted upstream in
+  `tasks/256-docs-migration/helia-ui-gaps-260.md`.
 - **A page with no sidebar entry is filed under "Other pages" in `llms.txt`,
   silently.** `check-discoverability-output.mjs` now fails on that for
   everything except Home and the 404.
@@ -128,7 +148,8 @@ change, and each has its own issue:
   needed. heliaRT ships the identical entry.
 - **Three build warnings are Starlight and Astro internals** with no site-side
   fix: the MDX `use astro:head-inject` note, the empty `i18n` collection, and
-  the `/404` route priority note.
+  the `/404` route priority note. Two more come from the discoverability pass,
+  both on `/neuralspotx/` and both covered by the sidecar gotcha above.
 - **helia-ui parts are imported through the export map**
   (`@ambiqai/helia-ui/astro/<Part>`). Do not reach into `node_modules` by
   relative path and do not patch it.
@@ -152,12 +173,20 @@ change, and each has its own issue:
 The owner will have a separate session improve the look and feel once this
 branch is merged. Content, generation and checks are the contract of this
 branch; visual choices are open. Known items for that pass, none of them
-blocking: the "Read more:" link rows still under most Home card grids. Those
-rows exist only for the Markdown rendition, and alpha.16 retired two of them.
-The rest stay because the grids under them are `Card` plus `CardHeader`, which
-carries an `href` but states its title as children, so the pass emits no link;
-rewriting those cards to carry a literal `title` would let the remaining rows
-go. Also for that pass: the hero walkthrough
+blocking: the "Read more:" link rows still under some Home card grids. Those
+rows exist only for the Markdown rendition. alpha.16 retired two, and alpha.18
+another two: the row over the capability grid, whose `CardHeader`s now state
+their own links, and the row under "Built from modules, not monoliths", whose
+three links the hero button, that grid and the Coverage row already carried.
+Six rows remain, plus the "whole loop in six commands" sentence, and each
+carries something no part on the page states: the ten example links
+(`ExampleCards` builds them from `examples.json`, so the pass will not anchor
+them), the six walkthrough commands, and the lone links to app layout, custom
+modules, adding a module, the board matrix, boards and targets, `llms.txt`,
+`catalog.json` and agent guidance. The KWS row is the one exception: its link
+is already in the examples row, and it stays as editorial prose rather than as
+a rendition crutch. Rewriting a card to carry one of the others would let its
+row go. Also for that pass: the hero walkthrough
 (`astro-site/src/components/JourneyWalkthrough.astro`, proposed upstream as a
 helia-ui part in `tasks/256-docs-migration/helia-ui-gaps-260.md`
 Draft 8); capability cards on Home (Card + IconTile composition); the plain
