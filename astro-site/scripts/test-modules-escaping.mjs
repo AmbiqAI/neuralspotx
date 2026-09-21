@@ -223,6 +223,10 @@ try {
     NSX_DOCS_MODULES_SNAPSHOT: path.join(scratch, 'snapshot'),
     NSX_DOCS_MODULES_PREBUILT: '',
   });
+  /* astro.config.mjs imports src/data/build-info.json, which prepare:docs
+     writes; on a fresh checkout this test can run first, so it writes it. */
+  run([path.join(siteRoot, 'scripts/build-info.mjs')]);
+
   run([astro, 'build', '--outDir', dist], { NSX_DOCS_MODULES_PREBUILT: '1' });
 
   const catalog = fs.readFileSync(path.join(dist, 'modules/catalog/index.html'), 'utf8');
