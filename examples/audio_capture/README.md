@@ -1,3 +1,12 @@
+---
+title: Audio Capture
+tier: capabilities
+capabilities: [audio, pdm]
+summary: PDM microphone capture with RMS/peak statistics streamed over SWO.
+status: tested
+boards_tested: [apollo510_evb]
+---
+
 # audio_capture
 
 Demonstrates **nsx-audio** on the Apollo510 EVB.  Configures the PDM

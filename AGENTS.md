@@ -74,7 +74,7 @@ When a module's source is consolidated into a different `projects` entry
 (e.g. absorbed into a monorepo), repoint `modules.<name>.project` **and**
 delete the now-unreferenced old `projects.<name>` record in the same
 change — see "Project Record Lifecycle" in
-`docs/architecture/metadata-model.md` and
+the metadata model reference on the docs site and
 `neuralspotx.registry_policy.orphaned_registry_project_report`.
 
 ### Library-First Direction
@@ -181,9 +181,14 @@ When behavior changes, update docs in the same change when practical.
 At minimum, check:
 
 - `README.md`
-- user-facing docs under `docs/`
-- contributor docs when the architecture changes
+- the published docs under `astro-site/src/content/docs/`
+- `docs/maintainers/` when the architecture or a maintainer flow changes
 - this `AGENTS.md` file if the architectural rule itself changed
+
+Much of Reference and all of Modules is generated rather than written. Change
+the source, not the rendered page: the CLI reference comes from the argparse
+tree, the Python API from `__all__`, the configuration schemas from the
+loaders, and the module catalog from the registry snapshot.
 
 ### Prefer No-Network Tests by Default
 
@@ -275,7 +280,15 @@ Before sending or merging changes, run the relevant checks from repo root:
 pre-commit run --all-files --hook-stage manual
 uv run --group lint --group test ty check --error-on-warning src/neuralspotx tests
 uv run --group test pytest -q
-uv run --group docs zensical build
+```
+
+For a change that touches the docs site, its generators or the public Python
+or CLI surface, also run:
+
+```bash
+npm --prefix astro-site run check
+npm --prefix astro-site run build
+npm --prefix astro-site run validate
 ```
 
 Run narrower commands only when appropriate, but prefer not to skip the full
@@ -331,7 +344,7 @@ When you change a schema:
 When changing a major architectural choice:
 
 1. update the implementation
-2. update the contributor docs
+2. update `docs/maintainers/` and any affected published guide
 3. update this file
 4. keep the PR description explicit about the design change and why it is worth
    it

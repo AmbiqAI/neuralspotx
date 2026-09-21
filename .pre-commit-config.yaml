@@ -19,8 +19,6 @@ repos:
       - id: check-added-large-files
         args: ["--maxkb=500"]
       - id: check-yaml
-        # mkdocs.yml uses Python-specific YAML tags.
-        args: [--unsafe]
       - id: check-json
       - id: check-toml
 

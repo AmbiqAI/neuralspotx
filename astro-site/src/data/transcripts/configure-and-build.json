@@ -1,0 +1,78 @@
+{
+  "configureRun": [
+    {
+      "kind": "command",
+      "text": "nsx configure"
+    },
+    {
+      "kind": "output",
+      "text": "All modules already match nsx.lock."
+    },
+    {
+      "kind": "output",
+      "text": "-- The C compiler identification is GNU 15.2.1"
+    },
+    {
+      "kind": "output",
+      "text": "-- The CXX compiler identification is GNU 15.2.1"
+    },
+    {
+      "kind": "output",
+      "text": "-- The ASM compiler identification is GNU"
+    },
+    {
+      "kind": "muted",
+      "text": "-- (compiler ABI and feature detection, 12 lines)"
+    },
+    {
+      "kind": "output",
+      "text": "-- Configuring done (0.3s)"
+    },
+    {
+      "kind": "output",
+      "text": "-- Generating done (0.0s)"
+    },
+    {
+      "kind": "output",
+      "text": "-- Build files have been written to: /home/you/hello_ap510/build/apollo510_evb"
+    },
+    {
+      "kind": "success",
+      "text": "Configured app at: /home/you/hello_ap510"
+    },
+    {
+      "kind": "output",
+      "text": "Build directory: /home/you/hello_ap510/build/apollo510_evb"
+    }
+  ],
+  "buildRun": [
+    {
+      "kind": "command",
+      "text": "nsx build"
+    },
+    {
+      "kind": "output",
+      "text": "[1/24] Building C object _nsx/nsx_core/CMakeFiles/nsx_system.dir/src/nsx_retarget.c.obj"
+    },
+    {
+      "kind": "output",
+      "text": "[2/24] Building C object _nsx/nsx_core/CMakeFiles/nsx_core_lifecycle.dir/src/nsx_core_lifecycle.c.obj"
+    },
+    {
+      "kind": "muted",
+      "text": "[..] (steps 3 to 22, compiles and archives)"
+    },
+    {
+      "kind": "output",
+      "text": "[23/24] Linking C executable hello_ap510; Generating hello_ap510.bin; Printing image size"
+    },
+    {
+      "kind": "output",
+      "text": "   text    data     bss     dec     hex filename"
+    },
+    {
+      "kind": "output",
+      "text": "  19080     592  507312  526984   80a88 build/apollo510_evb/hello_ap510"
+    }
+  ]
+}

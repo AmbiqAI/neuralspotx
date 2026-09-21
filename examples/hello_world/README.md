@@ -1,6 +1,15 @@
+---
+title: Hello World
+tier: basics
+capabilities: [swo, printf]
+summary: Minimal SWO printf loop to verify your toolchain, board connection, and viewer.
+status: tested
+boards_tested: [apollo510_evb]
+---
+
 # hello_world
 
-Minimal **nsx** application. Initialises the runtime core and prints a
+Minimal **nsx** application. Initializes the runtime core and prints a
 message to SWO in a loop.
 
 This is the recommended starting point for new users — it validates that

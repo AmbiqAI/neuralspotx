@@ -1,0 +1,3026 @@
+{
+  "module_count": 50,
+  "modules": [
+    {
+      "agent_keywords": [
+        "arm",
+        "cmsis",
+        "cmsis-nn",
+        "cmsis_nn",
+        "neural_network"
+      ],
+      "anti_use_cases": [],
+      "capabilities": [
+        "cmsis_nn",
+        "neural_network_kernels",
+        "arm_optimized"
+      ],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "*"
+        ],
+        "socs": [
+          "*"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "armclang",
+          "atfe"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": []
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/arm-cmsis-nn/nsx-module.yaml",
+      "name": "arm-cmsis-nn",
+      "project": "arm-cmsis-nn",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/arm-cmsis-nn",
+      "revision": "v0.1.0",
+      "slug": "arm-cmsis-nn",
+      "source_url": "https://github.com/AmbiqAI/arm-cmsis-nn/tree/v0.1.0",
+      "summary": "Thin NSX wrapper around Arm's upstream CMSIS-NN implementation. It exposes the standard cmsis-nn library as nsx::arm_cmsis_nn for TFLM consumers.",
+      "type": "backend_specific",
+      "use_cases": [
+        "standard CMSIS-NN TFLM kernels",
+        "reference-versus-CMSIS-NN comparisons",
+        "portable Arm kernel benchmarking"
+      ],
+      "version": "0.1.0"
+    },
+    {
+      "agent_keywords": [
+        "cmsis-dsp",
+        "helia-dsp",
+        "arm_math",
+        "fft",
+        "biquad",
+        "mfcc"
+      ],
+      "anti_use_cases": [],
+      "capabilities": [
+        "cmsis",
+        "cmsis_dsp",
+        "dsp",
+        "fft",
+        "filtering",
+        "statistics"
+      ],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "*"
+        ],
+        "socs": [
+          "apollo2",
+          "apollo3",
+          "apollo3p",
+          "apollo4l",
+          "apollo4p",
+          "apollo5b",
+          "apollo330P",
+          "apollo510",
+          "apollo510b",
+          "apollo510L",
+          "atomiq110"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "armclang",
+          "atfe"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-cmsis-core"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/helia-dsp/nsx-module.yaml",
+      "name": "helia-dsp",
+      "project": "helia-dsp",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/helia-dsp",
+      "revision": "v1.0.0",
+      "slug": "helia-dsp",
+      "source_url": "https://github.com/AmbiqAI/helia-dsp/tree/v1.0.0",
+      "summary": "NSX-packaged helia-dsp fork of CMSIS-DSP, preserving upstream Source/ CMake as the single source of truth.",
+      "type": "runtime",
+      "use_cases": [
+        "embedded signal processing",
+        "feature extraction",
+        "fft and filtering kernels",
+        "numeric and vector math primitives"
+      ],
+      "version": "1.0.0"
+    },
+    {
+      "agent_keywords": [
+        "helia-rt",
+        "tflm",
+        "source"
+      ],
+      "anti_use_cases": [],
+      "capabilities": [
+        "tflm_source",
+        "source_provider"
+      ],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "*"
+        ],
+        "socs": [
+          "*"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "armclang",
+          "atfe"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": []
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/helia-rt-source/nsx-source/nsx-module.yaml",
+      "name": "helia-rt-source",
+      "project": "helia-rt-source",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/helia-rt",
+      "revision": "7c1b162c0fd2336876b69daaa20c87a1e7e2f508",
+      "slug": "helia-rt-source",
+      "source_url": "https://github.com/AmbiqAI/helia-rt/tree/7c1b162c0fd2336876b69daaa20c87a1e7e2f508",
+      "summary": "Source-provider module for consumers that compile the helia-rt TFLM source tree with their own NSX runtime wrapper.",
+      "type": "tooling",
+      "use_cases": [
+        "custom NSX TFLM wrappers",
+        "reference or upstream CMSIS-NN TFLM builds"
+      ],
+      "version": "1.17.0"
+    },
+    {
+      "agent_keywords": [
+        "bsp",
+        "board support",
+        "ambiqsuite",
+        "wrapper"
+      ],
+      "anti_use_cases": [],
+      "capabilities": [
+        "bsp_wrapper",
+        "board_support",
+        "sdk_component"
+      ],
+      "category": "sdk_component",
+      "compatibility": {
+        "boards": [
+          "apollo2_evb",
+          "apollo3_evb",
+          "apollo3_evb_cygnus",
+          "apollo3p_evb",
+          "apollo3p_evb_cygnus",
+          "apollo4l_evb",
+          "apollo4l_blue_evb",
+          "apollo4p_evb",
+          "apollo4p_blue_kbr_evb",
+          "apollo4p_blue_kxr_evb",
+          "apollo4p_evb_disp_shield_rev2",
+          "apollo330mP_evb",
+          "apollo510_evb",
+          "apollo510b_evb",
+          "apollo510dL_evb",
+          "atomiq110_fpga_turbo"
+        ],
+        "socs": [
+          "apollo2",
+          "apollo3",
+          "apollo3p",
+          "apollo4l",
+          "apollo4p",
+          "apollo330P",
+          "apollo510",
+          "apollo510b",
+          "apollo510L",
+          "atomiq110"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "atfe",
+          "armclang"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-ambiqsuite",
+          "nsx-ambiq-hal"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/nsx-ambiq-bsp/nsx-module.yaml",
+      "name": "nsx-ambiq-bsp",
+      "project": "nsx-ambiq-sdk",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
+      "revision": "v5.2.24",
+      "slug": "nsx-ambiq-bsp",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.24",
+      "summary": "Curated BSP wrapper surface for board-support integration on AmbiqSuite targets (all SoCs).",
+      "type": "backend_specific",
+      "use_cases": [
+        "board-support integration for any AmbiqSuite target",
+        "stable BSP access without wiring raw SDK board files by hand",
+        "dependency for board-oriented application bring-up"
+      ],
+      "version": "5.2.24"
+    },
+    {
+      "agent_keywords": [
+        "hal",
+        "ambiq",
+        "ambiqsuite",
+        "wrapper"
+      ],
+      "anti_use_cases": [],
+      "capabilities": [
+        "hal_wrapper",
+        "ambiq_hal",
+        "sdk_component"
+      ],
+      "category": "sdk_component",
+      "compatibility": {
+        "boards": [
+          "apollo2_evb",
+          "apollo3_evb",
+          "apollo3_evb_cygnus",
+          "apollo3p_evb",
+          "apollo3p_evb_cygnus",
+          "apollo4l_evb",
+          "apollo4l_blue_evb",
+          "apollo4p_evb",
+          "apollo4p_blue_kbr_evb",
+          "apollo4p_blue_kxr_evb",
+          "apollo4p_evb_disp_shield_rev2",
+          "apollo330mP_evb",
+          "apollo510_evb",
+          "apollo510b_evb",
+          "apollo510dL_evb",
+          "atomiq110_fpga_turbo"
+        ],
+        "socs": [
+          "apollo2",
+          "apollo3",
+          "apollo3p",
+          "apollo4l",
+          "apollo4p",
+          "apollo330P",
+          "apollo510",
+          "apollo510b",
+          "apollo510L",
+          "atomiq110"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "atfe",
+          "armclang"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-cmsis-core",
+          "nsx-ambiqsuite"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/nsx-ambiq-hal/nsx-module.yaml",
+      "name": "nsx-ambiq-hal",
+      "project": "nsx-ambiq-sdk",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
+      "revision": "v5.2.24",
+      "slug": "nsx-ambiq-hal",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.24",
+      "summary": "Curated Ambiq HAL wrapper surface for AmbiqSuite targets (all SoCs).",
+      "type": "backend_specific",
+      "use_cases": [
+        "access supported Ambiq HAL services on any AmbiqSuite SoC",
+        "wrap raw SDK HAL content behind a stable NSX-facing surface",
+        "dependency for platform and BSP integration"
+      ],
+      "version": "5.2.24"
+    },
+    {
+      "agent_keywords": [
+        "usb",
+        "tinyusb",
+        "ambiq",
+        "dcd",
+        "apollo4p",
+        "apollo5"
+      ],
+      "anti_use_cases": [],
+      "capabilities": [
+        "usb_device",
+        "ambiq_usb",
+        "tinyusb_substrate",
+        "sdk_component"
+      ],
+      "category": "sdk_component",
+      "compatibility": {
+        "boards": [
+          "apollo4p_evb",
+          "apollo4p_blue_kbr_evb",
+          "apollo4p_blue_kxr_evb",
+          "apollo330mP_evb",
+          "apollo510_evb",
+          "apollo510b_evb",
+          "apollo510dL_evb"
+        ],
+        "socs": [
+          "apollo4p",
+          "apollo330P",
+          "apollo510",
+          "apollo510b",
+          "apollo510L"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "atfe",
+          "armclang"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-ambiqsuite",
+          "nsx-ambiq-hal",
+          "nsx-ambiq-bsp"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/nsx-ambiq-usb/nsx-module.yaml",
+      "name": "nsx-ambiq-usb",
+      "project": "nsx-ambiq-sdk",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
+      "revision": "v5.2.24",
+      "slug": "nsx-ambiq-usb",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.24",
+      "summary": "Unified AmbiqSuite USB substrate (TinyUSB) for Apollo4P and Apollo5 SoCs.",
+      "type": "backend_specific",
+      "use_cases": [
+        "provide the Ambiq TinyUSB device-controller port for supported targets",
+        "expose SDK-vendored TinyUSB sources to higher-level USB modules",
+        "support bare-metal or framework-selected USB service loops"
+      ],
+      "version": "5.2.24"
+    },
+    {
+      "agent_keywords": [
+        "ambiqsuite",
+        "sdk",
+        "provider"
+      ],
+      "anti_use_cases": [],
+      "capabilities": [
+        "sdk_provider",
+        "ambiqsuite"
+      ],
+      "category": "sdk_provider",
+      "compatibility": {
+        "boards": [
+          "apollo2_evb",
+          "apollo3_evb",
+          "apollo3_evb_cygnus",
+          "apollo3p_evb",
+          "apollo3p_evb_cygnus",
+          "apollo4l_evb",
+          "apollo4l_blue_evb",
+          "apollo4p_evb",
+          "apollo4p_blue_kbr_evb",
+          "apollo4p_blue_kxr_evb",
+          "apollo4p_evb_disp_shield_rev2",
+          "apollo330mP_evb",
+          "apollo510_evb",
+          "apollo510b_evb",
+          "apollo510dL_evb",
+          "atomiq110_fpga_turbo"
+        ],
+        "socs": [
+          "apollo2",
+          "apollo3",
+          "apollo3p",
+          "apollo4l",
+          "apollo4p",
+          "apollo330P",
+          "apollo510",
+          "apollo510b",
+          "apollo510L",
+          "atomiq110"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "atfe",
+          "armclang"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": []
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/nsx-ambiqsuite/nsx-module.yaml",
+      "name": "nsx-ambiqsuite",
+      "project": "nsx-ambiq-sdk",
+      "provider": "ambiqsuite",
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
+      "revision": "v5.2.24",
+      "slug": "nsx-ambiqsuite",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.24",
+      "summary": "Unified AmbiqSuite SDK provider covering all staged Apollo NSX targets.",
+      "type": "sdk_provider",
+      "use_cases": [
+        "choose the AmbiqSuite SDK baseline for any Apollo-generation app",
+        "provide upstream SDK content for platform stacks",
+        "foundation for the Ambiq HAL and BSP layers"
+      ],
+      "version": "5.2.24"
+    },
+    {
+      "agent_keywords": [
+        "audio",
+        "pdm",
+        "microphone",
+        "capture",
+        "dma",
+        "sampling"
+      ],
+      "anti_use_cases": [],
+      "capabilities": [
+        "audio",
+        "pdm",
+        "microphone",
+        "dma"
+      ],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "apollo330mP_evb",
+          "apollo510_evb",
+          "apollo510b_evb",
+          "apollo510dL_evb"
+        ],
+        "socs": [
+          "apollo330P",
+          "apollo510",
+          "apollo510b",
+          "apollo510L",
+          "apollo3",
+          "apollo3p"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "armclang",
+          "atfe"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-core",
+          "nsx-soc-hal"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/nsx-audio/nsx-module.yaml",
+      "name": "nsx-audio",
+      "project": "nsx-ambiq-sdk",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
+      "revision": "v5.2.24",
+      "slug": "nsx-audio",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.24",
+      "summary": "PDM audio capture helper for AmbiqSuite-backed NSX targets with staged PDM support.",
+      "type": "backend_specific",
+      "use_cases": [
+        "initialize board-supported PDM capture with caller-owned buffers",
+        "receive DMA-backed PCM sample callbacks from a PDM microphone",
+        "provide a stable NSX audio API across AmbiqSuite releases"
+      ],
+      "version": "5.2.24"
+    },
+    {
+      "agent_keywords": [
+        "ble",
+        "bluetooth",
+        "ns_ble",
+        "gatt",
+        "characteristic",
+        "notify"
+      ],
+      "anti_use_cases": [],
+      "capabilities": [
+        "bluetooth_le",
+        "ble_peripheral",
+        "gatt_server",
+        "ns_ble_api",
+        "sdk_component"
+      ],
+      "category": "sdk_component",
+      "compatibility": {
+        "boards": [
+          "apollo3_evb",
+          "apollo3p_evb",
+          "apollo510b_evb",
+          "apollo4p_blue_kbr_evb",
+          "apollo4p_blue_kxr_evb"
+        ],
+        "socs": [
+          "apollo3",
+          "apollo3p",
+          "apollo510b",
+          "apollo4p"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "atfe",
+          "armclang"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-core",
+          "nsx-cordio",
+          "nsx-freertos"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/nsx-ble/nsx-module.yaml",
+      "name": "nsx-ble",
+      "project": "nsx-ambiq-sdk",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
+      "revision": "v5.2.24",
+      "slug": "nsx-ble",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.24",
+      "summary": "Optional app-facing Bluetooth LE convenience API. Ports the legacy neuralSPOT ns-ble wrapper onto NSX, providing simple \"define a service + read/write/notify characteristics with callbacks\" bring-up on top of the Cordio host stack (nsx-cordio).",
+      "type": "backend_specific",
+      "use_cases": [
+        "stand up a single BLE GATT service with read/write/notify characteristics",
+        "port existing neuralSPOT ns-ble applications to NSX with minimal source changes",
+        "drive the Cordio stack from a FreeRTOS dispatcher task"
+      ],
+      "version": "5.2.24"
+    },
+    {
+      "agent_keywords": [],
+      "anti_use_cases": [],
+      "capabilities": [],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "apollo2_evb"
+        ],
+        "socs": [
+          "apollo2"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc"
+        ]
+      },
+      "constraints": {
+        "required_sdk_provider": "nsx-ambiqsuite"
+      },
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-ambiq-hal",
+          "nsx-ambiq-bsp",
+          "nsx-soc-hal",
+          "nsx-cmsis-startup",
+          "nsx-ambiqsuite"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "packaged",
+      "metadata_path": "src/neuralspotx/boards/apollo2_evb/nsx-module.yaml",
+      "name": "nsx-board-apollo2-evb",
+      "project": "neuralspotx",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/neuralspotx",
+      "revision": "main",
+      "slug": "nsx-board-apollo2-evb",
+      "source_url": "https://github.com/AmbiqAI/neuralspotx/tree/main",
+      "summary": null,
+      "type": "board",
+      "use_cases": [],
+      "version": "0.1.0"
+    },
+    {
+      "agent_keywords": [],
+      "anti_use_cases": [],
+      "capabilities": [],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "apollo3_evb"
+        ],
+        "socs": [
+          "apollo3"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc"
+        ]
+      },
+      "constraints": {
+        "required_sdk_provider": "nsx-ambiqsuite"
+      },
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-ambiq-hal",
+          "nsx-ambiq-bsp",
+          "nsx-soc-hal",
+          "nsx-cmsis-startup",
+          "nsx-ambiqsuite"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "packaged",
+      "metadata_path": "src/neuralspotx/boards/apollo3_evb/nsx-module.yaml",
+      "name": "nsx-board-apollo3-evb",
+      "project": "neuralspotx",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/neuralspotx",
+      "revision": "main",
+      "slug": "nsx-board-apollo3-evb",
+      "source_url": "https://github.com/AmbiqAI/neuralspotx/tree/main",
+      "summary": null,
+      "type": "board",
+      "use_cases": [],
+      "version": "0.1.0"
+    },
+    {
+      "agent_keywords": [],
+      "anti_use_cases": [],
+      "capabilities": [],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "apollo3_evb_cygnus"
+        ],
+        "socs": [
+          "apollo3"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc"
+        ]
+      },
+      "constraints": {
+        "required_sdk_provider": "nsx-ambiqsuite"
+      },
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-ambiq-hal",
+          "nsx-ambiq-bsp",
+          "nsx-soc-hal",
+          "nsx-cmsis-startup",
+          "nsx-ambiqsuite"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "packaged",
+      "metadata_path": "src/neuralspotx/boards/apollo3_evb_cygnus/nsx-module.yaml",
+      "name": "nsx-board-apollo3-evb-cygnus",
+      "project": "neuralspotx",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/neuralspotx",
+      "revision": "main",
+      "slug": "nsx-board-apollo3-evb-cygnus",
+      "source_url": "https://github.com/AmbiqAI/neuralspotx/tree/main",
+      "summary": null,
+      "type": "board",
+      "use_cases": [],
+      "version": "0.1.0"
+    },
+    {
+      "agent_keywords": [],
+      "anti_use_cases": [],
+      "capabilities": [],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "apollo330mP_evb"
+        ],
+        "socs": [
+          "apollo330P"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "armclang",
+          "atfe"
+        ]
+      },
+      "constraints": {
+        "required_sdk_provider": "nsx-ambiqsuite"
+      },
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-ambiq-hal",
+          "nsx-ambiq-bsp",
+          "nsx-soc-hal",
+          "nsx-cmsis-startup",
+          "nsx-ambiqsuite"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "packaged",
+      "metadata_path": "src/neuralspotx/boards/apollo330mP_evb/nsx-module.yaml",
+      "name": "nsx-board-apollo330mp-evb",
+      "project": "neuralspotx",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/neuralspotx",
+      "revision": "main",
+      "slug": "nsx-board-apollo330mp-evb",
+      "source_url": "https://github.com/AmbiqAI/neuralspotx/tree/main",
+      "summary": null,
+      "type": "board",
+      "use_cases": [],
+      "version": "0.1.0"
+    },
+    {
+      "agent_keywords": [],
+      "anti_use_cases": [],
+      "capabilities": [],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "apollo3p_evb"
+        ],
+        "socs": [
+          "apollo3p"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "armclang",
+          "atfe"
+        ]
+      },
+      "constraints": {
+        "required_sdk_provider": "nsx-ambiqsuite"
+      },
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-ambiq-hal",
+          "nsx-ambiq-bsp",
+          "nsx-soc-hal",
+          "nsx-cmsis-startup",
+          "nsx-ambiqsuite"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "packaged",
+      "metadata_path": "src/neuralspotx/boards/apollo3p_evb/nsx-module.yaml",
+      "name": "nsx-board-apollo3p-evb",
+      "project": "neuralspotx",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/neuralspotx",
+      "revision": "main",
+      "slug": "nsx-board-apollo3p-evb",
+      "source_url": "https://github.com/AmbiqAI/neuralspotx/tree/main",
+      "summary": null,
+      "type": "board",
+      "use_cases": [],
+      "version": "0.1.0"
+    },
+    {
+      "agent_keywords": [],
+      "anti_use_cases": [],
+      "capabilities": [],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "apollo3p_evb_cygnus"
+        ],
+        "socs": [
+          "apollo3p"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "armclang",
+          "atfe"
+        ]
+      },
+      "constraints": {
+        "required_sdk_provider": "nsx-ambiqsuite"
+      },
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-ambiq-hal",
+          "nsx-ambiq-bsp",
+          "nsx-soc-hal",
+          "nsx-cmsis-startup",
+          "nsx-ambiqsuite"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "packaged",
+      "metadata_path": "src/neuralspotx/boards/apollo3p_evb_cygnus/nsx-module.yaml",
+      "name": "nsx-board-apollo3p-evb-cygnus",
+      "project": "neuralspotx",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/neuralspotx",
+      "revision": "main",
+      "slug": "nsx-board-apollo3p-evb-cygnus",
+      "source_url": "https://github.com/AmbiqAI/neuralspotx/tree/main",
+      "summary": null,
+      "type": "board",
+      "use_cases": [],
+      "version": "0.1.0"
+    },
+    {
+      "agent_keywords": [],
+      "anti_use_cases": [],
+      "capabilities": [],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "apollo4l_blue_evb"
+        ],
+        "socs": [
+          "apollo4l"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "atfe"
+        ]
+      },
+      "constraints": {
+        "required_sdk_provider": "nsx-ambiqsuite"
+      },
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-ambiq-hal",
+          "nsx-ambiq-bsp",
+          "nsx-soc-hal",
+          "nsx-cmsis-startup",
+          "nsx-ambiqsuite"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "packaged",
+      "metadata_path": "src/neuralspotx/boards/apollo4l_blue_evb/nsx-module.yaml",
+      "name": "nsx-board-apollo4l-blue-evb",
+      "project": "neuralspotx",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/neuralspotx",
+      "revision": "main",
+      "slug": "nsx-board-apollo4l-blue-evb",
+      "source_url": "https://github.com/AmbiqAI/neuralspotx/tree/main",
+      "summary": null,
+      "type": "board",
+      "use_cases": [],
+      "version": "0.1.0"
+    },
+    {
+      "agent_keywords": [],
+      "anti_use_cases": [],
+      "capabilities": [],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "apollo4l_evb"
+        ],
+        "socs": [
+          "apollo4l"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "atfe"
+        ]
+      },
+      "constraints": {
+        "required_sdk_provider": "nsx-ambiqsuite"
+      },
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-ambiq-hal",
+          "nsx-ambiq-bsp",
+          "nsx-soc-hal",
+          "nsx-cmsis-startup",
+          "nsx-ambiqsuite"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "packaged",
+      "metadata_path": "src/neuralspotx/boards/apollo4l_evb/nsx-module.yaml",
+      "name": "nsx-board-apollo4l-evb",
+      "project": "neuralspotx",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/neuralspotx",
+      "revision": "main",
+      "slug": "nsx-board-apollo4l-evb",
+      "source_url": "https://github.com/AmbiqAI/neuralspotx/tree/main",
+      "summary": null,
+      "type": "board",
+      "use_cases": [],
+      "version": "0.1.0"
+    },
+    {
+      "agent_keywords": [],
+      "anti_use_cases": [],
+      "capabilities": [],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "apollo4p_blue_kbr_evb"
+        ],
+        "socs": [
+          "apollo4p"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "armclang",
+          "atfe"
+        ]
+      },
+      "constraints": {
+        "required_sdk_provider": "nsx-ambiqsuite"
+      },
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-ambiq-hal",
+          "nsx-ambiq-bsp",
+          "nsx-soc-hal",
+          "nsx-cmsis-startup",
+          "nsx-ambiqsuite"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "packaged",
+      "metadata_path": "src/neuralspotx/boards/apollo4p_blue_kbr_evb/nsx-module.yaml",
+      "name": "nsx-board-apollo4p-blue-kbr-evb",
+      "project": "neuralspotx",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/neuralspotx",
+      "revision": "main",
+      "slug": "nsx-board-apollo4p-blue-kbr-evb",
+      "source_url": "https://github.com/AmbiqAI/neuralspotx/tree/main",
+      "summary": null,
+      "type": "board",
+      "use_cases": [],
+      "version": "0.1.0"
+    },
+    {
+      "agent_keywords": [],
+      "anti_use_cases": [],
+      "capabilities": [],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "apollo4p_blue_kxr_evb"
+        ],
+        "socs": [
+          "apollo4p"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "armclang",
+          "atfe"
+        ]
+      },
+      "constraints": {
+        "required_sdk_provider": "nsx-ambiqsuite"
+      },
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-ambiq-hal",
+          "nsx-ambiq-bsp",
+          "nsx-soc-hal",
+          "nsx-cmsis-startup",
+          "nsx-ambiqsuite"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "packaged",
+      "metadata_path": "src/neuralspotx/boards/apollo4p_blue_kxr_evb/nsx-module.yaml",
+      "name": "nsx-board-apollo4p-blue-kxr-evb",
+      "project": "neuralspotx",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/neuralspotx",
+      "revision": "main",
+      "slug": "nsx-board-apollo4p-blue-kxr-evb",
+      "source_url": "https://github.com/AmbiqAI/neuralspotx/tree/main",
+      "summary": null,
+      "type": "board",
+      "use_cases": [],
+      "version": "0.1.0"
+    },
+    {
+      "agent_keywords": [],
+      "anti_use_cases": [],
+      "capabilities": [],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "apollo4p_evb"
+        ],
+        "socs": [
+          "apollo4p"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "armclang",
+          "atfe"
+        ]
+      },
+      "constraints": {
+        "required_sdk_provider": "nsx-ambiqsuite"
+      },
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-ambiq-hal",
+          "nsx-ambiq-bsp",
+          "nsx-soc-hal",
+          "nsx-cmsis-startup",
+          "nsx-ambiqsuite"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "packaged",
+      "metadata_path": "src/neuralspotx/boards/apollo4p_evb/nsx-module.yaml",
+      "name": "nsx-board-apollo4p-evb",
+      "project": "neuralspotx",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/neuralspotx",
+      "revision": "main",
+      "slug": "nsx-board-apollo4p-evb",
+      "source_url": "https://github.com/AmbiqAI/neuralspotx/tree/main",
+      "summary": null,
+      "type": "board",
+      "use_cases": [],
+      "version": "0.1.0"
+    },
+    {
+      "agent_keywords": [],
+      "anti_use_cases": [],
+      "capabilities": [],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "apollo4p_evb_disp_shield_rev2"
+        ],
+        "socs": [
+          "apollo4p"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "armclang",
+          "atfe"
+        ]
+      },
+      "constraints": {
+        "required_sdk_provider": "nsx-ambiqsuite"
+      },
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-ambiq-hal",
+          "nsx-ambiq-bsp",
+          "nsx-soc-hal",
+          "nsx-cmsis-startup",
+          "nsx-ambiqsuite"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "packaged",
+      "metadata_path": "src/neuralspotx/boards/apollo4p_evb_disp_shield_rev2/nsx-module.yaml",
+      "name": "nsx-board-apollo4p-evb-disp-shield-rev2",
+      "project": "neuralspotx",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/neuralspotx",
+      "revision": "main",
+      "slug": "nsx-board-apollo4p-evb-disp-shield-rev2",
+      "source_url": "https://github.com/AmbiqAI/neuralspotx/tree/main",
+      "summary": null,
+      "type": "board",
+      "use_cases": [],
+      "version": "0.1.0"
+    },
+    {
+      "agent_keywords": [],
+      "anti_use_cases": [],
+      "capabilities": [],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "apollo510_evb"
+        ],
+        "socs": [
+          "apollo510"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "armclang",
+          "atfe"
+        ]
+      },
+      "constraints": {
+        "required_sdk_provider": "nsx-ambiqsuite"
+      },
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-ambiq-hal",
+          "nsx-ambiq-bsp",
+          "nsx-soc-hal",
+          "nsx-cmsis-startup",
+          "nsx-ambiqsuite"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "packaged",
+      "metadata_path": "src/neuralspotx/boards/apollo510_evb/nsx-module.yaml",
+      "name": "nsx-board-apollo510-evb",
+      "project": "neuralspotx",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/neuralspotx",
+      "revision": "main",
+      "slug": "nsx-board-apollo510-evb",
+      "source_url": "https://github.com/AmbiqAI/neuralspotx/tree/main",
+      "summary": null,
+      "type": "board",
+      "use_cases": [],
+      "version": "0.1.0"
+    },
+    {
+      "agent_keywords": [],
+      "anti_use_cases": [],
+      "capabilities": [],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "apollo510b_evb"
+        ],
+        "socs": [
+          "apollo510b"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "armclang",
+          "atfe"
+        ]
+      },
+      "constraints": {
+        "required_sdk_provider": "nsx-ambiqsuite"
+      },
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-ambiq-hal",
+          "nsx-ambiq-bsp",
+          "nsx-soc-hal",
+          "nsx-cmsis-startup",
+          "nsx-ambiqsuite"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "packaged",
+      "metadata_path": "src/neuralspotx/boards/apollo510b_evb/nsx-module.yaml",
+      "name": "nsx-board-apollo510b-evb",
+      "project": "neuralspotx",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/neuralspotx",
+      "revision": "main",
+      "slug": "nsx-board-apollo510b-evb",
+      "source_url": "https://github.com/AmbiqAI/neuralspotx/tree/main",
+      "summary": null,
+      "type": "board",
+      "use_cases": [],
+      "version": "0.1.0"
+    },
+    {
+      "agent_keywords": [],
+      "anti_use_cases": [],
+      "capabilities": [],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "apollo510dL_evb"
+        ],
+        "socs": [
+          "apollo510L"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "armclang",
+          "atfe"
+        ]
+      },
+      "constraints": {
+        "required_sdk_provider": "nsx-ambiqsuite"
+      },
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-ambiq-hal",
+          "nsx-ambiq-bsp",
+          "nsx-soc-hal",
+          "nsx-cmsis-startup",
+          "nsx-ambiqsuite"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "packaged",
+      "metadata_path": "src/neuralspotx/boards/apollo510dL_evb/nsx-module.yaml",
+      "name": "nsx-board-apollo510dl-evb",
+      "project": "neuralspotx",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/neuralspotx",
+      "revision": "main",
+      "slug": "nsx-board-apollo510dl-evb",
+      "source_url": "https://github.com/AmbiqAI/neuralspotx/tree/main",
+      "summary": null,
+      "type": "board",
+      "use_cases": [],
+      "version": "0.1.0"
+    },
+    {
+      "agent_keywords": [],
+      "anti_use_cases": [],
+      "capabilities": [],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "apollo5b_evb"
+        ],
+        "socs": [
+          "apollo5b"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "armclang",
+          "atfe"
+        ]
+      },
+      "constraints": {
+        "required_sdk_provider": "nsx-ambiqsuite"
+      },
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-ambiq-hal",
+          "nsx-ambiq-bsp",
+          "nsx-soc-hal",
+          "nsx-cmsis-startup",
+          "nsx-ambiqsuite"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "packaged",
+      "metadata_path": "src/neuralspotx/boards/apollo5b_evb/nsx-module.yaml",
+      "name": "nsx-board-apollo5b-evb",
+      "project": "neuralspotx",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/neuralspotx",
+      "revision": "main",
+      "slug": "nsx-board-apollo5b-evb",
+      "source_url": "https://github.com/AmbiqAI/neuralspotx/tree/main",
+      "summary": null,
+      "type": "board",
+      "use_cases": [],
+      "version": "0.1.0"
+    },
+    {
+      "agent_keywords": [],
+      "anti_use_cases": [],
+      "capabilities": [],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "atomiq110_fpga_turbo"
+        ],
+        "socs": [
+          "atomiq110"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "atfe",
+          "armclang"
+        ]
+      },
+      "constraints": {
+        "required_sdk_provider": "nsx-ambiqsuite"
+      },
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-ambiq-hal",
+          "nsx-ambiq-bsp",
+          "nsx-soc-hal",
+          "nsx-cmsis-startup",
+          "nsx-ambiqsuite"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "packaged",
+      "metadata_path": "src/neuralspotx/boards/atomiq110_fpga_turbo/nsx-module.yaml",
+      "name": "nsx-board-atomiq110-fpga-turbo",
+      "project": "neuralspotx",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/neuralspotx",
+      "revision": "main",
+      "slug": "nsx-board-atomiq110-fpga-turbo",
+      "source_url": "https://github.com/AmbiqAI/neuralspotx/tree/main",
+      "summary": null,
+      "type": "board",
+      "use_cases": [],
+      "version": "0.1.0"
+    },
+    {
+      "agent_keywords": [
+        "cmsis",
+        "cmsis-core",
+        "cortex-m",
+        "core_cm55",
+        "core_cm4",
+        "pmu_armv8",
+        "mpu_armv8"
+      ],
+      "anti_use_cases": [],
+      "capabilities": [
+        "cmsis",
+        "cmsis_core"
+      ],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "*"
+        ],
+        "socs": [
+          "apollo330P",
+          "apollo510",
+          "apollo510b",
+          "apollo510L",
+          "atomiq110",
+          "apollo4l",
+          "apollo4p",
+          "apollo3",
+          "apollo3p",
+          "apollo2"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "atfe",
+          "armclang"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": []
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/nsx-cmsis-core/nsx-module.yaml",
+      "name": "nsx-cmsis-core",
+      "project": "nsx-ambiq-sdk",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
+      "revision": "v5.2.24",
+      "slug": "nsx-cmsis-core",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.24",
+      "summary": "Standalone CMSIS-Core(M) header package (ARM CMSIS_6 v6.2.0), decoupled from AmbiqSuite SDK vendoring.",
+      "type": "backend_specific",
+      "use_cases": [
+        "core peripheral access (NVIC, SCB, SysTick, MPU, PMU, cache)",
+        "compiler intrinsics dispatch (gcc / armclang / iccarm / clang)",
+        "m-profile architecture extensions (Armv7-M, Armv8-M, Armv8.1-M)"
+      ],
+      "version": "5.2.24"
+    },
+    {
+      "agent_keywords": [
+        "cmsis-nn",
+        "ns-cmsis-nn",
+        "kernels",
+        "quantization",
+        "inference",
+        "dsp",
+        "mve"
+      ],
+      "anti_use_cases": [],
+      "capabilities": [
+        "cmsis_nn",
+        "neural_network_kernels",
+        "quantized_inference",
+        "dsp_acceleration",
+        "mve_acceleration"
+      ],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "*"
+        ],
+        "socs": [
+          "*"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "armclang",
+          "atfe"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-soc-hal"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/ns-cmsis-nn/nsx/nsx-module.yaml",
+      "name": "nsx-cmsis-nn",
+      "project": "ns-cmsis-nn",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/ns-cmsis-nn",
+      "revision": "v7.29.2",
+      "slug": "nsx-cmsis-nn",
+      "source_url": "https://github.com/AmbiqAI/ns-cmsis-nn/tree/v7.29.2",
+      "summary": "Ambiq-optimized CMSIS-NN neural network kernels. Fork of ARM CMSIS-NN with MVE and DSP optimizations for Apollo SoCs.",
+      "type": "algorithm",
+      "use_cases": [
+        "quantized neural network inference on Cortex-M",
+        "optimized convolution and fully-connected kernels",
+        "int8/int16/int4 quantized model support"
+      ],
+      "version": "7.29.2"
+    },
+    {
+      "agent_keywords": [
+        "cmsis",
+        "startup",
+        "vector table",
+        "boot"
+      ],
+      "anti_use_cases": [],
+      "capabilities": [
+        "cmsis",
+        "startup",
+        "boot_integration"
+      ],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "*"
+        ],
+        "socs": [
+          "apollo330P",
+          "apollo510",
+          "apollo510b",
+          "apollo510L",
+          "atomiq110",
+          "apollo4l",
+          "apollo4p",
+          "apollo3",
+          "apollo3p",
+          "apollo2"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "atfe",
+          "armclang"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-cmsis-core"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/nsx-cmsis-startup/nsx-module.yaml",
+      "name": "nsx-cmsis-startup",
+      "project": "nsx-ambiq-sdk",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
+      "revision": "v5.2.24",
+      "slug": "nsx-cmsis-startup",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.24",
+      "summary": "CMSIS and startup integration for vector tables, startup code, and early boot wiring.",
+      "type": "backend_specific",
+      "use_cases": [
+        "startup code wiring",
+        "vector table integration",
+        "common boot and reset initialization"
+      ],
+      "version": "5.2.24"
+    },
+    {
+      "agent_keywords": [
+        "ble",
+        "bluetooth",
+        "cordio",
+        "wsf",
+        "cooper",
+        "apollo3",
+        "apollo3p",
+        "apollo4p",
+        "apollo510b",
+        "em9305"
+      ],
+      "anti_use_cases": [],
+      "capabilities": [
+        "bluetooth_le",
+        "cordio",
+        "wsf",
+        "ble_host_stack",
+        "sdk_component"
+      ],
+      "category": "sdk_component",
+      "compatibility": {
+        "boards": [
+          "apollo3_evb",
+          "apollo3p_evb",
+          "apollo510b_evb",
+          "apollo4p_blue_kbr_evb",
+          "apollo4p_blue_kxr_evb"
+        ],
+        "socs": [
+          "apollo3",
+          "apollo3p",
+          "apollo510b",
+          "apollo4p"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "atfe",
+          "armclang"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-ambiqsuite",
+          "nsx-ambiq-hal",
+          "nsx-ambiq-bsp",
+          "nsx-freertos"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/nsx-cordio/nsx-module.yaml",
+      "name": "nsx-cordio",
+      "project": "nsx-ambiq-sdk",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
+      "revision": "v5.2.24",
+      "slug": "nsx-cordio",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.24",
+      "summary": "Optional Cordio/WSF Bluetooth LE host stack. Vendors the AmbiqSuite third_party Cordio stack (ble-host + ble-profiles + WSF) pinned to the provider SDK drop and builds it from source for the active SoC's BLE transport. Low-level stack only; the app-facing convenience API lives in nsx-ble.",
+      "type": "backend_specific",
+      "use_cases": [
+        "provide the Cordio BLE host stack (HCI/DM/L2CAP/ATT/SMP/GATT) to higher-level BLE modules",
+        "build the WSF FreeRTOS port for the active SoC",
+        "supply the SoC-specific BLE HCI transport driver (Cooper on Apollo4P, integrated BLE on Apollo3/Apollo3P, EM9305 on Apollo510B)"
+      ],
+      "version": "5.2.24"
+    },
+    {
+      "agent_keywords": [
+        "core",
+        "runtime",
+        "app foundation",
+        "ring buffer"
+      ],
+      "anti_use_cases": [],
+      "capabilities": [
+        "runtime",
+        "startup",
+        "application_lifecycle",
+        "debug_output",
+        "delay",
+        "interrupt_control",
+        "ring_buffer"
+      ],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "*"
+        ],
+        "socs": [
+          "apollo330P",
+          "apollo510",
+          "apollo510b",
+          "apollo510L",
+          "atomiq110",
+          "apollo4l",
+          "apollo4p",
+          "apollo3",
+          "apollo3p",
+          "apollo2"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "atfe",
+          "armclang"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-soc-hal"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/nsx-core/nsx-module.yaml",
+      "name": "nsx-core",
+      "project": "nsx-ambiq-sdk",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
+      "revision": "v5.2.24",
+      "slug": "nsx-core",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.24",
+      "summary": "Core runtime initialization, universal helpers, and byte ring-buffer support.",
+      "type": "runtime",
+      "use_cases": [
+        "baseline app bring-up",
+        "reusable runtime foundation",
+        "printf, low-power debug output, delay, and interrupt helpers",
+        "byte ring-buffer support",
+        "most NSX applications"
+      ],
+      "version": "5.2.24"
+    },
+    {
+      "agent_keywords": [
+        "ethos-u",
+        "ethos-u85",
+        "npu",
+        "vela",
+        "inference"
+      ],
+      "anti_use_cases": [],
+      "capabilities": [
+        "npu",
+        "ethos_u",
+        "ethos_u55",
+        "ethos_u65",
+        "ethos_u85",
+        "inference"
+      ],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "*"
+        ],
+        "socs": [
+          "*"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "armclang",
+          "atfe"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [
+          "nsx-harness"
+        ],
+        "required": [
+          "nsx-cmsis-core",
+          "nsx-core",
+          "nsx-soc-hal"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/nsx-ethos-u-driver/nsx-module.yaml",
+      "name": "nsx-ethos-u-driver",
+      "project": "nsx-ethos-u-driver",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/nsx-ethos-u-driver",
+      "revision": "nsx-ethos-u-driver-v0.1.2",
+      "slug": "nsx-ethos-u-driver",
+      "source_url": "https://github.com/AmbiqAI/nsx-ethos-u-driver/tree/nsx-ethos-u-driver-v0.1.2",
+      "summary": "NSX integration of Arm's Ethos-U core driver. Wraps the upstream ethos-u-core-driver (vendored as plain files) with NSX build glue, CMSIS-based cache coherency hooks, a board-supplied IRQ shim, and inference begin/end probes. Runtime-agnostic \u2014 consumed by HeliaAOT, HeliaRT, TFLM applications, and bespoke C runtimes alike.",
+      "type": "runtime",
+      "use_cases": [
+        "run Vela-compiled command streams on Ethos-U NPUs",
+        "NPU IRQ wiring and cache-coherent invocation on Armv8.1-M hosts",
+        "host-side begin/end probes for profiling (e.g. helia-profiler)"
+      ],
+      "version": "0.1.2"
+    },
+    {
+      "agent_keywords": [
+        "freertos",
+        "rtos",
+        "scheduler",
+        "task",
+        "kernel"
+      ],
+      "anti_use_cases": [],
+      "capabilities": [
+        "rtos",
+        "freertos",
+        "scheduler",
+        "sdk_component"
+      ],
+      "category": "rtos",
+      "compatibility": {
+        "boards": [
+          "*"
+        ],
+        "socs": [
+          "apollo3p",
+          "apollo4p",
+          "apollo510",
+          "apollo510b",
+          "apollo330P",
+          "apollo510L"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-core"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/nsx-freertos/nsx-module.yaml",
+      "name": "nsx-freertos",
+      "project": "nsx-ambiq-sdk",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
+      "revision": "v5.2.24",
+      "slug": "nsx-freertos",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.24",
+      "summary": "Optional FreeRTOS kernel middleware. Vendors a pinned upstream FreeRTOS-Kernel and builds the SoC-selected CMSIS port. Kernel/heap policy and FreeRTOSConfig.h are owned by the application.",
+      "type": "backend_specific",
+      "use_cases": [
+        "run application tasks under a preemptive FreeRTOS scheduler",
+        "provide kernel objects (tasks, queues, semaphores, timers) to higher-level modules",
+        "opt-in RTOS scheduling without baking kernel or heap policy into the core SDK"
+      ],
+      "version": "5.2.24"
+    },
+    {
+      "agent_keywords": [
+        "tflm",
+        "tensorflow",
+        "inference",
+        "litert",
+        "machine_learning",
+        "helia-rt",
+        "helia_rt",
+        "tflite"
+      ],
+      "anti_use_cases": [],
+      "capabilities": [
+        "inference",
+        "tflm",
+        "machine_learning",
+        "litert"
+      ],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "*"
+        ],
+        "socs": [
+          "*"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "armclang",
+          "atfe"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-core",
+          "nsx-soc-hal",
+          "nsx-cmsis-nn"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/helia-rt/nsx/nsx-module.yaml",
+      "name": "nsx-helia-rt",
+      "project": "helia-rt",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/helia-rt",
+      "revision": "helia-rt-v1.18.0",
+      "slug": "nsx-helia-rt",
+      "source_url": "https://github.com/AmbiqAI/helia-rt/tree/helia-rt-v1.18.0",
+      "summary": "Ambiq-optimized TensorFlow Lite for Microcontrollers (TFLM) runtime. Built from source against the nsx-cmsis-nn (ns-cmsis-nn) kernel module.",
+      "type": "algorithm",
+      "use_cases": [
+        "on-device ML inference",
+        "tflite model deployment on Ambiq SoCs",
+        "keyword spotting and anomaly detection models"
+      ],
+      "version": "1.18.0"
+    },
+    {
+      "agent_keywords": [
+        "i2c",
+        "sensor",
+        "bus",
+        "wire"
+      ],
+      "anti_use_cases": [],
+      "capabilities": [
+        "i2c",
+        "i2c_bus_contract",
+        "peripheral_bus"
+      ],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "*"
+        ],
+        "socs": [
+          "apollo330P",
+          "apollo510",
+          "apollo510b",
+          "apollo510L",
+          "apollo4l",
+          "apollo4p",
+          "apollo3",
+          "apollo3p"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "atfe",
+          "armclang"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-core",
+          "nsx-soc-hal"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/nsx-i2c/nsx-module.yaml",
+      "name": "nsx-i2c",
+      "project": "nsx-ambiq-sdk",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
+      "revision": "v5.2.24",
+      "slug": "nsx-i2c",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.24",
+      "summary": "I2C bus API contract and register-access helpers for AmbiqSuite-backed NSX targets.",
+      "type": "backend_specific",
+      "use_cases": [
+        "SDK-backed I2C bus access",
+        "shared register read/write helpers for I2C devices",
+        "simple peripheral communication",
+        "base dependency for optional I2C device-driver modules"
+      ],
+      "version": "5.2.24"
+    },
+    {
+      "agent_keywords": [
+        "nanopb",
+        "protobuf",
+        "proto",
+        "rpc",
+        "serialisation",
+        "encoding",
+        "binary protocol"
+      ],
+      "anti_use_cases": [],
+      "capabilities": [
+        "protobuf",
+        "serialisation",
+        "rpc_framing",
+        "zero_dynamic_memory"
+      ],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "*"
+        ],
+        "socs": [
+          "*"
+        ],
+        "toolchains": [
+          "*"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": []
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/nsx-nanopb/nsx-module.yaml",
+      "name": "nsx-nanopb",
+      "project": "nsx-nanopb",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/nsx-nanopb",
+      "revision": "v0.1.1",
+      "slug": "nsx-nanopb",
+      "source_url": "https://github.com/AmbiqAI/nsx-nanopb/tree/v0.1.1",
+      "summary": "Vendored nanopb v0.4.9.1 \u2014 a small, zero-dynamic-memory Protocol Buffers implementation in ANSI C. Provides pb_encode / pb_decode for structured message serialisation over any transport (USB, UART, SPI, etc.). Pre-generated .pb.c/.pb.h files produced from .proto schemas are compiled into the application target; this module supplies only the runtime library.\n",
+      "type": "runtime",
+      "use_cases": [
+        "structured USB RPC messages",
+        "sensor data serialisation",
+        "host-device binary protocol",
+        "AI demo structured inference requests/responses"
+      ],
+      "version": "0.1.1"
+    },
+    {
+      "agent_keywords": [
+        "npu",
+        "ethos",
+        "ethos-u",
+        "ethos-u85",
+        "vela",
+        "accelerator"
+      ],
+      "anti_use_cases": [],
+      "capabilities": [
+        "npu",
+        "ethos_u",
+        "inference_acceleration"
+      ],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "atomiq110_fpga_turbo"
+        ],
+        "socs": [
+          "atomiq110"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "armclang",
+          "atfe"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-core",
+          "nsx-soc-hal",
+          "nsx-ethos-u-driver"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/nsx-npu/nsx-module.yaml",
+      "name": "nsx-npu",
+      "project": "nsx-ambiq-sdk",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
+      "revision": "v5.2.25",
+      "slug": "nsx-npu",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.25",
+      "summary": "Atomiq110 glue for the Arm Ethos-U85 NPU: power-domain sequencing, IRQ wiring, and performance-mode selection on top of the pristine upstream driver (nsx-ethos-u-driver) so TFLM runtimes can dispatch Vela-compiled command streams to the NPU.",
+      "type": "backend_specific",
+      "use_cases": [
+        "Ethos-U85 NPU inference offload",
+        "Vela-compiled TFLite model execution",
+        "NPU power and performance mode control"
+      ],
+      "version": "5.2.25"
+    },
+    {
+      "agent_keywords": [
+        "perf",
+        "profiling",
+        "timing",
+        "benchmark"
+      ],
+      "anti_use_cases": [],
+      "capabilities": [
+        "profiling",
+        "timing",
+        "performance_measurement"
+      ],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "*"
+        ],
+        "socs": [
+          "apollo330P",
+          "apollo510",
+          "apollo510b",
+          "apollo510L",
+          "atomiq110",
+          "apollo4l",
+          "apollo4p",
+          "apollo3",
+          "apollo3p"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "atfe",
+          "armclang"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-core",
+          "nsx-soc-hal"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/nsx-perf/nsx-module.yaml",
+      "name": "nsx-perf",
+      "project": "nsx-ambiq-sdk",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
+      "revision": "v5.2.24",
+      "slug": "nsx-perf",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.24",
+      "summary": "Generic performance measurement helpers for timing and lightweight profiling.",
+      "type": "runtime",
+      "use_cases": [
+        "generic performance instrumentation",
+        "timing-critical code measurement",
+        "lightweight profiling bring-up"
+      ],
+      "version": "5.2.24"
+    },
+    {
+      "agent_keywords": [
+        "physiokit",
+        "biosignal",
+        "ecg",
+        "ppg",
+        "hrv",
+        "respiration",
+        "imu"
+      ],
+      "anti_use_cases": [],
+      "capabilities": [
+        "biosignals",
+        "signal_processing",
+        "ecg",
+        "ppg",
+        "respiration",
+        "hrv"
+      ],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "*"
+        ],
+        "socs": [
+          "apollo3",
+          "apollo3p",
+          "apollo4l",
+          "apollo4p",
+          "apollo5b",
+          "apollo330P",
+          "apollo510",
+          "apollo510b",
+          "apollo510L",
+          "atomiq110"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "armclang",
+          "atfe"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": [
+          "helia-dsp"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/nsx-physiokit/nsx-module.yaml",
+      "name": "nsx-physiokit",
+      "project": "nsx-physiokit",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/nsx-physiokit",
+      "revision": "v0.1.0",
+      "slug": "nsx-physiokit",
+      "source_url": "https://github.com/AmbiqAI/nsx-physiokit/tree/v0.1.0",
+      "summary": "Physiologic signal-processing primitives for ECG, PPG, respiration, IMU, and HRV workflows.",
+      "type": "runtime",
+      "use_cases": [
+        "wearable-vitals prototyping",
+        "physiologic feature extraction",
+        "embedded signal preprocessing",
+        "heart-rate and respiration analytics"
+      ],
+      "version": "0.1.0"
+    },
+    {
+      "agent_keywords": [
+        "pmu",
+        "counters",
+        "cycles",
+        "armv8-m",
+        "mve"
+      ],
+      "anti_use_cases": [],
+      "capabilities": [
+        "pmu",
+        "profiling",
+        "hardware_counters",
+        "armv8m"
+      ],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "*"
+        ],
+        "socs": [
+          "apollo5b",
+          "apollo330P",
+          "apollo510",
+          "apollo510b",
+          "apollo510L",
+          "atomiq110"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "armclang",
+          "atfe"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-cmsis-core",
+          "nsx-core",
+          "nsx-soc-hal"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/nsx-pmu-armv8m/nsx-module.yaml",
+      "name": "nsx-pmu-armv8m",
+      "project": "nsx-pmu-armv8m",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/nsx-pmu-armv8m",
+      "revision": "v0.2.0",
+      "slug": "nsx-pmu-armv8m",
+      "source_url": "https://github.com/AmbiqAI/nsx-pmu-armv8m/tree/v0.2.0",
+      "summary": "Armv8-M PMU helpers for hardware counter configuration, capture, and transport.",
+      "type": "runtime",
+      "use_cases": [
+        "function profiling",
+        "layer profiling",
+        "model-level PMU measurement",
+        "MVE or Helium counter capture"
+      ],
+      "version": "0.2.0"
+    },
+    {
+      "agent_keywords": [
+        "power",
+        "sleep",
+        "low power",
+        "wake"
+      ],
+      "anti_use_cases": [],
+      "capabilities": [
+        "power",
+        "low_power",
+        "sleep_control"
+      ],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "apollo3_evb",
+          "apollo3_evb_cygnus",
+          "apollo3p_evb",
+          "apollo3p_evb_cygnus",
+          "apollo4l_evb",
+          "apollo4l_blue_evb",
+          "apollo4p_evb",
+          "apollo4p_blue_kbr_evb",
+          "apollo4p_blue_kxr_evb",
+          "apollo330mP_evb",
+          "apollo510_evb",
+          "apollo510b_evb",
+          "apollo510dL_evb"
+        ],
+        "socs": [
+          "apollo3",
+          "apollo3p",
+          "apollo4l",
+          "apollo4p",
+          "apollo330P",
+          "apollo510",
+          "apollo510b",
+          "apollo510L"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "armclang",
+          "atfe"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-core",
+          "nsx-soc-hal",
+          "nsx-timer"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/nsx-power/nsx-module.yaml",
+      "name": "nsx-power",
+      "project": "nsx-ambiq-sdk",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
+      "revision": "v5.2.24",
+      "slug": "nsx-power",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.24",
+      "summary": "AmbiqSuite power-management helpers for sleep policy, shutdown control, and low-power workflows across supported Apollo3, Apollo4, and Apollo5 targets.",
+      "type": "backend_specific",
+      "use_cases": [
+        "low-power application behavior",
+        "sleep and wake control",
+        "power-policy experimentation and validation"
+      ],
+      "version": "5.2.24"
+    },
+    {
+      "agent_keywords": [
+        "sensor",
+        "imu",
+        "max86150",
+        "mpu6050",
+        "ina228",
+        "ledstick",
+        "icm45605",
+        "6dof"
+      ],
+      "anti_use_cases": [],
+      "capabilities": [
+        "sensors",
+        "i2c_devices",
+        "spi_devices",
+        "measurement_devices",
+        "accessories",
+        "icm45605",
+        "6dof"
+      ],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "*"
+        ],
+        "socs": [
+          "apollo3",
+          "apollo3p",
+          "apollo4l",
+          "apollo4p",
+          "apollo330P",
+          "apollo510",
+          "apollo510b",
+          "apollo510L"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "armclang",
+          "atfe"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-core",
+          "nsx-i2c",
+          "nsx-spi"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/nsx-sensors/nsx-module.yaml",
+      "name": "nsx-sensors",
+      "project": "nsx-sensors",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/nsx-sensors",
+      "revision": "v0.3.0",
+      "slug": "nsx-sensors",
+      "source_url": "https://github.com/AmbiqAI/nsx-sensors/tree/v0.3.0",
+      "summary": "Reusable external sensor and accessory drivers built on NSX transport modules.",
+      "type": "runtime",
+      "use_cases": [
+        "imu bring-up",
+        "bio-sensor capture",
+        "current and voltage monitoring",
+        "simple i2c accessory control",
+        "6dof imu bring-up"
+      ],
+      "version": "0.3.0"
+    },
+    {
+      "agent_keywords": [
+        "soc",
+        "hal",
+        "low level",
+        "platform"
+      ],
+      "anti_use_cases": [],
+      "capabilities": [
+        "soc_hal",
+        "low_level_platform",
+        "target_integration"
+      ],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "*"
+        ],
+        "socs": [
+          "apollo330P",
+          "apollo510",
+          "apollo510b",
+          "apollo510L",
+          "atomiq110",
+          "apollo4l",
+          "apollo4p",
+          "apollo3",
+          "apollo3p",
+          "apollo2"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "atfe",
+          "armclang"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": []
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/nsx-soc-hal/nsx-module.yaml",
+      "name": "nsx-soc-hal",
+      "project": "nsx-ambiq-sdk",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
+      "revision": "v5.2.24",
+      "slug": "nsx-soc-hal",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.24",
+      "summary": "Shared SoC-level HAL integration layer for NSX targets.",
+      "type": "soc",
+      "use_cases": [
+        "foundational SoC integration",
+        "common low-level platform access",
+        "base dependency for most NSX runtime modules"
+      ],
+      "version": "5.2.24"
+    },
+    {
+      "agent_keywords": [
+        "spi",
+        "bus",
+        "transfer",
+        "peripheral"
+      ],
+      "anti_use_cases": [],
+      "capabilities": [
+        "spi",
+        "peripheral_bus",
+        "device_transfer"
+      ],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "*"
+        ],
+        "socs": [
+          "apollo330P",
+          "apollo510",
+          "apollo510b",
+          "apollo510L",
+          "apollo4l",
+          "apollo4p",
+          "apollo3",
+          "apollo3p"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "atfe",
+          "armclang"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-core",
+          "nsx-soc-hal"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/nsx-spi/nsx-module.yaml",
+      "name": "nsx-spi",
+      "project": "nsx-ambiq-sdk",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
+      "revision": "v5.2.24",
+      "slug": "nsx-spi",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.24",
+      "summary": "SPI wrapper helpers for talking to SPI-attached devices and peripherals.",
+      "type": "backend_specific",
+      "use_cases": [
+        "SPI peripheral bring-up",
+        "board validation with SPI devices",
+        "reusable SPI communication support"
+      ],
+      "version": "5.2.24"
+    },
+    {
+      "agent_keywords": [
+        "tflm",
+        "tensorflow",
+        "tflite",
+        "cmsis-nn",
+        "profiling",
+        "helia-profiler"
+      ],
+      "anti_use_cases": [],
+      "capabilities": [
+        "inference",
+        "tflm",
+        "machine_learning",
+        "profiling"
+      ],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "*"
+        ],
+        "socs": [
+          "*"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "armclang",
+          "atfe"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [
+          "arm-cmsis-nn"
+        ],
+        "required": [
+          "helia-rt-source",
+          "nsx-core",
+          "nsx-soc-hal"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/nsx-tflite-micro/nsx-module.yaml",
+      "name": "nsx-tflite-micro",
+      "project": "nsx-tflite-micro",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/nsx-tflite-micro",
+      "revision": "v0.1.0",
+      "slug": "nsx-tflite-micro",
+      "source_url": "https://github.com/AmbiqAI/nsx-tflite-micro/tree/v0.1.0",
+      "summary": "Thin NSX wrapper for the helia-rt TensorFlow Lite Micro runtime using reference kernels or standard Arm CMSIS-NN kernels.",
+      "type": "runtime",
+      "use_cases": [
+        "TFLM inference on Ambiq SoCs",
+        "reference-versus-CMSIS-NN kernel comparisons",
+        "helia-profiler runtime measurements"
+      ],
+      "version": "0.1.0"
+    },
+    {
+      "agent_keywords": [
+        "tileio",
+        "ble",
+        "bluetooth",
+        "gatt"
+      ],
+      "anti_use_cases": [],
+      "capabilities": [
+        "ble",
+        "gatt_server",
+        "tileio"
+      ],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "apollo3_evb",
+          "apollo3p_evb",
+          "apollo510b_evb",
+          "apollo4p_blue_kbr_evb",
+          "apollo4p_blue_kxr_evb"
+        ],
+        "socs": [
+          "apollo3",
+          "apollo3p",
+          "apollo510b",
+          "apollo4p"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "atfe",
+          "armclang"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-core",
+          "nsx-ble"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/nsx-tileio-ble/nsx-module.yaml",
+      "name": "nsx-tileio-ble",
+      "project": "nsx-tileio",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/nsx-tileio",
+      "revision": "v0.1.0",
+      "slug": "nsx-tileio-ble",
+      "source_url": "https://github.com/AmbiqAI/nsx-tileio/tree/v0.1.0",
+      "summary": "Tileio BLE transport wrapper on top of nsx-ble.",
+      "type": "backend_specific",
+      "use_cases": [
+        "stream Tileio slot data over BLE notifications",
+        "receive Tileio UIO state updates over BLE"
+      ],
+      "version": "0.1.0"
+    },
+    {
+      "agent_keywords": [
+        "tileio",
+        "usb",
+        "vendor",
+        "webusb"
+      ],
+      "anti_use_cases": [],
+      "capabilities": [
+        "usb",
+        "vendor_transport",
+        "tileio"
+      ],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "apollo4p_evb",
+          "apollo4p_blue_kbr_evb",
+          "apollo4p_blue_kxr_evb",
+          "apollo330mP_evb",
+          "apollo510_evb",
+          "apollo510b_evb",
+          "apollo510dL_evb"
+        ],
+        "socs": [
+          "apollo330P",
+          "apollo510",
+          "apollo510b",
+          "apollo510L",
+          "apollo4p"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "atfe",
+          "armclang"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-core",
+          "nsx-usb"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/nsx-tileio-usb/nsx-module.yaml",
+      "name": "nsx-tileio-usb",
+      "project": "nsx-tileio",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/nsx-tileio",
+      "revision": "v0.1.0",
+      "slug": "nsx-tileio-usb",
+      "source_url": "https://github.com/AmbiqAI/nsx-tileio/tree/v0.1.0",
+      "summary": "Tileio USB transport wrapper on top of nsx-usb.",
+      "type": "backend_specific",
+      "use_cases": [
+        "stream Tileio slot data over USB vendor transport",
+        "receive Tileio slot and UIO updates from a host"
+      ],
+      "version": "0.1.0"
+    },
+    {
+      "agent_keywords": [],
+      "anti_use_cases": [],
+      "capabilities": [],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "*"
+        ],
+        "socs": [
+          "apollo2",
+          "apollo3",
+          "apollo3p",
+          "apollo4l",
+          "apollo4p",
+          "apollo5b",
+          "apollo510",
+          "apollo510b",
+          "apollo330P",
+          "apollo510L",
+          "atomiq110"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "armclang",
+          "atfe"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": []
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "packaged",
+      "metadata_path": "src/neuralspotx/cmake/nsx-module.yaml",
+      "name": "nsx-tooling",
+      "project": "neuralspotx",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/neuralspotx",
+      "revision": "main",
+      "slug": "nsx-tooling",
+      "source_url": "https://github.com/AmbiqAI/neuralspotx/tree/main",
+      "summary": null,
+      "type": "tooling",
+      "use_cases": [],
+      "version": "0.1.0"
+    },
+    {
+      "agent_keywords": [
+        "uart",
+        "serial",
+        "console",
+        "tty"
+      ],
+      "anti_use_cases": [],
+      "capabilities": [
+        "uart",
+        "serial",
+        "console_io"
+      ],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "*"
+        ],
+        "socs": [
+          "apollo330P",
+          "apollo510",
+          "apollo510b",
+          "apollo510L",
+          "atomiq110",
+          "apollo4l",
+          "apollo4p",
+          "apollo3",
+          "apollo3p"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "atfe",
+          "armclang"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-core",
+          "nsx-interrupt",
+          "nsx-soc-hal"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/nsx-uart/nsx-module.yaml",
+      "name": "nsx-uart",
+      "project": "nsx-ambiq-sdk",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
+      "revision": "v5.2.24",
+      "slug": "nsx-uart",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.24",
+      "summary": "UART wrapper helpers for serial communication, console I/O, and simple host-device links.",
+      "type": "backend_specific",
+      "use_cases": [
+        "serial bring-up",
+        "host-device communication",
+        "UART console or bridge workflows"
+      ],
+      "version": "5.2.24"
+    },
+    {
+      "agent_keywords": [
+        "usb",
+        "cdc",
+        "serial",
+        "tinyusb",
+        "host"
+      ],
+      "anti_use_cases": [],
+      "capabilities": [
+        "usb",
+        "cdc",
+        "serial"
+      ],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "apollo4p_evb",
+          "apollo4p_blue_kbr_evb",
+          "apollo4p_blue_kxr_evb",
+          "apollo330mP_evb",
+          "apollo510_evb",
+          "apollo510b_evb",
+          "apollo510dL_evb"
+        ],
+        "socs": [
+          "apollo330P",
+          "apollo510",
+          "apollo510b",
+          "apollo510L",
+          "apollo4p"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "atfe",
+          "armclang"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-core",
+          "nsx-timer",
+          "nsx-soc-hal",
+          "nsx-ambiq-usb"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/nsx-usb/nsx-module.yaml",
+      "name": "nsx-usb",
+      "project": "nsx-ambiq-sdk",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
+      "revision": "v5.2.24",
+      "slug": "nsx-usb",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.24",
+      "summary": "USB CDC serial driver for Ambiq SoCs using the SDK-hosted TinyUSB substrate.",
+      "type": "backend_specific",
+      "use_cases": [
+        "Host-device serial link over USB CDC",
+        "Streaming sensor or audio data to a PC",
+        "Console I/O over USB"
+      ],
+      "version": "5.2.24"
+    }
+  ],
+  "registry_schema_version": 1,
+  "schema_version": 1,
+  "unchecked_projects": {
+    "helia-dsp": "a private repository, so a run without credentials cannot read its manifests"
+  }
+}

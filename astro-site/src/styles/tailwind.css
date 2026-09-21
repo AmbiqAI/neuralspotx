@@ -1,0 +1,17 @@
+/* SPDX-License-Identifier: BSD-3-Clause */
+/* Copyright (c) 2026, Ambiq */
+/*
+ * Tailwind v4 entry. The theme mapping, layer order and Starlight compat round
+ * trip come from the package; a `@source` glob resolves against the file that
+ * declares it, so the scan list has to live here rather than in node_modules.
+ */
+
+@import '@ambiqai/helia-ui/starlight-tailwind.css';
+
+@source '../content/**/*.{md,mdx}';
+@source '../components/**/*.{astro,tsx}';
+@source '../../node_modules/@ambiqai/helia-ui/astro/**/*.astro';
+@source '../../node_modules/@ambiqai/helia-ui/starlight/**/*.astro';
+/* The catalog's filter is the package's own React island, so its classes
+   are in node_modules and nowhere in this repository to be scanned. */
+@source '../../node_modules/@ambiqai/helia-ui/react/**/*.tsx';

@@ -1,0 +1,87 @@
+---
+title: Getting started
+description: What NSX does, what your machine needs before you install it, and the order to work through the rest of this section.
+---
+
+NSX is a command line tool for bare-metal Ambiq apps. You install it once on your machine
+and then use it per app: it scaffolds a project against a real board, resolves and vendors
+the modules that board needs, generates an ordinary CMake and Ninja tree, builds the
+image, programs the board over SWD and streams its SWO output back to your terminal.
+
+Everything NSX generates is readable. The app it writes is a normal CMake project with a
+`CMakeLists.txt` you can edit, and the modules it fetches land in a `modules/` directory
+inside your app. There is no build wrapper to reverse engineer.
+
+:::note[What NSX is for]
+NSX is a development and evaluation vehicle for Ambiq SoCs: bring-up, profiling,
+benchmarking and demos. Prototype and measure here, then graduate proven work into your
+own build.
+:::
+
+## The lifecycle
+
+One environment check, then five commands per app.
+
+| Command | What it does |
+| --- | --- |
+| `nsx doctor` | Checks the tools on your machine. Run it once after installing, and again whenever something breaks. |
+| `nsx create-app` | Writes a new app directory targeting a board, and vendors its starter modules. |
+| `nsx configure` | Resolves the module graph, writes `nsx.lock`, and generates the CMake build tree. |
+| `nsx build` | Compiles and links the firmware image. |
+| `nsx flash` | Builds if needed, then programs the board over SWD. |
+| `nsx view` | Opens the SEGGER SWO viewer and streams output from the running firmware. |
+
+`nsx doctor`, `nsx create-app`, `nsx configure` and `nsx build` all work with no board
+attached. Only `nsx flash`, `nsx view`, `nsx reset` and `nsx probes` need a probe.
+
+## What you need
+
+NSX runs on macOS, Linux and Windows. The host tools below are what `nsx doctor` checks
+before it will call the environment healthy.
+
+| Requirement | Version | Why |
+| --- | --- | --- |
+| Python | 3.11 or newer | NSX is a Python package; this is its declared minimum. |
+| uv | any | Used to manage Python environments, and checked by `nsx doctor`. |
+| CMake | 3.24 or newer | The generated app declares `cmake_minimum_required(VERSION 3.24)`. |
+| Ninja | any | The build backend NSX generates for. |
+| Git | any | Module sources are fetched from their upstream repositories. |
+| Arm GNU toolchain | any | The default cross compiler, `arm-none-eabi-gcc`. |
+| SEGGER J-Link | any | Needed only by `nsx flash`, `nsx view`, `nsx reset` and `nsx probes`. |
+
+Two alternate compilers are optional and are reported only when they are present: Arm
+Compiler for Embedded (`armclang`) and Arm Toolchain for Embedded (ATfE). GCC builds every
+packaged example, so you do not need either to get started.
+
+## Work through it in this order
+
+1. **[Install](/neuralspotx/getting-started/install/)** puts the host tools, the Arm
+   toolchain, the J-Link pack and the `nsx` CLI on your machine, with the commands for
+   macOS, Linux and Windows side by side.
+2. **[Check your environment](/neuralspotx/getting-started/doctor/)** runs `nsx doctor` and
+   explains its report, including what a failing check looks like and which failures you
+   can ignore until you have hardware.
+3. **[Create your first app](/neuralspotx/getting-started/first-app/)** scaffolds an app
+   for an Apollo510 EVB and reads back what `nsx create-app` actually wrote.
+4. **[Configure and build](/neuralspotx/getting-started/configure-and-build/)** resolves
+   the module graph, generates the CMake tree and links an image. No board needed.
+5. **[Flash, reset and view](/neuralspotx/getting-started/flash-and-view/)** finds your
+   probe, programs the board and streams SWO output back from the firmware.
+6. **[Next steps](/neuralspotx/getting-started/next-steps/)** points at the guides, the
+   module catalog and the reference once your first app runs.
+
+Coming from legacy neuralSPOT? Read
+[Migrating from neuralSPOT](/neuralspotx/getting-started/migrate-from-neuralspot/) for how
+the old packages map onto NSX modules.
+
+## Notation
+
+One placeholder runs through this section:
+
+- `<app-dir>` is the directory of a generated or example app, whichever path you passed to
+  `nsx create-app` or checked out.
+- `<board>` is the board id from `nsx.yml`, for example `apollo510_evb`.
+
+Command examples assume you are inside the app directory. NSX finds the nearest `nsx.yml`
+by walking up from the working directory, so `--app-dir` is only needed when you want to
+act on an app somewhere else.

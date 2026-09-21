@@ -17,7 +17,7 @@ from pathlib import Path
 import yaml
 
 WORKFLOW_PATH = Path(__file__).parents[1] / ".github" / "workflows" / "release.yml"
-DOC_PATH = Path(__file__).parents[1] / "docs" / "contributing" / "releases.md"
+DOC_PATH = Path(__file__).parents[1] / "docs" / "maintainers" / "releases.md"
 
 
 def _workflow_text() -> str:

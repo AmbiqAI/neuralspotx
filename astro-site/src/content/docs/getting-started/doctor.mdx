@@ -1,0 +1,84 @@
+---
+title: Check your environment
+description: What nsx doctor checks, how to read a passing and a failing report, and when to use its JSON output.
+---
+
+import AsciiTerminal from '@ambiqai/helia-ui/astro/AsciiTerminal';
+import transcripts from '../../../data/transcripts/doctor.json';
+
+`nsx doctor` is the one command that looks at your machine rather than at an app. It does
+not need a board, an app directory or a network connection. Run it after installing, and
+run it again first whenever a build or a flash misbehaves, because it separates a broken
+environment from a broken app.
+
+```bash
+nsx doctor
+```
+
+A passing run is on the [Install](/neuralspotx/getting-started/install/#5-confirm-the-install)
+page. This page is about what the checks mean and what to do when one fails.
+
+## What it checks
+
+| Check | Required | What a pass means |
+| --- | --- | --- |
+| Python | yes | The interpreter running NSX, and its path. |
+| uv | yes | `uv` is on `PATH`. |
+| cmake | yes | CMake is on `PATH`. |
+| ninja | yes | Ninja is on `PATH`. |
+| git | yes | Git is on `PATH`. The line under it prints the protocol allow-list NSX uses when it clones module sources. |
+| Board registry | yes | The board descriptors packaged with your NSX version load and agree with each other. |
+| arm-none-eabi-gcc | yes | The default cross compiler is on `PATH`. |
+| armclang, armlink, fromelf | no | Three checks, reported only when the Arm Compiler toolchain is found. Otherwise a single note says it was not detected. |
+| ATfE | no | Reported only when `ATFE_ROOT` points at an install. Otherwise a note says it was not detected. |
+| SEGGER J-Link | yes | `JLinkExe` was found. |
+| SEGGER JLinkSWOViewerCL | yes | The SWO viewer binary was found on `PATH`. |
+| SEGGER J-Link runtime | yes | `JLinkExe` was launched and started cleanly, which catches a broken install rather than a missing one. |
+
+Most checks print the path they resolved on the line beneath, so a pass also tells you
+which tool was picked up when you have more than one installed. `Board registry` and
+`SEGGER J-Link runtime` print a status line instead.
+
+## Reading a failure
+
+Failures are per check. The command exits with status 1 and each failing check carries a
+hint naming what to install.
+
+<AsciiTerminal
+  title="nsx doctor"
+  lines={transcripts.failing}
+  animated
+  copy
+/>
+
+Captured on macOS 26 on a host where the Arm GNU toolchain was not on `PATH` and the
+SEGGER SWO viewer was not installed. Resolved paths are omitted because they are specific
+to the machine that ran it.
+
+Two things worth knowing from that output:
+
+- The optional toolchain notes are not failures. A host with only GCC is a supported host.
+- The SEGGER checks fail on any machine without the J-Link pack. If you do not have a
+  board yet, that is expected and you can still work through
+  [Create your first app](/neuralspotx/getting-started/first-app/) and
+  [Configure and build](/neuralspotx/getting-started/configure-and-build/). Install the
+  pack before you reach
+  [Flash, reset and view](/neuralspotx/getting-started/flash-and-view/).
+
+## Machine-readable output
+
+`--json` is doctor's only option. It emits an object with `ok`, a `checks` array and
+`notes`, where each check carries `label`, `ok`, `required`, `detail` and `hint`. Use it
+from CI or from an agent rather than parsing the human output.
+
+```bash
+nsx doctor --json
+```
+
+Full option details are on the [`nsx doctor`](/neuralspotx/reference/cli/doctor/)
+reference page.
+
+## Next
+
+Environment healthy, or at least healthy enough to build?
+[Create your first app](/neuralspotx/getting-started/first-app/).

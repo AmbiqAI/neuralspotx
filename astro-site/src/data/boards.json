@@ -1,0 +1,713 @@
+{
+  "board_count": 17,
+  "boards": [
+    {
+      "cpu": {
+        "abi": "thumbv7em-fpv4sp-hard",
+        "core": "cortex-m4",
+        "float_abi": "hard"
+      },
+      "name": "apollo2_evb",
+      "order": 0,
+      "registered": true,
+      "sdk_provider": "ambiqsuite",
+      "sdk_provider_module": "nsx-ambiqsuite",
+      "soc": "apollo2",
+      "soc_family": "apollo2",
+      "tier": "evb",
+      "toolchains": [
+        "arm-none-eabi-gcc"
+      ]
+    },
+    {
+      "cpu": {
+        "abi": "thumbv7em-fpv4sp-hard",
+        "core": "cortex-m4",
+        "float_abi": "hard"
+      },
+      "name": "apollo3_evb",
+      "order": 1,
+      "registered": true,
+      "sdk_provider": "ambiqsuite",
+      "sdk_provider_module": "nsx-ambiqsuite",
+      "soc": "apollo3",
+      "soc_family": "apollo3",
+      "tier": "evb",
+      "toolchains": [
+        "arm-none-eabi-gcc"
+      ]
+    },
+    {
+      "cpu": {
+        "abi": "thumbv7em-fpv4sp-hard",
+        "core": "cortex-m4",
+        "float_abi": "hard"
+      },
+      "name": "apollo3_evb_cygnus",
+      "order": 2,
+      "registered": true,
+      "sdk_provider": "ambiqsuite",
+      "sdk_provider_module": "nsx-ambiqsuite",
+      "soc": "apollo3",
+      "soc_family": "apollo3",
+      "tier": "evb",
+      "toolchains": [
+        "arm-none-eabi-gcc"
+      ]
+    },
+    {
+      "cpu": {
+        "abi": "thumbv7em-fpv4sp-hard",
+        "core": "cortex-m4",
+        "float_abi": "hard"
+      },
+      "name": "apollo3p_evb",
+      "order": 3,
+      "registered": true,
+      "sdk_provider": "ambiqsuite",
+      "sdk_provider_module": "nsx-ambiqsuite",
+      "soc": "apollo3p",
+      "soc_family": "apollo3p",
+      "tier": "evb",
+      "toolchains": [
+        "arm-none-eabi-gcc"
+      ]
+    },
+    {
+      "cpu": {
+        "abi": "thumbv7em-fpv4sp-hard",
+        "core": "cortex-m4",
+        "float_abi": "hard"
+      },
+      "name": "apollo3p_evb_cygnus",
+      "order": 4,
+      "registered": true,
+      "sdk_provider": "ambiqsuite",
+      "sdk_provider_module": "nsx-ambiqsuite",
+      "soc": "apollo3p",
+      "soc_family": "apollo3p",
+      "tier": "evb",
+      "toolchains": [
+        "arm-none-eabi-gcc"
+      ]
+    },
+    {
+      "cpu": {
+        "abi": "thumbv7em-fpv4sp-hard",
+        "core": "cortex-m4",
+        "float_abi": "hard"
+      },
+      "name": "apollo4l_evb",
+      "order": 5,
+      "registered": true,
+      "sdk_provider": "ambiqsuite",
+      "sdk_provider_module": "nsx-ambiqsuite",
+      "soc": "apollo4l",
+      "soc_family": "apollo4l",
+      "tier": "evb",
+      "toolchains": [
+        "arm-none-eabi-gcc",
+        "atfe"
+      ]
+    },
+    {
+      "cpu": {
+        "abi": "thumbv7em-fpv4sp-hard",
+        "core": "cortex-m4",
+        "float_abi": "hard"
+      },
+      "name": "apollo4l_blue_evb",
+      "order": 6,
+      "registered": true,
+      "sdk_provider": "ambiqsuite",
+      "sdk_provider_module": "nsx-ambiqsuite",
+      "soc": "apollo4l",
+      "soc_family": "apollo4l",
+      "tier": "evb",
+      "toolchains": [
+        "arm-none-eabi-gcc",
+        "atfe"
+      ]
+    },
+    {
+      "cpu": {
+        "abi": "thumbv7em-fpv4sp-hard",
+        "core": "cortex-m4",
+        "float_abi": "hard"
+      },
+      "name": "apollo4p_evb",
+      "order": 7,
+      "registered": true,
+      "sdk_provider": "ambiqsuite",
+      "sdk_provider_module": "nsx-ambiqsuite",
+      "soc": "apollo4p",
+      "soc_family": "apollo4p",
+      "tier": "evb",
+      "toolchains": [
+        "arm-none-eabi-gcc"
+      ]
+    },
+    {
+      "cpu": {
+        "abi": "thumbv7em-fpv4sp-hard",
+        "core": "cortex-m4",
+        "float_abi": "hard"
+      },
+      "name": "apollo4p_blue_kbr_evb",
+      "order": 8,
+      "registered": true,
+      "sdk_provider": "ambiqsuite",
+      "sdk_provider_module": "nsx-ambiqsuite",
+      "soc": "apollo4p",
+      "soc_family": "apollo4p",
+      "tier": "evb",
+      "toolchains": [
+        "arm-none-eabi-gcc"
+      ]
+    },
+    {
+      "cpu": {
+        "abi": "thumbv7em-fpv4sp-hard",
+        "core": "cortex-m4",
+        "float_abi": "hard"
+      },
+      "name": "apollo4p_blue_kxr_evb",
+      "order": 9,
+      "registered": true,
+      "sdk_provider": "ambiqsuite",
+      "sdk_provider_module": "nsx-ambiqsuite",
+      "soc": "apollo4p",
+      "soc_family": "apollo4p",
+      "tier": "evb",
+      "toolchains": [
+        "arm-none-eabi-gcc"
+      ]
+    },
+    {
+      "cpu": {
+        "abi": "thumbv7em-fpv4sp-hard",
+        "core": "cortex-m4",
+        "float_abi": "hard"
+      },
+      "name": "apollo4p_evb_disp_shield_rev2",
+      "order": 10,
+      "registered": true,
+      "sdk_provider": "ambiqsuite",
+      "sdk_provider_module": "nsx-ambiqsuite",
+      "soc": "apollo4p",
+      "soc_family": "apollo4p",
+      "tier": "evb",
+      "toolchains": [
+        "arm-none-eabi-gcc"
+      ]
+    },
+    {
+      "cpu": {
+        "abi": "thumbv8.1m-fpv5-hard",
+        "core": "cortex-m55",
+        "float_abi": "hard"
+      },
+      "name": "apollo5b_evb",
+      "order": 11,
+      "registered": true,
+      "sdk_provider": "ambiqsuite",
+      "sdk_provider_module": "nsx-ambiqsuite",
+      "soc": "apollo5b",
+      "soc_family": "apollo5b",
+      "tier": "evb",
+      "toolchains": [
+        "arm-none-eabi-gcc",
+        "armclang",
+        "atfe"
+      ]
+    },
+    {
+      "cpu": {
+        "abi": "thumbv8.1m-fpv5-hard",
+        "core": "cortex-m55",
+        "float_abi": "hard"
+      },
+      "name": "apollo510_evb",
+      "order": 12,
+      "registered": true,
+      "sdk_provider": "ambiqsuite",
+      "sdk_provider_module": "nsx-ambiqsuite",
+      "soc": "apollo510",
+      "soc_family": "apollo510",
+      "tier": "evb",
+      "toolchains": [
+        "arm-none-eabi-gcc",
+        "armclang",
+        "atfe"
+      ]
+    },
+    {
+      "cpu": {
+        "abi": "thumbv8.1m-fpv5-hard",
+        "core": "cortex-m55",
+        "float_abi": "hard"
+      },
+      "name": "apollo510b_evb",
+      "order": 13,
+      "registered": true,
+      "sdk_provider": "ambiqsuite",
+      "sdk_provider_module": "nsx-ambiqsuite",
+      "soc": "apollo510b",
+      "soc_family": "apollo510b",
+      "tier": "evb",
+      "toolchains": [
+        "arm-none-eabi-gcc",
+        "armclang",
+        "atfe"
+      ]
+    },
+    {
+      "cpu": {
+        "abi": "thumbv8.1m-fpv5-hard",
+        "core": "cortex-m55",
+        "float_abi": "hard"
+      },
+      "name": "apollo330mP_evb",
+      "order": 14,
+      "registered": true,
+      "sdk_provider": "ambiqsuite",
+      "sdk_provider_module": "nsx-ambiqsuite",
+      "soc": "apollo330P",
+      "soc_family": "apollo330P",
+      "tier": "evb",
+      "toolchains": [
+        "arm-none-eabi-gcc",
+        "armclang",
+        "atfe"
+      ]
+    },
+    {
+      "cpu": {
+        "abi": "thumbv8.1m-fpv5-hard",
+        "core": "cortex-m55",
+        "float_abi": "hard"
+      },
+      "name": "apollo510dL_evb",
+      "order": 15,
+      "registered": true,
+      "sdk_provider": "ambiqsuite",
+      "sdk_provider_module": "nsx-ambiqsuite",
+      "soc": "apollo510L",
+      "soc_family": "apollo510L",
+      "tier": "evb",
+      "toolchains": [
+        "arm-none-eabi-gcc",
+        "armclang",
+        "atfe"
+      ]
+    },
+    {
+      "cpu": {
+        "abi": "thumbv8.1m-fpv5-hard",
+        "core": "cortex-m55",
+        "float_abi": "hard"
+      },
+      "name": "atomiq110_fpga_turbo",
+      "order": 16,
+      "registered": true,
+      "sdk_provider": "ambiqsuite",
+      "sdk_provider_module": "nsx-ambiqsuite",
+      "soc": "atomiq110",
+      "soc_family": "atomiq110",
+      "tier": "fpga",
+      "toolchains": [
+        "arm-none-eabi-gcc",
+        "armclang",
+        "atfe"
+      ]
+    }
+  ],
+  "schema_version": 1,
+  "soc_families": {
+    "apollo2": {
+      "core_modules": [],
+      "modules": [
+        "nsx-ambiqsuite",
+        "nsx-ambiq-hal",
+        "nsx-ambiq-bsp",
+        "nsx-soc-hal",
+        "nsx-cmsis-startup"
+      ],
+      "project": "nsx-ambiq-sdk",
+      "provider": "nsx-ambiqsuite",
+      "revision": "v5.2.24",
+      "sdk_modules": [
+        "nsx-ambiqsuite",
+        "nsx-ambiq-hal",
+        "nsx-ambiq-bsp",
+        "nsx-soc-hal",
+        "nsx-cmsis-core",
+        "nsx-cmsis-startup",
+        "nsx-core"
+      ]
+    },
+    "apollo3": {
+      "core_modules": [],
+      "modules": [
+        "nsx-ambiqsuite",
+        "nsx-ambiq-hal",
+        "nsx-ambiq-bsp",
+        "nsx-soc-hal",
+        "nsx-cmsis-startup"
+      ],
+      "project": "nsx-ambiq-sdk",
+      "provider": "nsx-ambiqsuite",
+      "revision": "v5.2.24",
+      "sdk_modules": [
+        "nsx-ambiqsuite",
+        "nsx-ambiq-hal",
+        "nsx-ambiq-bsp",
+        "nsx-soc-hal",
+        "nsx-cmsis-core",
+        "nsx-cmsis-startup",
+        "nsx-core",
+        "nsx-audio",
+        "nsx-gpio",
+        "nsx-i2c",
+        "nsx-interrupt",
+        "nsx-perf",
+        "nsx-psram",
+        "nsx-spi",
+        "nsx-timer",
+        "nsx-uart"
+      ]
+    },
+    "apollo330P": {
+      "core_modules": [
+        "nsx-cmsis-core",
+        "nsx-core",
+        "nsx-pmu-armv8m",
+        "nsx-tooling"
+      ],
+      "modules": [
+        "nsx-ambiqsuite",
+        "nsx-ambiq-hal",
+        "nsx-ambiq-bsp",
+        "nsx-soc-hal",
+        "nsx-cmsis-startup"
+      ],
+      "project": "nsx-ambiq-sdk",
+      "provider": "nsx-ambiqsuite",
+      "revision": "v5.2.24",
+      "sdk_modules": [
+        "nsx-ambiqsuite",
+        "nsx-ambiq-hal",
+        "nsx-ambiq-bsp",
+        "nsx-ambiq-usb",
+        "nsx-soc-hal",
+        "nsx-cmsis-core",
+        "nsx-cmsis-startup",
+        "nsx-core",
+        "nsx-audio",
+        "nsx-gpio",
+        "nsx-i2c",
+        "nsx-interrupt",
+        "nsx-perf",
+        "nsx-power",
+        "nsx-psram",
+        "nsx-spi",
+        "nsx-timer",
+        "nsx-uart",
+        "nsx-usb"
+      ]
+    },
+    "apollo3p": {
+      "core_modules": [],
+      "modules": [
+        "nsx-ambiqsuite",
+        "nsx-ambiq-hal",
+        "nsx-ambiq-bsp",
+        "nsx-soc-hal",
+        "nsx-cmsis-startup"
+      ],
+      "project": "nsx-ambiq-sdk",
+      "provider": "nsx-ambiqsuite",
+      "revision": "v5.2.24",
+      "sdk_modules": [
+        "nsx-ambiqsuite",
+        "nsx-ambiq-hal",
+        "nsx-ambiq-bsp",
+        "nsx-soc-hal",
+        "nsx-cmsis-core",
+        "nsx-cmsis-startup",
+        "nsx-core",
+        "nsx-audio",
+        "nsx-gpio",
+        "nsx-i2c",
+        "nsx-interrupt",
+        "nsx-perf",
+        "nsx-psram",
+        "nsx-spi",
+        "nsx-timer",
+        "nsx-uart"
+      ]
+    },
+    "apollo4l": {
+      "core_modules": [],
+      "modules": [
+        "nsx-ambiqsuite",
+        "nsx-ambiq-hal",
+        "nsx-ambiq-bsp",
+        "nsx-soc-hal",
+        "nsx-cmsis-startup"
+      ],
+      "project": "nsx-ambiq-sdk",
+      "provider": "nsx-ambiqsuite",
+      "revision": "v5.2.24",
+      "sdk_modules": [
+        "nsx-ambiqsuite",
+        "nsx-ambiq-hal",
+        "nsx-ambiq-bsp",
+        "nsx-ambiq-usb",
+        "nsx-soc-hal",
+        "nsx-cmsis-core",
+        "nsx-cmsis-startup",
+        "nsx-core",
+        "nsx-audio",
+        "nsx-gpio",
+        "nsx-i2c",
+        "nsx-interrupt",
+        "nsx-perf",
+        "nsx-psram",
+        "nsx-spi",
+        "nsx-timer",
+        "nsx-uart",
+        "nsx-usb"
+      ]
+    },
+    "apollo4p": {
+      "core_modules": [],
+      "modules": [
+        "nsx-ambiqsuite",
+        "nsx-ambiq-hal",
+        "nsx-ambiq-bsp",
+        "nsx-soc-hal",
+        "nsx-cmsis-startup"
+      ],
+      "project": "nsx-ambiq-sdk",
+      "provider": "nsx-ambiqsuite",
+      "revision": "v5.2.24",
+      "sdk_modules": [
+        "nsx-ambiqsuite",
+        "nsx-ambiq-hal",
+        "nsx-ambiq-bsp",
+        "nsx-ambiq-usb",
+        "nsx-soc-hal",
+        "nsx-cmsis-core",
+        "nsx-cmsis-startup",
+        "nsx-core",
+        "nsx-audio",
+        "nsx-gpio",
+        "nsx-i2c",
+        "nsx-interrupt",
+        "nsx-perf",
+        "nsx-psram",
+        "nsx-spi",
+        "nsx-timer",
+        "nsx-uart",
+        "nsx-usb"
+      ]
+    },
+    "apollo510": {
+      "core_modules": [
+        "nsx-cmsis-core",
+        "nsx-core",
+        "nsx-pmu-armv8m",
+        "nsx-tooling"
+      ],
+      "modules": [
+        "nsx-ambiqsuite",
+        "nsx-ambiq-hal",
+        "nsx-ambiq-bsp",
+        "nsx-soc-hal",
+        "nsx-cmsis-startup"
+      ],
+      "project": "nsx-ambiq-sdk",
+      "provider": "nsx-ambiqsuite",
+      "revision": "v5.2.24",
+      "sdk_modules": [
+        "nsx-ambiqsuite",
+        "nsx-ambiq-hal",
+        "nsx-ambiq-bsp",
+        "nsx-ambiq-usb",
+        "nsx-soc-hal",
+        "nsx-cmsis-core",
+        "nsx-cmsis-startup",
+        "nsx-core",
+        "nsx-audio",
+        "nsx-gpio",
+        "nsx-i2c",
+        "nsx-interrupt",
+        "nsx-perf",
+        "nsx-power",
+        "nsx-psram",
+        "nsx-spi",
+        "nsx-timer",
+        "nsx-uart",
+        "nsx-usb"
+      ]
+    },
+    "apollo510L": {
+      "core_modules": [
+        "nsx-cmsis-core",
+        "nsx-core",
+        "nsx-pmu-armv8m",
+        "nsx-tooling"
+      ],
+      "modules": [
+        "nsx-ambiqsuite",
+        "nsx-ambiq-hal",
+        "nsx-ambiq-bsp",
+        "nsx-soc-hal",
+        "nsx-cmsis-startup"
+      ],
+      "project": "nsx-ambiq-sdk",
+      "provider": "nsx-ambiqsuite",
+      "revision": "v5.2.24",
+      "sdk_modules": [
+        "nsx-ambiqsuite",
+        "nsx-ambiq-hal",
+        "nsx-ambiq-bsp",
+        "nsx-ambiq-usb",
+        "nsx-soc-hal",
+        "nsx-cmsis-core",
+        "nsx-cmsis-startup",
+        "nsx-core",
+        "nsx-audio",
+        "nsx-gpio",
+        "nsx-i2c",
+        "nsx-interrupt",
+        "nsx-perf",
+        "nsx-power",
+        "nsx-psram",
+        "nsx-spi",
+        "nsx-timer",
+        "nsx-uart",
+        "nsx-usb"
+      ]
+    },
+    "apollo510b": {
+      "core_modules": [
+        "nsx-cmsis-core",
+        "nsx-core",
+        "nsx-pmu-armv8m",
+        "nsx-tooling"
+      ],
+      "modules": [
+        "nsx-ambiqsuite",
+        "nsx-ambiq-hal",
+        "nsx-ambiq-bsp",
+        "nsx-soc-hal",
+        "nsx-cmsis-startup"
+      ],
+      "project": "nsx-ambiq-sdk",
+      "provider": "nsx-ambiqsuite",
+      "revision": "v5.2.24",
+      "sdk_modules": [
+        "nsx-ambiqsuite",
+        "nsx-ambiq-hal",
+        "nsx-ambiq-bsp",
+        "nsx-ambiq-usb",
+        "nsx-soc-hal",
+        "nsx-cmsis-core",
+        "nsx-cmsis-startup",
+        "nsx-core",
+        "nsx-audio",
+        "nsx-gpio",
+        "nsx-i2c",
+        "nsx-interrupt",
+        "nsx-perf",
+        "nsx-power",
+        "nsx-psram",
+        "nsx-spi",
+        "nsx-timer",
+        "nsx-uart",
+        "nsx-usb"
+      ]
+    },
+    "apollo5b": {
+      "core_modules": [
+        "nsx-cmsis-core",
+        "nsx-core",
+        "nsx-pmu-armv8m",
+        "nsx-tooling"
+      ],
+      "modules": [
+        "nsx-ambiqsuite",
+        "nsx-ambiq-hal",
+        "nsx-ambiq-bsp",
+        "nsx-soc-hal",
+        "nsx-cmsis-startup"
+      ],
+      "project": "nsx-ambiq-sdk",
+      "provider": "nsx-ambiqsuite",
+      "revision": "v5.2.24",
+      "sdk_modules": [
+        "nsx-ambiqsuite",
+        "nsx-ambiq-hal",
+        "nsx-ambiq-bsp",
+        "nsx-ambiq-usb",
+        "nsx-soc-hal",
+        "nsx-cmsis-core",
+        "nsx-cmsis-startup",
+        "nsx-core",
+        "nsx-audio",
+        "nsx-gpio",
+        "nsx-i2c",
+        "nsx-interrupt",
+        "nsx-perf",
+        "nsx-power",
+        "nsx-psram",
+        "nsx-spi",
+        "nsx-timer",
+        "nsx-uart",
+        "nsx-usb"
+      ]
+    },
+    "atomiq110": {
+      "core_modules": [
+        "nsx-cmsis-core",
+        "nsx-core",
+        "nsx-pmu-armv8m",
+        "nsx-tooling"
+      ],
+      "modules": [
+        "nsx-ambiqsuite",
+        "nsx-ambiq-hal",
+        "nsx-ambiq-bsp",
+        "nsx-soc-hal",
+        "nsx-cmsis-startup"
+      ],
+      "project": "nsx-ambiq-sdk",
+      "provider": "nsx-ambiqsuite",
+      "revision": "v5.2.25",
+      "sdk_modules": [
+        "nsx-ambiqsuite",
+        "nsx-ambiq-hal",
+        "nsx-ambiq-bsp",
+        "nsx-ambiq-usb",
+        "nsx-soc-hal",
+        "nsx-cmsis-core",
+        "nsx-cmsis-startup",
+        "nsx-core",
+        "nsx-audio",
+        "nsx-gpio",
+        "nsx-i2c",
+        "nsx-interrupt",
+        "nsx-npu",
+        "nsx-perf",
+        "nsx-power",
+        "nsx-psram",
+        "nsx-spi",
+        "nsx-timer",
+        "nsx-uart",
+        "nsx-usb"
+      ]
+    }
+  }
+}

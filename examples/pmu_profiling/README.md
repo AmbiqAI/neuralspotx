@@ -1,3 +1,12 @@
+---
+title: PMU Profiling
+tier: capabilities
+capabilities: [pmu, profiling]
+summary: Cortex-M55 PMU cycle counting, cache hits, and branch mispredicts.
+status: tested
+boards_tested: [apollo510_evb]
+---
+
 # pmu_profiling
 
 Demonstrates the **nsx-pmu-armv8m** module on the Apollo510 EVB. Configures

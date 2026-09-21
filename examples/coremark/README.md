@@ -1,3 +1,12 @@
+---
+title: CoreMark
+tier: capabilities
+capabilities: [benchmark, rtt, itcm]
+summary: EEMBC CoreMark with ITCM execution; score is emitted over SEGGER RTT.
+status: builds
+boards_tested: []
+---
+
 # CoreMark
 
 [EEMBC CoreMark](https://www.eembc.org/coremark/) benchmark for Ambiq Apollo

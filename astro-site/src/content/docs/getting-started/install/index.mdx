@@ -1,0 +1,117 @@
+---
+title: Install
+description: Install the host tools, the Arm GNU toolchain, the SEGGER J-Link pack and the nsx CLI on macOS, Linux or Windows.
+---
+
+import CodeTabs from '@ambiqai/helia-ui/astro/CodeTabs';
+import AsciiTerminal from '@ambiqai/helia-ui/astro/AsciiTerminal';
+import transcripts from '../../../../data/transcripts/install.json';
+
+Installing NSX has four parts: the host tools, a cross compiler, the debug probe software,
+and the `nsx` CLI itself. Only the first three differ by operating system.
+
+:::tip[No board yet?]
+You can install everything except the J-Link pack and still get as far as a linked
+firmware image. `nsx configure` and `nsx build` never touch hardware. `nsx doctor` will
+keep reporting the SEGGER checks as failures until you install the pack, which is a
+correct report rather than a problem with your setup.
+:::
+
+:::caution[Windows steps are unverified]
+Every command on this page was executed on macOS. The Windows tabs are carried over from
+the previous documentation and have not been re-run on a Windows host, so treat the winget
+identifiers and the installer wording as unverified.
+:::
+
+## 1. Host tools
+
+Python, uv, CMake, Ninja and Git. NSX generates CMake projects that cross compile for Arm
+Cortex-M targets, so these are the tools that drive the build on your machine rather than
+anything that runs on the board.
+
+<CodeTabs tabs={transcripts.hostTools} ariaLabel="Install the host tools" />
+
+## 2. Arm GNU toolchain
+
+GCC is the default compiler and builds every packaged example, so one toolchain is enough
+to get started. On Linux the distribution package is often several years behind, so the
+official download is the better starting point.
+
+<CodeTabs tabs={transcripts.toolchain} ariaLabel="Install the Arm GNU toolchain" />
+
+Arm Compiler for Embedded (`armclang`) and Arm Toolchain for Embedded (ATfE) are optional
+alternates. Their setup differs enough per platform that it stays on the per-platform
+pages: [macOS](/neuralspotx/getting-started/install/macos/),
+[Linux](/neuralspotx/getting-started/install/linux/) and
+[Windows](/neuralspotx/getting-started/install/windows/).
+
+## 3. SEGGER J-Link
+
+The J-Link Software and Documentation Pack provides `JLinkExe` and `JLinkSWOViewerCL`,
+which `nsx flash` and `nsx view` drive. If your board has an onboard J-Link, as many Ambiq
+EVBs do, you do not need a separate probe; check the board's user guide. Skip this step if
+you do not have a board yet.
+
+<CodeTabs tabs={transcripts.probe} ariaLabel="Install the SEGGER J-Link pack" />
+
+## 4. The nsx CLI
+
+This part is identical on every platform. You installed [uv](https://docs.astral.sh/uv/)
+with the host tools in step 1, and `nsx doctor` checks for it, so it is the install path
+with nothing extra to set up. `uv tool install` puts `nsx` on your `PATH` in its own
+environment, which keeps it away from the Python environments your projects use.
+
+```bash
+uv tool install neuralspotx
+```
+
+To pin a published version:
+
+```bash
+uv tool install 'neuralspotx==<version>'
+```
+
+To try NSX without installing anything, `uvx` fetches the package into a throwaway
+environment and runs one command from it:
+
+```bash
+uvx --from neuralspotx nsx doctor
+```
+
+If you already manage your CLI tools with [pipx](https://pipx.pypa.io), `pipx install
+neuralspotx` and `pipx install 'neuralspotx==<version>'` do the same job.
+
+:::note[Working from a source checkout]
+Contributors clone the repository and let uv own the environment instead:
+
+```bash
+git clone https://github.com/AmbiqAI/neuralspotx.git
+cd neuralspotx
+uv sync
+```
+
+Then either activate the virtual environment with `source .venv/bin/activate`, or prefix
+every command with `uv run`, as in `uv run nsx doctor`.
+:::
+
+NSX has no `--version` flag. The top-level parser takes `-h`, `-v` for verbosity and `-q`
+for quiet, and nothing else; `nsx --version` fails with
+`the following arguments are required: command`. Use `nsx doctor` to confirm the install,
+which is what you want to run next anyway.
+
+## 5. Confirm the install
+
+<AsciiTerminal
+  title="nsx doctor"
+  lines={transcripts.doctorRun}
+  animated
+  copy
+/>
+
+Captured on macOS 26 with the host tools, the Arm GNU toolchain and the SEGGER pack
+installed, and neither optional compiler present. The only lines removed are the resolved
+tool paths that most checks print beneath themselves, which are specific to the machine
+that ran it. Every other line is as captured.
+
+[Check your environment](/neuralspotx/getting-started/doctor/) explains what each check
+covers, what a failure looks like and how to read the JSON report.
