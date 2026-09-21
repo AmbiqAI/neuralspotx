@@ -1,5 +1,14 @@
 # Changelog
 
+## [0.8.2](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.8.1...neuralspotx-v0.8.2) (2026-09-21)
+
+
+### Documentation
+
+* cut over the documentation site to Astro and helia-ui ([#272](https://github.com/AmbiqAI/neuralspotx/issues/272)) ([6afb7d2](https://github.com/AmbiqAI/neuralspotx/commit/6afb7d2ce8731bab2bc6c341c69f3d81610665c5))
+* **reference:** generate the Python API, CLI and configuration reference ([#264](https://github.com/AmbiqAI/neuralspotx/issues/264)) ([ce05320](https://github.com/AmbiqAI/neuralspotx/commit/ce053204082469f407c2cdb0b7526e1f6d4e254a))
+* **site:** scaffold the Astro and helia-ui docs site ([#262](https://github.com/AmbiqAI/neuralspotx/issues/262)) ([518b2b4](https://github.com/AmbiqAI/neuralspotx/commit/518b2b454e5574f616dfc439022f9fba26ed6875))
+
 ## [0.8.1](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.8.0...neuralspotx-v0.8.1) (2026-09-08)
 
 
