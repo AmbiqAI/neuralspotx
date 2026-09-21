@@ -106,7 +106,8 @@
       "soc_family": "apollo4l",
       "tier": "evb",
       "toolchains": [
-        "arm-none-eabi-gcc"
+        "arm-none-eabi-gcc",
+        "atfe"
       ]
     },
     {
@@ -124,7 +125,8 @@
       "soc_family": "apollo4l",
       "tier": "evb",
       "toolchains": [
-        "arm-none-eabi-gcc"
+        "arm-none-eabi-gcc",
+        "atfe"
       ]
     },
     {
