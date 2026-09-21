@@ -131,6 +131,94 @@ if (!fs.existsSync(buildInfoPath)) {
   if (!home.includes(build.version)) errors.push('The footer does not carry the package version');
 }
 
+/*
+ * Home's Markdown rendition.
+ *
+ * The rendition is derived from MDX source, so a figure or a link reaches an
+ * agent only if something in the source states it in a form the discoverability
+ * pass can read: a card's own `title` and `href`, or prose beside the grid for
+ * the cards that carry neither. Which of the two a given link comes through is
+ * not this pass's business, so it asserts against the rendition and lets the
+ * mechanism vary. This is what makes a stale figure or a dropped link a build
+ * failure rather than something nobody rechecked.
+ */
+const homeMarkdown = path.join(dist, 'index.md');
+if (!fs.existsSync(homeMarkdown)) {
+  errors.push('No index.md in dist/. Home has no Markdown rendition.');
+} else {
+  const rendition = fs.readFileSync(homeMarkdown, 'utf8');
+  const dataDir = path.join(site, 'src', 'data');
+  const readData = (name) => JSON.parse(fs.readFileSync(path.join(dataDir, name), 'utf8'));
+  const modules = readData('modules.json');
+  const boards = readData('boards.json');
+  const examples = readData('examples.json');
+  const toolchains = new Set(boards.boards.flatMap((board) => board.toolchains));
+
+  /* The whole sentence, not the digits in it: a loose search for each number
+     passes on a drifted count as soon as the old value survives anywhere else
+     on the page, which it does. Whitespace is normalized on both sides because
+     the sentence is wrapped in the MDX and rewrapped in the rendition. */
+  const flatten = (text) => text.replace(/\s+/g, ' ');
+  const coverage =
+    `The packaged registry lists ${modules.module_count} modules. ` +
+    `NSX ships ${boards.board_count} board descriptors across ` +
+    `${Object.keys(boards.soc_families).length} SoC families, declaring ` +
+    `${toolchains.size} toolchains between them, and this repository carries ` +
+    `${examples.examples.length} example apps.`;
+  if (!flatten(rendition).includes(flatten(coverage))) {
+    errors.push(`index.md does not carry the coverage sentence verbatim: ${coverage}`);
+  }
+
+  /* The hero walkthrough is a component, so its stage commands reach the
+     rendition only through the sentence under it; the sentence is built from
+     the same stage list and matched whole, so it cannot drift from the card. */
+  const walkthrough = JSON.parse(
+    fs.readFileSync(path.join(site, 'src/data/transcripts/index.json'), 'utf8'),
+  );
+  const commands = walkthrough.stages.map((stage) => `\`${stage.command}\``);
+  const loop =
+    `The whole loop in six commands: ${commands.slice(0, -1).join(', ')} and ${commands.at(-1)}.`;
+  if (!flatten(rendition).includes(flatten(loop))) {
+    errors.push(`index.md does not carry the walkthrough sentence verbatim: ${loop}`);
+  }
+  for (const stage of walkthrough.stages) {
+    const lines = stage.lines.filter((line) => line.kind === 'command');
+    if (lines.length === 0) errors.push(`walkthrough stage ${stage.id} has no command line`);
+    if (!lines.some((line) => line.text.includes(stage.command))) {
+      errors.push(`walkthrough stage ${stage.id} names ${stage.command} but no command line runs it`);
+    }
+  }
+
+  /* The links Home has to reach an agent through, whether the discoverability
+     pass got them from a card's props or from the prose beside the grid. An
+     example added under examples/ joins this list from examples.json, so a grid
+     that stops carrying it fails here rather than going unnoticed. */
+  const required = [
+    ...examples.examples.map((example) => example.href),
+    '/neuralspotx/guides/examples/',
+    '/neuralspotx/guides/apps/app-layout/',
+    '/neuralspotx/guides/modules/custom-modules/',
+    '/neuralspotx/guides/contribute/adding-a-module/',
+    '/neuralspotx/modules/catalog/',
+    '/neuralspotx/modules/boards/',
+    '/neuralspotx/modules/catalog.json',
+    '/neuralspotx/llms.txt',
+    '/neuralspotx/reference/releases/',
+    '/neuralspotx/getting-started/',
+    '/neuralspotx/guides/',
+    '/neuralspotx/reference/',
+  ].map((route) => ORIGIN + route);
+  for (const link of [
+    ...required,
+    'https://ambiqai.github.io/helia-rt/',
+    'https://ambiqai.github.io/ns-cmsis-nn/',
+    'https://ambiqai.github.io/helia-aot/',
+    'https://github.com/AmbiqAI/heartkit-vitals-demo',
+  ]) {
+    if (!rendition.includes(`(${link})`)) errors.push(`index.md has no Markdown link to ${link}`);
+  }
+}
+
 if (errors.length > 0) throw new Error([...new Set(errors)].sort().join('\n'));
 
 const bytes = files.reduce((total, file) => total + fs.statSync(file).size, 0);

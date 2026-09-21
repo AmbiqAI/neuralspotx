@@ -1,3 +1,12 @@
+---
+title: USB Serial
+tier: basics
+capabilities: [usb, cdc-acm]
+summary: USB CDC virtual COM port that echoes received data back to the host.
+status: tested
+boards_tested: [apollo510_evb]
+---
+
 # usb_serial
 
 Demonstrates **nsx-usb** on supported Apollo3 and Apollo5 boards. Opens a USB

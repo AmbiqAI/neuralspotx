@@ -23,6 +23,11 @@ All of them are currently Provisional, which each page says once at the top.
 The schema of `nsx.yml`, `nsx-module.yaml`, `board.yaml` and the `nsx.lock` resolution
 lock: every field, its type, whether it is required and what it means.
 
+## [Releases and versioning](/neuralspotx/reference/releases/)
+
+How versions are numbered and tagged, what the Provisional stability tier means for
+everything the Python API exports, and how to pin a version you depend on.
+
 ## Machine-readable
 
 The same content is published for tools and agents:

@@ -1,0 +1,40 @@
+{
+  "createRun": [
+    {
+      "kind": "command",
+      "text": "nsx create-app hello_ap510 --board apollo510_evb"
+    },
+    {
+      "kind": "success",
+      "text": "Created app 'hello_ap510' at: /home/you/hello_ap510"
+    },
+    {
+      "kind": "output",
+      "text": "Next steps:"
+    },
+    {
+      "kind": "output",
+      "text": "  1) cd /home/you/hello_ap510"
+    },
+    {
+      "kind": "output",
+      "text": "  2) Run `nsx configure --app-dir .`"
+    },
+    {
+      "kind": "output",
+      "text": "  3) Run `nsx build --app-dir .`, `nsx flash --app-dir .`, or `nsx view --app-dir .`"
+    },
+    {
+      "kind": "output",
+      "text": "Cloning into '/home/you/hello_ap510/modules/nsx-ambiq-sdk'..."
+    },
+    {
+      "kind": "warning",
+      "text": "warning: refs/tags/v5.2.24 ebd898cfd1454e4139f7e56bb0ee1efca4ab25be is not a commit!"
+    },
+    {
+      "kind": "output",
+      "text": "Cloning into '/home/you/hello_ap510/modules/nsx-pmu-armv8m'..."
+    }
+  ]
+}

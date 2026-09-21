@@ -1,29 +1,29 @@
 name: Docs site
 
-# Build and validate the Astro site only. The MkDocs site in deploy-pages.yml
-# is still the published one, so nothing here needs Pages permissions, an
-# environment or a secret. Deploy arrives with the cutover
-# (AmbiqAI/neuralspotx#261).
+# Builds and validates the Astro site on every pull request, and publishes the
+# same validated artifact to GitHub Pages on a push to main. The build job runs
+# with `contents: read` and nothing else, so a pull request from a fork needs no
+# credentials; Pages permissions are scoped to the deploy job alone.
+#
+# There are deliberately no `paths:` filters. Two reasons, and either alone is
+# enough:
+#
+#   1. The deploy job only publishes when its source commit is still the tip of
+#      main. A filtered trigger breaks that: a docs commit followed by a
+#      non-docs commit leaves the docs run holding a commit that is no longer
+#      the tip, so it stands down, while the non-docs commit never starts a run
+#      to take over. The site would silently stop updating.
+#   2. This is the only job that runs the reference-completeness and
+#      public-surface tests, because they need the generated output. Filtering
+#      it makes it skip rather than pass, which cannot be a required check.
+#
+# The build is about a minute, which is the price of both.
 
 on:
   push:
     branches:
       - main
-    paths:
-      - "astro-site/**"
-      - "docs/**"
-      - "scripts/docs/**"
-      - "src/neuralspotx/**"
-      - ".github/workflows/docs.yml"
-      - "pyproject.toml"
   pull_request:
-    paths:
-      - "astro-site/**"
-      - "docs/**"
-      - "scripts/docs/**"
-      - "src/neuralspotx/**"
-      - ".github/workflows/docs.yml"
-      - "pyproject.toml"
   workflow_dispatch:
 
 permissions:
@@ -42,6 +42,8 @@ jobs:
     name: Build and validate
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    outputs:
+      source_commit: ${{ steps.source.outputs.commit }}
     env:
       # The pull_request checkout is a merge commit that exists on no branch,
       # so the footer's provenance link has to name the head commit instead.
@@ -50,6 +52,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      # Named here rather than read again in the deploy job, so the freshness
+      # guard compares against the commit this artifact was actually built
+      # from and not against whatever the deploy job happens to check out.
+      - name: Record the source commit
+        id: source
+        run: echo "commit=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
 
       - name: Setup Node
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
@@ -88,11 +97,52 @@ jobs:
       - name: Check reference completeness
         run: uv run --group docs --group test pytest tests/test_reference_generation.py tests/test_public_surface_doc.py -q
 
+      # The module snapshot is committed because the manifests live in other
+      # repositories and the site build may not fetch them. This is the step
+      # that keeps it honest: it re-reads every manifest from the revision the
+      # registry pins and fails when the committed JSON disagrees. Every
+      # project it clones is public except helia-dsp, which a job with no
+      # credentials reports as not checked rather than as drift, so the step
+      # needs no secret. Anything else it cannot read fails the step, so a
+      # network problem cannot pass as a check that compared nothing;
+      # --allow-unchecked exists for local runs and must not be used here.
+      - name: Check the module snapshot for drift
+        id: snapshot
+        run: |
+          start=$(date +%s)
+          uv run --group docs python scripts/docs/build_module_data.py --check
+          echo "seconds=$(( $(date +%s) - start ))" >> "$GITHUB_OUTPUT"
+
+      # Timed on its own, like the reference, so the summary separates reading
+      # the snapshot from rendering the pages. build-modules.mjs appends its
+      # own table.
+      - name: Generate the Modules section
+        id: modules
+        working-directory: astro-site
+        run: |
+          start=$(date +%s)
+          npm run build:modules
+          echo "seconds=$(( $(date +%s) - start ))" >> "$GITHUB_OUTPUT"
+
+      - name: Check the module snapshot against the tree
+        run: uv run --group docs --group test pytest tests/test_module_data_snapshot.py -q
+
+      # Manifest prose is written in other repositories and rendered into MDX.
+      # This builds the section from a fixture snapshot carrying the payloads a
+      # manifest can carry and reads the built pages back, so the escaping is
+      # proved rather than reviewed. It regenerates the section from the
+      # committed snapshot when it finishes, which is why it runs before the
+      # build the rest of the job checks.
+      - name: Build the Modules section from a hostile snapshot
+        working-directory: astro-site
+        run: npm run test:modules
+
       - name: Astro check
         working-directory: astro-site
         run: npm run check
         env:
           NSX_DOCS_REFERENCE_PREBUILT: '1'
+          NSX_DOCS_MODULES_PREBUILT: '1'
 
       - name: Build the site
         id: build
@@ -103,7 +153,15 @@ jobs:
           echo "seconds=$(( $(date +%s) - start ))" >> "$GITHUB_OUTPUT"
         env:
           NSX_DOCS_REFERENCE_PREBUILT: '1'
+          NSX_DOCS_MODULES_PREBUILT: '1'
 
+      # Links, anchors, provenance and budgets, then the agent-facing contract:
+      # the llms bundle read back for every public symbol, command and module
+      # name, a Markdown rendition per route, every MkDocs route in
+      # src/data/redirects.json still resolving, the sitemap, the 404 and every
+      # JSON-LD block. The bundle itself is
+      # rebuilt from the models by the build's postbuild hook, so a validate
+      # run always reads what a deploy would publish.
       - name: Validate the built site
         working-directory: astro-site
         run: npm run validate
@@ -118,14 +176,21 @@ jobs:
             echo "| Measure | Value |"
             echo "| --- | --- |"
             echo "| Reference generation | ${REFERENCE_SECONDS:-n/a}s |"
+            echo "| Module snapshot check | ${SNAPSHOT_SECONDS:-n/a}s |"
+            echo "| Modules generation | ${MODULES_SECONDS:-n/a}s |"
             echo "| Build time | ${BUILD_SECONDS:-n/a}s |"
             echo "| HTML pages | $(find dist -name '*.html' 2>/dev/null | wc -l | tr -d ' ') |"
+            echo "| Redirect stubs | $(node -p "const b=require('./dist/content-index.json').base.replace(/[/]\$/,'');Object.entries(require('./src/data/redirects.json')).filter(([f,t])=>t!==b+f).length" 2>/dev/null) |"
+            echo "| Markdown renditions | $(find dist -name 'index.md' 2>/dev/null | wc -l | tr -d ' ') |"
+            echo "| llms-full.txt | $(wc -c < dist/llms-full.txt 2>/dev/null | awk '{printf "%.0f KiB", $1/1024}') |"
             echo "| Artifact size | $(du -sh dist 2>/dev/null | cut -f1) |"
             echo "| helia-ui | $(node -p "require('./package.json').dependencies['@ambiqai/helia-ui']") |"
           } >> "$GITHUB_STEP_SUMMARY"
         env:
           BUILD_SECONDS: ${{ steps.build.outputs.seconds }}
           REFERENCE_SECONDS: ${{ steps.reference.outputs.seconds }}
+          SNAPSHOT_SECONDS: ${{ steps.snapshot.outputs.seconds }}
+          MODULES_SECONDS: ${{ steps.modules.outputs.seconds }}
 
       - name: Upload the built site
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -134,3 +199,72 @@ jobs:
           path: astro-site/dist/
           if-no-files-found: error
           retention-days: 14
+
+  # Publishes the artifact the build job already validated. Nothing is rebuilt
+  # here, so what goes live is byte for byte what the checks passed on.
+  deploy:
+    name: Deploy to Pages
+    needs: build
+    if: >-
+      github.repository == 'AmbiqAI/neuralspotx' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'push' || github.event_name == 'workflow_dispatch')
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Scoped to this job. The build job, which is the only one a pull request
+    # runs, keeps the workflow-level `contents: read`.
+    permissions:
+      contents: read
+      pages: write
+      id-token: write
+    # Not the workflow-level `docs-site-<ref>` group: Pages allows one
+    # deployment at a time, and a cancelled deploy leaves the site on whatever
+    # was published last, so these queue rather than cancel.
+    concurrency:
+      group: github-pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+
+    steps:
+      # Two runs can be in flight at once, and the older one can reach this
+      # job last. Publishing it would roll the public site backwards, so a run
+      # whose source commit is no longer the tip of main stands down instead.
+      - name: Check this run still owns the public site
+        id: freshness
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          DOCS_SOURCE_COMMIT: ${{ needs.build.outputs.source_commit }}
+        run: |
+          latest=$(gh api "repos/$GH_REPO/branches/main" --jq .commit.sha)
+          if [[ "$latest" == "$DOCS_SOURCE_COMMIT" ]]; then
+            echo "publish=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "main is at $latest; this run built $DOCS_SOURCE_COMMIT."
+            echo "A newer run owns the public documentation. Standing down."
+            echo "publish=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Download the validated site
+        if: steps.freshness.outputs.publish == 'true'
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: neuralspotx-docs-site
+          path: validated-site
+
+      - name: Configure Pages
+        if: steps.freshness.outputs.publish == 'true'
+        uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+
+      - name: Upload the Pages artifact
+        if: steps.freshness.outputs.publish == 'true'
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3
+        with:
+          path: validated-site
+
+      - name: Deploy
+        id: deployment
+        if: steps.freshness.outputs.publish == 'true'
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

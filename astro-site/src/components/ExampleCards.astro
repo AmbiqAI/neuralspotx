@@ -1,0 +1,66 @@
+---
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright (c) 2026, Ambiq
+/*
+ * One tier of the example grid on Home, from the front matter
+ * scripts/build-examples.mjs already reads. A card and the page it links to
+ * therefore carry the same title and summary, and adding an example under
+ * examples/ puts it here without an edit.
+ *
+ * Same reason as HomeStats for being a component rather than an expression in
+ * the page: the Markdown rendition is derived from MDX source, so a `.map` in
+ * the page would reach an agent as source text (AmbiqAI/helia-ui#143). The
+ * link list under the grid is what that reader gets, and
+ * scripts/check-output.mjs fails the build if it omits an example.
+ */
+import CardGrid from '@ambiqai/helia-ui/astro/CardGrid';
+import LinkCard from '@ambiqai/helia-ui/astro/LinkCard';
+import data from '../data/examples.json';
+
+interface Props {
+  tier: string;
+}
+
+/*
+ * The example front matter carries no ordering, so the generator sorts by name
+ * and the grid would open Basics on FreeRTOS Blinky. Hello World is the one the
+ * Getting started path builds, so it leads its tier; the rest stay alphabetical
+ * rather than acquire a ranking nobody declared.
+ */
+const LEADS: Record<string, string> = { basics: 'hello_world' };
+
+const { tier } = Astro.props;
+const label = data.tierLabels[tier as keyof typeof data.tierLabels];
+if (!label) throw new Error(`ExampleCards: unknown tier '${tier}'`);
+
+const inTier = data.examples.filter((example) => example.tier === tier);
+if (!inTier.length) throw new Error(`ExampleCards: no examples in tier '${tier}'`);
+
+const lead = LEADS[tier];
+if (lead && !inTier.some((example) => example.name === lead)) {
+  throw new Error(`ExampleCards: tier '${tier}' no longer holds its lead example '${lead}'`);
+}
+const examples = lead
+  ? [...inTier].sort((a, b) => Number(b.name === lead) - Number(a.name === lead))
+  : inTier;
+
+/* Three across leaves a four-example tier with an orphan on its second row. */
+const columns = examples.length === 4 ? 2 : 3;
+---
+
+<CardGrid columns={columns} density="compact" equalize>
+  {
+    examples.map((example) => (
+      <LinkCard
+        href={example.href}
+        title={example.title}
+        titleAs="h3"
+        eyebrow={label}
+        meta={`nsx build ${example.name}`}
+        lift
+      >
+        {example.summary}
+      </LinkCard>
+    ))
+  }
+</CardGrid>

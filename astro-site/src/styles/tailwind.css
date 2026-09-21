@@ -9,7 +9,9 @@
 @import '@ambiqai/helia-ui/starlight-tailwind.css';
 
 @source '../content/**/*.{md,mdx}';
-@source '../components/**/*.astro';
-@source '../islands/**/*.tsx';
+@source '../components/**/*.{astro,tsx}';
 @source '../../node_modules/@ambiqai/helia-ui/astro/**/*.astro';
 @source '../../node_modules/@ambiqai/helia-ui/starlight/**/*.astro';
+/* The catalog's filter is the package's own React island, so its classes
+   are in node_modules and nowhere in this repository to be scanned. */
+@source '../../node_modules/@ambiqai/helia-ui/react/**/*.tsx';

@@ -1,58 +1,64 @@
-"""Keep ``neuralspotx.__all__`` and ``docs/reference/public-api.md`` in sync.
+"""Keep ``neuralspotx.__all__`` and the published symbol catalog in sync.
 
-The doc lists every public name in a markdown table column. We extract
-those names with a simple regex and assert the set matches ``__all__``.
+``astro-site/public/reference/python-symbols.json`` is what the site serves to
+agents and what ``check-discoverability-output.mjs`` asserts the llms bundle
+covers. That Node check cannot import the package, so it trusts the catalog to
+be the public surface; this module is what makes that true.
+
+The catalog is generated and gitignored, so the test skips when it is absent.
+CI runs ``npm run build:reference`` before pytest, so the skip never hides a
+gap there.
 """
 
 from __future__ import annotations
 
-import re
+import json
 from pathlib import Path
+
+import pytest
 
 import neuralspotx
 
-DOC_PATH = Path(__file__).resolve().parents[1] / "docs" / "reference" / "public-api.md"
+CATALOG_PATH = (
+    Path(__file__).resolve().parents[1]
+    / "astro-site"
+    / "public"
+    / "reference"
+    / "python-symbols.json"
+)
 
 
-def _extract_doc_symbols() -> set[str]:
-    """Pull every backticked identifier from the first column of any
-    markdown table in ``public-api.md``.
-
-    A table row looks like ``| `Name` | ... | ... |``. Some cells list
-    multiple names separated by commas (``| `A`, `B` |``); we accept
-    those too.
-    """
-
-    text = DOC_PATH.read_text(encoding="utf-8")
-    symbols: set[str] = set()
-    row_re = re.compile(r"^\|\s*([^|]+?)\s*\|")
-    ident_re = re.compile(r"`([A-Za-z_][A-Za-z0-9_]*)`")
-    for line in text.splitlines():
-        m = row_re.match(line)
-        if not m:
-            continue
-        first_col = m.group(1)
-        # Skip header / separator rows.
-        if first_col.strip().lower() in {"symbol", ""} or set(first_col.strip()) <= {"-", ":"}:
-            continue
-        for ident in ident_re.findall(first_col):
-            symbols.add(ident)
-    return symbols
+@pytest.fixture(scope="module")
+def catalog() -> dict:
+    if not CATALOG_PATH.exists():
+        pytest.skip(f"{CATALOG_PATH.name} is absent; run npm run build:reference")
+    return json.loads(CATALOG_PATH.read_text(encoding="utf-8"))
 
 
-def test_public_api_doc_matches_all() -> None:
+def test_published_catalog_matches_all(catalog: dict) -> None:
     declared = set(neuralspotx.__all__)
-    documented = _extract_doc_symbols()
-    missing_from_doc = declared - documented
-    extra_in_doc = documented - declared
-    assert not missing_from_doc, (
-        f"Names in neuralspotx.__all__ but not documented in {DOC_PATH.name}: "
-        f"{sorted(missing_from_doc)}"
+    published = {symbol["name"] for symbol in catalog["symbols"]}
+    missing = declared - published
+    extra = published - declared
+    assert not missing, (
+        f"names in neuralspotx.__all__ but absent from {CATALOG_PATH.name}: {sorted(missing)}"
     )
-    assert not extra_in_doc, (
-        f"Names documented in {DOC_PATH.name} but missing from neuralspotx.__all__: "
-        f"{sorted(extra_in_doc)}"
+    assert not extra, (
+        f"names published in {CATALOG_PATH.name} but absent from neuralspotx.__all__: "
+        f"{sorted(extra)}"
     )
+
+
+def test_published_paths_import_from_the_package(catalog: dict) -> None:
+    """Each entry's ``path`` must be the module the name really lives in."""
+
+    for symbol in catalog["symbols"]:
+        assert symbol["path"] == f"{symbol['module']}.{symbol['name']}", (
+            f"{symbol['name']}: path {symbol['path']!r} does not match module {symbol['module']!r}"
+        )
+        assert symbol["module"].startswith("neuralspotx"), (
+            f"{symbol['name']} is published under {symbol['module']!r}, outside the package"
+        )
 
 
 def test_every_public_name_is_importable() -> None:

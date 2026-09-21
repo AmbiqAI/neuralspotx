@@ -65,7 +65,9 @@ function describe(argument) {
   return `${help}${help.endsWith('.') || !help ? '' : '.'} Cannot be combined with ${others}.`;
 }
 
-function rows(args) {
+/* Exported so the agent bundle can build the same table as Markdown from the
+   same model rather than re-deriving the cells (AmbiqAI/neuralspotx#261). */
+export function rows(args) {
   return args.map((argument) => ({
     name: optionLabel(argument),
     type: optionType(argument),

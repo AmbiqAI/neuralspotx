@@ -1,7 +1,7 @@
 # neuralspotx
 
 [![CI](https://github.com/AmbiqAI/neuralspotx/actions/workflows/ci.yml/badge.svg)](https://github.com/AmbiqAI/neuralspotx/actions/workflows/ci.yml)
-[![Pages](https://github.com/AmbiqAI/neuralspotx/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/AmbiqAI/neuralspotx/actions/workflows/deploy-pages.yml)
+[![Docs](https://github.com/AmbiqAI/neuralspotx/actions/workflows/docs.yml/badge.svg)](https://github.com/AmbiqAI/neuralspotx/actions/workflows/docs.yml)
 [![Release](https://github.com/AmbiqAI/neuralspotx/actions/workflows/release.yml/badge.svg)](https://github.com/AmbiqAI/neuralspotx/actions/workflows/release.yml)
 
 `neuralspotx` is the NSX tooling repo.
@@ -26,46 +26,46 @@ NSX is also the build-and-deploy vehicle for Ambiq's **Helia** AI stack:
 - [heliaPROFILER](https://github.com/AmbiqAI/helia-profiler) — on-device model
   profiler built on NSX
 
-For contributor workflows such as releases, CI, and the Python API surface, use
-the docs site under `docs/`.
-
 ## Documentation
 
-The main documentation lives in the docs site built from `docs/`.
+The documentation site is <https://ambiqai.github.io/neuralspotx/>: getting
+started, guides, the module catalog, and a CLI, Python API and configuration
+reference generated from the source. Agents can read
+[`llms.txt`](https://ambiqai.github.io/neuralspotx/llms.txt) or any route's
+`.md` rendition instead.
 
-Install the docs toolchain:
-
-```bash
-cd <nsx-repo>
-uv sync --group docs
-```
-
-Run the docs site locally:
+The site itself is an Astro project in `astro-site/`, published from `main` by
+`.github/workflows/docs.yml`. To work on it:
 
 ```bash
 cd <nsx-repo>
-uv run --group docs zensical serve
+uv sync --group docs          # the reference is generated from the package
+npm --prefix astro-site ci
+npm --prefix astro-site run dev
+npm --prefix astro-site run validate
 ```
 
-Build the static site:
-
-```bash
-cd <nsx-repo>
-uv run --group docs zensical build
-```
+Maintainer material that is not published lives in
+[`docs/maintainers/`](docs/maintainers/): release mechanics, repo layout, board
+and module coverage, design decisions, and how the docs site is built.
 
 ## Quick Start
 
 NSX uses an app-first flow. Each app is a self-contained project directory with
 vendored modules, board definitions, and build helpers.
 
-For app users, the cleanest install path is `pipx`:
+For app users, the cleanest install path is `uv`, which `nsx doctor` already
+requires:
 
 ```bash
-pipx install neuralspotx
+uv tool install neuralspotx
 nsx doctor
 nsx create-app hello_ap510 --board apollo510_evb
 ```
+
+`uvx --from neuralspotx nsx doctor` runs a single command without installing
+anything. `pipx install neuralspotx` works too if you already manage your CLI
+tools that way.
 
 For contributors working from a source checkout:
 
@@ -79,8 +79,8 @@ nsx doctor
 nsx create-app hello_ap510 --board apollo510_evb
 ```
 
-`pre-commit install` sets up the lint and pre-push hooks that CI also runs. See [docs/contributing/index.md](docs/contributing/index.md) for
-what runs at each stage.
+`pre-commit install` sets up the lint and pre-push hooks that CI also runs. See
+[CONTRIBUTING.md](CONTRIBUTING.md) for what runs at each stage.
 
 Build the app:
 
@@ -94,7 +94,7 @@ nsx build --app-dir hello_ap510
 This repo owns:
 
 - `src/neuralspotx`
-- packaged documentation and templates
+- packaged templates
 - packaged board definitions
 - CMake helper assets used by generated apps
 

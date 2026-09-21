@@ -29,7 +29,8 @@ function typeCell(field) {
   return field.required_when ? `${base}, required when ${field.required_when}` : `${base}, required`;
 }
 
-function rows(fields) {
+/* Exported for the agent bundle, as in render-cli.mjs. */
+export function rows(fields) {
   return fields.map((field) => ({
     name: field.path,
     type: typeCell(field),

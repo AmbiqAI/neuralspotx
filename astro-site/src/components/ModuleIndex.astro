@@ -1,0 +1,76 @@
+---
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright (c) 2026, Ambiq
+/**
+ * The module catalog's filter, and the rows it filters.
+ *
+ * The rows are built here, at build time, from the committed module snapshot,
+ * which is the same file the static table below the island is generated from.
+ * The island holds no model and fetches nothing.
+ *
+ * The static table stays on the page. It is what Pagefind indexes, what the
+ * markdown rendition carries and what a reader without JavaScript gets; the
+ * script below hides it only once the island has actually rendered, so a
+ * failed hydration leaves the reader the full catalog rather than nothing.
+ *
+ * The island mounts `client:only` for the other half of the same reason:
+ * server-rendering it would put all fifty modules in the page twice, once as
+ * the island's table and once as the static one, and the page is held to a
+ * size budget that the pair breaks (AmbiqAI/neuralspotx#259).
+ */
+import ModuleBrowser from './ModuleBrowser.tsx';
+import type { CatalogModule } from './ModuleBrowser.tsx';
+import snapshot from '../data/modules.json';
+import { WILDCARD, typeLabel } from '../../scripts/lib/module-types.mjs';
+
+interface Props {
+  /** The site's base path, with its trailing slash, so the hrefs are routes. */
+  base: string;
+  /** The id of the element wrapping the static table this replaces on screen. */
+  tableId: string;
+}
+
+const { base, tableId } = Astro.props;
+
+const modules: CatalogModule[] = [...snapshot.modules]
+  .sort((a, b) => a.name.localeCompare(b.name))
+  .map((module) => ({
+    name: module.name,
+    href: `${base}modules/${module.name}/`,
+    type: typeLabel(module.type),
+    summary: module.summary ?? '',
+    version: module.version ?? '',
+    socs: module.compatibility?.socs ?? [],
+    boards: module.compatibility?.boards ?? [],
+    toolchains: module.compatibility?.toolchains ?? [],
+    capabilities: module.capabilities ?? [],
+    depends: {
+      required: module.depends?.required ?? [],
+      optional: module.depends?.optional ?? [],
+    },
+  }));
+---
+
+<div data-module-index data-hides={tableId}>
+  <ModuleBrowser client:only="react" modules={modules} wildcard={WILDCARD} />
+</div>
+
+<script>
+  /* The static table is the surface for a reader the island cannot reach, so
+     it is hidden on evidence that the island rendered rather than on the
+     script having run at all. */
+  for (const host of document.querySelectorAll<HTMLElement>('[data-module-index]')) {
+    const table = document.getElementById(host.dataset.hides ?? '');
+    if (!table) continue;
+    const hideWhenMounted = () => {
+      if (!host.querySelector('[data-slot="module-browser"]')) return false;
+      table.hidden = true;
+      return true;
+    };
+    if (hideWhenMounted()) continue;
+    const observer = new MutationObserver(() => {
+      if (hideWhenMounted()) observer.disconnect();
+    });
+    observer.observe(host, { childList: true, subtree: true });
+  }
+</script>
