@@ -223,9 +223,14 @@ try {
     NSX_DOCS_MODULES_SNAPSHOT: path.join(scratch, 'snapshot'),
     NSX_DOCS_MODULES_PREBUILT: '',
   });
-  /* astro.config.mjs imports src/data/build-info.json, which prepare:docs
-     writes; on a fresh checkout this test can run first, so it writes it. */
+  /* astro.config.mjs imports the build info and the three sidebar fragments
+     that prepare:docs writes; on a fresh checkout this test can run before
+     any of them exist, so it writes what is missing. */
   run([path.join(siteRoot, 'scripts/build-info.mjs')]);
+  run([path.join(siteRoot, 'scripts/build-examples.mjs')]);
+  if (!fs.existsSync(path.join(siteRoot, 'src/data/reference-sidebar.json'))) {
+    run([path.join(siteRoot, 'scripts/build-reference.mjs')]);
+  }
 
   run([astro, 'build', '--outDir', dist], { NSX_DOCS_MODULES_PREBUILT: '1' });
 
