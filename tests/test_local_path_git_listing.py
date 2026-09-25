@@ -295,6 +295,39 @@ class TestLockAndSync:
         assert _files(vendored) == {".gitignore", "nsx-module.yaml", "src/kernel.c", "src/new.c"}
         sync_app_impl(app, frozen=True)
 
+    def test_read_only_file_survives_revendor(self, tmp_path: Path) -> None:
+        source = _git_project(tmp_path / "proj")
+        generated = source / "src" / "gen.h"
+        _write(generated, "// generated\n")
+        generated.chmod(0o444)
+        app = tmp_path / "app"
+        _write_app(app, source)
+        lock_app_impl(app)
+        sync_app_impl(app)
+
+        _write(source / "src" / "kernel.c", "// edit\n")
+        lock_app_impl(app)
+        sync_app_impl(app, frozen=True)
+        vendored = app / "modules" / "local-proj" / "src" / "kernel.c"
+        assert vendored.read_text(encoding="utf-8") == "// edit\n"
+
+    @pytest.mark.skipif(os.name == "nt", reason="symlinks need privileges")
+    def test_directory_symlink_is_kept_as_link(self, tmp_path: Path) -> None:
+        source = tmp_path / "proj"
+        _write(source / "real" / "r.h", "// real\n")
+        (source / "inc").mkdir(parents=True)
+        (source / "inc" / "alias").symlink_to("../real")
+        source = _git_project(source)
+        app = tmp_path / "app"
+        _write_app(app, source)
+        lock_app_impl(app)
+        sync_app_impl(app)
+
+        alias = app / "modules" / "local-proj" / "inc" / "alias"
+        assert alias.is_symlink()
+        assert (alias / "r.h").read_text(encoding="utf-8") == "// real\n"
+        sync_app_impl(app, frozen=True)
+
     def test_ignored_churn_keeps_frozen_sync_green(self, tmp_path: Path) -> None:
         source = _git_project(tmp_path / "proj")
         app = tmp_path / "app"
@@ -370,6 +403,19 @@ class TestDestinationInsideSource:
 
         _vendor_local_module_into_app(app, "local-mod", registry)
         assert not (app / "modules" / "local-proj").exists()
+
+    def test_app_ignoring_its_own_modules_is_refused(self, tmp_path: Path) -> None:
+        source = _git_project(tmp_path / "proj")
+        app = source / "apps" / "app"
+        _write_app(app, source)
+        # NSX's own modules/.gitignore must not count.
+        _write(app / "modules" / ".gitignore", "local-proj/\n")
+        (app / "modules" / "local-proj").mkdir()
+        nsx_cfg = yaml.safe_load((app / "nsx.yml").read_text(encoding="utf-8"))
+        registry = _effective_registry(_load_registry(), nsx_cfg, app_dir=app)
+
+        _vendor_local_module_into_app(app, "local-mod", registry)
+        assert not any((app / "modules" / "local-proj").iterdir())
 
     def test_gitignored_destination_inside_submodule_vendors(self, tmp_path: Path) -> None:
         source = _git_project(tmp_path / "proj")

@@ -35,6 +35,7 @@ from ..nsx_lock import (
     ResolutionError,
     ResolvedModule,
     hash_git_artifact,
+    hash_local_source,
     hash_manifest,
     hash_tree,
     lock_path,
@@ -46,7 +47,6 @@ from ..nsx_lock import (
     utcnow_iso,
     write_lock,
 )
-from ..nsx_lock._hashing import hash_local_source
 from ..project_config import (
     _board_key_for_app,
     _copy_packaged_tree,

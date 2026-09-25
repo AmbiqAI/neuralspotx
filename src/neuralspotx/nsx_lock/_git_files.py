@@ -64,7 +64,7 @@ def git_listed_files(root: Path) -> list[str] | None:
         if path.is_dir() and not path.is_symlink():
             # Submodule: list it the same way.
             files.extend(f"{rel}/{sub}" for sub in git_listed_files(path) or ())
-        elif path.is_file():
+        elif path.is_file() or path.is_symlink():
             files.append(rel)
     return files
 

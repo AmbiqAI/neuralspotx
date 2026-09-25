@@ -196,22 +196,23 @@ def _vendor_local_module_into_app(
         return
     listed = git_listed_files(source_dir)
     if destination_dir.is_relative_to(source_dir):
-        # Allowed only inside gitignored paths.
-        inner = destination_dir.relative_to(source_dir).as_posix()
+        # The app must sit in ignored space.
+        app_root = app_dir.resolve()
+        guard = app_root if app_root.is_relative_to(source_dir) else destination_dir
+        inner = guard.relative_to(source_dir).as_posix()
         if (
             listed is None
             or any(rel == inner or rel.startswith(inner + "/") for rel in listed)
-            or not git_ignores(destination_dir)
+            or not git_ignores(guard)
         ):
             return
-
-    if listed is not None:
-        _mirror_listed_files(source_dir, destination_dir, listed)
-        return
 
     if destination_dir.exists():
         _rmtree(destination_dir)
     destination_dir.parent.mkdir(parents=True, exist_ok=True)
+    if listed is not None:
+        _copy_listed_files(source_dir, destination_dir, listed)
+        return
     shutil.copytree(
         source_dir,
         destination_dir,
@@ -220,32 +221,17 @@ def _vendor_local_module_into_app(
     )
 
 
-def _mirror_listed_files(source: Path, destination: Path, listed: list[str]) -> None:
-    """Make destination hold exactly the listed files."""
+def _copy_listed_files(source: Path, destination: Path, listed: list[str]) -> None:
+    """Copy listed files; keep non-file symlinks."""
 
-    keep = set(listed)
-    if destination.is_dir():
-        for dirpath, dirnames, filenames in os.walk(destination, topdown=False):
-            base = Path(dirpath)
-            for name in filenames:
-                path = base / name
-                if path.is_symlink() or path.relative_to(destination).as_posix() not in keep:
-                    path.unlink()
-            for name in dirnames:
-                path = base / name
-                if path.is_symlink():
-                    path.unlink()
-                elif path.relative_to(destination).as_posix() in keep:
-                    # A file replaced this directory.
-                    _rmtree(path)
-                elif not any(path.iterdir()):
-                    path.rmdir()
-    elif destination.exists() or destination.is_symlink():
-        destination.unlink()
     for rel in listed:
+        src = source / rel
         target = destination / rel
         target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy2(source / rel, target)
+        if src.is_symlink() and not src.is_file():
+            os.symlink(os.readlink(src), target)
+        else:
+            shutil.copy2(src, target)
 
 
 def _vendor_packaged_module_into_app(

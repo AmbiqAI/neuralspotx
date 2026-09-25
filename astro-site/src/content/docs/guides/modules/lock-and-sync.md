@@ -53,9 +53,8 @@ the source no longer lists. Because ignored files never enter the hash, rebuildi
 artifacts inside the source does not make the lock drift.
 
 The app may live inside its own local source, for example under the source's ignored
-`build/` directory, as long as git ignores the path the module is mirrored to. If git
-would list that path, NSX leaves the module unmirrored rather than copy the source into
-itself.
+`build/` directory, as long as the source's git ignores the app directory. If git would
+list the app, NSX leaves the module unmirrored rather than copy the source into itself.
 
 :::caution[One-time hash change for git-backed local sources]
 NSX 0.8.1 and earlier hashed every file under a local source, ignored ones included. If

@@ -50,7 +50,10 @@ artifact*, never the on-disk vendored tree):
                   ``neuralspotx`` Python wheel (the registry resource
                   dir).
     local      — if the registry project has a ``local_path``: hash of
-                  that source directory. Otherwise (in-tree local, e.g.
+                  that source directory. A git work-tree top level
+                  hashes only the files ``git ls-files --cached
+                  --others --exclude-standard`` lists, submodules
+                  included. Otherwise (in-tree local, e.g.
                   ``nsx module add --local``): hash of
                   ``modules/<name>/`` itself — the directory IS the
                   source.
@@ -130,6 +133,7 @@ from ._hashing import (
     _write_artifact_hash_cache,
     hash_file,
     hash_git_artifact,
+    hash_local_source,
     hash_tree,
 )
 from ._io import (

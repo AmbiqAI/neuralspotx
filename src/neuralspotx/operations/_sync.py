@@ -17,13 +17,13 @@ from ..nsx_lock import (
     NSX_TOOLING_AUTOGEN_FILES,
     LockKind,
     ResolvedModule,
+    hash_local_source,
     hash_manifest,
     hash_tree,
     lock_path,
     read_lock,
     read_lock_file,
 )
-from ..nsx_lock._hashing import hash_local_source
 from ..project_config import (
     _board_key_for_app,
     _copy_packaged_tree,

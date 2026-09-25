@@ -51,6 +51,8 @@ def _hash_files(root: Path, files: Iterable[Path]) -> str:
 
     h = hashlib.sha256()
     for f in sorted(files):
+        if not f.is_file():
+            continue
         rel = f.relative_to(root).as_posix()
         file_h = hashlib.sha256()
         with f.open("rb") as fh:
@@ -66,7 +68,7 @@ def _hash_files(root: Path, files: Iterable[Path]) -> str:
 def hash_local_source(root: Path) -> str:
     """Hash a local project as git sees it."""
 
-    listed = git_listed_files(root) if root.exists() else None
+    listed = git_listed_files(root)
     if listed is None:
         return hash_tree(root)
     return _hash_files(root, [root / rel for rel in listed])
