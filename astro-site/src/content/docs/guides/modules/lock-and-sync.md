@@ -32,6 +32,38 @@ Five kinds appear, and they differ in where the content comes from:
 | `vendored` | `modules/<name>/` in your own repository | No |
 | `unresolved` | Last known content, when upstream could not be reached | No, hash verified |
 
+### What a local source contributes
+
+A `local` module's source is a directory you named with `source.path`, or a project
+registered with `--project-local-path`. What NSX hashes and mirrors from it depends on
+whether that directory is the top level of a git work tree:
+
+- **A git work tree top level** contributes the files
+  `git ls-files --cached --others --exclude-standard` lists: tracked files, including
+  uncommitted edits, plus untracked files that are not ignored. Anything your `.gitignore`
+  excludes, such as build output and generated artifacts, is neither hashed nor copied.
+  Initialized submodules and nested repositories inside it are listed the same way;
+  an uninitialized submodule contributes nothing.
+- **Any other directory**, including a subdirectory of a repository, contributes every
+  file under it except `.git`, `__pycache__`, `.pytest_cache`, `.DS_Store`, `.venv` and
+  `venv`.
+
+`nsx sync` makes `modules/<project>/` hold exactly those files, and deletes mirrored files
+the source no longer lists. Because ignored files never enter the hash, rebuilding
+artifacts inside the source does not make the lock drift.
+
+The app may live inside its own local source, for example under the source's ignored
+`build/` directory, as long as git ignores the path the module is mirrored to. If git
+would list that path, NSX leaves the module unmirrored rather than copy the source into
+itself.
+
+:::caution[One-time hash change for git-backed local sources]
+NSX 0.8.1 and earlier hashed every file under a local source, ignored ones included. If
+your local source is a git work tree with ignored files in it, its `content_hash` changes
+once after upgrading, and `nsx sync --frozen` reports drift. Run `nsx lock` once, commit
+the new `nsx.lock`, and `--frozen` passes again.
+:::
+
 Because resolution happens per board, two targets on different SoC families can legitimately
 land on different module sets in the same lock file. The full schema is on the generated
 [`nsx.lock` reference](/neuralspotx/reference/config/nsx-lock/).

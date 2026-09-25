@@ -85,6 +85,10 @@ nsx module add my-sensor --local --path ../my-sensor
 hash of the source directory, which means `--frozen` will notice when it changes. This is
 the mode for developing a module and an app together.
 
+When the path is the top level of a git checkout, NSX hashes and mirrors only what git
+lists, so gitignored build output stays out of `modules/`. See
+[What a local source contributes](/neuralspotx/guides/modules/lock-and-sync/#what-a-local-source-contributes).
+
 ### Sources you want in your repository
 
 ```bash
@@ -113,8 +117,8 @@ The same command with `--override` replaces where a module NSX already pins come
 which is how you test a fork of a packaged module without changing NSX. App-local entries
 take precedence over the packaged registry, and the override lives in your app's manifest,
 so anyone cloning the app gets the fork too. `--project-local-path` vendors from a
-filesystem path instead of a git URL, and `--dry-run` shows the manifest change without
-writing it.
+filesystem path instead of a git URL, following the same git-aware rule as `--local`, and
+`--dry-run` shows the manifest change without writing it.
 
 :::caution[Overrides are invisible to the catalog]
 The [module catalog](/neuralspotx/modules/catalog/) shows what NSX pins, not what your app

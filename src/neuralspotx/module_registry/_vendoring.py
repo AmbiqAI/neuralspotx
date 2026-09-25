@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 from pathlib import Path
 from typing import Any
@@ -10,6 +11,7 @@ from .. import module_cache
 from .._errors import NSXConfigError
 from ..metadata import registry_entry_for_module
 from ..nsx_lock._constants import _HASH_EXCLUDE_DIRS
+from ..nsx_lock._git_files import git_ignores, git_listed_files
 from ..project_config import (
     _is_packaged_module,
     _module_clone_dir,
@@ -188,13 +190,23 @@ def _vendor_local_module_into_app(
         return
 
     source_dir = Path(project_entry.local_path).expanduser().resolve()
-    destination_dir = _module_clone_dir(app_dir, entry.project, registry)
+    destination_dir = _module_clone_dir(app_dir, entry.project, registry).resolve()
 
-    if destination_dir.resolve() == source_dir.resolve():
+    if destination_dir == source_dir or source_dir.is_relative_to(destination_dir):
         return
-    if destination_dir.resolve().is_relative_to(source_dir.resolve()):
-        return
-    if source_dir.resolve().is_relative_to(destination_dir.resolve()):
+    listed = git_listed_files(source_dir)
+    if destination_dir.is_relative_to(source_dir):
+        # Allowed only inside gitignored paths.
+        inner = destination_dir.relative_to(source_dir).as_posix()
+        if (
+            listed is None
+            or any(rel == inner or rel.startswith(inner + "/") for rel in listed)
+            or not git_ignores(destination_dir)
+        ):
+            return
+
+    if listed is not None:
+        _mirror_listed_files(source_dir, destination_dir, listed)
         return
 
     if destination_dir.exists():
@@ -206,6 +218,34 @@ def _vendor_local_module_into_app(
         dirs_exist_ok=True,
         ignore=shutil.ignore_patterns(*sorted(_HASH_EXCLUDE_DIRS)),
     )
+
+
+def _mirror_listed_files(source: Path, destination: Path, listed: list[str]) -> None:
+    """Make destination hold exactly the listed files."""
+
+    keep = set(listed)
+    if destination.is_dir():
+        for dirpath, dirnames, filenames in os.walk(destination, topdown=False):
+            base = Path(dirpath)
+            for name in filenames:
+                path = base / name
+                if path.is_symlink() or path.relative_to(destination).as_posix() not in keep:
+                    path.unlink()
+            for name in dirnames:
+                path = base / name
+                if path.is_symlink():
+                    path.unlink()
+                elif path.relative_to(destination).as_posix() in keep:
+                    # A file replaced this directory.
+                    _rmtree(path)
+                elif not any(path.iterdir()):
+                    path.rmdir()
+    elif destination.exists() or destination.is_symlink():
+        destination.unlink()
+    for rel in listed:
+        target = destination / rel
+        target.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(source / rel, target)
 
 
 def _vendor_packaged_module_into_app(

@@ -46,6 +46,7 @@ from ..nsx_lock import (
     utcnow_iso,
     write_lock,
 )
+from ..nsx_lock._hashing import hash_local_source
 from ..project_config import (
     _board_key_for_app,
     _copy_packaged_tree,
@@ -548,7 +549,11 @@ def _build_lock_for_app(
                 kind=LockKind.LOCAL,
                 constraint=constraint,
                 vendored_at=rel,
-                content_hash=hash_tree(hash_root),
+                content_hash=(
+                    hash_local_source(source_dir)
+                    if source_dir is not None
+                    else hash_tree(vendored_dir)
+                ),
                 acquired_at=utcnow_iso(),
             )
             continue
@@ -605,7 +610,7 @@ def _build_lock_for_app(
                 kind=LockKind.LOCAL,
                 constraint=constraint,
                 vendored_at=rel,
-                content_hash=hash_tree(source_dir),
+                content_hash=hash_local_source(source_dir),
                 acquired_at=utcnow_iso(),
             )
             continue

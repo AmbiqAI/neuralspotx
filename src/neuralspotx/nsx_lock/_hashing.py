@@ -10,6 +10,7 @@ from typing import Iterable
 
 from .._cache_paths import nsx_cache_root
 from ._constants import _ARTIFACT_HASH_CACHE_SCHEMA_VERSION, _HASH_EXCLUDE_DIRS
+from ._git_files import git_listed_files
 
 
 def _iter_files(root: Path, *, exclude_names: frozenset[str] = frozenset()) -> Iterable[Path]:
@@ -42,9 +43,14 @@ def hash_tree(root: Path, *, exclude_names: frozenset[str] = frozenset()) -> str
 
     if not root.exists():
         return "sha256:" + hashlib.sha256(b"").hexdigest()
+    return _hash_files(root, _iter_files(root, exclude_names=exclude_names))
+
+
+def _hash_files(root: Path, files: Iterable[Path]) -> str:
+    """Digest files under root, in hash_tree order."""
 
     h = hashlib.sha256()
-    for f in _iter_files(root, exclude_names=exclude_names):
+    for f in sorted(files):
         rel = f.relative_to(root).as_posix()
         file_h = hashlib.sha256()
         with f.open("rb") as fh:
@@ -55,6 +61,15 @@ def hash_tree(root: Path, *, exclude_names: frozenset[str] = frozenset()) -> str
         h.update(file_h.hexdigest().encode("ascii"))
         h.update(b"\n")
     return "sha256:" + h.hexdigest()
+
+
+def hash_local_source(root: Path) -> str:
+    """Hash a local project as git sees it."""
+
+    listed = git_listed_files(root) if root.exists() else None
+    if listed is None:
+        return hash_tree(root)
+    return _hash_files(root, [root / rel for rel in listed])
 
 
 def hash_file(path: Path) -> str:

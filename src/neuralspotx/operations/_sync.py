@@ -23,6 +23,7 @@ from ..nsx_lock import (
     read_lock,
     read_lock_file,
 )
+from ..nsx_lock._hashing import hash_local_source
 from ..project_config import (
     _board_key_for_app,
     _copy_packaged_tree,
@@ -309,7 +310,7 @@ def _sync_local_entry(
                 f"Restore the path or re-register the project with "
                 f"`nsx module register --project-local-path`."
             )
-        source_hash = hash_tree(source_dir)
+        source_hash = hash_local_source(source_dir)
         on_disk_hash = hash_tree(vendored_dir) if vendored_dir.exists() else None
 
         # Detect upstream-source drift since lock.
