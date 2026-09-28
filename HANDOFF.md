@@ -26,3 +26,4 @@ Review CI and PR #275 before merge. No agent-generated label exists in this repo
 
 ## Latest polish
 Removed hover lift from the four Home documentation cards and replaced the section-count introduction with task-oriented copy. Build and full validation passed; headless hover checks confirmed all four cards retain position with no transform or shadow. Render inspected at /tmp/nsx-doc-cards-final.png.
+Your project band now uses the default background between muted Modules and HELIA sections. Build passed and rendered screenshot inspected at /tmp/nsx-project-background.png.
