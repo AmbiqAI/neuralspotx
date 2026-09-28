@@ -44,3 +44,24 @@ test('walkthrough can pause and resume after a hidden page', async ({ page }) =>
   });
   await expect(journey).toHaveAttribute('data-stage', '0', { timeout: 15000 });
 });
+
+test('active tab pauses typing and outline progress; switching preserves pause', async ({ page }) => {
+  await page.goto('./');
+  const journey = page.locator('nsx-journey-walkthrough');
+  await journey.scrollIntoViewIfNeeded();
+  await journey.getByRole('tab', { name: '3 Create' }).click();
+  await page.waitForTimeout(400);
+  await journey.getByRole('tab', { name: '3 Create' }).click();
+  const panel = journey.locator('[data-stage-panel][data-active="true"]');
+  const content = await panel.textContent();
+  const outline = journey.locator('[aria-selected="true"] rect');
+  const progress = await outline.getAttribute('style');
+  await page.waitForTimeout(1000);
+  expect(await panel.textContent()).toBe(content);
+  expect(await outline.getAttribute('style')).toBe(progress);
+  await journey.getByRole('tab', { name: '6 View' }).click();
+  await expect(journey).toHaveAttribute('data-paused', '');
+  await journey.getByRole('tab', { name: '6 View' }).click();
+  await expect(journey).not.toHaveAttribute('data-paused');
+  await expect(journey).toHaveAttribute('data-stage', '0', { timeout: 15000 });
+});

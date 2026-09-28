@@ -38,9 +38,9 @@ interface Props {
 const {
   stages,
   label = 'From install to running firmware',
-  dwell = 2200,
-  typingSpeed = 18,
-  lineDelay = 90,
+  dwell = 5500,
+  typingSpeed = 45,
+  lineDelay = 650,
 } = Astro.props;
 
 /*
@@ -50,140 +50,106 @@ const {
 const BEHAVIOR = `
 (() => {
   if (customElements.get('nsx-journey-walkthrough')) return;
-
   class NsxJourneyWalkthrough extends HTMLElement {
     connectedCallback() {
-      if (this.dataset.ready === 'true') return;
-      this.dataset.ready = 'true';
-
-      const tabs = Array.from(this.querySelectorAll('[data-stage-tab]'));
-      const panels = Array.from(this.querySelectorAll('[data-stage-panel]'));
-      const captions = Array.from(this.querySelectorAll('[data-stage-caption-text]'));
-      const replay = this.querySelector('[data-walkthrough-replay]');
+      this.cleanup?.();
+      const tabs = [...this.querySelectorAll('[data-stage-tab]')];
+      const panels = [...this.querySelectorAll('[data-stage-panel]')];
+      const captions = [...this.querySelectorAll('[data-stage-caption-text]')];
       const pause = this.querySelector('[data-walkthrough-pause]');
-      const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
-      const dwell = Number(this.dataset.dwell ?? 2200);
-      let active = 0;
+      const motion = matchMedia('(prefers-reduced-motion: reduce)');
       const controller = new AbortController();
       const signal = controller.signal;
-      let auto = !reducedMotion.matches;
-      let timer = 0;
-      let watchdog = 0;
-      let watching = null;
-      const paused = () => document.hidden;
-
-      const stop = () => {
-        window.clearTimeout(timer);
-        window.clearTimeout(watchdog);
-        if (watching) watching.disconnect();
-        watching = null;
-      };
-
-      const show = (index, play) => {
-        stop();
-        if (pause) { pause.textContent = auto ? 'Pause' : 'Resume'; pause.setAttribute('aria-pressed', String(!auto)); }
-        this.removeAttribute('data-dwelling');
-        active = (index + panels.length) % panels.length;
+      const typing = Number(this.dataset.typing);
+      const delay = Number(this.dataset.lineDelay);
+      const dwell = Number(this.dataset.dwell);
+      let active = 0, elapsed = 0, last = performance.now(), frame = 0;
+      let paused = motion.matches, started = false;
+      const timelines = panels.map(panel => {
+        let end = 0;
+        const lines = [...panel.querySelectorAll('[data-line]')].map(line => {
+          const value = line.dataset.text || ' ';
+          const duration = line.dataset.kind === 'command' ? value.length * typing : 0;
+          const start = end;
+          end += duration + delay;
+          return { line, text: line.querySelector('[data-line-text]'), value, start, duration };
+        });
+        return { lines, total: end + dwell };
+      });
+      const controls = () => {
+        this.toggleAttribute('data-paused', paused);
+        pause.textContent = paused ? 'Resume' : 'Pause';
+        pause.setAttribute('aria-pressed', String(paused));
         tabs.forEach((tab, i) => {
-          const on = i === active;
-          tab.setAttribute('aria-selected', on ? 'true' : 'false');
-          tab.tabIndex = on ? 0 : -1;
-          tab.classList.toggle('helia-chip--accent', on);
+          tab.title = i === active ? (paused ? 'Resume walkthrough' : 'Pause walkthrough') : 'Show this step';
+        });
+      };
+      const render = () => {
+        const timeline = timelines[active];
+        const time = motion.matches ? timeline.total : elapsed;
+        timeline.lines.forEach(({line, text, value, start, duration}) => {
+          line.dataset.state = time >= start ? 'visible' : 'pending';
+          text.textContent = time < start ? '' : duration ? value.slice(0, Math.floor((time - start) / typing)) : value;
+          line.dataset.active = String(!paused && time >= start && time < start + duration);
+        });
+        tabs[active].querySelector('rect').style.strokeDashoffset = String(100 * (1 - Math.min(time / timeline.total, 1)));
+      };
+      const show = index => {
+        active = (index + panels.length) % panels.length;
+        elapsed = 0;
+        last = performance.now();
+        this.dataset.stage = String(active);
+        tabs.forEach((tab, i) => {
+          tab.setAttribute('aria-selected', String(i === active));
+          tab.tabIndex = i === active ? 0 : -1;
+          tab.classList.toggle('helia-chip--accent', i === active);
+          tab.querySelector('rect').style.strokeDashoffset = '100';
         });
         panels.forEach((panel, i) => {
-          const on = i === active;
-          panel.dataset.active = on ? 'true' : 'false';
-          panel.setAttribute('aria-hidden', on ? 'false' : 'true');
+          panel.dataset.active = String(i === active);
+          panel.setAttribute('aria-hidden', String(i !== active));
+          panel.querySelector('helia-ascii-terminal').dataset.enhanced = 'true';
         });
-        captions.forEach((text, i) => { text.dataset.active = i === active ? 'true' : 'false'; });
-        this.dataset.stage = String(active);
-        if (!play) return;
-
-        const terminal = panels[active].querySelector('helia-ascii-terminal');
-        if (reducedMotion.matches || typeof terminal?.play !== 'function') {
-          schedule();
-          return;
-        }
-        /* The terminal owns its typing and its readiness: play() waits for the
-           instance to be set up and aborts whatever run was in flight. It
-           raises data-playing while it runs, so the hand-off waits for that
-           attribute to clear rather than on the promise, which also settles on
-           the run this one superseded. */
-        void terminal.play();
-        watching = new MutationObserver(() => {
-          if (terminal.hasAttribute('data-playing')) return;
-          stop();
-          schedule();
-        });
-        watching.observe(terminal, { attributes: true, attributeFilter: ['data-playing'] });
-        /* If the terminal never raises or clears the marker, the walkthrough
-           still moves on once the transcript could have finished. */
-        const typed = Array.from(terminal.querySelectorAll('[data-line]'))
-          .reduce((sum, line) => sum + (line.dataset.text || '').length, 0);
-        watchdog = window.setTimeout(() => { stop(); schedule(); }, typed * 40 + 4000);
+        captions.forEach((caption, i) => caption.dataset.active = String(i === active));
+        controls();
+        render();
       };
-
-      const schedule = () => {
-        if (!auto || paused()) return;
-
-        window.clearTimeout(timer);
-        this.setAttribute('data-dwelling', 'true');
-        timer = window.setTimeout(() => show(active + 1, true), dwell);
-      };
-
+      const toggle = () => { paused = !paused; last = performance.now(); controls(); render(); };
       tabs.forEach((tab, i) => {
-        tab.addEventListener('click', () => {
-          auto = !reducedMotion.matches;
-          show(i, !reducedMotion.matches);
-        });
-        tab.addEventListener('keydown', (event) => {
-          if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
+        tab.addEventListener('click', () => i === active ? toggle() : show(i), {signal});
+        tab.addEventListener('keydown', event => {
+          if (!['ArrowRight', 'ArrowLeft'].includes(event.key)) return;
           event.preventDefault();
-          auto = !reducedMotion.matches;
-          const next = event.key === 'ArrowRight' ? i + 1 : i - 1;
-          show(next, !reducedMotion.matches);
-          tabs[(next + tabs.length) % tabs.length].focus();
-        });
+          show(i + (event.key === 'ArrowRight' ? 1 : -1));
+          tabs[active].focus();
+        }, {signal});
       });
-
-      replay?.addEventListener('click', () => {
-        auto = !reducedMotion.matches;
-        show(0, true);
-      });
-
-      pause?.addEventListener('click', () => {
-        auto = !auto;
-        pause.textContent = auto ? 'Pause' : 'Resume';
-        pause.setAttribute('aria-pressed', String(!auto));
-        if (auto) show(active, true);
-        else { stop(); this.removeAttribute('data-dwelling'); }
-      });
-      document.addEventListener('visibilitychange', () => {
-        if (document.hidden) { stop(); this.removeAttribute('data-dwelling'); }
-        else if (auto) show(active, true);
-      }, { signal });
-      reducedMotion.addEventListener('change', (event) => {
-        auto = !event.matches;
-        if (auto) show(active, true);
-        else { stop(); this.removeAttribute('data-dwelling'); }
-      }, { signal });
-
-      const observer = new IntersectionObserver((entries) => {
-        if (!entries.some((entry) => entry.isIntersecting)) return;
-        observer.disconnect();
-        show(0, true);
-      }, { threshold: 0.4 });
-      show(0, false);
+      pause.addEventListener('click', toggle, {signal});
+      this.querySelector('[data-walkthrough-replay]').addEventListener('click', () => show(0), {signal});
+      motion.addEventListener('change', () => { paused = motion.matches; controls(); render(); }, {signal});
+      const observer = new IntersectionObserver(entries => {
+        if (entries.some(entry => entry.isIntersecting)) { started = true; last = performance.now(); observer.disconnect(); }
+      }, {threshold: .4});
+      const tick = time => {
+        if (started && !paused && !motion.matches && !document.hidden) {
+          elapsed += Math.min(time - last, 100);
+          if (elapsed >= timelines[active].total) show(active + 1);
+          render();
+        }
+        last = time;
+        frame = requestAnimationFrame(tick);
+      };
+      show(0);
       observer.observe(this);
-      this.cleanup = () => { stop(); observer.disconnect(); controller.abort(); };
+      frame = requestAnimationFrame(tick);
+      this.cleanup = () => { cancelAnimationFrame(frame); observer.disconnect(); controller.abort(); };
     }
+    disconnectedCallback() { this.cleanup?.(); }
   }
-
-  NsxJourneyWalkthrough.prototype.disconnectedCallback = function () { this.cleanup?.(); };
-
   customElements.define('nsx-journey-walkthrough', NsxJourneyWalkthrough);
 })();
 `;
+
 ---
 
 <nsx-journey-walkthrough
@@ -192,6 +158,8 @@ const BEHAVIOR = `
   aria-label={label}
   style={`--journey-dwell: ${dwell}ms`}
   data-dwell={dwell}
+  data-typing={typingSpeed}
+  data-line-delay={lineDelay}
   data-stage="0"
 >
   <div class="journey__rail" role="tablist" aria-label="Stages">
@@ -206,6 +174,7 @@ const BEHAVIOR = `
         class:list={['helia-chip', 'helia-chip--md', 'helia-focus-ring', { 'helia-chip--accent': i === 0 }]}
         data-stage-tab
       >
+        <svg class="journey__outline" aria-hidden="true"><rect x="1" y="1" width="calc(100% - 2px)" height="calc(100% - 2px)" rx="15" pathLength="100" /></svg>
         <span class="journey__step">{i + 1}</span>
         {stage.label}
       </button>
@@ -225,8 +194,7 @@ const BEHAVIOR = `
         <AsciiTerminal
           title={stage.title}
           lines={stage.lines}
-          animated
-          replay
+          animated={false}
           autoplay={false}
           typingSpeed={typingSpeed}
           lineDelay={lineDelay}
@@ -270,9 +238,9 @@ const BEHAVIOR = `
     position: relative;
     overflow: hidden;
   }
-  .journey[data-dwelling] [aria-selected='true']::after { content: ''; position: absolute; bottom: 0; left: 0; height: 2px; width: 100%; background: currentColor; transform-origin: left; animation: journey-progress var(--journey-dwell) linear; }
-  @keyframes journey-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-  @media (prefers-reduced-motion: reduce) { .journey [role='tab']::after { display: none; } }
+  .journey__outline { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
+  .journey__outline rect { fill: none; stroke: var(--helia-product-accent, currentColor); stroke-width: 2; stroke-dasharray: 100; stroke-dashoffset: 100; }
+  [aria-selected='false'] .journey__outline { visibility: hidden; }
   .journey__step {
     font-variant-numeric: tabular-nums;
     opacity: 0.7;
