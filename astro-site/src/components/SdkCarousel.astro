@@ -1,0 +1,154 @@
+---
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright (c) 2026, Ambiq
+---
+<nsx-sdk-carousel role="region" aria-roledescription="carousel" aria-label="Explore the NSX SDK">
+  <div class="nsx-slides"><slot /></div>
+  <div class="nsx-slide-controls" role="group" aria-label="Choose an SDK view">
+    {['SDK', 'Modules', 'Targets'].map((label, index) => (
+      <div class="nsx-slide-control">
+        <button type="button" data-dot aria-label={index === 0 ? 'Pause slideshow' : `Show ${label} slide`} tabindex={index === 0 ? 0 : -1}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle class="nsx-dot" cx="12" cy="12" r="3" /><circle class="nsx-ring" cx="12" cy="12" r="9" pathLength="100" /></svg>
+        </button>
+        <button type="button" data-slide-name aria-pressed={index === 0} aria-label={`Show ${label}`}>{label}</button>
+      </div>
+    ))}
+  </div>
+</nsx-sdk-carousel>
+<script>
+  class NsxSdkCarousel extends HTMLElement {
+    private frame = 0;
+    private cleanup?: () => void;
+    connectedCallback() {
+      this.cleanup?.();
+      cancelAnimationFrame(this.frame);
+      const slides = [...this.querySelectorAll<HTMLElement>('.nsx-slide')];
+      const buttons = [...this.querySelectorAll<HTMLButtonElement>('[data-slide-name]')];
+      const dots = [...this.querySelectorAll<HTMLButtonElement>('[data-dot]')];
+      let paused = false;
+      const updatePause = () => {
+        this.toggleAttribute('data-paused', paused);
+        dots.forEach((dot, i) => {
+          dot.setAttribute('aria-label', i === current ? (paused ? 'Resume slideshow' : 'Pause slideshow') : `Show ${buttons[i].textContent} slide`);
+          dot.title = dot.getAttribute('aria-label')!;
+          dot.tabIndex = i === current ? 0 : -1;
+          dot.dataset.active = String(i === current);
+        });
+      };
+      const motion = matchMedia('(prefers-reduced-motion: reduce)');
+      let current = 0, elapsed = 0, last = performance.now();
+      const show = (index: number) => {
+        current = index;
+        elapsed = 0;
+        last = performance.now();
+        slides.forEach((slide, i) => {
+          slide.classList.toggle('active', i === index);
+          slide.inert = i !== index;
+          slide.setAttribute('aria-hidden', String(i !== index));
+          slide.setAttribute('role', 'group');
+          slide.setAttribute('aria-roledescription', 'slide');
+          slide.setAttribute('aria-label', `${i + 1} of ${slides.length}`);
+        });
+        slides[index].getAnimations({subtree: true}).forEach(animation => {
+          if (animation instanceof CSSAnimation) {
+            animation.currentTime = paused ? Number(animation.effect?.getComputedTiming().endTime ?? 0) : 0;
+          }
+        });
+        buttons.forEach((button, i) => {
+          button.setAttribute('aria-pressed', String(i === index));
+          dots[i].querySelector<SVGCircleElement>('.nsx-ring')!.style.strokeDashoffset = '100';
+        });
+        updatePause();
+      };
+      const tick = (time: number) => {
+        if (!paused && !motion.matches && !document.hidden) {
+          elapsed += Math.min(time - last, 100);
+          if (elapsed >= 3500) show((current + 1) % slides.length);
+        }
+        last = time;
+        dots[current].querySelector<SVGCircleElement>('.nsx-ring')!.style.strokeDashoffset = String(100 - elapsed / 35);
+        this.frame = requestAnimationFrame(tick);
+      };
+      const remove = buttons.map((button, index) => {
+        const click = () => show(index);
+        button.addEventListener('click', click);
+        return () => button.removeEventListener('click', click);
+      });
+      dots.forEach((dot, index) => {
+        const click = () => {
+          if (index !== current) show(index);
+          else { paused = !paused; last = performance.now(); updatePause(); }
+        };
+        dot.addEventListener('click', click);
+        remove.push(() => dot.removeEventListener('click', click));
+      });
+      this.cleanup = () => remove.forEach(fn => fn());
+      show(0);
+      this.frame = requestAnimationFrame(tick);
+    }
+    disconnectedCallback() {
+      cancelAnimationFrame(this.frame);
+      this.cleanup?.();
+    }
+  }
+  if (!customElements.get('nsx-sdk-carousel')) customElements.define('nsx-sdk-carousel', NsxSdkCarousel);
+</script>
+<style is:global>
+  nsx-sdk-carousel { display: block; color: #edf0f4; background: linear-gradient(145deg,#14262d,#121a20); border: 1px solid #36515b; border-radius: 20px; padding: 24px; }
+  .nsx-slides { display: grid; }
+  .nsx-slides > .nsx-slide { margin: 0; grid-area: 1 / 1; visibility: hidden; opacity: 0; min-width: 0; }
+  .nsx-slide.active { visibility: visible; opacity: 1; }
+  nsx-sdk-carousel .nsx-slide > * { margin: 0; }
+  nsx-sdk-carousel .nsx-slide-label { font: 600 11px/1.6 monospace; letter-spacing: .12em; color: #c7ccd3; margin-bottom: 18px; }
+  nsx-sdk-carousel .nsx-slide h2 { font-size: 22px; line-height: 1.25; letter-spacing: -.025em; margin-top: 16px; }
+  nsx-sdk-carousel .nsx-slide p.nsx-slide-copy { font-size: 14px; line-height: 1.6; color: #d6e2e6; margin-top: 10px; }
+  .nsx-diagram { min-height: 196px; display: flex; flex-direction: column; justify-content: center; gap: 10px; font-size: 13px; }
+  .nsx-hal-parts, .nsx-targets { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+  .nsx-hal-parts span, .nsx-targets span { text-align: center; padding: 9px 4px; border: 1px solid #42616b; border-radius: 6px; color: #a9e4e4; }
+  .nsx-hal-parts span { border: 0; color: #d6e2e6; padding: 4px; }
+  .nsx-targets span { padding: 14px 4px; }
+  .nsx-target-group { display: grid; gap: 7px; }
+  .nsx-target-label { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #a9bdc4; }
+  .nsx-toolchains span { background: #203b44; border-color: #4b737b; color: #d6e2e6; }
+  .nsx-slide.active .nsx-targets span { animation: nsx-stack-rise .55s ease-out both; }
+  .nsx-slide.active .nsx-targets span:nth-child(2) { animation-delay: .15s; }
+  .nsx-slide.active .nsx-targets span:nth-child(3) { animation-delay: .3s; }
+  .nsx-stack { gap: 9px; }
+  .nsx-stack-layer { border: 1px solid #42616b; border-radius: 8px; padding: 10px 12px; text-align: center; background: #192d35; }
+  .nsx-stack-app { background: #203b44; }
+  .nsx-stack-modules { border-color: #60cec2; background: #203f48; color: #b3e8e7; }
+  .nsx-stack-foundation { background: transparent; padding: 10px 0; }
+  .nsx-layer-label { display: block; font-size: 12px; font-weight: 600; color: #bfd5dc; text-align: center; margin-bottom: 8px; }
+  .nsx-stack-foundation .nsx-hal-parts { gap: 0; }
+  .nsx-stack-foundation .nsx-hal-parts span { border: 0; border-radius: 0; padding: 3px; color: #d6e2e6; }
+  .nsx-stack-foundation .nsx-hal-parts span + span { border-left: 1px solid #42616b; }
+  .nsx-module-focus { color: #b3e8e7; text-align: center; }
+  .nsx-capability-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+  .nsx-capability-grid > div { display: flex; flex-direction: column; justify-content: center; gap: 6px; min-height: 72px; padding: 6px; border: 1px solid #4b737b; border-radius: 6px; background: #203b44; font-size: 12px; }
+  .nsx-capability-grid span { font-size: 10px; color: #bfd5dc; }
+  .nsx-slide.active .nsx-stack-layer { animation: nsx-stack-rise .55s ease-out both; }
+  .nsx-slide.active .nsx-stack-layer:nth-child(3) { animation-delay: .12s; }
+  .nsx-slide.active .nsx-stack-layer:nth-child(2) { animation-delay: .24s; }
+  .nsx-slide.active .nsx-stack-layer:nth-child(1) { animation-delay: .36s; }
+  .nsx-slide.active .nsx-capability-grid > div { animation: nsx-stack-rise .55s ease-out both; }
+  .nsx-slide.active .nsx-capability-grid > div:nth-child(2) { animation-delay: .1s; }
+  .nsx-slide.active .nsx-capability-grid > div:nth-child(3) { animation-delay: .2s; }
+  .nsx-slide.active .nsx-capability-grid > div:nth-child(4) { animation-delay: .3s; }
+  .nsx-slide.active .nsx-toolchains span:nth-child(1) { animation-delay: .25s; }
+  .nsx-slide.active .nsx-toolchains span:nth-child(2) { animation-delay: .4s; }
+  .nsx-slide.active .nsx-toolchains span:nth-child(3) { animation-delay: .55s; }
+  @keyframes nsx-stack-rise { from { opacity: .35; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+  .nsx-slide-controls { display: flex; justify-content: center; gap: 14px; margin-top: 18px; }
+  nsx-sdk-carousel[data-paused] .nsx-slide * { animation-play-state: paused !important; }
+  .nsx-slide-control { display: flex; align-items: center; gap: 3px; }
+  .nsx-slide-controls button { display: flex; align-items: center; gap: 5px; background: none; border: 0; padding: 6px 0; color: #9aafb7; font: inherit; font-size: 12px; cursor: pointer; }
+  .nsx-slide-controls button[aria-pressed='true'], .nsx-slide-controls [data-dot][data-active='true'] { color: #b3e8e7; }
+  .nsx-slide-controls button:focus-visible { outline: 2px solid #60cec2; outline-offset: 4px; border-radius: 4px; }
+  .nsx-slide-controls svg { width: 20px; height: 20px; }
+  .nsx-dot { fill: currentColor; }
+  .nsx-ring { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-dasharray: 100; stroke-dashoffset: 100; transform: rotate(-90deg); transform-origin: center; }
+  .nsx-slide-controls [data-dot][data-active='false'] .nsx-ring { visibility: hidden; }
+  @media (prefers-reduced-motion: reduce) { .nsx-slide.active * { animation: none !important; } }
+  @media (max-width: 991px) { nsx-sdk-carousel { max-width: 640px; margin-inline: auto; } }
+  @media (max-width: 480px) { nsx-sdk-carousel { padding: 18px; } .nsx-slide-controls { gap: 12px; } }
+</style>

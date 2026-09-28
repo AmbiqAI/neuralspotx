@@ -127,7 +127,7 @@ the accurate source, not the catalog page.
 - No dependency cycles. `Dependency cycle detected at module '<name>'` is a manifest
   problem, not an app problem.
 - At most one `sdk_provider` module in an app. See
-  [SDK providers](/neuralspotx/guides/modules/sdk-providers/).
+  [SDK foundation and overrides](/neuralspotx/guides/modules/sdk-providers/).
 - A board module depends on exactly one SoC module.
 - Compatibility is checked at resolution time, so a mismatch fails `nsx lock`, not the
   compiler.
@@ -136,4 +136,4 @@ the accurate source, not the catalog page.
 
 Getting a module into the packaged registry, so that other people's apps can add it by
 name, is a change to NSX itself. See
-[Adding a module](/neuralspotx/guides/contribute/adding-a-module/).
+[Contribute a module](/neuralspotx/guides/contribute/adding-a-module/).

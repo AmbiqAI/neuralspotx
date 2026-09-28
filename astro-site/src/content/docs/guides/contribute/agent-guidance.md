@@ -1,5 +1,5 @@
 ---
-title: Agent guidance
+title: Automation and agents
 description: What an agent working in an NSX app should rely on, which surfaces are machine readable, and the invariants not to break.
 ---
 

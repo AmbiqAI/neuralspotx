@@ -1,5 +1,5 @@
 ---
-title: Adding a board
+title: Add a board
 description: Scaffold a board definition, fill in its five CMake fragments and its descriptor, and get an app building against hardware NSX does not package.
 ---
 
@@ -64,7 +64,7 @@ Unable to infer SDK provider for board 'my_board'. Set -DNSX_SDK_PROVIDER=ambiqs
 
 NSX follows a custom board's parent link before giving up, so declaring the packaged board
 you derived from is the clean fix. See
-[SDK providers](/neuralspotx/guides/modules/sdk-providers/).
+[SDK foundation and overrides](/neuralspotx/guides/modules/sdk-providers/).
 
 ## Declaring compatibility honestly
 

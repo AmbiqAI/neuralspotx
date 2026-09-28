@@ -102,7 +102,7 @@ Two things pin separately from the CLI:
   [Lock and sync](/neuralspotx/guides/modules/lock-and-sync/).
 - **The SDK.** The provider module's pinned revision determines which AmbiqSuite
   drop you build against. See
-  [SDK providers](/neuralspotx/guides/modules/sdk-providers/).
+  [SDK foundation and overrides](/neuralspotx/guides/modules/sdk-providers/).
 
 ## Verifying what you installed
 

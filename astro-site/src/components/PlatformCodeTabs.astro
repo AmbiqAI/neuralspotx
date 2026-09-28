@@ -1,0 +1,26 @@
+---
+// SPDX-License-Identifier: BSD-3-Clause
+// Copyright (c) 2026, Ambiq
+---
+<nsx-platform-tabs><slot /></nsx-platform-tabs>
+<script>
+  class PlatformTabs extends HTMLElement {
+    observer?: MutationObserver;
+    connectedCallback() {
+      this.observer = new MutationObserver(() => {
+        const selected = this.querySelector('[role="tab"][aria-selected="true"]')?.textContent?.trim();
+        if (!selected) return;
+        document.querySelectorAll('nsx-platform-tabs').forEach((group) => {
+          if (group === this) return;
+          const tab = Array.from(group.querySelectorAll<HTMLButtonElement>('[role="tab"]'))
+            .find((item) => item.textContent?.trim() === selected);
+          if (tab?.getAttribute('aria-selected') === 'false') tab.click();
+        });
+      });
+      this.observer.observe(this, { subtree: true, attributes: true, attributeFilter: ['aria-selected'] });
+    }
+    disconnectedCallback() { this.observer?.disconnect(); }
+  }
+  if (!customElements.get('nsx-platform-tabs')) customElements.define('nsx-platform-tabs', PlatformTabs);
+</script>
+<style>nsx-platform-tabs { display: block; }</style>

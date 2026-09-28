@@ -1,11 +1,13 @@
 ---
-title: Reference
+title: API reference
 description: Every NSX command and option, the public Python API, and the schema of each manifest NSX reads.
 ---
 
 Reference is the lookup section: what a command accepts, what a function returns, and what
 a manifest field means. It is generated from the source rather than written by hand, so it
-describes the version of NSX you installed and not a snapshot of it.
+describes the source version used to build this site. Run `uv tool list` (or `pipx list` for a pipx install) to check your
+installed version and consult [Releases and versioning](/neuralspotx/reference/releases/)
+when comparing versions.
 
 ## [CLI](/neuralspotx/reference/cli/)
 

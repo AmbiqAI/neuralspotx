@@ -24,3 +24,7 @@ examples/*/cmake/.gitignore
 
 # NSX per-app untracked state (advisory lock, etc.; created by nsx sync/lock/update)
 **/.nsx/
+
+# Browser test output
+astro-site/test-results/
+astro-site/playwright-report/

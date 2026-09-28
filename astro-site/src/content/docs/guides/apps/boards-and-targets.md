@@ -133,7 +133,7 @@ than behind preprocessor conditionals; see
 `nsx board create` scaffolds a board definition you own, which you then fill in with the
 same fragments a packaged board ships. The practical constraint is that the SoC, the
 startup path and the SDK provider have to line up before an app will build against it.
-[Adding a board](/neuralspotx/guides/contribute/adding-a-board/) covers the work and the
+[Add a board](/neuralspotx/guides/contribute/adding-a-board/) covers the work and the
 order to do it in.
 
 ## Compatibility is declared
