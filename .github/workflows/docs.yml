@@ -166,6 +166,14 @@ jobs:
         working-directory: astro-site
         run: npm run validate
 
+      - name: Install Playwright Chromium
+        working-directory: astro-site
+        run: npx playwright install --with-deps chromium-headless-shell
+
+      - name: Check browser interactions
+        working-directory: astro-site
+        run: npm run test:hero
+
       - name: Summarize the build
         if: always()
         working-directory: astro-site

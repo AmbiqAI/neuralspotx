@@ -34,8 +34,7 @@ combination has been run on hardware.
   workflows, memory placement, startup and linker behavior, toolchain selection, and the
   concepts behind app generation.
 - The [CLI reference](/neuralspotx/reference/cli/) has a page per command and subcommand,
-  generated from the argument parser for this documentation build. Compare `nsx --version`
-  with [release information](/neuralspotx/reference/releases/) when using a different version.
+  generated from the argument parser for this documentation build. Check the installed version with `uv tool list` (or `pipx list`), then consult [release information](/neuralspotx/reference/releases/) when using a different version.
 - The [configuration reference](/neuralspotx/reference/config/) documents the schemas:
   [`nsx.yml`](/neuralspotx/reference/config/nsx-yml/),
   [`nsx-module.yaml`](/neuralspotx/reference/config/nsx-module-yaml/),
