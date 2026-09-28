@@ -926,7 +926,8 @@
           "apollo4l"
         ],
         "toolchains": [
-          "arm-none-eabi-gcc"
+          "arm-none-eabi-gcc",
+          "atfe"
         ]
       },
       "constraints": {
@@ -973,7 +974,8 @@
           "apollo4l"
         ],
         "toolchains": [
-          "arm-none-eabi-gcc"
+          "arm-none-eabi-gcc",
+          "atfe"
         ]
       },
       "constraints": {

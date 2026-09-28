@@ -18,3 +18,4 @@ cpu:
   abi: thumbv7em-fpv4sp-hard
 toolchains:
   - arm-none-eabi-gcc
+  - atfe
