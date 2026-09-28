@@ -46,3 +46,22 @@ test('reduced motion keeps the selected view static', async ({ page }) => {
   await page.keyboard.press('Enter');
   await expect(page.getByRole('button', { name: 'Show Modules', exact: true })).toHaveAttribute('aria-pressed', 'true');
 });
+
+test('active dot freezes progress and animation; labels preserve pause state', async ({ page }) => {
+  await page.goto('./');
+  const carousel = page.locator('nsx-sdk-carousel');
+  await page.getByRole('button', { name: 'Show SDK', exact: true }).click();
+  await carousel.getByRole('button', { name: 'Pause slideshow', exact: true }).click();
+  const ring = carousel.locator('[data-dot][data-active="true"] .nsx-ring');
+  const progress = await ring.evaluate(el => getComputedStyle(el).strokeDashoffset);
+  await page.waitForTimeout(3800);
+  expect(await ring.evaluate(el => getComputedStyle(el).strokeDashoffset)).toBe(progress);
+  expect(await carousel.locator('.active .nsx-stack-layer').first().evaluate(el => getComputedStyle(el).animationPlayState)).toBe('paused');
+  await page.getByRole('button', { name: 'Show Modules', exact: true }).click();
+  await expect(carousel).toHaveAttribute('data-paused', '');
+  await page.waitForTimeout(3800);
+  await expect(page.getByRole('button', { name: 'Show Modules', exact: true })).toHaveAttribute('aria-pressed', 'true');
+  await carousel.getByRole('button', { name: 'Resume slideshow', exact: true }).focus();
+  await page.keyboard.press('Enter');
+  await expect(page.getByRole('button', { name: 'Show Targets', exact: true })).toHaveAttribute('aria-pressed', 'true', { timeout: 5000 });
+});

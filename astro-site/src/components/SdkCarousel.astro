@@ -6,10 +6,12 @@
   <div class="nsx-slides"><slot /></div>
   <div class="nsx-slide-controls" role="group" aria-label="Choose an SDK view">
     {['SDK', 'Modules', 'Targets'].map((label, index) => (
-      <button type="button" aria-pressed={index === 0} aria-label={`Show ${label}`}>
-        <svg viewBox="0 0 24 24" aria-hidden="true"><circle class="nsx-dot" cx="12" cy="12" r="3" /><circle class="nsx-ring" cx="12" cy="12" r="9" pathLength="100" /></svg>
-        {label}
-      </button>
+      <div class="nsx-slide-control">
+        <button type="button" data-dot aria-label={index === 0 ? 'Pause slideshow' : `Show ${label} slide`} tabindex={index === 0 ? 0 : -1}>
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle class="nsx-dot" cx="12" cy="12" r="3" /><circle class="nsx-ring" cx="12" cy="12" r="9" pathLength="100" /></svg>
+        </button>
+        <button type="button" data-slide-name aria-pressed={index === 0} aria-label={`Show ${label}`}>{label}</button>
+      </div>
     ))}
   </div>
 </nsx-sdk-carousel>
@@ -21,7 +23,18 @@
       this.cleanup?.();
       cancelAnimationFrame(this.frame);
       const slides = [...this.querySelectorAll<HTMLElement>('.nsx-slide')];
-      const buttons = [...this.querySelectorAll<HTMLButtonElement>('button')];
+      const buttons = [...this.querySelectorAll<HTMLButtonElement>('[data-slide-name]')];
+      const dots = [...this.querySelectorAll<HTMLButtonElement>('[data-dot]')];
+      let paused = false;
+      const updatePause = () => {
+        this.toggleAttribute('data-paused', paused);
+        dots.forEach((dot, i) => {
+          dot.setAttribute('aria-label', i === current ? (paused ? 'Resume slideshow' : 'Pause slideshow') : `Show ${buttons[i].textContent} slide`);
+          dot.title = dot.getAttribute('aria-label')!;
+          dot.tabIndex = i === current ? 0 : -1;
+          dot.dataset.active = String(i === current);
+        });
+      };
       const motion = matchMedia('(prefers-reduced-motion: reduce)');
       let current = 0, elapsed = 0, last = performance.now();
       const show = (index: number) => {
@@ -41,22 +54,31 @@
         });
         buttons.forEach((button, i) => {
           button.setAttribute('aria-pressed', String(i === index));
-          button.querySelector<SVGCircleElement>('.nsx-ring')!.style.strokeDashoffset = '100';
+          dots[i].querySelector<SVGCircleElement>('.nsx-ring')!.style.strokeDashoffset = '100';
         });
+        updatePause();
       };
       const tick = (time: number) => {
-        if (!motion.matches && !document.hidden) {
+        if (!paused && !motion.matches && !document.hidden) {
           elapsed += Math.min(time - last, 100);
           if (elapsed >= 3500) show((current + 1) % slides.length);
         }
         last = time;
-        buttons[current].querySelector<SVGCircleElement>('.nsx-ring')!.style.strokeDashoffset = String(100 - elapsed / 35);
+        dots[current].querySelector<SVGCircleElement>('.nsx-ring')!.style.strokeDashoffset = String(100 - elapsed / 35);
         this.frame = requestAnimationFrame(tick);
       };
       const remove = buttons.map((button, index) => {
         const click = () => show(index);
         button.addEventListener('click', click);
         return () => button.removeEventListener('click', click);
+      });
+      dots.forEach((dot, index) => {
+        const click = () => {
+          if (index !== current) show(index);
+          else { paused = !paused; last = performance.now(); updatePause(); }
+        };
+        dot.addEventListener('click', click);
+        remove.push(() => dot.removeEventListener('click', click));
       });
       this.cleanup = () => remove.forEach(fn => fn());
       show(0);
@@ -113,13 +135,15 @@
   .nsx-slide.active .nsx-module-focus { animation: nsx-stack-rise .5s both; }
   @keyframes nsx-stack-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
   .nsx-slide-controls { display: flex; justify-content: center; gap: 14px; margin-top: 24px; }
+  nsx-sdk-carousel[data-paused] .nsx-slide * { animation-play-state: paused !important; }
+  .nsx-slide-control { display: flex; align-items: center; gap: 3px; }
   .nsx-slide-controls button { display: flex; align-items: center; gap: 5px; background: none; border: 0; padding: 6px 0; color: #93aaa6; font: inherit; font-size: 12px; cursor: pointer; }
   .nsx-slide-controls button[aria-pressed='true'] { color: #b1ece2; }
   .nsx-slide-controls button:focus-visible { outline: 2px solid #60cec2; outline-offset: 4px; border-radius: 4px; }
   .nsx-slide-controls svg { width: 20px; height: 20px; }
   .nsx-dot { fill: currentColor; }
   .nsx-ring { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-dasharray: 100; stroke-dashoffset: 100; transform: rotate(-90deg); transform-origin: center; }
-  .nsx-slide-controls button[aria-pressed='false'] .nsx-ring { visibility: hidden; }
+  .nsx-slide-controls [data-dot][data-active='false'] .nsx-ring { visibility: hidden; }
   @keyframes nsx-plug { from { opacity: .2; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
   @media (prefers-reduced-motion: reduce) { .nsx-slide.active * { animation: none !important; } }
   @media (max-width: 991px) { nsx-sdk-carousel { max-width: 640px; margin-inline: auto; } }

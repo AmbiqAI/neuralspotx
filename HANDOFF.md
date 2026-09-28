@@ -27,3 +27,4 @@ Review CI and PR #275 before merge. No agent-generated label exists in this repo
 ## Latest polish
 Removed hover lift from the four Home documentation cards and replaced the section-count introduction with task-oriented copy. Build and full validation passed; headless hover checks confirmed all four cards retain position with no transform or shadow. Render inspected at /tmp/nsx-doc-cards-final.png.
 Your project band now uses the default background between muted Modules and HELIA sections. Build passed and rendered screenshot inspected at /tmp/nsx-project-background.png.
+Hero active progress dot toggles pause/resume, preserving elapsed time and freezing CSS slide animation. Slide labels select/reset without clearing pause. Separate labeled keyboard buttons retain compact presentation. Build/check and all11 headless tests pass, including paused progress, animation state, label switching while paused, and keyboard resume.
