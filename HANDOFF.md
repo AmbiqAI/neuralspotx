@@ -4,7 +4,7 @@
 Polish NSX docs under AmbiqAI/neuralspotx#256, then open a PR for review before moving to profiler. No merge or deployment authorized in this pass. Use CLI and headless browsers only; never control desktop windows or the user's browser tabs.
 
 ## State
-Existing worktree neuralspotx-alpha18, branch 256-helia-ui-alpha-18. Preserved unpublished commit3396ddf. Based on main6afb7d2; fetched main and confirmed no divergence. Preparing PR with all accumulated documentation polish.
+Existing worktree neuralspotx-alpha18, branch 256-helia-ui-alpha-18. Preserved unpublished commit3396ddf. Based on main6afb7d2; fetched main and confirmed no divergence. PR https://github.com/AmbiqAI/neuralspotx/pull/275 is open and attached. Remote head verified as 1990ca25d6ae6c3e3789147ecad344a38f1fd8cb; CI running.
 
 ## Changes
 - Shared helia-ui alpha.20, aligned header/footer and task-based navigation.
@@ -22,4 +22,7 @@ Two independent content/UI reviews completed. Fixed all four findings: missing t
 Final build, full validate and Astro check passed (0 diagnostics). Ten headless Playwright tests passed: hero responsive layout/selection/reduced motion, catalog filters, walkthrough looping/pause/visibility and OS-tab sync/focus. Rendered screenshots inspected at /tmp/nsx-final-workflow.png and /tmp/nsx-final-examples.png. Earlier pass ran65 Python documentation tests and responsive/theme checks. No hardware or Windows execution; no complete new audit of untouched APIs.
 
 ## Next
-Open PR, attach it, record URL and verify remote SHA. Review CI before merge. User preview remains at http://127.0.0.1:8760/neuralspotx/. Do not stop it. Logs: /tmp/nsx-build.log, /tmp/nsx-validate.log, /tmp/nsx-check.log, /tmp/nsx-hero-tests.log. Use npm run test:hero from astro-site after build; test preview uses8761 and --ignore-lock.
+Review CI and PR #275 before merge. No agent-generated label exists in this repository. User preview remains at http://127.0.0.1:8760/neuralspotx/. Do not stop it. Logs: /tmp/nsx-build.log, /tmp/nsx-validate.log, /tmp/nsx-check.log, /tmp/nsx-hero-tests.log. Use npm run test:hero from astro-site after build; test preview uses8761 and --ignore-lock.
+
+## Latest polish
+Removed hover lift from the four Home documentation cards and replaced the section-count introduction with task-oriented copy. Build and full validation passed; headless hover checks confirmed all four cards retain position with no transform or shadow. Render inspected at /tmp/nsx-doc-cards-final.png.
