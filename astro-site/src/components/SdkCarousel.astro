@@ -92,65 +92,58 @@
   if (!customElements.get('nsx-sdk-carousel')) customElements.define('nsx-sdk-carousel', NsxSdkCarousel);
 </script>
 <style is:global>
-  nsx-sdk-carousel { display: block; color: #edf0f4; background: linear-gradient(145deg,#152827,#121a20); border: 1px solid #344e4d; border-radius: 20px; padding: 24px; }
+  nsx-sdk-carousel { display: block; color: #edf0f4; background: linear-gradient(145deg,#14262d,#121a20); border: 1px solid #36515b; border-radius: 20px; padding: 24px; }
   .nsx-slides { display: grid; }
   .nsx-slides > .nsx-slide { margin: 0; grid-area: 1 / 1; visibility: hidden; opacity: 0; min-width: 0; }
   .nsx-slide.active { visibility: visible; opacity: 1; }
   nsx-sdk-carousel .nsx-slide > * { margin: 0; }
   nsx-sdk-carousel .nsx-slide-label { font: 600 11px/1.6 monospace; letter-spacing: .12em; color: #c7ccd3; margin-bottom: 18px; }
   nsx-sdk-carousel .nsx-slide h2 { font-size: 22px; line-height: 1.25; letter-spacing: -.025em; margin-top: 16px; }
-  nsx-sdk-carousel .nsx-slide p.nsx-slide-copy { font-size: 14px; line-height: 1.6; color: #d6e1df; margin-top: 10px; }
+  nsx-sdk-carousel .nsx-slide p.nsx-slide-copy { font-size: 14px; line-height: 1.6; color: #d6e2e6; margin-top: 10px; }
   .nsx-diagram { min-height: 196px; display: flex; flex-direction: column; justify-content: center; gap: 10px; font-size: 13px; }
-  .nsx-diagram-box { padding: 12px; text-align: center; background: #203a37; border: 1px solid #52817c; border-radius: 8px; }
-  .nsx-diagram-modules, .nsx-hal-parts, .nsx-targets { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
-  .nsx-diagram-modules span, .nsx-hal-parts span, .nsx-targets span { text-align: center; padding: 9px 4px; border: 1px solid #395653; border-radius: 6px; color: #9ee4d9; }
-  .nsx-foundation { position: relative; border: 1px solid #526361; border-radius: 8px; padding: 15px 10px 10px; margin-top: 8px; }
-  .nsx-foundation > span { position: absolute; top: -10px; left: 12px; background: #152322; padding: 0 6px; font-size: 11px; color: #c7ccd3; }
-  .nsx-hal-parts span { border: 0; color: #d6e1df; padding: 4px; }
-  .nsx-diagram-meta { text-align: center; font-size: 12px; color: #c7ccd3; padding-top: 10px; }
-  .nsx-diagram-meta code { background: transparent; padding: 0; color: inherit; }
+  .nsx-hal-parts, .nsx-targets { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; }
+  .nsx-hal-parts span, .nsx-targets span { text-align: center; padding: 9px 4px; border: 1px solid #42616b; border-radius: 6px; color: #a9e4e4; }
+  .nsx-hal-parts span { border: 0; color: #d6e2e6; padding: 4px; }
   .nsx-targets span { padding: 14px 4px; }
   .nsx-target-group { display: grid; gap: 7px; }
-  .nsx-target-label { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #a9bcb7; }
-  .nsx-toolchains span { background: #203a37; border-color: #52817c; color: #d6e1df; }
-  .nsx-slide.active .nsx-toolchains span { animation-delay: .35s; }
-  .nsx-slide.active .nsx-toolchains span:nth-child(2) { animation-delay: .5s; }
-  .nsx-slide.active .nsx-toolchains span:nth-child(3) { animation-delay: .65s; }
-  .nsx-targets small { display: block; font-size: 11px; color: #d6e1df; margin-top: 4px; }
-  .nsx-slide.active .nsx-targets span { animation: nsx-plug .4s both; }
+  .nsx-target-label { font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: #a9bdc4; }
+  .nsx-toolchains span { background: #203b44; border-color: #4b737b; color: #d6e2e6; }
+  .nsx-slide.active .nsx-targets span { animation: nsx-stack-rise .55s ease-out both; }
   .nsx-slide.active .nsx-targets span:nth-child(2) { animation-delay: .15s; }
   .nsx-slide.active .nsx-targets span:nth-child(3) { animation-delay: .3s; }
   .nsx-stack { gap: 9px; }
-  .nsx-stack-layer { border: 1px solid #425c58; border-radius: 8px; padding: 10px 12px; text-align: center; background: #172724; box-shadow: 0 3px 0 #0c1615; }
-  .nsx-stack-app { margin-inline: 12px; background: #243d39; }
-  .nsx-stack-modules { border-color: #60cec2; background: #1c3934; color: #b1ece2; }
-  .nsx-stack-buckets { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 5px 8px; margin-top: 8px; font-size: 11px; color: #d6e1df; }
+  .nsx-stack-layer { border: 1px solid #42616b; border-radius: 8px; padding: 10px 12px; text-align: center; background: #192d35; box-shadow: 0 3px 0 #0c171d; }
+  .nsx-stack-app { margin-inline: 12px; background: #203b44; }
+  .nsx-stack-modules { border-color: #60cec2; background: #203f48; color: #b3e8e7; }
   .nsx-stack-foundation { background: transparent; }
-  .nsx-layer-label { display: block; font-size: 10px; color: #a9bcb7; text-align: left; margin-bottom: 5px; }
-  .nsx-stack-foundation .nsx-hal-parts span { border: 0; padding: 3px; color: #d6e1df; }
-  .nsx-stack-silicon { display: flex; flex-direction: column; gap: 4px; background: #101c1b; }
-  .nsx-stack-silicon span { font-size: 11px; color: #a9bcb7; }
-  .nsx-module-focus { color: #b1ece2; text-align: center; }
+  .nsx-layer-label { display: block; font-size: 10px; color: #a9bdc4; text-align: left; margin-bottom: 5px; }
+  .nsx-stack-foundation .nsx-hal-parts span { border: 0; padding: 3px; color: #d6e2e6; }
+  .nsx-module-focus { color: #b3e8e7; text-align: center; }
   .nsx-capability-grid { display: grid; grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
-  .nsx-capability-grid > div { display: flex; flex-direction: column; justify-content: center; gap: 6px; min-height: 72px; padding: 6px; border: 1px solid #426860; border-radius: 6px; background: #172c28; font-size: 12px; }
-  .nsx-capability-grid span { font-size: 10px; color: #c1d4ce; }
-  .nsx-slide.active .nsx-stack-layer { animation: nsx-stack-rise .45s both; }
+  .nsx-capability-grid > div { display: flex; flex-direction: column; justify-content: center; gap: 6px; min-height: 72px; padding: 6px; border: 1px solid #4b737b; border-radius: 6px; background: #203b44; font-size: 12px; }
+  .nsx-capability-grid span { font-size: 10px; color: #bfd5dc; }
+  .nsx-slide.active .nsx-stack-layer { animation: nsx-stack-rise .55s ease-out both; }
   .nsx-slide.active .nsx-stack-layer:nth-child(3) { animation-delay: .12s; }
   .nsx-slide.active .nsx-stack-layer:nth-child(2) { animation-delay: .24s; }
   .nsx-slide.active .nsx-stack-layer:nth-child(1) { animation-delay: .36s; }
-  .nsx-slide.active .nsx-module-focus { animation: nsx-stack-rise .5s both; }
-  @keyframes nsx-stack-rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+  .nsx-slide.active .nsx-capability-grid > div { animation: nsx-stack-rise .55s ease-out both; }
+  .nsx-slide.active .nsx-capability-grid > div:nth-child(2) { animation-delay: .1s; }
+  .nsx-slide.active .nsx-capability-grid > div:nth-child(3) { animation-delay: .2s; }
+  .nsx-slide.active .nsx-capability-grid > div:nth-child(4) { animation-delay: .3s; }
+  .nsx-slide.active .nsx-toolchains span:nth-child(1) { animation-delay: .25s; }
+  .nsx-slide.active .nsx-toolchains span:nth-child(2) { animation-delay: .4s; }
+  .nsx-slide.active .nsx-toolchains span:nth-child(3) { animation-delay: .55s; }
+  @keyframes nsx-stack-rise { from { opacity: .35; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
   .nsx-slide-controls { display: flex; justify-content: center; gap: 14px; margin-top: 18px; }
   nsx-sdk-carousel[data-paused] .nsx-slide * { animation-play-state: paused !important; }
   .nsx-slide-control { display: flex; align-items: center; gap: 3px; }
-  .nsx-slide-controls button { display: flex; align-items: center; gap: 5px; background: none; border: 0; padding: 6px 0; color: #93aaa6; font: inherit; font-size: 12px; cursor: pointer; }
-  .nsx-slide-controls button[aria-pressed='true'] { color: #b1ece2; }
+  .nsx-slide-controls button { display: flex; align-items: center; gap: 5px; background: none; border: 0; padding: 6px 0; color: #9aafb7; font: inherit; font-size: 12px; cursor: pointer; }
+  .nsx-slide-controls button[aria-pressed='true'], .nsx-slide-controls [data-dot][data-active='true'] { color: #b3e8e7; }
   .nsx-slide-controls button:focus-visible { outline: 2px solid #60cec2; outline-offset: 4px; border-radius: 4px; }
   .nsx-slide-controls svg { width: 20px; height: 20px; }
   .nsx-dot { fill: currentColor; }
   .nsx-ring { fill: none; stroke: currentColor; stroke-width: 1.5; stroke-dasharray: 100; stroke-dashoffset: 100; transform: rotate(-90deg); transform-origin: center; }
   .nsx-slide-controls [data-dot][data-active='false'] .nsx-ring { visibility: hidden; }
-  @keyframes nsx-plug { from { opacity: .2; transform: translateY(-12px); } to { opacity: 1; transform: translateY(0); } }
   @media (prefers-reduced-motion: reduce) { .nsx-slide.active * { animation: none !important; } }
   @media (max-width: 991px) { nsx-sdk-carousel { max-width: 640px; margin-inline: auto; } }
   @media (max-width: 480px) { nsx-sdk-carousel { padding: 18px; } .nsx-slide-controls { gap: 12px; } }
