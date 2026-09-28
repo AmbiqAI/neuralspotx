@@ -50,7 +50,9 @@
           slide.setAttribute('aria-label', `${i + 1} of ${slides.length}`);
         });
         slides[index].getAnimations({subtree: true}).forEach(animation => {
-          if (animation instanceof CSSAnimation) animation.currentTime = 0;
+          if (animation instanceof CSSAnimation) {
+            animation.currentTime = paused ? Number(animation.effect?.getComputedTiming().endTime ?? 0) : 0;
+          }
         });
         buttons.forEach((button, i) => {
           button.setAttribute('aria-pressed', String(i === index));

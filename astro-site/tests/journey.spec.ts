@@ -61,6 +61,7 @@ test('active tab pauses typing and outline progress; switching preserves pause',
   expect(await outline.getAttribute('style')).toBe(progress);
   await journey.getByRole('tab', { name: '6 View' }).click();
   await expect(journey).toHaveAttribute('data-paused', '');
+  await expect(journey.locator('[data-stage-panel][data-active="true"] [data-line-text]').last()).toHaveText('nsx hello from generated app');
   await journey.getByRole('tab', { name: '6 View' }).click();
   await expect(journey).not.toHaveAttribute('data-paused');
   await expect(journey).toHaveAttribute('data-stage', '0', { timeout: 15000 });

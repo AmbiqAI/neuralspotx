@@ -5,8 +5,8 @@ description: Every NSX command and option, the public Python API, and the schema
 
 Reference is the lookup section: what a command accepts, what a function returns, and what
 a manifest field means. It is generated from the source rather than written by hand, so it
-describes the source version used to build this site. Run `nsx --version` to check your
-installation and consult [Releases and versioning](/neuralspotx/reference/releases/)
+describes the source version used to build this site. Run `uv tool list` (or `pipx list` for a pipx install) to check your
+installed version and consult [Releases and versioning](/neuralspotx/reference/releases/)
 when comparing versions.
 
 ## [CLI](/neuralspotx/reference/cli/)

@@ -59,6 +59,10 @@ test('active dot freezes progress and animation; labels preserve pause state', a
   expect(await carousel.locator('.active .nsx-stack-layer').first().evaluate(el => getComputedStyle(el).animationPlayState)).toBe('paused');
   await page.getByRole('button', { name: 'Show Modules', exact: true }).click();
   await expect(carousel).toHaveAttribute('data-paused', '');
+  for (const card of await carousel.locator('.active .nsx-capability-grid > div').all()) {
+    await expect(card).toHaveCSS('opacity', '1');
+    await expect(card).toHaveCSS('transform', 'matrix(1, 0, 0, 1, 0, 0)');
+  }
   await page.waitForTimeout(3800);
   await expect(page.getByRole('button', { name: 'Show Modules', exact: true })).toHaveAttribute('aria-pressed', 'true');
   await carousel.getByRole('button', { name: 'Resume slideshow', exact: true }).focus();

@@ -156,6 +156,16 @@ const homeExamples = block('home-workflow',
   journeyMarkdown + '\n\n### Add a module inside your app\n\n```bash\nnsx module search audio\nnsx module add nsx-audio\nnsx build\n```');
 replacements.set(base, withoutBlocks(read(homePath), 'home-workflow').trimEnd() + '\n\n' + homeExamples + '\n');
 
+const installPath = path.join(dist, 'getting-started/install/index.md');
+const install = readJson(path.join(siteRoot, 'src/data/transcripts/install.json'));
+const installCommands = [['hostTools', 'Host tools'], ['toolchain', 'Arm GNU toolchain'], ['probe', 'SEGGER J-Link']]
+  .map(([key, title]) => `### ${title}\n\n` + install[key].map(tab =>
+    `#### ${tab.label}\n\n` + '```' + tab.language + '\n' + tab.code + '\n```',
+  ).join('\n\n')).join('\n\n');
+replacements.set(`${base}getting-started/install/`,
+  withoutBlocks(read(installPath), 'install-commands').trimEnd() + '\n\n' +
+  block('install-commands', '## Platform installation commands\n\n' + installCommands) + '\n');
+
 for (const [route, markdown] of replacements) {
   const file = renditionFor(route);
   if (!fs.existsSync(file)) throw new Error(`No rendition to replace at ${route}.`);

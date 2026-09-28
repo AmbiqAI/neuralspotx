@@ -215,6 +215,16 @@ if (!fs.existsSync(homeMarkdown)) {
   }
 }
 
+const installTranscripts = JSON.parse(fs.readFileSync(path.join(site, 'src/data/transcripts/install.json'), 'utf8'));
+for (const output of ['getting-started/install/index.md', 'llms-full.txt']) {
+  const markdown = fs.readFileSync(path.join(dist, output), 'utf8');
+  for (const group of ['hostTools', 'toolchain', 'probe']) {
+    for (const tab of installTranscripts[group]) {
+      if (!markdown.includes(tab.code)) errors.push(`${output} omits ${group} commands for ${tab.label}`);
+    }
+  }
+}
+
 if (errors.length > 0) throw new Error([...new Set(errors)].sort().join('\n'));
 
 const bytes = files.reduce((total, file) => total + fs.statSync(file).size, 0);

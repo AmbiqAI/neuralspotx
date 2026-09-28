@@ -1,11 +1,8 @@
 ---
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026, Ambiq
-import CodeTabs from '@ambiqai/helia-ui/astro/CodeTabs';
-import type { ComponentProps } from 'astro/types';
-type Props = ComponentProps<typeof CodeTabs>;
 ---
-<nsx-platform-tabs><CodeTabs {...Astro.props} /></nsx-platform-tabs>
+<nsx-platform-tabs><slot /></nsx-platform-tabs>
 <script>
   class PlatformTabs extends HTMLElement {
     observer?: MutationObserver;

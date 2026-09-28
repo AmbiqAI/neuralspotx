@@ -63,7 +63,7 @@ const BEHAVIOR = `
       const delay = Number(this.dataset.lineDelay);
       const dwell = Number(this.dataset.dwell);
       let active = 0, elapsed = 0, last = performance.now(), frame = 0;
-      let paused = motion.matches, started = false;
+      let paused = motion.matches, started = false, preview = false;
       const timelines = panels.map(panel => {
         let end = 0;
         const lines = [...panel.querySelectorAll('[data-line]')].map(line => {
@@ -83,7 +83,7 @@ const BEHAVIOR = `
       };
       const render = () => {
         const timeline = timelines[active];
-        const time = motion.matches ? timeline.total : elapsed;
+        const time = motion.matches || preview ? timeline.total : elapsed;
         timeline.lines.forEach(({line, text, value, start, duration}) => {
           line.dataset.state = time >= start ? 'visible' : 'pending';
           text.textContent = time < start ? '' : duration ? value.slice(0, Math.floor((time - start) / typing)) : value;
@@ -94,6 +94,7 @@ const BEHAVIOR = `
       const show = index => {
         active = (index + panels.length) % panels.length;
         elapsed = 0;
+        preview = paused;
         last = performance.now();
         this.dataset.stage = String(active);
         tabs.forEach((tab, i) => {
@@ -111,7 +112,7 @@ const BEHAVIOR = `
         controls();
         render();
       };
-      const toggle = () => { paused = !paused; last = performance.now(); controls(); render(); };
+      const toggle = () => { paused = !paused; if (!paused) preview = false; last = performance.now(); controls(); render(); };
       tabs.forEach((tab, i) => {
         tab.addEventListener('click', () => i === active ? toggle() : show(i), {signal});
         tab.addEventListener('keydown', event => {
