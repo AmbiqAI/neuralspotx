@@ -223,10 +223,13 @@ const BEHAVIOR = `
     gap: var(--helia-space-2);
   }
   .journey__rail [role='tab'] {
+    background: transparent;
     cursor: pointer;
     position: relative;
     overflow: hidden;
   }
+  .journey__rail [role='tab']:hover,
+  .journey__rail [role='tab'][aria-selected='true'] { background: var(--helia-surface-muted); color: var(--helia-ink-primary); }
   .journey__outline { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; overflow: visible; }
   .journey__outline rect { fill: none; stroke: var(--helia-product-accent, currentColor); stroke-width: 2; stroke-dasharray: 100; stroke-dashoffset: 100; }
   [aria-selected='false'] .journey__outline { visibility: hidden; }
