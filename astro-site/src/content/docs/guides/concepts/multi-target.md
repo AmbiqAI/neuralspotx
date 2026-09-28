@@ -45,7 +45,7 @@ wrong.
 ## Keeping source portable
 
 The first rule is to depend on a wrapper rather than on the SDK. A module that talks to
-the HAL or the BSP wrapper works anywhere a wrapper exists; a module that includes vendor
+the HAL or BSP wrapper can reuse that interface across compatible targets; a module that includes vendor
 SDK headers directly is bound to that SDK. See
 [Module model](/neuralspotx/guides/concepts/module-model/).
 
@@ -99,7 +99,8 @@ names a raw section or assumes a size does not. See
 
 ## Declared, not validated
 
-An app declaring five supported targets means the module graph resolves for five targets.
-It does not mean the firmware was run on five boards. The same applies to every
+An app declaring supported targets lists the boards it intends to build for. Run
+resolution and builds to verify the dependency graph for each target.
+A successful build does not establish that firmware was run on those boards. The same applies to every
 compatibility list in a module or board manifest. Treat a supported target as a build you
 can attempt, and test it on the hardware before you claim it works there.

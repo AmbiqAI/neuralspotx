@@ -36,7 +36,7 @@ live under `modules/.../nsx-core/src/<soc>/` in your app.
 
 **The CMSIS system file comes from the SDK**, under `NSX_AMBIQSUITE_ROOT`, not from NSX.
 Which SDK tree that is depends on the provider resolution described in
-[SDK providers](/neuralspotx/guides/modules/sdk-providers/).
+[SDK foundation and overrides](/neuralspotx/guides/modules/sdk-providers/).
 
 **Linker scripts are per SoC, per toolchain and per profile.** Arm Compiler for Embedded
 uses scatter files (`.sct`); GCC and ATfE use linker scripts (`.ld`).

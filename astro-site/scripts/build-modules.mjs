@@ -294,17 +294,9 @@ function catalogPage(modules) {
     '',
     "import ModuleIndex from '../../../components/ModuleIndex.astro';",
     '',
-    `The registry pins ${modules.length} modules. The controls below filter by type, SoC, board and`,
-    'toolchain, and the search field matches a module name, its summary, the capabilities it',
-    'declares and the targets it names. The same modules are in the page as a table whether the',
-    'filter runs or not, so the Markdown rendition and an agent reading the HTML see the full',
-    'catalog either way. Each module name links to its own page.',
-    '',
-    DECLARED_NOTE,
-    '',
-    'A module whose manifest declares every target of a kind rather than a list reads as **any**,',
-    'and it answers whatever you select for that kind. The table below shows the `*` the manifest',
-    'writes.',
+    'Find modules by name or capability, then narrow the results by target and toolchain.',
+    'Compatibility reflects module manifest declarations, not hardware validation.',
+    'A declaration of **any** matches every selection for that target field.',
     '',
     `<ModuleIndex base={${JSON.stringify(BASE)}} tableId="module-catalog" />`,
     '',
@@ -513,19 +505,21 @@ function sidebar(modules) {
   const items = [
     { label: 'Overview', slug: ROUTE },
     { label: 'Catalog', slug: `${ROUTE}/catalog` },
-    { label: 'Board matrix', slug: `${ROUTE}/boards` },
   ];
+  const platformItems = [];
   for (const type of TYPE_ORDER) {
     const members = modules
       .filter((module) => module.type === type)
       .sort((a, b) => a.name.localeCompare(b.name));
     if (!members.length) continue;
-    items.push({
+    const destination = ['sdk_provider', 'soc', 'board'].includes(type) ? platformItems : items;
+    destination.push({
       label: TYPE_GROUPS[type],
       collapsed: true,
       items: members.map((module) => ({ label: module.name, slug: route(module.name) })),
     });
   }
+  items.push({ label: 'Platform support', collapsed: true, items: platformItems });
   const unclassified = modules.filter((module) => !TYPE_ORDER.includes(module.type));
   if (unclassified.length) {
     items.push({

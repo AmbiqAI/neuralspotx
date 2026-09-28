@@ -94,8 +94,8 @@ only when they are present, so a clean report does not mean you have all three. 
 
 ## Switching an existing app
 
-Each toolchain produces its own build tree, so switching is not destructive, but the
-generated tree is configured for one of them at a time:
+The default build directory is per board, not per toolchain. CMake caches the selected
+compiler there, so remove the generated build tree before switching compilers:
 
 ```bash
 nsx clean --full

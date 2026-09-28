@@ -29,10 +29,6 @@
       "text": "Cloning into '/home/you/hello_ap510/modules/nsx-ambiq-sdk'..."
     },
     {
-      "kind": "warning",
-      "text": "warning: refs/tags/v5.2.24 ebd898cfd1454e4139f7e56bb0ee1efca4ab25be is not a commit!"
-    },
-    {
       "kind": "output",
       "text": "Cloning into '/home/you/hello_ap510/modules/nsx-pmu-armv8m'..."
     }

@@ -63,7 +63,7 @@ link time:
   shared piece into a third module.
 - **At most one SDK provider.** A module can require a specific one through
   `constraints.required_sdk_provider`; a closure with two providers is a conflict. See
-  [SDK providers](/neuralspotx/guides/modules/sdk-providers/).
+  [SDK foundation and overrides](/neuralspotx/guides/modules/sdk-providers/).
 - **A board module depends on exactly one SoC module.** A board that claims two SoCs is
   not a board.
 - **Declared compatibility must hold.** A module whose `compatibility.boards`,

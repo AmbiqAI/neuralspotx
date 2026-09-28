@@ -6,7 +6,6 @@ import starlight from '@astrojs/starlight';
 import react from '@astrojs/react';
 import tailwindcss from '@tailwindcss/vite';
 import { heliaStarlight } from '@ambiqai/helia-ui/starlight';
-import buildInfo from './src/data/build-info.json' with { type: 'json' };
 // Written by scripts/build-reference.mjs, which every dev, check and build run
 // invokes through prepare:docs before Astro starts.
 import referenceSidebar from './src/data/reference-sidebar.json' with { type: 'json' };
@@ -44,9 +43,9 @@ export default defineConfig({
     starlight({
       title: 'neuralSPOT-X',
       description:
-        'The single CLI that scaffolds, builds, flashes and profiles firmware for Ambiq SoCs.',
+        'The modular AI SDK for Ambiq silicon: compose firmware modules, choose a toolchain and build for Ambiq silicon.',
       favicon: '/neuralspotx-icon.png',
-      logo: { src: './public/neuralspotx-icon.png', alt: 'neuralSPOT-X' },
+
       /* site-theme.css last, so its dials land on top of the package sheets
          the plugin splices in ahead of it. */
       customCss: ['./src/styles/tailwind.css', './src/styles/site-theme.css'],
@@ -55,7 +54,7 @@ export default defineConfig({
           header: {
             title: 'neuralSPOT-X',
             hub: {
-              label: 'HELIA',
+              label: 'HELIA HUB',
               href: 'https://ambiqai.github.io/helia-developer-hub/',
             },
           },
@@ -92,7 +91,7 @@ export default defineConfig({
               ],
             },
             {
-              label: 'Guides',
+              label: 'User guide',
               href: `${basePath}guides/`,
               /* Task groups are open because they are what a reader came for;
                  Concepts, Examples and Contribute are collapsed so the four
@@ -100,38 +99,53 @@ export default defineConfig({
               sidebar: [
                 { label: 'Overview', slug: 'guides' },
                 {
-                  label: 'Apps',
+                  label: 'Build and run',
                   collapsed: false,
                   items: [
                     { label: 'The app model', slug: 'guides/apps/app-model' },
                     { label: 'App layout', slug: 'guides/apps/app-layout' },
                     { label: 'Build, flash and view', slug: 'guides/apps/build-flash-view' },
-                    { label: 'Boards and targets', slug: 'guides/apps/boards-and-targets' },
                     { label: 'Troubleshooting', slug: 'guides/apps/troubleshooting' },
                   ],
                 },
                 {
-                  label: 'Modules in your app',
+                  label: 'Manage modules',
                   collapsed: false,
                   items: [
                     { label: 'Using modules', slug: 'guides/modules/using-modules' },
-                    { label: 'Custom modules', slug: 'guides/modules/custom-modules' },
                     { label: 'Lock and sync', slug: 'guides/modules/lock-and-sync' },
-                    { label: 'SDK providers', slug: 'guides/modules/sdk-providers' },
+                    { label: 'Custom modules', slug: 'guides/modules/custom-modules' },
                   ],
                 },
                 {
-                  label: 'System',
+                  label: 'Hardware and toolchains',
+                  collapsed: false,
+                  items: [
+                    { label: 'Boards and targets', slug: 'guides/apps/boards-and-targets' },
+                    { label: 'Board matrix', slug: 'modules/boards' },
+                    { label: 'Toolchains', slug: 'guides/system/toolchains' },
+                    { label: 'SDK foundation and overrides', slug: 'guides/modules/sdk-providers' },
+                  ],
+                },
+                {
+                  label: 'Firmware',
                   collapsed: false,
                   items: [
                     { label: 'System initialization', slug: 'guides/system/system-init' },
                     { label: 'Memory placement', slug: 'guides/system/memory-placement' },
                     { label: 'Startup and linker', slug: 'guides/system/startup-and-linker' },
-                    { label: 'Toolchain support', slug: 'guides/system/toolchains' },
+                  ],
+                },
+                { label: 'Examples', collapsed: true, items: examplesSidebar.items },
+                {
+                  label: 'Automation', collapsed: true,
+                  items: [
+                    { label: 'Python API guide', slug: 'guides/python-api' },
+                    { label: 'Automation and agents', slug: 'guides/contribute/agent-guidance' },
                   ],
                 },
                 {
-                  label: 'Concepts',
+                  label: 'Architecture',
                   collapsed: true,
                   items: [
                     { label: 'Overview', slug: 'guides/concepts' },
@@ -142,15 +156,12 @@ export default defineConfig({
                     { label: 'Multi-target and portability', slug: 'guides/concepts/multi-target' },
                   ],
                 },
-                { label: 'Python API guide', slug: 'guides/python-api' },
-                { label: 'Examples', collapsed: true, items: examplesSidebar.items },
                 {
-                  label: 'Contribute',
+                  label: 'Extend NSX',
                   collapsed: true,
                   items: [
-                    { label: 'Agent guidance', slug: 'guides/contribute/agent-guidance' },
-                    { label: 'Adding a board', slug: 'guides/contribute/adding-a-board' },
-                    { label: 'Adding a module', slug: 'guides/contribute/adding-a-module' },
+                    { label: 'Add a board', slug: 'guides/contribute/adding-a-board' },
+                    { label: 'Contribute a module', slug: 'guides/contribute/adding-a-module' },
                   ],
                 },
               ],
@@ -161,7 +172,7 @@ export default defineConfig({
               sidebar: modulesSidebar.items,
             },
             {
-              label: 'Reference',
+              label: 'API reference',
               href: `${basePath}reference/`,
               sidebar: [
                 { label: 'Overview', slug: 'reference' },
@@ -187,17 +198,13 @@ export default defineConfig({
           },
           footer: {
             links: [
-              {
-                label: `Docs: ${buildInfo.version} · ${buildInfo.shortCommit}${buildInfo.modified ? ' (modified)' : ''}`,
-                href: buildInfo.sourceUrl,
-              },
               { label: 'Getting started', href: `${basePath}getting-started/` },
-              { label: 'Guides', href: `${basePath}guides/` },
+              { label: 'User guide', href: `${basePath}guides/` },
               { label: 'Modules', href: `${basePath}modules/` },
-              { label: 'Reference', href: `${basePath}reference/` },
+              { label: 'API reference', href: `${basePath}reference/` },
               { label: 'GitHub', href: 'https://github.com/AmbiqAI/neuralspotx' },
             ],
-            tagline: 'Ambiq Micro, Inc. An AI and embedded development vehicle for Ambiq SoCs.',
+            tagline: 'Part of the Ambiq HELIA AI platform',
             logo: 'ambiq',
           },
         }),

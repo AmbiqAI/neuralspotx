@@ -7,7 +7,7 @@
  * (operator export, redirect map, Doxygen page budgets), so only its link and
  * anchor pass is portable. This is that pass rewritten in Node, which keeps the
  * docs workflow on one runtime, plus the two facts a scaffold can assert today:
- * the search index shipped, and the footer's provenance is real.
+ * the search index shipped, and the build provenance is real.
  *
  * A broken internal link is a build failure rather than a warning because the
  * site publishes under a base path, where a missing leading `/neuralspotx/`
@@ -121,14 +121,13 @@ if (!fs.existsSync(path.join(dist, 'pagefind/pagefind.js'))) {
 
 const buildInfoPath = path.join(dist, 'build-info.json');
 if (!fs.existsSync(buildInfoPath)) {
-  errors.push('No build-info.json in dist/. The footer provenance is unverifiable.');
+  errors.push('No build-info.json in dist/. The build provenance is unverifiable.');
 } else {
   const build = JSON.parse(fs.readFileSync(buildInfoPath, 'utf8'));
   if (!/^[0-9a-f]{40}$/.test(build.commit ?? '')) errors.push('build-info.json has no source commit');
   if (!build.version) errors.push('build-info.json has no package version');
   const home = fs.readFileSync(path.join(dist, 'index.html'), 'utf8');
-  if (!home.includes(build.shortCommit)) errors.push('The footer does not carry the source commit');
-  if (!home.includes(build.version)) errors.push('The footer does not carry the package version');
+  if (!home.includes(build.version)) errors.push('The hero does not carry the package version');
 }
 
 /*
@@ -170,32 +169,23 @@ if (!fs.existsSync(homeMarkdown)) {
     errors.push(`index.md does not carry the coverage sentence verbatim: ${coverage}`);
   }
 
-  /* Every command the hero walkthrough plays, whichever way it reaches the
-     rendition: the sentence under the card, or the terminals stating their own
-     transcripts where the discoverability pass can anchor them. The assertion
-     is on the command, not on the sentence carrying it, so a stage added to
-     the transcripts has to reach an agent one way or the other. */
-  const walkthrough = JSON.parse(
-    fs.readFileSync(path.join(site, 'src/data/transcripts/index.json'), 'utf8'),
-  );
-  for (const stage of walkthrough.stages) {
-    if (!flatten(rendition).includes(stage.command)) {
-      errors.push(`index.md does not carry the walkthrough command ${stage.command}`);
-    }
-    const lines = stage.lines.filter((line) => line.kind === 'command');
-    if (lines.length === 0) errors.push(`walkthrough stage ${stage.id} has no command line`);
-    if (!lines.some((line) => line.text.includes(stage.command))) {
-      errors.push(`walkthrough stage ${stage.id} names ${stage.command} but no command line runs it`);
+  const journey = readData('transcripts/index.json');
+  for (const stage of journey.stages) {
+    for (const line of stage.lines) {
+      if (!rendition.includes(line.text)) errors.push(`Home rendition omits walkthrough line: ${line.text}`);
     }
   }
+  for (const command of ['nsx module search audio', 'nsx module add nsx-audio']) {
+    if (!rendition.includes(command)) errors.push(`Home rendition omits ${command}`);
+  }
 
-  /* The links Home has to reach an agent through, whether the discoverability
-     pass got them from a card's props, from the rendition block a card states
-     for itself, or from the prose beside the grid. An example added under
-     examples/ joins this list from examples.json, so a grid that stops
-     carrying it fails here rather than going unnoticed. */
+  /* Home curates three examples; the full catalog remains on the examples page. */
   const required = [
-    ...examples.examples.map((example) => example.href),
+    ...['hello_world', 'audio_capture', 'kws_infer'].map((name) => {
+      const example = examples.examples.find((entry) => entry.name === name);
+      if (!example) throw new Error(`Missing featured example: ${name}`);
+      return example.href;
+    }),
     '/neuralspotx/guides/examples/',
     '/neuralspotx/guides/apps/app-layout/',
     '/neuralspotx/guides/apps/build-flash-view/',
@@ -220,7 +210,6 @@ if (!fs.existsSync(homeMarkdown)) {
     'https://ambiqai.github.io/helia-rt/',
     'https://ambiqai.github.io/ns-cmsis-nn/',
     'https://ambiqai.github.io/helia-aot/',
-    'https://github.com/AmbiqAI/heartkit-vitals-demo',
   ]) {
     if (!rendition.includes(`(${link})`)) errors.push(`index.md has no Markdown link to ${link}`);
   }

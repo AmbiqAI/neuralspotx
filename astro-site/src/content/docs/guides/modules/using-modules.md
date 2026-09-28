@@ -11,6 +11,26 @@ needed it.
 The [module catalog](/neuralspotx/modules/catalog/) is the full list with a page per
 module. This page is about working with them from inside an app.
 
+## A package workflow for firmware
+
+The mental model is familiar from pip, Cargo and npm: discover a dependency, declare
+it in a project, resolve its dependencies and record the result. NSX uses that workflow
+for firmware sources and build integration.
+
+| Concept | NSX |
+| --- | --- |
+| Project manifest | `nsx.yml` declares the app's targets and direct modules. |
+| Module manifest | `nsx-module.yaml` declares a module's dependencies and compatibility. |
+| Registry | Packaged metadata maps module names to source projects and revisions; apps can override it. |
+| Lockfile | `nsx.lock` records resolved sources and hashes. |
+| Local dependencies | `modules/` holds the sources the app builds with. |
+| Build integration | CMake connects the selected modules to the firmware target. |
+
+The analogy is about dependency management. NSX does not install Python wheels, npm
+packages or Cargo crates as firmware modules. In the embedded world, Zephyr modules
+serve a similar composition role, but NSX uses its own manifests and AmbiqSuite provider.
+A library's NSX integration and its Zephyr integration are separate entry points.
+
 ## You start with more than you declared
 
 `nsx create-app` records the board, and the board's starter profile is layered in as an

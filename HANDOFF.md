@@ -1,196 +1,25 @@
-# HANDOFF: docs migration cutover (#261 PR 2)
+# NSX documentation polish
 
-## Goal
+## Goal and scope
+Polish NSX docs under AmbiqAI/neuralspotx#256, then open a PR for review before moving to profiler. No merge or deployment authorized in this pass. Use CLI and headless browsers only; never control desktop windows or the user's browser tabs.
 
-Publish the Astro site from `main` and remove the MkDocs and zensical stack it
-replaces, so there is one current public site. This is the last PR of the
-migration in `tasks/256-docs-migration/plan.md` (parent AmbiqAI/neuralspotx#256).
-Branch `261-cutover`, stacked on `261-discoverability`, not pushed.
+## State
+Existing worktree neuralspotx-alpha18, branch 256-helia-ui-alpha-18. Preserved unpublished commit3396ddf. Based on main6afb7d2; fetched main and confirmed no divergence. Preparing PR with all accumulated documentation polish.
 
-## What is done, and how far it is verified
+## Changes
+- Shared helia-ui alpha.20, aligned header/footer and task-based navigation.
+- NSX-branded hero with application/module/hardware stack, four capability buckets and Apollo3/4/5 families. Accessible carousel with reduced motion and mobile layout.
+- Basic animated setup/check/create/build/flash/view walkthrough before dedicated module search/add/build section. Pause/Resume, Replay and manual stage selection.
+- Spacing between featured examples and More examples button; trimmed redundant landing content.
+- Filterable module catalog with search, capability/type/target facets and expandable cards. Libraries and services replaces runtime presentation; platform navigation reorganized with stable URLs.
+- Onboarding transcripts abbreviated and illustrative hardware output labeled. Removed distracting Git warning.
+- Installation OS selections synchronize across three terminal groups without moving keyboard focus.
+- Guide hubs, ordering, section names and source-checked claims polished. Source/API URLs retained.
+- Markdown/LLM export includes walkthrough and module commands; output guards check semantic parity.
 
-Verified locally on macOS (Node 24.12.0):
+## Reviews and verification
+Two independent content/UI reviews completed. Fixed all four findings: missing terminal exports, portability overclaim, hidden-page autoplay stall and stale focus/hover pause state. Added explicit controls and lifecycle cleanup.
+Final build, full validate and Astro check passed (0 diagnostics). Ten headless Playwright tests passed: hero responsive layout/selection/reduced motion, catalog filters, walkthrough looping/pause/visibility and OS-tab sync/focus. Rendered screenshots inspected at /tmp/nsx-final-workflow.png and /tmp/nsx-final-examples.png. Earlier pass ran65 Python documentation tests and responsive/theme checks. No hardware or Windows execution; no complete new audit of untouched APIs.
 
-- `npm run check`, `npm run build` (150 pages), `npm run validate`, the full
-  pytest suite, `pre-commit --hook-stage manual`, `ty check` and `actionlint`
-  on `docs.yml` all pass.
-- `git grep` for mkdocs, zensical, deploy-pages, `docs/stylesheets`,
-  `docs/javascripts` and `site/` returns nothing live outside `tasks/` and the
-  changelog's history.
-
-Not verified, and not verifiable before the first deployment: everything the
-deploy job does. `docs.yml` has never run its deploy path, GitHub Pages has
-never served this artifact, and the freshness guard has never had a second run
-to stand down against. `tasks/256-docs-migration/p4-notes.md` has the list of
-what to check live, in order, the first time it publishes.
-
-Content state: all five sections are written, the Reference and Modules
-sections are generated on every build, and all 67 MkDocs routes redirect.
-helia-ui is pinned to the released tag `v0.1.0-alpha.19`, not to a commit.
-`v0.1.0-alpha.19` is alpha.18 plus helia-ui#172: a card description that wraps
-across source lines keeps its space in the rendition (helia-ui#171).
-`v0.1.0-alpha.16` closed helia-ui#143 and #149, and both local workarounds for
-them are gone: the component-link recovery pass in `publish-agent-bundle.mjs`
-and the clone-and-replace before play in `JourneyWalkthrough.astro`.
-`v0.1.0-alpha.18` ships #156, #166 and #167. #156 is what retired two of Home's
-"Read more:" rows: a linked `CardHeader` titled by its children now reaches the
-rendition as a link, so the capability grid states its own six links and the
-hero buttons state theirs. #167 adds the rendition sidecar, which this site
-gains little from; see the gotcha below.
-Per-phase detail is in `tasks/256-docs-migration/p1a-notes.md`, `p1b-notes.md`,
-`p2-pr1-notes.md`, `p2-pr2-notes.md`, `p3-notes.md` and `p4-notes.md`.
-
-## Before merge
-
-**Visual review.** The plan schedules it at P4 and it has not happened.
-Desktop and mobile, light and dark, at least Home, a Guides page, the module
-catalog and a Python API page.
-
-**Make "Build and validate" a required check on `main`.** `docs.yml` now runs
-unfiltered, on every push and every pull request, so the job always reports a
-real result instead of skipping. It is the only place
-`tests/test_reference_generation.py` and `tests/test_public_surface_doc.py`
-execute, because both read generated output and skip without it, so today a
-change that breaks the public surface can merge on a green `ci.yml`. This is a
-branch-protection setting, not a repository change, so it is yours to make.
-
-## Decided, so do not reopen these in review
-
-Owner decisions taken 2026-09-20:
-
-- **Windows execution is waived for this pass.**
-  `astro-site/src/content/docs/getting-started/install/windows.md` and the
-  Windows tab ship unvalidated against a Windows host.
-- **Hardware transcripts ship as described output** until someone captures
-  them. `nsx probes`, `nsx flash`, `nsx reset` and `nsx view` are described
-  rather than captured, and `flash-and-view.mdx` carries a caution saying so.
-  Capturing them needs a connected `apollo510_evb`.
-- **The onboard J-Link claim stays out** of the install and flash pages.
-- **The migration matrix labels stand** as written.
-- **The 67-route redirect map is final**, including the seven routes with no
-  published successor, which point at the nearest published page.
-  `p3-notes.md` section 3 has the table and what would change each one.
-- **Release mechanics leave the public site.** The user-facing half is
-  `/reference/releases/`; the workflow detail is `docs/maintainers/releases.md`.
-- **`helia-dsp` stays unchecked.** It is a private repository, so the docs
-  drift check cannot read its manifest without a token. The allowlist marks it
-  unchecked and its module page says so, which means its manifest fields are
-  not covered by CI. Accepted as it stands rather than granting the docs job a
-  read token; nothing else in that job needs credentials. Revisit only if a
-  docs read token is granted for another reason.
-
-## Open owner decisions
-
-None outstanding. Everything above is decided; the two items under "Before
-merge" are actions, not decisions.
-
-## Product findings from the migration, now tracked
-
-Each of these is a product bug or gap the migration surfaced, not a docs
-change, and each has its own issue:
-
-- AmbiqAI/neuralspotx#265: four SDK modules are absent from the registry's
-  top-level map, so they have no catalog page. `nsx-timer` (required by
-  `nsx-power` and `nsx-usb`), `nsx-interrupt` (required by `nsx-uart`) and
-  `nsx-harness` (optional for `nsx-ethos-u-driver`) render as plain names. The
-  set is pinned in `tests/test_module_data_snapshot.py`, so a fifth is a
-  decision rather than a silent change.
-- AmbiqAI/neuralspotx#266: there is no `nsx --version`.
-- AmbiqAI/neuralspotx#267: the `STACK_SIZE` comment in `board.cmake` is wrong
-  by a factor of four.
-- AmbiqAI/neuralspotx#268: `nsx.yml` `source.git` is accepted by the loader and
-  rejected by the resolver.
-- AmbiqAI/neuralspotx#269: the npu template README states a silicon MAC count
-  with no source of record.
-
-## Gotchas
-
-- **The Markdown rendition is derived from the MDX source, not the HTML.**
-  The discoverability pass renders the props it can read, so a card carrying a
-  literal `title` and `href`, a `description=` prop, or a linked `Button`,
-  `Card` or `CardHeader` titled by its children all reach `dist/<route>/index.md`
-  as links. It still cannot read a value built by an expression: a table whose
-  rows are a `rows={...}` prop, for one. Authored pages are therefore plain
-  `.md`, and the example READMEs are inlined at build time.
-  `astro-site/scripts/publish-agent-bundle.mjs` re-renders the generated routes
-  from their models after the build; a new generated section has to be taught
-  to it.
-
-- **A rendition sidecar only splices where the page itself writes the part.**
-  Since alpha.18 `AsciiTerminal`, `LinkCard`, a linked `CardHeader` and a linked
-  `Button` each state their own Markdown in a hidden block, and the pass splices
-  it in at the matching occurrence in the source. A local component that builds
-  those parts from a model is one tag in the source and many blocks on the page,
-  so the pass refuses the whole kind on that route and says so: Home logs two
-  warnings, six `terminal` blocks against no source occurrence
-  (`JourneyWalkthrough`) and seventeen `link-card` blocks against seven
-  (`ExampleCards`). Neither is fixable here, because only `CardHeader` takes a
-  `rendition={false}` opt-out; the prose rows under those two grids are what
-  carries them, and `check-output.mjs` holds them there. Drafted upstream in
-  `tasks/256-docs-migration/helia-ui-gaps-260.md`.
-- **A page with no sidebar entry is filed under "Other pages" in `llms.txt`,
-  silently.** `check-discoverability-output.mjs` now fails on that for
-  everything except Home and the 404.
-- **Missing `description` front matter fails the build** and names the paths.
-  Generators have to supply one per page.
-- **The module snapshot is committed; the pages built from it are not.**
-  `astro-site/src/data/{modules,boards}.json` are tracked. Regenerating them
-  needs network access to the module repositories and credentials for
-  `helia-dsp`.
-- **Clones are keyed by `(project, revision)`.** `nsx-npu` pins `v5.2.25` while
-  the rest of `nsx-ambiq-sdk` sits on `v5.2.24`.
-- **The reference build shells out to `uv run --group docs`** for griffe. A tree
-  synced without that group needs `uv sync --group docs` first.
-- **`astro.config.mjs` imports generated `src/data/build-info.json`.** Every
-  script that loads the config needs the `pre*` hook, `check` included.
-- **The lockfile records helia-ui as `git+ssh://`,** which is how npm writes any
-  `github:` spec. The repo is public, so npm falls back to HTTPS and no token is
-  needed. heliaRT ships the identical entry.
-- **Three build warnings are Starlight and Astro internals** with no site-side
-  fix: the MDX `use astro:head-inject` note, the empty `i18n` collection, and
-  the `/404` route priority note. Two more come from the discoverability pass,
-  both on `/neuralspotx/` and both covered by the sidecar gotcha above.
-- **helia-ui parts are imported through the export map**
-  (`@ambiqai/helia-ui/astro/<Part>`). Do not reach into `node_modules` by
-  relative path and do not patch it.
-
-## Refs
-
-- Issue AmbiqAI/neuralspotx#261, parent #256. Earlier phases: #257, #258, #259,
-  #260.
-- Plan: `tasks/256-docs-migration/plan.md`. Cutover notes:
-  `tasks/256-docs-migration/p4-notes.md`.
-- Upstream gaps filed against helia-ui, per phase:
-  `tasks/256-docs-migration/helia-ui-gaps-{258,259,260,261}.md`. Filed:
-  AmbiqAI/helia-ui#115 to #121 from the earlier phases and #133 to #143 from
-  this one. #124 is merged; #131 was closed as not a bug. The rest are open.
-- Reference implementation: `AmbiqAI/helia-rt`, `astro-site/` on `main`.
-- Maintainer docs, unpublished: `docs/maintainers/`. Contributor entry point:
-  `CONTRIBUTING.md`.
-
-## Visual pass (handed over)
-
-The owner will have a separate session improve the look and feel once this
-branch is merged. Content, generation and checks are the contract of this
-branch; visual choices are open. Known items for that pass, none of them
-blocking: the "Read more:" link rows still under some Home card grids. Those
-rows exist only for the Markdown rendition. alpha.16 retired two, and alpha.18
-another two: the row over the capability grid, whose `CardHeader`s now state
-their own links, and the row under "Built from modules, not monoliths", whose
-three links the hero button, that grid and the Coverage row already carried.
-Six rows remain, plus the "whole loop in six commands" sentence, and each
-carries something no part on the page states: the ten example links
-(`ExampleCards` builds them from `examples.json`, so the pass will not anchor
-them), the six walkthrough commands, and the lone links to app layout, custom
-modules, adding a module, the board matrix, boards and targets, `llms.txt`,
-`catalog.json` and agent guidance. The KWS row is the one exception: its link
-is already in the examples row, and it stays as editorial prose rather than as
-a rendition crutch. Rewriting a card to carry one of the others would let its
-row go. Also for that pass: the hero walkthrough
-(`astro-site/src/components/JourneyWalkthrough.astro`, proposed upstream as a
-helia-ui part in `tasks/256-docs-migration/helia-ui-gaps-260.md`
-Draft 8); capability cards on Home (Card + IconTile composition); the plain
-hero ground; the catalog toolbar (`ModuleBrowser.tsx`, helia-ui React parts).
-Rules that must survive the pass: helia-ui parts only, no local CSS beyond a
-justified component rule, every claim on Home traces to a file, and the
-rendition and count checks in `astro-site/scripts/check-output.mjs` stay green.
+## Next
+Open PR, attach it, record URL and verify remote SHA. Review CI before merge. User preview remains at http://127.0.0.1:8760/neuralspotx/. Do not stop it. Logs: /tmp/nsx-build.log, /tmp/nsx-validate.log, /tmp/nsx-check.log, /tmp/nsx-hero-tests.log. Use npm run test:hero from astro-site after build; test preview uses8761 and --ignore-lock.

@@ -60,16 +60,17 @@ const BEHAVIOR = `
       const panels = Array.from(this.querySelectorAll('[data-stage-panel]'));
       const captions = Array.from(this.querySelectorAll('[data-stage-caption-text]'));
       const replay = this.querySelector('[data-walkthrough-replay]');
+      const pause = this.querySelector('[data-walkthrough-pause]');
       const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
       const dwell = Number(this.dataset.dwell ?? 2200);
       let active = 0;
-      let hovering = false;
-      let focused = false;
+      const controller = new AbortController();
+      const signal = controller.signal;
       let auto = !reducedMotion.matches;
       let timer = 0;
       let watchdog = 0;
       let watching = null;
-      const paused = () => hovering || focused;
+      const paused = () => document.hidden;
 
       const stop = () => {
         window.clearTimeout(timer);
@@ -80,6 +81,8 @@ const BEHAVIOR = `
 
       const show = (index, play) => {
         stop();
+        if (pause) { pause.textContent = auto ? 'Pause' : 'Resume'; pause.setAttribute('aria-pressed', String(!auto)); }
+        this.removeAttribute('data-dwelling');
         active = (index + panels.length) % panels.length;
         tabs.forEach((tab, i) => {
           const on = i === active;
@@ -122,21 +125,21 @@ const BEHAVIOR = `
 
       const schedule = () => {
         if (!auto || paused()) return;
-        /* Autoplay rests on the last stage; only the rail and the arrow keys wrap. */
-        if (active >= panels.length - 1) return;
+
         window.clearTimeout(timer);
+        this.setAttribute('data-dwelling', 'true');
         timer = window.setTimeout(() => show(active + 1, true), dwell);
       };
 
       tabs.forEach((tab, i) => {
         tab.addEventListener('click', () => {
-          auto = false;
+          auto = !reducedMotion.matches;
           show(i, !reducedMotion.matches);
         });
         tab.addEventListener('keydown', (event) => {
           if (event.key !== 'ArrowRight' && event.key !== 'ArrowLeft') return;
           event.preventDefault();
-          auto = false;
+          auto = !reducedMotion.matches;
           const next = event.key === 'ArrowRight' ? i + 1 : i - 1;
           show(next, !reducedMotion.matches);
           tabs[(next + tabs.length) % tabs.length].focus();
@@ -148,19 +151,22 @@ const BEHAVIOR = `
         show(0, true);
       });
 
-      const hold = () => window.clearTimeout(timer);
-      const release = () => { if (!paused()) schedule(); };
-      this.addEventListener('mouseenter', () => { hovering = true; hold(); });
-      this.addEventListener('mouseleave', () => { hovering = false; release(); });
-      this.addEventListener('focusin', () => { focused = true; hold(); });
-      this.addEventListener('focusout', (event) => {
-        if (this.contains(event.relatedTarget)) return;
-        focused = false;
-        release();
+      pause?.addEventListener('click', () => {
+        auto = !auto;
+        pause.textContent = auto ? 'Pause' : 'Resume';
+        pause.setAttribute('aria-pressed', String(!auto));
+        if (auto) show(active, true);
+        else { stop(); this.removeAttribute('data-dwelling'); }
       });
+      document.addEventListener('visibilitychange', () => {
+        if (document.hidden) { stop(); this.removeAttribute('data-dwelling'); }
+        else if (auto) show(active, true);
+      }, { signal });
       reducedMotion.addEventListener('change', (event) => {
-        if (event.matches) { auto = false; stop(); }
-      });
+        auto = !event.matches;
+        if (auto) show(active, true);
+        else { stop(); this.removeAttribute('data-dwelling'); }
+      }, { signal });
 
       const observer = new IntersectionObserver((entries) => {
         if (!entries.some((entry) => entry.isIntersecting)) return;
@@ -169,8 +175,11 @@ const BEHAVIOR = `
       }, { threshold: 0.4 });
       show(0, false);
       observer.observe(this);
+      this.cleanup = () => { stop(); observer.disconnect(); controller.abort(); };
     }
   }
+
+  NsxJourneyWalkthrough.prototype.disconnectedCallback = function () { this.cleanup?.(); };
 
   customElements.define('nsx-journey-walkthrough', NsxJourneyWalkthrough);
 })();
@@ -181,6 +190,7 @@ const BEHAVIOR = `
   class="journey helia-surface not-content"
   role="region"
   aria-label={label}
+  style={`--journey-dwell: ${dwell}ms`}
   data-dwell={dwell}
   data-stage="0"
 >
@@ -230,6 +240,7 @@ const BEHAVIOR = `
         <p class="journey__caption" data-stage-caption-text data-active={i === 0 ? 'true' : 'false'}>{stage.caption}</p>
       ))}
     </div>
+    <button type="button" class="journey__replay helia-focus-ring" data-walkthrough-pause aria-pressed="false">Pause</button>
     <button type="button" class="journey__replay helia-focus-ring" data-walkthrough-replay>
       Replay
     </button>
@@ -256,7 +267,12 @@ const BEHAVIOR = `
   }
   .journey__rail [role='tab'] {
     cursor: pointer;
+    position: relative;
+    overflow: hidden;
   }
+  .journey[data-dwelling] [aria-selected='true']::after { content: ''; position: absolute; bottom: 0; left: 0; height: 2px; width: 100%; background: currentColor; transform-origin: left; animation: journey-progress var(--journey-dwell) linear; }
+  @keyframes journey-progress { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+  @media (prefers-reduced-motion: reduce) { .journey [role='tab']::after { display: none; } }
   .journey__step {
     font-variant-numeric: tabular-nums;
     opacity: 0.7;

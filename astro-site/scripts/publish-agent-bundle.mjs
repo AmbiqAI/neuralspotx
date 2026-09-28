@@ -144,6 +144,18 @@ for (const module of snapshot.modules) {
 }
 
 let rewritten = 0;
+const homePath = path.join(dist, 'index.md');
+const journey = readJson(path.join(siteRoot, 'src/data/transcripts/index.json'));
+const journeyMarkdown = journey.stages.map((stage) =>
+  `### ${stage.title}\n\n${stage.caption}\n\n` +
+  '```text\n' + stage.lines.map((line) =>
+    `${line.kind === 'command' ? '$ ' : ''}${line.text}`).join('\n') + '\n```',
+).join('\n\n');
+const homeExamples = block('home-workflow',
+  '## Workflow terminal examples\n\nAbbreviated examples; hardware output is illustrative.\n\n' +
+  journeyMarkdown + '\n\n### Add a module inside your app\n\n```bash\nnsx module search audio\nnsx module add nsx-audio\nnsx build\n```');
+replacements.set(base, withoutBlocks(read(homePath), 'home-workflow').trimEnd() + '\n\n' + homeExamples + '\n');
+
 for (const [route, markdown] of replacements) {
   const file = renditionFor(route);
   if (!fs.existsSync(file)) throw new Error(`No rendition to replace at ${route}.`);
