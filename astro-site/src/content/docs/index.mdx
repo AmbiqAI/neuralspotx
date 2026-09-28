@@ -74,8 +74,14 @@ import buildInfo from '../../data/build-info.json';
     <section class="nsx-slide" aria-hidden="true" inert>
       <p class="nsx-slide-label">ACROSS AMBIQ SILICON</p>
       <div class="nsx-diagram">
-        <div class="nsx-targets"><span>Apollo3</span> <span>Apollo4</span> <span>Apollo5</span></div>
-        <div class="nsx-diagram-meta">GCC · ATfE · ACFE</div>
+        <div class="nsx-target-group">
+          <span class="nsx-target-label">Silicon families</span>
+          <div class="nsx-targets"><span>Apollo3</span><span>Apollo4</span><span>Apollo5</span></div>
+        </div>
+        <div class="nsx-target-group">
+          <span class="nsx-target-label">Toolchains</span>
+          <div class="nsx-targets nsx-toolchains"><span>GCC</span><span>ATfE</span><span>ACFE</span></div>
+        </div>
       </div>
       <h2>One workflow across families.</h2>
       <p class="nsx-slide-copy">Choose your board; check its module and toolchain support.</p>
