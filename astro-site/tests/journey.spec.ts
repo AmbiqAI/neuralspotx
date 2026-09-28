@@ -28,10 +28,10 @@ test('walkthrough can pause and resume after a hidden page', async ({ page }) =>
   const journey = page.locator('nsx-journey-walkthrough');
   await journey.scrollIntoViewIfNeeded();
   await journey.getByRole('tab', { name: '6 View' }).click();
-  await journey.getByRole('button', { name: 'Pause', exact: true }).click();
+  await journey.getByRole('tab', { name: '6 View' }).click();
   await page.waitForTimeout(3500);
   await expect(journey).toHaveAttribute('data-stage', '5');
-  await journey.getByRole('button', { name: 'Resume', exact: true }).click();
+  await journey.getByRole('tab', { name: '6 View' }).click();
   await page.evaluate(() => {
     Object.defineProperty(document, 'hidden', { configurable: true, value: true });
     document.dispatchEvent(new Event('visibilitychange'));

@@ -56,7 +56,6 @@ const BEHAVIOR = `
       const tabs = [...this.querySelectorAll('[data-stage-tab]')];
       const panels = [...this.querySelectorAll('[data-stage-panel]')];
       const captions = [...this.querySelectorAll('[data-stage-caption-text]')];
-      const pause = this.querySelector('[data-walkthrough-pause]');
       const motion = matchMedia('(prefers-reduced-motion: reduce)');
       const controller = new AbortController();
       const signal = controller.signal;
@@ -78,8 +77,6 @@ const BEHAVIOR = `
       });
       const controls = () => {
         this.toggleAttribute('data-paused', paused);
-        pause.textContent = paused ? 'Resume' : 'Pause';
-        pause.setAttribute('aria-pressed', String(paused));
         tabs.forEach((tab, i) => {
           tab.title = i === active ? (paused ? 'Resume walkthrough' : 'Pause walkthrough') : 'Show this step';
         });
@@ -124,8 +121,6 @@ const BEHAVIOR = `
           tabs[active].focus();
         }, {signal});
       });
-      pause.addEventListener('click', toggle, {signal});
-      this.querySelector('[data-walkthrough-replay]').addEventListener('click', () => show(0), {signal});
       motion.addEventListener('change', () => { paused = motion.matches; controls(); render(); }, {signal});
       const observer = new IntersectionObserver(entries => {
         if (entries.some(entry => entry.isIntersecting)) { started = true; last = performance.now(); observer.disconnect(); }
@@ -180,6 +175,11 @@ const BEHAVIOR = `
       </button>
     ))}
   </div>
+  <div class="journey__captions">
+    {stages.map((stage, i) => (
+      <p class="journey__caption" data-stage-caption-text data-active={i === 0 ? 'true' : 'false'}>{stage.caption}</p>
+    ))}
+  </div>
   <div class="journey__stages">
     {stages.map((stage, i) => (
       <div
@@ -201,17 +201,6 @@ const BEHAVIOR = `
         />
       </div>
     ))}
-  </div>
-  <div class="journey__foot">
-    <div class="journey__captions">
-      {stages.map((stage, i) => (
-        <p class="journey__caption" data-stage-caption-text data-active={i === 0 ? 'true' : 'false'}>{stage.caption}</p>
-      ))}
-    </div>
-    <button type="button" class="journey__replay helia-focus-ring" data-walkthrough-pause aria-pressed="false">Pause</button>
-    <button type="button" class="journey__replay helia-focus-ring" data-walkthrough-replay>
-      Replay
-    </button>
   </div>
   <script is:inline set:html={BEHAVIOR} />
 </nsx-journey-walkthrough>
@@ -246,11 +235,7 @@ const BEHAVIOR = `
     opacity: 0.7;
     margin-inline-end: var(--helia-space-1);
   }
-  .journey__foot {
-    display: flex;
-    align-items: start;
-    gap: var(--helia-space-3);
-  }
+
   /* Captions stack in one cell for the same reason the stages do: the card
      must not grow and shrink as the active caption changes length. */
   .journey__captions {
@@ -261,15 +246,7 @@ const BEHAVIOR = `
   .journey__caption[data-active='false'] {
     visibility: hidden;
   }
-  .journey__replay {
-    margin-inline-start: auto;
-    border: 0;
-    background: transparent;
-    color: var(--helia-ink-secondary);
-    font: inherit;
-    font-size: var(--helia-text-sm);
-    cursor: pointer;
-  }
+
   /* Grid children default to min-width auto, which lets a wide transcript
      push the frame past the card edge on a phone; zero lets the terminal's
      own horizontal scroll take over instead. */
