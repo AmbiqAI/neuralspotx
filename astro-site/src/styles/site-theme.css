@@ -36,7 +36,6 @@
   --helia-hero-headline: clamp(2rem, 3.6vw, 3rem);
 }
 .nsx-hero .helia-hero__summary { color: #edf0f4; }
-.nsx-hero .helia-hero__eyebrow { color: #edf0f4; text-transform: none; font-size: 1.75rem; font-weight: 700; letter-spacing: .04em; }
 .nsx-hero .nsx-release {
   position: absolute;
   top: 20px;
