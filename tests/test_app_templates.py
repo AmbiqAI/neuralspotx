@@ -159,6 +159,9 @@ def test_npu_tflm_template_renders_and_seeds_modules(tmp_path: Path) -> None:
     assert "NSX_HELIA_RT_ENABLE_ETHOSU" in cmake
     assert "nsx::npu" in cmake
     assert "nsx::helia_rt" in cmake
+    # ns-cmsis-nn >= 7.3x stops configure if the pre-rename switch is set.
+    assert "set(ARM_NN_ENABLE_F32 ON" in cmake
+    assert "NSX_CMSIS_NN_ENABLE" not in cmake
 
     assert (app_dir / "src" / "model_data.h").is_file()
     assert (app_dir / "tools" / "tflite_to_header.py").is_file()

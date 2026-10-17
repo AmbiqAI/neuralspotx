@@ -84,6 +84,9 @@ def example_app(request: pytest.FixtureRequest, tmp_path: Path) -> Path:
     return dst
 
 
+# CI passes --timeout=600, which caps configure and build together; the
+# marker overrides it so the per-step limits below are the ones that apply.
+@pytest.mark.timeout(2 * 300 + _BUILD_TIMEOUT_S)
 @pytest.mark.parametrize("example_app", _EXAMPLE_NAMES, indirect=True)
 def test_example_configures_and_builds(example_app: Path) -> None:
     """``nsx configure`` + ``nsx build`` succeeds for each example."""
