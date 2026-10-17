@@ -42,7 +42,8 @@ only covers the parts that catch people out.
 - **`depends.required` is resolved; `depends.optional` is not.** Optional dependencies are
   searchable metadata that tell a reader what your module can work with. Nothing installs
   them, but when an app adds one, NSX adds it to the build before your module, so your
-  `CMakeLists.txt` can check `if(TARGET nsx::<dep>)`.
+  `CMakeLists.txt` can check `if(TARGET nsx::<dep>)`. This applies to registry modules;
+  NSX does not read a local or vendored module's optional dependencies when ordering.
 - **`compatibility` is enforced.** NSX rejects an app that pairs your module with a board,
   SoC or toolchain the manifest does not list. Declaring `*` everywhere makes the check
   useless and makes the catalog page misleading.
