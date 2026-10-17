@@ -23,7 +23,9 @@ def _meta(name: str, required: list[str] | None = None, optional: list[str] | No
     }
 
 
-def _resolve(graph: dict[str, dict], seeds: list[str], monkeypatch: pytest.MonkeyPatch) -> list[str]:
+def _resolve(
+    graph: dict[str, dict], seeds: list[str], monkeypatch: pytest.MonkeyPatch
+) -> list[str]:
     monkeypatch.delenv("NSX_SKIP_COMPAT_CHECK", raising=False)
     monkeypatch.setattr(
         _closure,
