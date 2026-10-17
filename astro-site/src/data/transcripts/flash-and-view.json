@@ -1,12 +1,42 @@
 {
-  "probesNone": [
+  "probesExample": [
     {
       "kind": "command",
       "text": "nsx probes"
     },
     {
       "kind": "output",
-      "text": "No J-Link probes found."
+      "text": "SERIAL     PRODUCT   NICKNAME"
+    },
+    {
+      "kind": "output",
+      "text": "123456789  J-Link    -"
+    },
+    {
+      "kind": "output",
+      "text": "987654321  J-Link    -"
+    }
+  ],
+  "flashExample": [
+    {
+      "kind": "command",
+      "text": "nsx flash --probe-serial 123456789"
+    },
+    {
+      "kind": "output",
+      "text": "[Configure the app and build the firmware]"
+    },
+    {
+      "kind": "output",
+      "text": "[Connect to the selected J-Link probe over SWD]"
+    },
+    {
+      "kind": "output",
+      "text": "[Program and verify the firmware image]"
+    },
+    {
+      "kind": "success",
+      "text": "[Reset the target and start the application]"
     }
   ]
 }

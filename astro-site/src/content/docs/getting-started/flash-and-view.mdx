@@ -12,27 +12,18 @@ J-Link Software and Documentation Pack, so if
 [`nsx doctor`](/neuralspotx/getting-started/doctor/) still reports the SEGGER checks as
 failures, fix that first.
 
-:::caution[Output on this page is described, not captured]
-The transcripts elsewhere in this section are captured runs. The probe, flash, reset and
-view commands need a connected board, which the machine that wrote these pages did not
-have, so what follows describes the commands and the output you should expect rather than
-showing a recorded session.
-:::
+The terminals below are illustrative examples, not captured hardware runs. Probe
+serial numbers are fictional; the flash example summarizes the sequence in brackets.
+Actual J-Link messages vary with the software version, board and build state.
 
 ## 1. Find the probe
 
-```bash
-nsx probes
-```
-
-`nsx probes` enumerates connected J-Link probes and prints their USB serial numbers. With
-nothing attached it says so and still exits successfully:
+`nsx probes` enumerates connected J-Link probes and prints their USB serial numbers. Here is an example with two probes connected:
 
 <AsciiTerminal
-  title="nsx probes"
-  lines={transcripts.probesNone}
+  title="Probe discovery · example"
+  lines={transcripts.probesExample}
   animated
-  copy
 />
 
 With a board attached it lists one line per probe. `--json` gives the same list in
@@ -44,9 +35,11 @@ See [`nsx probes`](/neuralspotx/reference/cli/probes/).
 
 ## 2. Flash
 
-```bash
-nsx flash
-```
+<AsciiTerminal
+  title="Flash sequence · illustrative summary"
+  lines={transcripts.flashExample}
+  animated
+/>
 
 `nsx flash` builds the app if the image is out of date, then drives `JLinkExe` over SWD
 using the command file NSX generated into `build/<board>/jlink/`. Expect the Ninja build

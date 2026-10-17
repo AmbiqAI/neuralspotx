@@ -11,10 +11,10 @@ documentation splits by what you want to do next.
 Every app is a board plus a set of modules, declared in `nsx.yml` and pinned in
 `nsx.lock`.
 
-- The [module catalog](/neuralspotx/modules/catalog/) is the filterable list of all 50
+- The [module catalog](/neuralspotx/modules/catalog/) is the filterable list of packaged
   modules: what each one provides, which SoCs and boards it declares compatibility with,
   and the `nsx module add` line that pulls it in.
-- The [board matrix](/neuralspotx/modules/boards/) lists the 17 packaged boards with their
+- The [board matrix](/neuralspotx/modules/boards/) lists packaged boards with their
   SoC, tier, SDK provider, CPU and declared toolchains.
 - [`nsx module`](/neuralspotx/reference/cli/module/) adds, removes, lists, searches and
   describes modules. [`nsx lock`](/neuralspotx/reference/cli/lock/) and
@@ -30,11 +30,11 @@ combination has been run on hardware.
 
 ## Go deeper on the workflow
 
-- The [Guides](/neuralspotx/guides/) section covers the app model and layout, module
+- The [User guide](/neuralspotx/guides/) section covers the app model and layout, module
   workflows, memory placement, startup and linker behavior, toolchain selection, and the
   concepts behind app generation.
 - The [CLI reference](/neuralspotx/reference/cli/) has a page per command and subcommand,
-  generated from the argument parser, so it always matches the version you installed.
+  generated from the argument parser for this documentation build. Check the installed version with `uv tool list` (or `pipx list`), then consult [release information](/neuralspotx/reference/releases/) when using a different version.
 - The [configuration reference](/neuralspotx/reference/config/) documents the schemas:
   [`nsx.yml`](/neuralspotx/reference/config/nsx-yml/),
   [`nsx-module.yaml`](/neuralspotx/reference/config/nsx-module-yaml/),
@@ -55,11 +55,11 @@ environment report.
 
 ## Read working apps
 
-The repository ships ten maintained example apps covering FreeRTOS, CoreMark, BLE, audio
-capture, USB, ML inference, PMU profiling and power measurement. Until they move onto this
-site they live in
-[`examples/`](https://github.com/AmbiqAI/neuralspotx/tree/main/examples) in the
-repository. From a source checkout you can build any of them by name, because the
+Browse the [examples](/neuralspotx/guides/examples/) for FreeRTOS, audio capture,
+connectivity, inference and profiling. Each page includes setup instructions and target
+status. The source is in
+[`examples/`](https://github.com/AmbiqAI/neuralspotx/tree/main/examples).
+From a source checkout you can build any of them by name, because the
 positional app argument resolves under `./examples`:
 
 ```bash

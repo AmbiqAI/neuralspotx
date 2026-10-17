@@ -38,7 +38,7 @@ three worse than useless: it passes every check and tells nobody anything.
 | `sdk_provider` | Supplies a vendor SDK payload. An app resolves at most one. |
 | `soc` | Describes an SoC. A board module depends on exactly one. |
 | `board` | Describes a board: its SoC, BSP wiring, memory and debug fragments. |
-| `runtime` | A runtime or execution layer the app runs on top of. |
+| `runtime` | A library or execution service used by the app; labeled Libraries and services in the catalog. |
 | `portable_api` | An interface other modules implement or consume, independent of the part. |
 | `algorithm` | Signal processing, inference or other computation. |
 | `backend_specific` | An implementation bound to one backend or accelerator. |
@@ -55,10 +55,11 @@ it, portable interfaces over those, then runtimes, algorithms and the app. Nothi
 enforces that stack; it falls out of what each module declares it depends on.
 
 What it means in practice is a portability rule. A module that depends on a wrapper module
-is portable across any part that has a wrapper. A module that reaches past the wrapper into
+can reuse that interface across parts where it is implemented. Check the module's
+compatibility declarations and validate each target. A module that reaches past the wrapper into
 the SDK is bound to that SDK. The wrapper's interface is something NSX controls; the SDK
 underneath it is not. See
-[SDK providers](/neuralspotx/guides/modules/sdk-providers/).
+[SDK foundation and overrides](/neuralspotx/guides/modules/sdk-providers/).
 
 ## Backends
 

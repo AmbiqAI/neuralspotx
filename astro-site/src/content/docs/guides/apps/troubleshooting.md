@@ -54,7 +54,7 @@ Unable to infer --soc for board 'my_board'. Pass --soc explicitly.
 
 The board is not one NSX can map to an SoC on its own, which normally means it is a board
 you are adding rather than a packaged one. Pass `--soc`, and see
-[Adding a board](/neuralspotx/guides/contribute/adding-a-board/).
+[Add a board](/neuralspotx/guides/contribute/adding-a-board/).
 
 ## Module resolution fails
 
@@ -96,8 +96,8 @@ Add the board to `targets.supported` first.
 ## Drift and `--frozen`
 
 `--frozen` turns any disagreement between `nsx.yml`, `nsx.lock` and `modules/` into an
-error instead of quietly correcting it. It is the right flag for CI and the wrong flag for
-day-to-day work, because the corrections it refuses to make are usually the ones you want.
+error instead of quietly correcting it. Use it when checking reproducibility, including in CI. After intentional dependency
+changes, update the lock and review the changes before checking again.
 
 ```text
 Vendored module 'my-module' content drifted from lock ...
@@ -122,7 +122,7 @@ one.
 
 An SDK tree pointed at by `--sdk-root` is not recorded in `nsx.lock`, so the build cannot
 be reproduced from the lock. NSX refuses the combination rather than producing a binary it
-cannot account for. See [SDK providers](/neuralspotx/guides/modules/sdk-providers/).
+cannot account for. See [SDK foundation and overrides](/neuralspotx/guides/modules/sdk-providers/).
 
 ```text
 --sdk-root is not a directory: /opt/AmbiqSuit
@@ -170,7 +170,8 @@ actually happened.
 
 NSX reads J-Link's own output to decide whether programming happened, and different J-Link
 Commander releases word the summary differently. The message says what to do: read the
-echoed J-Link output above it. This is a reporting limitation, not a failed flash.
+echoed J-Link output above it. The exit status alone does not confirm programming. Check the device output or repeat
+the flash with a supported J-Link version before treating the image as verified.
 
 With more than one probe attached, pass `--probe-serial` to say which one. That always
 forces a reconfigure, because the serial is baked into the generated SEGGER command files.

@@ -1,12 +1,31 @@
 ---
-title: SDK providers
+title: SDK foundation and overrides
 description: How an NSX app gets its AmbiqSuite payload, which modules wrap it, and how to build against an SDK tree of your own.
 ---
 
 Every NSX app builds on top of a vendor SDK. The module that supplies it is the app's SDK
 provider, and it is the one module an app can have exactly one of.
 
-## There is one provider
+## How NSX builds on AmbiqSuite
+
+AmbiqSuite is the hardware foundation. NSX adds application scaffolding, module
+composition, dependency locking and a configure/build/flash/view workflow around it.
+An NSX application still compiles and links the AmbiqSuite code selected by its board
+and modules.
+
+| Layer | Responsibility |
+| --- | --- |
+| Application | Your model, application logic and chosen module declarations. |
+| NSX modules | Reusable capabilities such as inference, audio and connectivity, with declared dependencies and CMake integration. |
+| HAL/BSP wrappers | Connect the module graph to AmbiqSuite hardware and board support. |
+| AmbiqSuite provider | Supplies the vendor SDK source payload used by the build. |
+
+For an existing AmbiqSuite application, adopting NSX means bringing your application
+sources into an NSX project and declaring its dependencies. It is not an automatic
+conversion of an arbitrary SDK example. Start with [App layout](/neuralspotx/guides/apps/app-layout/)
+and [Using modules](/neuralspotx/guides/modules/using-modules/).
+
+## SDK provider
 
 The provider is `nsx-ambiqsuite`, a module of type `sdk_provider` that carries an
 AmbiqSuite payload under its `sdk/` directory. NSX's CMake accepts one value:
@@ -32,7 +51,7 @@ Unable to infer SDK provider for board 'my_board'. Set -DNSX_SDK_PROVIDER=ambiqs
 
 There is no `nsx.yml` key and no CLI flag for picking a provider. If you are seeing that
 message, the fix is normally in the board definition rather than on the command line. See
-[Adding a board](/neuralspotx/guides/contribute/adding-a-board/).
+[Add a board](/neuralspotx/guides/contribute/adding-a-board/).
 
 ## What resolution produces
 

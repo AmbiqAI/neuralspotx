@@ -1,5 +1,5 @@
 ---
-title: Adding a module
+title: Contribute a module
 description: Take a module from a scaffold to something other apps can depend on, including the metadata that makes it findable and the rules NSX enforces.
 ---
 
@@ -39,8 +39,9 @@ Remember that `depends.optional` is documentation only: nothing resolves it, so 
 that needs something must require it.
 
 **Depend on wrappers, not on the SDK.** A module that talks to the HAL or BSP wrapper
-ports to any part that has one. A module that includes vendor SDK headers directly is
-bound to that SDK. See [SDK providers](/neuralspotx/guides/modules/sdk-providers/).
+can reuse that interface across compatible targets. Check declared compatibility and
+validate the module on each target. A module that includes vendor SDK headers directly is
+bound to that SDK. See [SDK foundation and overrides](/neuralspotx/guides/modules/sdk-providers/).
 
 **Avoid pass-through wrappers.** A module that only forwards another module's interface
 adds a name, a manifest and a resolution step, and no capability. If your module would be

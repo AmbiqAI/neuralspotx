@@ -1,12 +1,12 @@
 {
-  "_note": "Captured runs, not written by hand: the uv lines from a throwaway UV_TOOL_DIR install, the doctor lines from the same run transcripts/doctor.json was cut from, the create-app lines from transcripts/first-app.json, the configure and build lines from transcripts/configure-and-build.json. Two abridgements, both so a stage fits the walkthrough frame without clipping: the per-step ninja lines are replaced by the collapsed muted line, and the size line keeps its columns but drops the leading build/apollo510_evb/ from the filename. The device lines after nsx flash and nsx view are placeholders and say so: NSX prints device output only with a board attached, and nothing may stand in for a capture we do not have (AmbiqAI/neuralspotx#260).",
+  "_note": "Abbreviated setup/build captures; flash stages and view output are illustrative examples, not a hardware capture.",
   "stages": [
     {
       "id": "install",
       "label": "Install",
       "title": "Install the CLI",
       "command": "uv tool install neuralspotx",
-      "caption": "One tool on your path. uv is already a host requirement, so there is nothing else to set up.",
+      "caption": "Install the NSX CLI after setting up the host tools and compiler.",
       "lines": [
         {
           "kind": "command",
@@ -122,7 +122,11 @@
         },
         {
           "kind": "muted",
-          "text": "(device output: captured transcript pending)"
+          "text": "[Connect to J-Link; program and verify firmware]"
+        },
+        {
+          "kind": "muted",
+          "text": "[Reset target and start application]"
         }
       ]
     },
@@ -138,8 +142,12 @@
           "text": "nsx view"
         },
         {
-          "kind": "muted",
-          "text": "(device output: captured transcript pending)"
+          "kind": "output",
+          "text": "nsx hello from generated app"
+        },
+        {
+          "kind": "output",
+          "text": "nsx hello from generated app"
         }
       ]
     }

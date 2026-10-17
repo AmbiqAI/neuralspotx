@@ -17,6 +17,15 @@ Open upstream items this phase touches:
 | #118 | `AsciiTerminal` types out `command` lines only | Hit again on five transcripts. Nothing new to add; the observation is the same one P0 filed. |
 | #128 (PR) | Render Starlight asides as `Callout` | The whole section depends on it. Every `:::note`, `:::tip` and `:::caution` here renders as a plain Starlight aside until it lands, which is deliberate: no site-side styling was added to compensate. |
 
+Shipped upstream since these drafts were written, all three in `v0.1.0-alpha.18`
+and all three pinned by `astro-site/package.json`:
+
+| Issue | What shipped | What it changed here |
+| --- | --- | --- |
+| #156 | A card's `description` prop is read like its children, and a link-bearing `Button`, `Card`, `CardHeader` or `LinkCard` written with no `title` takes its title from its children. | Home's capability grid and its hero buttons state their own links, so the two "Read more:" rows over them are gone. Closes the residue Draft 5 left open. |
+| #166 | `AsciiTerminal` takes `copy="commands"`. | Available, not adopted. The walkthrough transcripts interleave output with commands, so it is a fit; which control the hero offers is a visual-pass choice, not a content one. |
+| #167 | A part states its own Markdown in a hidden block the pass splices in at the matching source occurrence. | Little here. The splice needs the page to write the part itself, and the sets on Home are built by local components from a model, so both kinds turn themselves off with a warning. Draft 9 is the ask that would change that. |
+
 ---
 
 ## Draft 1: CodeTabs has no PowerShell language
@@ -179,6 +188,13 @@ written with a `description=` prop still reaches an agent with its title and
 link but no description: `dist/modules/index.md` shows exactly that. Worth a
 follow-up draft rather than a reopen.
 
+**Both residues closed in `v0.1.0-alpha.18`.** #156 reads a `description` prop
+like children, and #167 lets a part state its own Markdown for the pass to
+splice in, so a value built by an expression no longer has to be recovered from
+the source. The composer stays anyway: the splice is anchored on the source
+occurrence, so it reaches a part the page writes and not one a local component
+builds from a model. Draft 9 is what is left of this.
+
 **What the pages do instead.** Transcript arrays moved into
 `astro-site/src/data/transcripts/*.json` and are imported, because a single-line `import`
 is stripped cleanly. The Getting started index dropped its `CardGrid` of `LinkCard`s for
@@ -221,6 +237,11 @@ rendition as prose with no links. That is why Home still carries a "Read more:" 
 every `Card` + `CardHeader` grid and no longer needs one over its `LinkCard` grids.
 Rewriting those cards to pass a literal `title` would retire the remaining rows; it is a
 Home authoring change, not an upstream one.
+
+**Settled upstream by #156 in `v0.1.0-alpha.18`.** A link-bearing part with no
+`title` is now named by its children, so both shapes render and the Home
+rewrite is not needed: the capability row and the row over the "Built from
+modules" band are gone, and the six links come off the cards themselves.
 
 ---
 
@@ -303,3 +324,60 @@ section-page one. The second costs nothing and would be enough here.
 **Proposal.** Adopt it as `astro/Walkthrough.astro` with that prop shape. **The two things this draft asked the package for both shipped in `v0.1.0-alpha.16` as #149:** every `AsciiTerminal` on a page is set up rather than only the first, and the element exposes `play()`, which waits for readiness and resolves when the run ends. The site no longer clicks a replay button or re-inserts a clone before each play; it calls `play()` and still hands off on `data-playing`, because the promise also settles for a run a later stage superseded. Nothing upstream now blocks adopting the part itself.
 
 **Consumer context.** AmbiqAI/neuralspotx#260 hero. Related: #118 (output pacing), #149.
+
+**Third pass note, `v0.1.0-alpha.18`.** The stages still reach the Markdown
+rendition through the sentence under the card, not through the terminals. Each
+of the six `AsciiTerminal`s states its transcript for #167, but the source pass
+sees one `<JourneyWalkthrough>` tag and no terminal, so the counts disagree and
+the whole kind turns itself off for `/neuralspotx/` with a warning. A package
+`Walkthrough` would land in exactly the same place. Draft 9 is the ask.
+
+---
+
+# Third pass: the alpha.18 sidecar (issue #261)
+
+Checked against `v0.1.0-alpha.18`, the version pinned when this pass ran, and
+re-run unchanged on `v0.1.0-alpha.19`, which only adds the helia-ui#171
+whitespace fix. Same rule as above: drafts only, nothing filed.
+
+## Draft 9: a part that builds package parts from a model cannot state a rendition
+
+**Title:** Rendition: `LinkCard` and `AsciiTerminal` need `CardHeader`'s
+`rendition` opt-out
+
+**What happened.** #167 splices a part's own Markdown in at the matching source
+occurrence, and refuses the kind for a route where the counts disagree. Home
+disagrees twice, and says so on every build:
+
+```
+/neuralspotx/ carries 6 terminal rendition sidecars where its source has 0
+/neuralspotx/ carries 17 link-card rendition sidecars where its source has 7
+```
+
+Both come from a local component that builds package parts from a model:
+`JourneyWalkthrough.astro` renders six `AsciiTerminal`s from
+`src/data/transcripts/index.json`, and `ExampleCards.astro` renders ten
+`LinkCard`s from `src/data/examples.json`, over three tags in the page. The
+guard is right to refuse: splicing those in document order would file an
+example card's line under the HELIA grid.
+
+**What the site does instead.** Keeps the prose rows it already had under both
+grids, which is what the release note asks a site composing its own rendition
+to do, and asserts them from the model in
+`astro-site/scripts/check-output.mjs`. The warnings stay in the build log.
+
+**Why it matters.** The opt-out exists for exactly this shape and is fitted to
+one part: `CardHeader` takes `rendition={false}` "for a part that wraps it and
+states the whole card itself". A site part wrapping `LinkCard` or
+`AsciiTerminal` has no such lever, so it cannot quiet a kind it knows the pass
+cannot anchor, and a real warning about a real page is indistinguishable from
+this one.
+
+**Suggested shape.** Give `LinkCard` and `AsciiTerminal` the same
+`rendition?: boolean` prop, so a wrapping part can turn the block off and, if
+it has an anchor, state the whole thing itself. The larger question behind it
+is whether a site part can ever anchor one: the pass drops a tag imported from
+outside the package, by design, so today the answer is no and the site's own
+composer is the only route. Worth saying in the issue.
+
+**Consumer context.** AmbiqAI/neuralspotx#261 Home. Related: #156, #167.

@@ -1,23 +1,6 @@
 // SPDX-License-Identifier: BSD-3-Clause
 // Copyright (c) 2026, Ambiq
-/*
- * The module catalog's toolbar: a search field, one dropdown per declared
- * facet, a sort order, and the results as a table.
- *
- * The package has no catalog filter. `RefIndex` is the one faceted control it
- * ships and it renders every value of every facet as a chip, which for fifty
- * modules over seventeen boards and a hundred capabilities is a wall of chips
- * above the answer. So this is assembled from the package's own primitives --
- * `Input`, `Select`, `Button` and the table parts -- with Tailwind utilities
- * for layout and nothing of its own to style. See
- * tasks/256-docs-migration/helia-ui-gaps-259.md.
- *
- * Rows arrive built from the committed snapshot, which is the same file the
- * static table on the page is generated from, so the two cannot disagree
- * (AmbiqAI/neuralspotx#259).
- */
 import * as React from 'react';
-import { ChevronDownIcon, ChevronRightIcon } from 'lucide-react';
 import { Button } from '@ambiqai/helia-ui/react/button';
 import { Input } from '@ambiqai/helia-ui/react/input';
 import {
@@ -27,16 +10,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@ambiqai/helia-ui/react/select';
-import {
-  Table,
-  TableBody,
-  TableCaption,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@ambiqai/helia-ui/react/table';
-
 export interface CatalogModule {
   name: string;
   href: string;
@@ -60,25 +33,19 @@ export interface ModuleBrowserProps {
    of its own rather than the empty string. */
 const ANY = '__any__';
 
-type FacetId = 'type' | 'soc' | 'board' | 'toolchain';
+type FacetId = 'type' | 'soc' | 'board' | 'toolchain' | 'capability';
 
 const FACETS: { id: FacetId; label: string; of: (module: CatalogModule) => string[] }[] = [
-  { id: 'type', label: 'Type', of: (module) => [module.type] },
+  { id: 'capability', label: 'Capability', of: (module) => module.capabilities },
+  { id: 'type', label: 'Module type', of: (module) => [module.type] },
   { id: 'soc', label: 'SoC', of: (module) => module.socs },
   { id: 'board', label: 'Board', of: (module) => module.boards },
   { id: 'toolchain', label: 'Toolchain', of: (module) => module.toolchains },
 ];
 
-const COLUMNS = [
-  { label: 'Module', width: 'w-[22%]' },
-  { label: 'Type', width: 'w-[14%]' },
-  { label: 'Summary', width: 'w-[44%]' },
-  { label: 'Boards', width: 'w-[20%]' },
-];
-
 const SORTS = [
   { id: 'name', label: 'Name' },
-  { id: 'type', label: 'Type' },
+  { id: 'type', label: 'Module type' },
   { id: 'version', label: 'Version' },
 ];
 
@@ -146,9 +113,10 @@ export default function ModuleBrowser({ modules, wildcard = '*' }: ModuleBrowser
     soc: ANY,
     board: ANY,
     toolchain: ANY,
+    capability: ANY,
   });
   const [sort, setSort] = React.useState('name');
-  const [expanded, setExpanded] = React.useState<string[]>([]);
+
 
   /* The field stays immediate while the table catches up behind it. */
   const deferredQuery = React.useDeferredValue(query);
@@ -174,7 +142,7 @@ export default function ModuleBrowser({ modules, wildcard = '*' }: ModuleBrowser
   const visible = React.useMemo(() => {
     const needle = deferredQuery.trim().toLowerCase();
     const rows = modules.filter((module, index) => {
-      if (needle && !haystack[index].includes(needle)) return false;
+      if (needle && !needle.split(/\s+/).every((word) => haystack[index].includes(word))) return false;
       return FACETS.every((facet) => {
         const wanted = selected[facet.id];
         if (wanted === ANY) return true;
@@ -200,174 +168,54 @@ export default function ModuleBrowser({ modules, wildcard = '*' }: ModuleBrowser
 
   const clear = () => {
     setQuery('');
-    setSelected({ type: ANY, soc: ANY, board: ANY, toolchain: ANY });
+    setSelected({ type: ANY, soc: ANY, board: ANY, toolchain: ANY, capability: ANY });
   };
 
-  const toggle = (name: string) =>
-    setExpanded((current) =>
-      current.includes(name) ? current.filter((entry) => entry !== name) : [...current, name],
-    );
-
   return (
-    <div data-slot="module-browser" className="not-content flex flex-col gap-4">
-      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-7">
-        <div className="flex flex-col gap-1 sm:col-span-2">
-          <label id="module-search-label" className="text-label text-muted-foreground uppercase">
-            Search
-          </label>
-          <Input
-            type="search"
-            value={query}
-            aria-labelledby="module-search-label"
-            placeholder="Name, summary, capability or target"
-            onChange={(event) => setQuery(event.target.value)}
-          />
-        </div>
+    <div data-slot="module-browser" className="not-content nsx-catalog">
+      <aside className="nsx-catalog-filters" aria-label="Filter modules">
+        <h2 className="text-base font-semibold">Filter modules</h2>
         {FACETS.map((facet) => (
-          <Facet
-            key={facet.id}
-            label={facet.label}
-            value={selected[facet.id]}
+          <Facet key={facet.id} label={facet.label} value={selected[facet.id]}
             options={options[facet.id]}
-            onChange={(value) => setSelected((current) => ({ ...current, [facet.id]: value }))}
-          />
+            onChange={(value) => setSelected((current) => ({ ...current, [facet.id]: value }))} />
         ))}
-        <div className="flex min-w-0 flex-col gap-1">
-          <span id="module-sort-label" className="text-label text-muted-foreground uppercase">
-            Sort
-          </span>
+        <Button type="button" variant="outline" size="sm" onClick={clear} disabled={!filtered}>Clear filters</Button>
+      </aside>
+      <div className="min-w-0 flex flex-col gap-4">
+        <label htmlFor="module-search" className="text-sm font-medium">Search modules</label>
+        <Input id="module-search" type="search" value={query}
+          placeholder="Name, capability or target…" onChange={(event) => setQuery(event.target.value)} />
+        <div className="flex items-center justify-between gap-3">
+          <p role="status" aria-live="polite" className="text-sm text-muted-foreground">{visible.length} of {modules.length} modules</p>
           <Select value={sort} onValueChange={setSort}>
-            <SelectTrigger size="sm" aria-labelledby="module-sort-label" className="w-full">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {SORTS.map((option) => (
-                <SelectItem key={option.id} value={option.id}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
+            <SelectTrigger size="sm" aria-label="Sort modules"><SelectValue /></SelectTrigger>
+            <SelectContent>{SORTS.map((option) => <SelectItem key={option.id} value={option.id}>{option.label}</SelectItem>)}</SelectContent>
           </Select>
         </div>
+        {visible.length === 0 ? <p>No modules match. Try fewer filters or a broader search.</p> :
+          <div className="flex flex-col gap-3">{visible.map((module) => (
+            <article key={module.name} data-slot="module-row" className="rounded-lg border p-4">
+              <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <a href={module.href} className="font-semibold underline-offset-4 hover:underline break-all">{module.name}</a>
+                <span className="text-xs text-muted-foreground">{module.type}</span>
+              </div>
+              <p className="mt-2 text-sm">{module.summary}</p>
+              <details className="mt-3 text-sm">
+                <summary className="cursor-pointer text-muted-foreground">Compatibility and dependencies</summary>
+                <dl className="mt-3 grid gap-2 break-words">
+                  <dt>Boards</dt><dd>{show(module.boards, wildcard)}</dd>
+                  <dt>SoCs</dt><dd>{show(module.socs, wildcard)}</dd>
+                  <dt>Toolchains</dt><dd>{show(module.toolchains, wildcard)}</dd>
+                  <dt>Capabilities</dt><dd>{list(module.capabilities)}</dd>
+                  <dt>Required modules</dt><dd>{list(module.depends.required)}</dd>
+                  <dt>Optional modules</dt><dd>{list(module.depends.optional)}</dd>
+                  <dt>Version</dt><dd>{module.version || '—'}</dd>
+                </dl>
+              </details>
+            </article>
+          ))}</div>}
       </div>
-
-      <div className="flex items-center justify-between gap-3">
-        <p role="status" aria-live="polite" className="text-sm text-muted-foreground">
-          {visible.length} of {modules.length} modules
-        </p>
-        {filtered && (
-          <Button type="button" variant="ghost" size="sm" onClick={clear}>
-            Clear filters
-          </Button>
-        )}
-      </div>
-
-      {visible.length === 0 ? (
-        <p className="rounded-md border p-4 text-sm text-muted-foreground">
-          No modules match these filters.
-        </p>
-      ) : (
-        <div className="max-h-[36rem] overflow-y-auto rounded-md border">
-          <Table>
-            <TableCaption className="sr-only">Modules matching these filters</TableCaption>
-            <TableHeader>
-              <TableRow>
-                {/* Four columns fit the content width with the sidebar in
-                    place. What a module declares beyond its boards is a row
-                    the reader opens, not a column they scroll to. The widths
-                    are hints: left to itself the table gives the name column
-                    the space and wraps the summary into a ribbon. */}
-                {COLUMNS.map((column) => (
-                  <TableHead
-                    key={column.label}
-                    className={`sticky top-0 bg-background ${column.width}`}
-                  >
-                    {column.label}
-                  </TableHead>
-                ))}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {visible.map((module) => {
-                const open = expanded.includes(module.name);
-                const detailId = `${module.name}-detail`;
-                return (
-                  <React.Fragment key={module.name}>
-                    <TableRow data-slot="module-row">
-                      <TableCell className="align-top font-medium whitespace-nowrap">
-                        <span className="flex items-center gap-1">
-                          <button
-                            type="button"
-                            aria-expanded={open}
-                            aria-controls={detailId}
-                            aria-label={`What ${module.name} declares`}
-                            onClick={() => toggle(module.name)}
-                            className="inline-flex size-5 items-center justify-center rounded-sm text-muted-foreground hover:text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                          >
-                            {open ? (
-                              <ChevronDownIcon className="size-4" />
-                            ) : (
-                              <ChevronRightIcon className="size-4" />
-                            )}
-                          </button>
-                          <a
-                            href={module.href}
-                            className="font-mono text-primary underline-offset-4 hover:underline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-                          >
-                            {module.name}
-                          </a>
-                        </span>
-                      </TableCell>
-                      <TableCell className="align-top whitespace-nowrap">{module.type}</TableCell>
-                      {/* The table part sets whitespace-nowrap on every cell,
-                          and `cn` merges Tailwind classes, so wrapping is asked
-                          for rather than fought with a width. */}
-                      <TableCell className="align-top whitespace-normal text-muted-foreground">
-                        {module.summary}
-                      </TableCell>
-                      <TableCell className="align-top text-sm whitespace-normal">
-                        {show(module.boards, wildcard)}
-                      </TableCell>
-                    </TableRow>
-                    {open && (
-                      <TableRow data-slot="module-detail" id={detailId}>
-                        <TableCell colSpan={4} className="bg-muted/40 whitespace-normal">
-                          <dl className="grid gap-2 text-sm md:grid-cols-[10rem_1fr]">
-                            <dt className="text-muted-foreground">Version</dt>
-                            <dd>{module.version || '—'}</dd>
-                            <dt className="text-muted-foreground">SoCs</dt>
-                            <dd>{show(module.socs, wildcard)}</dd>
-                            <dt className="text-muted-foreground">Toolchains</dt>
-                            <dd>{show(module.toolchains, wildcard)}</dd>
-                            {module.capabilities.length > 0 && (
-                              <>
-                                <dt className="text-muted-foreground">Capabilities</dt>
-                                <dd>{list(module.capabilities)}</dd>
-                              </>
-                            )}
-                            {module.depends.required.length > 0 && (
-                              <>
-                                <dt className="text-muted-foreground">Requires</dt>
-                                <dd>{list(module.depends.required)}</dd>
-                              </>
-                            )}
-                            {module.depends.optional.length > 0 && (
-                              <>
-                                <dt className="text-muted-foreground">Optional</dt>
-                                <dd>{list(module.depends.optional)}</dd>
-                              </>
-                            )}
-                          </dl>
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </React.Fragment>
-                );
-              })}
-            </TableBody>
-          </Table>
-        </div>
-      )}
     </div>
   );
 }

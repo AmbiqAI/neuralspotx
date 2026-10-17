@@ -16,11 +16,9 @@ the starter modules that board needs into it. Nothing else on your machine chang
   copy
 />
 
-Captured on macOS 26 against an Apollo510 EVB target, with the app directory replaced by
-`/home/you/hello_ap510`; the CLI always prints your own absolute path. Git also prints its
-usual detached HEAD advice after each clone, which is expected: modules are vendored at a
-pinned revision rather than on a branch. The tag warning comes from the SDK repository's
-own tag object and the clone completes anyway.
+Captured on macOS 26 with an Apollo510 EVB target configuration. The app path is
+replaced by `/home/you/hello_ap510`, and Git advisory output is omitted for clarity.
+The CLI prints your own absolute path.
 
 `--board` defaults to `apollo510_evb`, so you can leave it off for that target. Run
 `nsx board list` for the 17 packaged boards, or read the
