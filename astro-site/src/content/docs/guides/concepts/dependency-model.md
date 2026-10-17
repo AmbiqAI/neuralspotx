@@ -36,7 +36,8 @@ always come first: if honoring an optional edge would contradict them, that edge
 for ordering.
 
 Two limits apply. NSX reads optional dependencies only from modules it has metadata for, so
-a local or vendored module keeps its place in the list. And the order is recorded in
+a local or vendored module's own optional dependencies do not affect the order (it is still
+moved earlier when a registry module lists it as optional). And the order is recorded in
 `nsx.lock`: an app locked by an earlier NSX keeps its old order, and `nsx lock --check`
 does not flag the difference, until you run `nsx lock` again.
 
