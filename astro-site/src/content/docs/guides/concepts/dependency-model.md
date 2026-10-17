@@ -31,8 +31,9 @@ and not pulled it in. If you want an optional dependency, declare it yourself.
 
 Once you have, the optional edge does matter for order. NSX adds modules to the CMake build
 in closure order, and a present optional dependency is placed before the module that lists
-it, so that module's CMake can test for the dependency's target. If the two also form a
-cycle through required dependencies, the required edge decides the order.
+it, so that module's CMake can test for the dependency's target. Required dependencies
+always come first: if honoring an optional edge would contradict them, that edge is ignored
+for ordering.
 
 ## The closure lives only in the lock
 

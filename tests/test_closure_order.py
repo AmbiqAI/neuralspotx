@@ -9,6 +9,8 @@ Optional deps still never pull a module into the closure.
 from __future__ import annotations
 
 import pytest
+from hypothesis import given, settings
+from hypothesis import strategies as st
 
 from neuralspotx.models import ModuleMetadata
 from neuralspotx.module_registry import _closure
@@ -77,3 +79,59 @@ def test_optional_edge_closing_a_cycle_is_ignored(monkeypatch: pytest.MonkeyPatc
         "b": _meta("b", optional=["a"]),
     }
     assert _resolve(graph, ["a"], monkeypatch) == ["b", "a"]
+
+
+def test_required_edge_wins_over_a_cycle_of_optional_edges(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # y opt-> p opt-> q req-> y: accepting both optional edges would put q
+    # before y, which q requires. Required edges must decide.
+    graph = {
+        "y": _meta("y", optional=["p"]),
+        "p": _meta("p", optional=["q"]),
+        "q": _meta("q", required=["y"]),
+    }
+    order = _resolve(graph, ["y", "p", "q"], monkeypatch)
+    assert order.index("y") < order.index("q")
+
+
+def test_optional_dep_brings_its_required_deps_with_it(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Moving o ahead of x must also move r, which o requires, ahead of o.
+    graph = {
+        "x": _meta("x", optional=["o"]),
+        "o": _meta("o", required=["r"]),
+        "r": _meta("r"),
+    }
+    order = _resolve(graph, ["x", "o"], monkeypatch)
+    assert order.index("r") < order.index("o") < order.index("x")
+
+
+@st.composite
+def _graphs(draw: st.DrawFn) -> tuple[list[str], dict[str, ModuleMetadata]]:
+    size = draw(st.integers(min_value=1, max_value=8))
+    names = [f"m{i}" for i in range(size)]
+    cache: dict[str, ModuleMetadata] = {}
+    for i, name in enumerate(names):
+        # Required deps only point at earlier modules, so the index order is a
+        # valid required-only closure order, as the closure walk produces.
+        required = draw(st.lists(st.sampled_from(names[:i]), unique=True)) if i else []
+        optional = draw(st.lists(st.sampled_from(names), unique=True))
+        cache[name] = ModuleMetadata.from_raw(_meta(name, required, optional))
+    return names, cache
+
+
+@given(_graphs())
+@settings(max_examples=300, deadline=None)
+def test_reordering_never_breaks_a_required_edge(
+    graph: tuple[list[str], dict[str, ModuleMetadata]],
+) -> None:
+    resolved, cache = graph
+    order = _closure._order_with_present_optional_deps(resolved, cache)
+    assert sorted(order) == sorted(resolved)
+    for name in resolved:
+        for dep in cache[name].required_deps:
+            assert order.index(dep) < order.index(name)
+    if not any(cache[name].optional_deps for name in resolved):
+        assert order == resolved
