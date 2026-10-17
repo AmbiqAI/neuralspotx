@@ -32,9 +32,9 @@ projects:
   ns-cmsis-nn:
     name: ns-cmsis-nn
     url: https://github.com/AmbiqAI/ns-cmsis-nn.git
-    # v7.29.2 declares socs: ['*'], which passes the compat gate (wildcard
-    # board/SoC compatibility + requantize fix). Tag pin per registry policy.
-    revision: v7.29.2
+    # Move together with helia-rt below: nsx-helia-rt depends on nsx-cmsis-nn,
+    # so an app builds both against this one ns-cmsis-nn revision.
+    revision: v7.46.0
     path: modules/ns-cmsis-nn
   helia-dsp:
     name: helia-dsp
@@ -49,14 +49,16 @@ projects:
   helia-rt:
     name: helia-rt
     url: https://github.com/AmbiqAI/helia-rt.git
-    # helia-rt-v1.18.0 is the first release after PR #191 (Ethos-U wrapper
-    # plumbing + atomiq110 compatibility; nsx-module.yaml declares socs: ['*']).
-    revision: helia-rt-v1.18.0
+    # TEMP validation pin (helia-rt main); swap to the release tag that adopts
+    # the ns-cmsis-nn pin above before this lands.
+    revision: 75b0be9c8c33605f7a513e9f92380aa26687db86
     path: modules/helia-rt
   helia-rt-source:
     name: helia-rt-source
     url: https://github.com/AmbiqAI/helia-rt.git
-    revision: 7c1b162c0fd2336876b69daaa20c87a1e7e2f508
+    # Same helia-rt revision as the helia-rt project above; consumed by
+    # nsx-tflite-micro (reference / upstream CMSIS-NN TFLM builds).
+    revision: 75b0be9c8c33605f7a513e9f92380aa26687db86
     path: modules/helia-rt-source
   arm-cmsis-nn:
     name: arm-cmsis-nn
@@ -247,8 +249,8 @@ modules:
     metadata: modules/nsx-nanopb/nsx-module.yaml
   nsx-cmsis-nn:
     project: ns-cmsis-nn
-    # v7.29.2 declares socs: ['*'], which passes the compat gate; tag pin.
-    revision: v7.29.2
+    # Tracks the ns-cmsis-nn project pin above.
+    revision: v7.46.0
     metadata: modules/ns-cmsis-nn/nsx/nsx-module.yaml
   helia-dsp:
     project: helia-dsp
@@ -260,12 +262,13 @@ modules:
     metadata: modules/nsx-physiokit/nsx-module.yaml
   nsx-helia-rt:
     project: helia-rt
-    # Tracks the helia-rt project pin above (first release after PR #191).
-    revision: helia-rt-v1.18.0
+    # Tracks the helia-rt project pin above.
+    revision: 75b0be9c8c33605f7a513e9f92380aa26687db86
     metadata: modules/helia-rt/nsx/nsx-module.yaml
   helia-rt-source:
     project: helia-rt-source
-    revision: 7c1b162c0fd2336876b69daaa20c87a1e7e2f508
+    # Tracks the helia-rt-source project pin above.
+    revision: 75b0be9c8c33605f7a513e9f92380aa26687db86
     metadata: modules/helia-rt-source/nsx-source/nsx-module.yaml
   arm-cmsis-nn:
     project: arm-cmsis-nn

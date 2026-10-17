@@ -68,6 +68,6 @@ This replaces ~60 lines of manual DCU/TPIU/ITM/cache/SpotManager init.
 ## Dependencies
 
 - ARM GCC 14.3 (`arm-none-eabi-gcc`)
-- helia-rt `helia-rt-v1.16.0` via NSX source module (`release-with-logs` variant by default)
-- ns-cmsis-nn `v7.29.2` via helia-rt's NSX dependency metadata
+- helia-rt (`nsx-helia-rt`) at the packaged registry pin, built from source (`release-with-logs` variant by default)
+- ns-cmsis-nn (`nsx-cmsis-nn`) at the packaged registry pin, pulled in by `nsx-helia-rt`; `nsx.lock` records the exact tags
 - NSX modules: `nsx-core`, `nsx-power`, `nsx-pmu-armv8m` (with the PMU API from the standalone module and the local SDK shim supplied by `nsx-ambiq-sdk`)

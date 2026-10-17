@@ -168,9 +168,9 @@
       "provider": null,
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/helia-rt",
-      "revision": "7c1b162c0fd2336876b69daaa20c87a1e7e2f508",
+      "revision": "75b0be9c8c33605f7a513e9f92380aa26687db86",
       "slug": "helia-rt-source",
-      "source_url": "https://github.com/AmbiqAI/helia-rt/tree/7c1b162c0fd2336876b69daaa20c87a1e7e2f508",
+      "source_url": "https://github.com/AmbiqAI/helia-rt/tree/75b0be9c8c33605f7a513e9f92380aa26687db86",
       "summary": "Source-provider module for consumers that compile the helia-rt TFLM source tree with their own NSX runtime wrapper.",
       "type": "tooling",
       "use_cases": [
@@ -1523,13 +1523,17 @@
         "quantization",
         "inference",
         "dsp",
-        "mve"
+        "mve",
+        "fp32",
+        "fp16",
+        "float"
       ],
       "anti_use_cases": [],
       "capabilities": [
         "cmsis_nn",
         "neural_network_kernels",
         "quantized_inference",
+        "float_inference",
         "dsp_acceleration",
         "mve_acceleration"
       ],
@@ -1564,17 +1568,18 @@
       "provider": null,
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/ns-cmsis-nn",
-      "revision": "v7.29.2",
+      "revision": "v7.46.0",
       "slug": "nsx-cmsis-nn",
-      "source_url": "https://github.com/AmbiqAI/ns-cmsis-nn/tree/v7.29.2",
+      "source_url": "https://github.com/AmbiqAI/ns-cmsis-nn/tree/v7.46.0",
       "summary": "Ambiq-optimized CMSIS-NN neural network kernels. Fork of ARM CMSIS-NN with MVE and DSP optimizations for Apollo SoCs.",
       "type": "algorithm",
       "use_cases": [
         "quantized neural network inference on Cortex-M",
         "optimized convolution and fully-connected kernels",
-        "int8/int16/int4 quantized model support"
+        "int8/int16/int4 quantized model support",
+        "fp32/fp16 floating-point model support"
       ],
-      "version": "7.29.2"
+      "version": "7.46.0"
     },
     {
       "agent_keywords": [
@@ -1962,17 +1967,17 @@
       "provider": null,
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/helia-rt",
-      "revision": "helia-rt-v1.18.0",
+      "revision": "75b0be9c8c33605f7a513e9f92380aa26687db86",
       "slug": "nsx-helia-rt",
-      "source_url": "https://github.com/AmbiqAI/helia-rt/tree/helia-rt-v1.18.0",
-      "summary": "Ambiq-optimized TensorFlow Lite for Microcontrollers (TFLM) runtime. Built from source against the nsx-cmsis-nn (ns-cmsis-nn) kernel module.",
+      "source_url": "https://github.com/AmbiqAI/helia-rt/tree/75b0be9c8c33605f7a513e9f92380aa26687db86",
+      "summary": "Ambiq-optimized TensorFlow Lite for Microcontrollers (TFLM) runtime. Built from source against the nsx-cmsis-nn (ns-cmsis-nn >= 7.41.0) kernel module.",
       "type": "algorithm",
       "use_cases": [
         "on-device ML inference",
         "tflite model deployment on Ambiq SoCs",
         "keyword spotting and anomaly detection models"
       ],
-      "version": "1.18.0"
+      "version": "2.0.0"
     },
     {
       "agent_keywords": [
