@@ -55,6 +55,14 @@ declare which toolchains they support in `board.yaml`, and that list is what the
 [board matrix](/neuralspotx/modules/boards/) shows. As everywhere else in NSX, a declared
 toolchain is a claim by the board's author, not a record of a build that was run.
 
+A board declares its toolchains in two places. `board.yaml` is the descriptor the board
+matrix and `nsx board show` present. The board module's `nsx-module.yaml` carries a
+`compatibility.toolchains` list, and that is what `nsx lock` enforces: a target whose
+toolchain the module omits is refused at lock time, before anything is built. A descriptor
+may therefore not advertise a toolchain its module refuses;
+`tests/test_packaged_board_toolchains.py` pins the two lists to each other for every
+registered board.
+
 Generated apps also ship `cmake/presets/CMakePresets.json` with a preset per toolchain,
 `gcc-ninja`, `armclang-ninja` and `atfe-ninja`, so an IDE can open the project and pick
 one without going through the CLI.
