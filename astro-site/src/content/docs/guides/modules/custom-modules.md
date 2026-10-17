@@ -41,7 +41,8 @@ only covers the parts that catch people out.
   `nsx::my_sensor`, `nsx-timer` gives `nsx::timer`. `nsx module init` writes both for you.
 - **`depends.required` is resolved; `depends.optional` is not.** Optional dependencies are
   searchable metadata that tell a reader what your module can work with. Nothing installs
-  them.
+  them, but when an app adds one, NSX adds it to the build before your module, so your
+  `CMakeLists.txt` can check `if(TARGET nsx::<dep>)`.
 - **`compatibility` is enforced.** NSX rejects an app that pairs your module with a board,
   SoC or toolchain the manifest does not list. Declaring `*` everywhere makes the check
   useless and makes the catalog page misleading.

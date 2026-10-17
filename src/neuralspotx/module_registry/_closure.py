@@ -137,6 +137,8 @@ def _resolve_module_closure_inner(
     for seed in seed_modules:
         dfs(seed)
 
+    resolved = _order_with_present_optional_deps(resolved, metadata_cache)
+
     for module_name, module_meta in metadata_cache.items():
         _validate_board_module_dep_policy(module_name, module_meta, metadata_cache)
         _validate_sdk_provider_policy(module_name, module_meta, metadata_cache)
@@ -150,6 +152,62 @@ def _resolve_module_closure_inner(
         )
 
     return resolved
+
+
+def _order_with_present_optional_deps(
+    resolved: list[str],
+    metadata_cache: dict[str, ModuleMetadata],
+) -> list[str]:
+    """Reorder *resolved* so a present optional dependency precedes its dependent.
+
+    Optional deps never pull a module into the closure, but when the app adds
+    one anyway the dependent's CMake usually tests for its target (e.g.
+    ``nsx-tflite-micro`` looking for ``nsx::arm_cmsis_nn``), so it must be
+    added first. Required cycles were already rejected by the closure walk; an
+    optional edge that would close a cycle is ignored, so required edges win.
+    """
+
+    present = set(resolved)
+
+    def requires(module_name: str, target: str) -> bool:
+        """Whether *module_name* reaches *target* through required deps."""
+        stack = [module_name]
+        seen: set[str] = set()
+        while stack:
+            current = stack.pop()
+            if current == target:
+                return True
+            if current in seen:
+                continue
+            seen.add(current)
+            current_meta = metadata_cache.get(current)
+            if current_meta is not None:
+                stack.extend(current_meta.required_deps)
+        return False
+
+    ordered: list[str] = []
+    done: set[str] = set()
+    active: set[str] = set()
+
+    def visit(module_name: str) -> None:
+        if module_name in done or module_name in active:
+            return
+        active.add(module_name)
+        module_meta = metadata_cache.get(module_name)
+        if module_meta is not None:
+            for dep_name in module_meta.required_deps:
+                if dep_name in present:
+                    visit(dep_name)
+            for dep_name in module_meta.optional_deps:
+                if dep_name in present and not requires(dep_name, module_name):
+                    visit(dep_name)
+        active.remove(module_name)
+        done.add(module_name)
+        ordered.append(module_name)
+
+    for module_name in resolved:
+        visit(module_name)
+    return ordered
 
 
 def _module_dependents(
