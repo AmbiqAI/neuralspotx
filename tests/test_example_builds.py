@@ -33,6 +33,10 @@ _EXAMPLE_NAMES = sorted(
 
 _TOOLCHAIN = os.environ.get("NSX_TEST_TOOLCHAIN", "arm-none-eabi-gcc")
 
+# kws_infer compiles heliaRT from source (~440 C++ objects); hosted macOS
+# runners need more than five minutes for that build.
+_BUILD_TIMEOUT_S = 900
+
 
 def _atfe_clang_path() -> str | None:
     """Return the ATfE clang binary if ``ATFE_ROOT`` is set and valid."""
@@ -89,7 +93,7 @@ def test_example_configures_and_builds(example_app: Path) -> None:
         configure_cmd += ["--toolchain", _TOOLCHAIN]
         build_cmd += ["--toolchain", _TOOLCHAIN]
     subprocess.run(configure_cmd, check=True, timeout=300)
-    subprocess.run(build_cmd, check=True, timeout=300)
+    subprocess.run(build_cmd, check=True, timeout=_BUILD_TIMEOUT_S)
 
     # The build target name matches the directory / project name. The build
     # tree is nested under build/<board>/, where <board> is the example's
