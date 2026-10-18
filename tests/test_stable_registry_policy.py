@@ -114,7 +114,7 @@ def test_packaged_registry_release_projects_are_immutable() -> None:
     assert registry["projects"]["nsx-ethos-u-driver"]["revision"] == "nsx-ethos-u-driver-v0.1.2"
     assert registry["projects"]["arm-cmsis-nn"]["revision"] == "v0.1.0"
     assert registry["projects"]["nsx-tflite-micro"]["revision"] == "v0.1.0"
-    assert registry["projects"]["ns-cmsis-nn"]["revision"] == "v7.29.2"
+    assert registry["projects"]["ns-cmsis-nn"]["revision"] == "v7.46.0"
     assert registry["projects"]["nsx-nanopb"]["revision"] == "v0.1.1"
     assert registry["projects"]["helia-dsp"]["revision"] == "v1.0.0"
     assert registry["projects"]["nsx-tileio"]["revision"] == "v0.1.0"
@@ -123,7 +123,7 @@ def test_packaged_registry_release_projects_are_immutable() -> None:
     assert registry["modules"]["nsx-pmu-armv8m"]["revision"] == "v0.2.0"
     assert registry["modules"]["arm-cmsis-nn"]["revision"] == "v0.1.0"
     assert registry["modules"]["nsx-tflite-micro"]["revision"] == "v0.1.0"
-    assert registry["modules"]["nsx-cmsis-nn"]["revision"] == "v7.29.2"
+    assert registry["modules"]["nsx-cmsis-nn"]["revision"] == "v7.46.0"
     assert registry["modules"]["nsx-nanopb"]["revision"] == "v0.1.1"
     assert registry["modules"]["helia-dsp"]["revision"] == "v1.0.0"
     assert registry["modules"]["nsx-physiokit"]["revision"] == "v0.1.0"
@@ -133,8 +133,13 @@ def test_packaged_registry_release_projects_are_immutable() -> None:
         for entry in registry["modules"].values()
         if entry["project"] == "nsx-tileio"
     } == {"v0.1.0"}
-    assert registry["projects"]["helia-rt"]["revision"] == "helia-rt-v1.18.0"
-    assert registry["modules"]["nsx-helia-rt"]["revision"] == "helia-rt-v1.18.0"
+    helia_rt_ref = registry["projects"]["helia-rt"]["revision"]
+    assert helia_rt_ref == "helia-rt-v2.1.0"
+    assert registry["modules"]["nsx-helia-rt"]["revision"] == helia_rt_ref
+    # helia-rt-source is the same repository vendored as a bare source tree;
+    # it must not drift from the runtime pin.
+    assert registry["projects"]["helia-rt-source"]["revision"] == helia_rt_ref
+    assert registry["modules"]["helia-rt-source"]["revision"] == helia_rt_ref
     # Every nsx-ambiq-sdk ref is one of the two release tags: the apollo
     # families' tag, which is *required*, and the atomiq110 tag.
     sdk_release_tag = "v5.2.24"

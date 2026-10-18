@@ -185,7 +185,7 @@ def test_kws_locks_use_recursive_ns_cmsis_nn_hash() -> None:
         encoding="utf-8"
     )
     old_hash = "sha256:9e99a00415678aaed59dde525eb51fc4f0e8f978139d72a876f93db38e238368"
-    new_hash = "sha256:2003657c0004f3b49f80928118ded71e4d9e53dc1ad7e51b8afc3149c74804b8"
+    new_hash = "sha256:c42df34aba013c29b4f48ab526b30b088c901bd7d54300927d255c97f9721a37"
 
     assert old_hash not in lock_text
     assert lock_text.count(new_hash) == 3
