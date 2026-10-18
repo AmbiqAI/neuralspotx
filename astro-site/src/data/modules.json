@@ -115,9 +115,9 @@
       "provider": null,
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/helia-dsp",
-      "revision": "v1.1.0",
+      "revision": "v1.1.1",
       "slug": "helia-dsp",
-      "source_url": "https://github.com/AmbiqAI/helia-dsp/tree/v1.1.0",
+      "source_url": "https://github.com/AmbiqAI/helia-dsp/tree/v1.1.1",
       "summary": "NSX-packaged helia-dsp fork of CMSIS-DSP, preserving upstream Source/ CMake as the single source of truth.",
       "type": "runtime",
       "use_cases": [
@@ -126,7 +126,7 @@
         "fft and filtering kernels",
         "numeric and vector math primitives"
       ],
-      "version": "1.1.0"
+      "version": "1.1.1"
     },
     {
       "agent_keywords": [
