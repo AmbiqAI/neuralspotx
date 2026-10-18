@@ -57,10 +57,20 @@ else:
     _HAS_TOOLCHAIN = shutil.which("arm-none-eabi-gcc") is not None
     _PROBE_DESC = "arm-none-eabi-gcc"
 
+# CI sets NSX_TEST_REQUIRE_TOOLCHAIN so a missing toolchain fails the job
+# instead of skipping every build and passing.
+if not _HAS_TOOLCHAIN and os.environ.get("NSX_TEST_REQUIRE_TOOLCHAIN"):
+    pytest.fail(f"{_PROBE_DESC} not found and NSX_TEST_REQUIRE_TOOLCHAIN is set", pytrace=False)
+
 pytestmark = pytest.mark.skipif(
     not _HAS_TOOLCHAIN,
     reason=f"{_PROBE_DESC} not found — skipping E2E build tests",
 )
+
+# Non-default boards also built in CI. apollo3p_evb is the only Apollo3 Blue
+# Plus target among the examples, and its GCC linker script once lacked the
+# heap symbols every newlib build links against (nsx-ambiq-sdk #85).
+_EXTRA_BOARDS = [("ble_webble", "apollo3p_evb")]
 
 
 @pytest.fixture()
@@ -150,3 +160,25 @@ def test_example_configures_and_builds(example_app: Path) -> None:
             (build_dir / "jlink" / secondary_target / "flash_cmds.jlink").is_file()
             for build_dir in build_dirs
         )
+
+
+@pytest.mark.timeout(2 * 300 + _BUILD_TIMEOUT_S)
+@pytest.mark.parametrize(
+    ("example_app", "board"),
+    _EXTRA_BOARDS,
+    indirect=["example_app"],
+    ids=[f"{example}-{board}" for example, board in _EXTRA_BOARDS],
+)
+def test_example_builds_for_extra_board(example_app: Path, board: str) -> None:
+    """``nsx configure`` + ``nsx build`` succeeds for a non-default board."""
+    options = ["--app-dir", str(example_app), "--board", board]
+    if _TOOLCHAIN != "arm-none-eabi-gcc":
+        options += ["--toolchain", _TOOLCHAIN]
+    subprocess.run(["nsx", "configure", *options], check=True, timeout=300)
+    subprocess.run(["nsx", "build", *options], check=True, timeout=_BUILD_TIMEOUT_S)
+
+    build_dir = example_app / "build" / board
+    app_name = example_app.name
+    assert any(
+        (build_dir / name).exists() for name in (f"{app_name}.axf", f"{app_name}.elf", app_name)
+    ), f"Expected an ELF for {app_name} under {build_dir}"

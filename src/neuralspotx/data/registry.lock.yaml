@@ -11,13 +11,11 @@ projects:
     url: https://github.com/AmbiqAI/neuralspotx.git
     revision: main
     path: neuralspotx
-  # Unified SDK: one repo covering all supported SoC families. atomiq110 is
-  # pinned below to v5.2.25, the first tag that ships it; the apollo families
-  # stay on v5.2.24. See AmbiqAI/neuralspotx#248.
+  # Unified SDK: one repo and one release covering all supported SoC families.
   nsx-ambiq-sdk:
     name: nsx-ambiq-sdk
     url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
-    revision: v5.2.24
+    revision: v5.2.26
     path: modules/nsx-ambiq-sdk
   nsx-pmu-armv8m:
     name: nsx-pmu-armv8m
@@ -88,31 +86,31 @@ projects:
 modules:
   nsx-ambiqsuite:
     project: nsx-ambiq-sdk
-    revision: v5.2.24
+    revision: v5.2.26
     metadata: modules/nsx-ambiqsuite/nsx-module.yaml
   nsx-ambiq-hal:
     project: nsx-ambiq-sdk
-    revision: v5.2.24
+    revision: v5.2.26
     metadata: modules/nsx-ambiq-hal/nsx-module.yaml
   nsx-ambiq-bsp:
     project: nsx-ambiq-sdk
-    revision: v5.2.24
+    revision: v5.2.26
     metadata: modules/nsx-ambiq-bsp/nsx-module.yaml
   nsx-ambiq-usb:
     project: nsx-ambiq-sdk
-    revision: v5.2.24
+    revision: v5.2.26
     metadata: modules/nsx-ambiq-usb/nsx-module.yaml
   nsx-soc-hal:
     project: nsx-ambiq-sdk
-    revision: v5.2.24
+    revision: v5.2.26
     metadata: modules/nsx-soc-hal/nsx-module.yaml
   nsx-cmsis-core:
     project: nsx-ambiq-sdk
-    revision: v5.2.24
+    revision: v5.2.26
     metadata: modules/nsx-cmsis-core/nsx-module.yaml
   nsx-cmsis-startup:
     project: nsx-ambiq-sdk
-    revision: v5.2.24
+    revision: v5.2.26
     metadata: modules/nsx-cmsis-startup/nsx-module.yaml
   nsx-board-apollo2-evb:
     project: neuralspotx
@@ -184,11 +182,11 @@ modules:
     metadata: src/neuralspotx/boards/atomiq110_fpga_turbo/nsx-module.yaml
   nsx-core:
     project: nsx-ambiq-sdk
-    revision: v5.2.24
+    revision: v5.2.26
     metadata: modules/nsx-core/nsx-module.yaml
   nsx-perf:
     project: nsx-ambiq-sdk
-    revision: v5.2.24
+    revision: v5.2.26
     metadata: modules/nsx-perf/nsx-module.yaml
   nsx-pmu-armv8m:
     project: nsx-pmu-armv8m
@@ -196,7 +194,7 @@ modules:
     metadata: modules/nsx-pmu-armv8m/nsx-module.yaml
   nsx-power:
     project: nsx-ambiq-sdk
-    revision: v5.2.24
+    revision: v5.2.26
     metadata: modules/nsx-power/nsx-module.yaml
   # nsx-npu's driver dependency; resolved from the standalone repo (the
   # SDK deliberately does not vendor it -- see nsx-ambiq-sdk PR #46).
@@ -204,43 +202,42 @@ modules:
     project: nsx-ethos-u-driver
     revision: nsx-ethos-u-driver-v0.1.2
     metadata: modules/nsx-ethos-u-driver/nsx-module.yaml
-  # nsx-npu (atomiq110-only) first shipped in nsx-ambiq-sdk v5.2.25; the
-  # other nsx-ambiq-sdk modules stay on v5.2.24. See AmbiqAI/neuralspotx#248.
+  # nsx-npu is atomiq110-only (see the atomiq110 SoC family below).
   nsx-npu:
     project: nsx-ambiq-sdk
-    revision: v5.2.25
+    revision: v5.2.26
     metadata: modules/nsx-npu/nsx-module.yaml
   nsx-uart:
     project: nsx-ambiq-sdk
-    revision: v5.2.24
+    revision: v5.2.26
     metadata: modules/nsx-uart/nsx-module.yaml
   nsx-i2c:
     project: nsx-ambiq-sdk
-    revision: v5.2.24
+    revision: v5.2.26
     metadata: modules/nsx-i2c/nsx-module.yaml
   nsx-spi:
     project: nsx-ambiq-sdk
-    revision: v5.2.24
+    revision: v5.2.26
     metadata: modules/nsx-spi/nsx-module.yaml
   nsx-audio:
     project: nsx-ambiq-sdk
-    revision: v5.2.24
+    revision: v5.2.26
     metadata: modules/nsx-audio/nsx-module.yaml
   nsx-usb:
     project: nsx-ambiq-sdk
-    revision: v5.2.24
+    revision: v5.2.26
     metadata: modules/nsx-usb/nsx-module.yaml
   nsx-cordio:
     project: nsx-ambiq-sdk
-    revision: v5.2.24
+    revision: v5.2.26
     metadata: modules/nsx-cordio/nsx-module.yaml
   nsx-ble:
     project: nsx-ambiq-sdk
-    revision: v5.2.24
+    revision: v5.2.26
     metadata: modules/nsx-ble/nsx-module.yaml
   nsx-freertos:
     project: nsx-ambiq-sdk
-    revision: v5.2.24
+    revision: v5.2.26
     metadata: modules/nsx-freertos/nsx-module.yaml
   nsx-nanopb:
     project: nsx-nanopb
@@ -313,7 +310,7 @@ soc_families:
   apollo2: &fam_apollo2
     provider: nsx-ambiqsuite
     project: nsx-ambiq-sdk
-    revision: v5.2.24
+    revision: v5.2.26
     modules:
       - nsx-ambiqsuite
       - nsx-ambiq-hal
@@ -332,7 +329,7 @@ soc_families:
   apollo3: &fam_apollo3
     provider: nsx-ambiqsuite
     project: nsx-ambiq-sdk
-    revision: v5.2.24
+    revision: v5.2.26
     modules:
       - nsx-ambiqsuite
       - nsx-ambiq-hal
@@ -362,7 +359,7 @@ soc_families:
   apollo4l: &fam_apollo4
     provider: nsx-ambiqsuite
     project: nsx-ambiq-sdk
-    revision: v5.2.24
+    revision: v5.2.26
     modules:
       - nsx-ambiqsuite
       - nsx-ambiq-hal
@@ -392,7 +389,7 @@ soc_families:
   apollo5b: &fam_apollo5
     provider: nsx-ambiqsuite
     project: nsx-ambiq-sdk
-    revision: v5.2.24
+    revision: v5.2.26
     modules:
       - nsx-ambiqsuite
       - nsx-ambiq-hal
@@ -428,13 +425,8 @@ soc_families:
   apollo510b: *fam_apollo5
   apollo510L: *fam_apollo5
   apollo330P: *fam_apollo5
-  # atomiq110 resolves nsx-ambiq-sdk v5.2.25, the first tag that ships its
-  # arch dir, FPGA turbo-board workarounds and HAL/BSP libs; *fam_apollo5
-  # stays on v5.2.24, so the revision is overridden rather than aliased.
-  # See AmbiqAI/neuralspotx#248.
   atomiq110:
     <<: *fam_apollo5
-    revision: v5.2.25
     # Same list as *fam_apollo5 plus nsx-npu (Ethos-U85 core-driver module,
     # atomiq110-only). YAML merge keys replace rather than append, so the
     # full list is restated here.

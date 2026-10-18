@@ -18,9 +18,8 @@ from neuralspotx.registry_policy import (
     validate_stable_registry_refs,
 )
 
-# The nsx-ambiq-sdk tag the atomiq110 family + nsx-npu resolve; the apollo
-# families stay on the older release tag (see registry.lock.yaml).
-_ATOMIQ110_SDK_TAG = "v5.2.25"
+# The one nsx-ambiq-sdk release every SoC family and SDK module resolves.
+_SDK_RELEASE_REF = "v5.2.26"
 
 
 def test_packaged_registry_floating_refs_are_exactly_allowlisted() -> None:
@@ -109,7 +108,7 @@ def test_temporary_allowances_have_not_expired() -> None:
 def test_packaged_registry_release_projects_are_immutable() -> None:
     registry = load_registry()
 
-    assert registry["projects"]["nsx-ambiq-sdk"]["revision"] == "v5.2.24"
+    assert registry["projects"]["nsx-ambiq-sdk"]["revision"] == _SDK_RELEASE_REF
     assert registry["projects"]["nsx-pmu-armv8m"]["revision"] == "v0.2.0"
     assert registry["projects"]["nsx-ethos-u-driver"]["revision"] == "nsx-ethos-u-driver-v0.1.2"
     assert registry["projects"]["arm-cmsis-nn"]["revision"] == "v0.1.0"
@@ -140,23 +139,18 @@ def test_packaged_registry_release_projects_are_immutable() -> None:
     # it must not drift from the runtime pin.
     assert registry["projects"]["helia-rt-source"]["revision"] == helia_rt_ref
     assert registry["modules"]["helia-rt-source"]["revision"] == helia_rt_ref
-    # Every nsx-ambiq-sdk ref is one of the two release tags: the apollo
-    # families' tag, which is *required*, and the atomiq110 tag.
-    sdk_release_tag = "v5.2.24"
-    allowed_sdk_refs = {sdk_release_tag, _ATOMIQ110_SDK_TAG}
+    # Every nsx-ambiq-sdk ref is the one SDK release.
     sdk_module_refs = {
         entry["revision"]
         for entry in registry["modules"].values()
         if entry["project"] == "nsx-ambiq-sdk"
     }
-    assert sdk_release_tag in sdk_module_refs
-    assert sdk_module_refs <= allowed_sdk_refs
+    assert sdk_module_refs == {_SDK_RELEASE_REF}
     sdk_profile_refs = {
         profile["project_overrides"]["nsx-ambiq-sdk"]["revision"]
         for profile in registry["starter_profiles"].values()
     }
-    assert sdk_release_tag in sdk_profile_refs
-    assert sdk_profile_refs <= allowed_sdk_refs
+    assert sdk_profile_refs == {_SDK_RELEASE_REF}
 
 
 def test_packaged_registry_has_no_orphaned_projects() -> None:
