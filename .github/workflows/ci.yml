@@ -349,7 +349,8 @@ jobs:
           echo "05b61549c9fa7d51af1b91f15ba9c59f2aee7f269fd70930a94db31bb090133e  atfe-newlib.tar.xz" | sha256sum --check
           sudo mkdir -p /opt/atfe
           sudo tar -xf atfe.tar.xz --strip-components=1 -C /opt/atfe
-          sudo tar -xf atfe-newlib.tar.xz --strip-components=1 -C /opt/atfe
+          # The overlay has no top-level directory (bin/newlib.cfg, lib/...).
+          sudo tar -xf atfe-newlib.tar.xz -C /opt/atfe
           echo "ATFE_ROOT=/opt/atfe" >> "$GITHUB_ENV"
 
       - name: Verify toolchain
