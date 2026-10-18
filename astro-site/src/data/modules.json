@@ -168,16 +168,16 @@
       "provider": null,
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/helia-rt",
-      "revision": "helia-rt-v2.1.0",
+      "revision": "helia-rt-v2.1.1",
       "slug": "helia-rt-source",
-      "source_url": "https://github.com/AmbiqAI/helia-rt/tree/helia-rt-v2.1.0",
+      "source_url": "https://github.com/AmbiqAI/helia-rt/tree/helia-rt-v2.1.1",
       "summary": "Source-provider module for consumers that compile the helia-rt TFLM source tree with their own NSX runtime wrapper.",
       "type": "tooling",
       "use_cases": [
         "custom NSX TFLM wrappers",
         "reference or upstream CMSIS-NN TFLM builds"
       ],
-      "version": "1.17.0"
+      "version": "2.1.1"
     },
     {
       "agent_keywords": [
@@ -1967,9 +1967,9 @@
       "provider": null,
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/helia-rt",
-      "revision": "helia-rt-v2.1.0",
+      "revision": "helia-rt-v2.1.1",
       "slug": "nsx-helia-rt",
-      "source_url": "https://github.com/AmbiqAI/helia-rt/tree/helia-rt-v2.1.0",
+      "source_url": "https://github.com/AmbiqAI/helia-rt/tree/helia-rt-v2.1.1",
       "summary": "Ambiq-optimized TensorFlow Lite for Microcontrollers (TFLM) runtime. Built from source against the nsx-cmsis-nn (ns-cmsis-nn >= 7.46.0) kernel module.",
       "type": "algorithm",
       "use_cases": [
@@ -1977,7 +1977,7 @@
         "tflite model deployment on Ambiq SoCs",
         "keyword spotting and anomaly detection models"
       ],
-      "version": "2.1.0"
+      "version": "2.1.1"
     },
     {
       "agent_keywords": [
