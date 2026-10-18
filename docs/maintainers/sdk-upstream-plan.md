@@ -32,7 +32,9 @@ one project:
 and atomiq110 resolved `v5.2.25`. Moving every family to one release brings:
 
 - the clang C++ fixes to the AmbiqSuite headers, so C++ applications build
-  with ATfE on every SoC (nsx-ambiq-sdk #81, #83; upstream fix tracked in #82);
+  with ATfE on the supported Apollo3, Apollo4, Apollo5 and atomiq110 boards
+  (nsx-ambiq-sdk #81, #83; upstream fix tracked in #82). apollo2 still does
+  not build, for an unrelated SDK reason;
 - the heap symbols in the apollo2/apollo3/apollo3p GCC linker scripts, so
   GCC and ATfE applications link on Apollo3 and Apollo3 Blue Plus
   (nsx-ambiq-sdk #85, #86);

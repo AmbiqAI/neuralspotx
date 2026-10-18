@@ -22,7 +22,7 @@ _SDK_PROJECT = "nsx-ambiq-sdk"
 
 def _registry_sdk_revision() -> str:
     registry = yaml.safe_load(
-        (_REPO / "src" / "neuralspotx" / "data" / "registry.lock.yaml").read_text()
+        (_REPO / "src" / "neuralspotx" / "data" / "registry.lock.yaml").read_text(encoding="utf-8")
     )
     return registry["projects"][_SDK_PROJECT]["revision"]
 
@@ -33,7 +33,7 @@ def test_examples_are_found() -> None:
 
 @pytest.mark.parametrize("example", _EXAMPLES, ids=lambda p: p.name)
 def test_example_does_not_override_the_sdk_project(example: Path) -> None:
-    manifest = yaml.safe_load((example / "nsx.yml").read_text())
+    manifest = yaml.safe_load((example / "nsx.yml").read_text(encoding="utf-8"))
     overrides = (manifest.get("module_registry") or {}).get("projects") or {}
     assert _SDK_PROJECT not in overrides, (
         f"{example.name}/nsx.yml overrides {_SDK_PROJECT}; examples resolve the packaged registry's SDK release"
@@ -43,7 +43,7 @@ def test_example_does_not_override_the_sdk_project(example: Path) -> None:
 @pytest.mark.parametrize("example", _EXAMPLES, ids=lambda p: p.name)
 def test_example_lock_resolves_one_sdk_release(example: Path) -> None:
     expected = _registry_sdk_revision()
-    lock = yaml.safe_load((example / "nsx.lock").read_text())
+    lock = yaml.safe_load((example / "nsx.lock").read_text(encoding="utf-8"))
     found = {
         (target_name, module_name): entry["constraint"]
         for target_name, target in lock["targets"].items()

@@ -250,6 +250,8 @@ jobs:
         run: uv sync --locked --group test
 
       - name: Run example build tests
+        env:
+          NSX_TEST_REQUIRE_TOOLCHAIN: "1"
         run: >-
           uv run --group test pytest tests/test_example_builds.py
           -q
@@ -366,6 +368,7 @@ jobs:
       - name: Run example build tests (ATfE)
         env:
           NSX_TEST_TOOLCHAIN: atfe
+          NSX_TEST_REQUIRE_TOOLCHAIN: "1"
         run: >-
           uv run --group test pytest tests/test_example_builds.py
           -q
@@ -487,6 +490,7 @@ jobs:
       - unit-tests
       - unit-tests-c-locale
       - example-builds
+      - example-builds-atfe
       - lock-integrity
       - cmake-vendor-diff
     runs-on: ubuntu-latest
@@ -499,6 +503,7 @@ jobs:
              [[ "${{ needs.unit-tests.result }}" != "success" ]] ||
              [[ "${{ needs.unit-tests-c-locale.result }}" != "success" ]] ||
              [[ "${{ needs.example-builds.result }}" != "success" ]] ||
+             [[ "${{ needs.example-builds-atfe.result }}" != "success" ]] ||
              [[ "${{ needs.lock-integrity.result }}" != "success" ]] ||
              [[ "${{ needs.cmake-vendor-diff.result }}" != "success" ]]; then
             echo "One or more CI jobs failed."
