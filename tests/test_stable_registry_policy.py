@@ -19,7 +19,7 @@ from neuralspotx.registry_policy import (
 )
 
 # The one nsx-ambiq-sdk release every SoC family and SDK module resolves.
-_SDK_RELEASE_REF = "c32f82c974cdae948a426966b3599d515743ef1d"
+_SDK_RELEASE_REF = "v5.2.26"
 
 
 def test_packaged_registry_floating_refs_are_exactly_allowlisted() -> None:

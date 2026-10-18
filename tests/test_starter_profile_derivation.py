@@ -16,7 +16,7 @@ import pytest
 from neuralspotx.metadata import _derive_starter_profiles, load_registry_lock
 
 # The one nsx-ambiq-sdk release every SoC family resolves.
-_SDK_RELEASE_REF = "c32f82c974cdae948a426966b3599d515743ef1d"
+_SDK_RELEASE_REF = "v5.2.26"
 
 
 def _packaged_registry() -> dict:

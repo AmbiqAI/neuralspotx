@@ -335,7 +335,7 @@
       ],
       "project": "nsx-ambiq-sdk",
       "provider": "nsx-ambiqsuite",
-      "revision": "c32f82c974cdae948a426966b3599d515743ef1d",
+      "revision": "v5.2.26",
       "sdk_modules": [
         "nsx-ambiqsuite",
         "nsx-ambiq-hal",
@@ -357,7 +357,7 @@
       ],
       "project": "nsx-ambiq-sdk",
       "provider": "nsx-ambiqsuite",
-      "revision": "c32f82c974cdae948a426966b3599d515743ef1d",
+      "revision": "v5.2.26",
       "sdk_modules": [
         "nsx-ambiqsuite",
         "nsx-ambiq-hal",
@@ -393,7 +393,7 @@
       ],
       "project": "nsx-ambiq-sdk",
       "provider": "nsx-ambiqsuite",
-      "revision": "c32f82c974cdae948a426966b3599d515743ef1d",
+      "revision": "v5.2.26",
       "sdk_modules": [
         "nsx-ambiqsuite",
         "nsx-ambiq-hal",
@@ -427,7 +427,7 @@
       ],
       "project": "nsx-ambiq-sdk",
       "provider": "nsx-ambiqsuite",
-      "revision": "c32f82c974cdae948a426966b3599d515743ef1d",
+      "revision": "v5.2.26",
       "sdk_modules": [
         "nsx-ambiqsuite",
         "nsx-ambiq-hal",
@@ -458,7 +458,7 @@
       ],
       "project": "nsx-ambiq-sdk",
       "provider": "nsx-ambiqsuite",
-      "revision": "c32f82c974cdae948a426966b3599d515743ef1d",
+      "revision": "v5.2.26",
       "sdk_modules": [
         "nsx-ambiqsuite",
         "nsx-ambiq-hal",
@@ -491,7 +491,7 @@
       ],
       "project": "nsx-ambiq-sdk",
       "provider": "nsx-ambiqsuite",
-      "revision": "c32f82c974cdae948a426966b3599d515743ef1d",
+      "revision": "v5.2.26",
       "sdk_modules": [
         "nsx-ambiqsuite",
         "nsx-ambiq-hal",
@@ -529,7 +529,7 @@
       ],
       "project": "nsx-ambiq-sdk",
       "provider": "nsx-ambiqsuite",
-      "revision": "c32f82c974cdae948a426966b3599d515743ef1d",
+      "revision": "v5.2.26",
       "sdk_modules": [
         "nsx-ambiqsuite",
         "nsx-ambiq-hal",
@@ -568,7 +568,7 @@
       ],
       "project": "nsx-ambiq-sdk",
       "provider": "nsx-ambiqsuite",
-      "revision": "c32f82c974cdae948a426966b3599d515743ef1d",
+      "revision": "v5.2.26",
       "sdk_modules": [
         "nsx-ambiqsuite",
         "nsx-ambiq-hal",
@@ -607,7 +607,7 @@
       ],
       "project": "nsx-ambiq-sdk",
       "provider": "nsx-ambiqsuite",
-      "revision": "c32f82c974cdae948a426966b3599d515743ef1d",
+      "revision": "v5.2.26",
       "sdk_modules": [
         "nsx-ambiqsuite",
         "nsx-ambiq-hal",
@@ -646,7 +646,7 @@
       ],
       "project": "nsx-ambiq-sdk",
       "provider": "nsx-ambiqsuite",
-      "revision": "c32f82c974cdae948a426966b3599d515743ef1d",
+      "revision": "v5.2.26",
       "sdk_modules": [
         "nsx-ambiqsuite",
         "nsx-ambiq-hal",
@@ -685,7 +685,7 @@
       ],
       "project": "nsx-ambiq-sdk",
       "provider": "nsx-ambiqsuite",
-      "revision": "c32f82c974cdae948a426966b3599d515743ef1d",
+      "revision": "v5.2.26",
       "sdk_modules": [
         "nsx-ambiqsuite",
         "nsx-ambiq-hal",
