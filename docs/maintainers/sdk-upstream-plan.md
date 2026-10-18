@@ -14,27 +14,35 @@ NSX board and SoC modules.
 
 One repo, [`nsx-ambiq-sdk`](https://github.com/AmbiqAI/nsx-ambiq-sdk), vendors
 the AmbiqSuite drop, the HAL/BSP wrappers, and the shared NSX module set for
-every supported SoC (Apollo2 through Apollo5). Stable resolution uses the
-immutable `v5.2.24` release.
+every supported SoC (Apollo2 through Apollo5, plus the experimental atomiq110).
+Stable resolution uses the immutable `v5.2.26` release for every SoC family.
 
 The provider and wrapper modules NSX resolves are thin metadata views onto that
 one project:
 
 | Provider / wrapper module | Project | Revision |
 |---|---|---|
-| `nsx-ambiqsuite` | `nsx-ambiq-sdk` | `v5.2.24` |
-| `nsx-ambiq-hal` | `nsx-ambiq-sdk` | `v5.2.24` |
-| `nsx-ambiq-bsp` | `nsx-ambiq-sdk` | `v5.2.24` |
+| `nsx-ambiqsuite` | `nsx-ambiq-sdk` | `v5.2.26` |
+| `nsx-ambiq-hal` | `nsx-ambiq-sdk` | `v5.2.26` |
+| `nsx-ambiq-bsp` | `nsx-ambiq-sdk` | `v5.2.26` |
 
-`v5.2.24` is the immutable provenance-correction release titled
-[`nsx-ambiq-sdk 5.2.24 — AmbiqSuite stable-2026.06.18`](https://github.com/AmbiqAI/nsx-ambiq-sdk/releases/tag/v5.2.24).
-Its annotated tag peels to commit
-[`a9f4ec25a162f6f3700623feb691423bb5a51132`](https://github.com/AmbiqAI/nsx-ambiq-sdk/commit/a9f4ec25a162f6f3700623feb691423bb5a51132),
-and it preserves the ABI-correct binary HAL/BSP archive payload from
-`v5.2.23` byte-for-byte. The source tree also carries provenance metadata and
-versioned BLE DIS corrections, so its full git content hash is intentionally
-new. The correction records the already validated ACfE ABI provenance and fixes 22
-stale ACfE manifest hashes; `v5.2.23` remains published and immutable.
+`v5.2.26` is the release recorded in
+[`release/nsx-ambiq-sdk-5.2.26.yaml`](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/v5.2.26/release/nsx-ambiq-sdk-5.2.26.yaml)
+(AmbiqAI/nsx-ambiq-sdk#84). Before it, the Apollo families resolved `v5.2.24`
+and atomiq110 resolved `v5.2.25`. Moving every family to one release brings:
+
+- the clang C++ fixes to the AmbiqSuite headers, so C++ applications build
+  with ATfE on every SoC (nsx-ambiq-sdk #81, #83; upstream fix tracked in #82);
+- the heap symbols in the apollo2/apollo3/apollo3p GCC linker scripts, so
+  GCC and ATfE applications link on Apollo3 and Apollo3 Blue Plus
+  (nsx-ambiq-sdk #85, #86);
+- the 5.2.25 content (atomiq110 platform, `nsx-npu`, `nsx-core`/`nsx-power`
+  updates) for the Apollo families as well.
+
+The non-atomiq110 HAL/BSP archives are byte-identical to `v5.2.24`. The
+release record lists every changed file per upgrade path and the open known
+deviations, including atomiq110's header/archive mismatch and C++ global
+constructors on apollo2/3/3p (nsx-ambiq-sdk #87).
 
 Board profiles depend on the provider module for their SoC family, and NSX
 vendors the resolved SDK content into the generated app. See

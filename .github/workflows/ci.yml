@@ -314,6 +314,63 @@ jobs:
           --timeout=600
 
   # ---------------------------------------------------------------
+  # Example builds (ATfE) — Linux only. Builds every example with Arm
+  # Toolchain for Embedded and its newlib overlay, so a C++ example
+  # (kws_infer) compiles the AmbiqSuite headers with clang++.
+  # ---------------------------------------------------------------
+  example-builds-atfe:
+    runs-on: ubuntu-latest
+    env:
+      ATFE_VERSION: "22.1.0"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install cmake and ninja
+        run: uv pip install --system cmake ninja
+
+      - name: Install ATfE and the newlib overlay
+        run: |
+          base="https://github.com/arm/arm-toolchain/releases/download/release-${ATFE_VERSION}-ATfE"
+          curl -fsSL -o atfe.tar.xz "$base/ATfE-${ATFE_VERSION}-Linux-x86_64.tar.xz"
+          curl -fsSL -o atfe-newlib.tar.xz "$base/ATfE-newlib-overlay-${ATFE_VERSION}.tar.xz"
+          # Digests published by Arm next to each archive (*.sha256).
+          echo "e2e9e637bba097ba6e4bae6982883fe705ffd7e8c3a7dc876964835ef1c7a724  atfe.tar.xz" | sha256sum --check
+          echo "05b61549c9fa7d51af1b91f15ba9c59f2aee7f269fd70930a94db31bb090133e  atfe-newlib.tar.xz" | sha256sum --check
+          sudo mkdir -p /opt/atfe
+          sudo tar -xf atfe.tar.xz --strip-components=1 -C /opt/atfe
+          sudo tar -xf atfe-newlib.tar.xz --strip-components=1 -C /opt/atfe
+          echo "ATFE_ROOT=/opt/atfe" >> "$GITHUB_ENV"
+
+      - name: Verify toolchain
+        run: |
+          "$ATFE_ROOT/bin/clang" --version
+          test -f "$ATFE_ROOT/bin/newlib.cfg"
+          cmake --version
+          ninja --version
+
+      - name: Install neuralspotx
+        run: uv sync --locked --group test
+
+      - name: Run example build tests (ATfE)
+        env:
+          NSX_TEST_TOOLCHAIN: atfe
+        run: >-
+          uv run --group test pytest tests/test_example_builds.py
+          -q
+          --timeout=600
+
+  # ---------------------------------------------------------------
   # Lock integrity — verify each example's nsx.yml/nsx.lock/modules/
   # are mutually consistent. No firmware toolchain required; runs
   # only on Linux because the verification is content/network-based.

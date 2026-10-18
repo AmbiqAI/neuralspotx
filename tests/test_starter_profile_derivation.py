@@ -15,6 +15,9 @@ import pytest
 
 from neuralspotx.metadata import _derive_starter_profiles, load_registry_lock
 
+# The one nsx-ambiq-sdk release every SoC family resolves.
+_SDK_RELEASE_REF = "c32f82c974cdae948a426966b3599d515743ef1d"
+
 
 def _packaged_registry() -> dict:
     res = resources.files("neuralspotx.data").joinpath("registry.lock.yaml")
@@ -57,11 +60,11 @@ def test_derived_profile_module_layout() -> None:
     # Apollo5 is sourced from the consolidated nsx-ambiq-sdk monorepo: the
     # project override pins the monorepo and every module the monorepo
     # vendors gets a module override pointing back at it.
-    assert prof["project_overrides"] == {"nsx-ambiq-sdk": {"revision": "v5.2.24"}}
+    assert prof["project_overrides"] == {"nsx-ambiq-sdk": {"revision": _SDK_RELEASE_REF}}
     assert set(prof["module_overrides"]) == set(family["sdk_modules"])
     assert prof["module_overrides"]["nsx-ambiqsuite"] == {
         "project": "nsx-ambiq-sdk",
-        "revision": "v5.2.24",
+        "revision": _SDK_RELEASE_REF,
         "metadata": "modules/nsx-ambiqsuite/nsx-module.yaml",
     }
     # A shared-name module (also vendored by the monorepo) resolves to the
@@ -92,11 +95,10 @@ def test_atomiq110_family_is_apollo5_plus_npu() -> None:
     atomiq110 = families["atomiq110"]
     assert set(atomiq110["sdk_modules"]) == set(apollo5["sdk_modules"]) | {"nsx-npu"}
     assert len(atomiq110["sdk_modules"]) == len(set(atomiq110["sdk_modules"]))
-    # Everything else is inherited from the Apollo5 baseline except the SDK
-    # revision, which is pinned to the validated atomiq110 SHA.
-    for key in ("provider", "project", "modules", "core_modules"):
+    # Everything else, the SDK revision included, is inherited from the
+    # Apollo5 baseline.
+    for key in ("provider", "project", "modules", "core_modules", "revision"):
         assert atomiq110[key] == apollo5[key], key
-    assert atomiq110["revision"] != apollo5["revision"]
 
 
 def test_non_r5_profiles_do_not_gain_armv8m_pmu() -> None:
