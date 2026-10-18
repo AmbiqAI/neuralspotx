@@ -1,5 +1,36 @@
 # Changelog
 
+## [0.9.0](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.8.1...neuralspotx-v0.9.0) (2026-10-18)
+
+
+### ⚠ BREAKING CHANGES
+
+* **registry:** move ns-cmsis-nn to v7.46.0 and helia-rt to v2.1.0 ([#283](https://github.com/AmbiqAI/neuralspotx/issues/283))
+
+### Features
+
+* **registry:** move every SoC family to nsx-ambiq-sdk 5.2.26; build examples with ATfE in CI ([#286](https://github.com/AmbiqAI/neuralspotx/issues/286)) ([1e3b2ef](https://github.com/AmbiqAI/neuralspotx/commit/1e3b2efe853097d3465d50b1c89f65f7260a3e3f))
+* **registry:** move ns-cmsis-nn to v7.46.0 and helia-rt to v2.1.0 ([#283](https://github.com/AmbiqAI/neuralspotx/issues/283)) ([fca324e](https://github.com/AmbiqAI/neuralspotx/commit/fca324e600a4b55026a8bda13604490e2cd521fd))
+* **registry:** promote helia-dsp to v1.1.1 ([#252](https://github.com/AmbiqAI/neuralspotx/issues/252)) ([fe1bf7a](https://github.com/AmbiqAI/neuralspotx/commit/fe1bf7a95d394b70b73f624a60e0a4d56ba6987f))
+
+
+### Bug Fixes
+
+* **boards:** declare ATfE for the apollo4l boards ([#254](https://github.com/AmbiqAI/neuralspotx/issues/254)) ([7f5a39e](https://github.com/AmbiqAI/neuralspotx/commit/7f5a39e997a832ffb4b3e9d5f1e8ae1b0010b287))
+* **registry:** move helia-rt and helia-rt-source to helia-rt-v2.1.1 ([#285](https://github.com/AmbiqAI/neuralspotx/issues/285)) ([3cb0c62](https://github.com/AmbiqAI/neuralspotx/commit/3cb0c623eb75bf6f288258a487f998a6cc8d87cc))
+* **resolve:** order present optional dependencies before their dependents ([#282](https://github.com/AmbiqAI/neuralspotx/issues/282)) ([d18b49e](https://github.com/AmbiqAI/neuralspotx/commit/d18b49e208db6804a9d2013ea2a4ab91985f56c0))
+
+
+### Documentation
+
+* align landing hero product branding ([#281](https://github.com/AmbiqAI/neuralspotx/issues/281)) ([72a1501](https://github.com/AmbiqAI/neuralspotx/commit/72a1501a1ba0b17584dc2f9de1aa438f34c269a7))
+* cut over the documentation site to Astro and helia-ui ([#272](https://github.com/AmbiqAI/neuralspotx/issues/272)) ([6afb7d2](https://github.com/AmbiqAI/neuralspotx/commit/6afb7d2ce8731bab2bc6c341c69f3d81610665c5))
+* polish NSX landing page and documentation navigation ([b930d59](https://github.com/AmbiqAI/neuralspotx/commit/b930d59a0d6111361b355218f104dea35ff34da5))
+* **reference:** generate the Python API, CLI and configuration reference ([#264](https://github.com/AmbiqAI/neuralspotx/issues/264)) ([ce05320](https://github.com/AmbiqAI/neuralspotx/commit/ce053204082469f407c2cdb0b7526e1f6d4e254a))
+* **site:** scaffold the Astro and helia-ui docs site ([#262](https://github.com/AmbiqAI/neuralspotx/issues/262)) ([518b2b4](https://github.com/AmbiqAI/neuralspotx/commit/518b2b454e5574f616dfc439022f9fba26ed6875))
+* use official Ambiq footer artwork ([#278](https://github.com/AmbiqAI/neuralspotx/issues/278)) ([a99ff15](https://github.com/AmbiqAI/neuralspotx/commit/a99ff151fb878f867cba5f51370279ab9aff30bb))
+* use official product marks in the landing hero ([#280](https://github.com/AmbiqAI/neuralspotx/issues/280)) ([ea93fdf](https://github.com/AmbiqAI/neuralspotx/commit/ea93fdf2e2fac0478d0761551904d2ceafc91c3d))
+
 ## [0.8.1](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.8.0...neuralspotx-v0.8.1) (2026-09-08)
 
 
