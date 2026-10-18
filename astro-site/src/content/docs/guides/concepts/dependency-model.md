@@ -29,6 +29,18 @@ work alongside. Nothing installs them.
 This is worth knowing because a module can look like it should have pulled something in
 and not pulled it in. If you want an optional dependency, declare it yourself.
 
+Once you have, the optional edge does matter for order. NSX adds modules to the CMake build
+in closure order, and a present optional dependency is placed before the module that lists
+it, so that module's CMake can test for the dependency's target. Required dependencies
+always come first: if honoring an optional edge would contradict them, that edge is ignored
+for ordering.
+
+Two limits apply. NSX reads optional dependencies only from modules it has metadata for, so
+a local or vendored module's own optional dependencies do not affect the order (it is still
+moved earlier when a registry module lists it as optional). And the order is recorded in
+`nsx.lock`: an app locked by an earlier NSX keeps its old order, and `nsx lock --check`
+does not flag the difference, until you run `nsx lock` again.
+
 ## The closure lives only in the lock
 
 `nsx.yml` never grows to include transitive dependencies. It stays the list of things you

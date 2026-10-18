@@ -137,6 +137,8 @@ def _resolve_module_closure_inner(
     for seed in seed_modules:
         dfs(seed)
 
+    resolved = _order_with_present_optional_deps(resolved, metadata_cache)
+
     for module_name, module_meta in metadata_cache.items():
         _validate_board_module_dep_policy(module_name, module_meta, metadata_cache)
         _validate_sdk_provider_policy(module_name, module_meta, metadata_cache)
@@ -150,6 +152,80 @@ def _resolve_module_closure_inner(
         )
 
     return resolved
+
+
+def _order_with_present_optional_deps(
+    resolved: list[str],
+    metadata_cache: dict[str, ModuleMetadata],
+) -> list[str]:
+    """Reorder *resolved* so a present optional dependency precedes its dependent.
+
+    Optional deps never pull a module into the closure, but when the app adds
+    one anyway the dependent's CMake usually tests for its target (e.g.
+    ``nsx-tflite-micro`` looking for ``nsx::arm_cmsis_nn``), so it must be
+    added first. Required cycles were already rejected by the closure walk, so
+    required edges are hard constraints. Optional edges are accepted in closure
+    order, each only if it cannot form a cycle with the edges accepted before
+    it; a rejected optional edge leaves the order to the required edges.
+    """
+
+    present = set(resolved)
+    # Edges point from a module to the modules that must precede it.
+    edges: dict[str, list[str]] = {}
+    for module_name in resolved:
+        module_meta = metadata_cache.get(module_name)
+        edges[module_name] = (
+            [dep for dep in module_meta.required_deps if dep in present]
+            if module_meta is not None
+            else []
+        )
+
+    def must_follow(module_name: str, target: str) -> bool:
+        """Whether accepted edges already place *module_name* after *target*."""
+        stack = [module_name]
+        seen: set[str] = set()
+        while stack:
+            current = stack.pop()
+            if current == target:
+                return True
+            if current in seen:
+                continue
+            seen.add(current)
+            stack.extend(edges[current])
+        return False
+
+    for module_name in resolved:
+        module_meta = metadata_cache.get(module_name)
+        if module_meta is None:
+            continue
+        for dep_name in module_meta.optional_deps:
+            if (
+                dep_name in present
+                and dep_name not in edges[module_name]
+                and not must_follow(dep_name, module_name)
+            ):
+                edges[module_name].append(dep_name)
+
+    ordered: list[str] = []
+    done: set[str] = set()
+    active: set[str] = set()
+
+    def visit(module_name: str) -> None:
+        if module_name in done:
+            return
+        if module_name in active:
+            # Unreachable: every accepted edge was checked against the graph.
+            raise NSXModuleError(f"Dependency cycle detected at module '{module_name}'")
+        active.add(module_name)
+        for dep_name in edges[module_name]:
+            visit(dep_name)
+        active.remove(module_name)
+        done.add(module_name)
+        ordered.append(module_name)
+
+    for module_name in resolved:
+        visit(module_name)
+    return ordered
 
 
 def _module_dependents(
