@@ -1328,3 +1328,54 @@ def test_view_stops_a_running_viewer_when_an_unexpected_error_escapes(
     assert [c.terminated for c in _RecordingContainer.instances] == [[4321]]
     if sys.platform.startswith("linux"):
         assert popen_kwargs["preexec_fn"] is not None
+
+
+def test_view_teardown_finishes_and_closes_handles_when_a_signal_lands_mid_teardown(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A SIGTERM during the viewer's grace wait is held until teardown ends (#293)."""
+
+    import os
+    import signal
+    import time
+
+    from neuralspotx.subprocess_utils import TerminatedBySignal, terminate_on_signals
+
+    if os.name == "nt":
+        pytest.skip("POSIX signals")
+    app_dir = _view_ready_app(tmp_path, monkeypatch, "hello_view_teardown")
+
+    class _SignalledContainer(_RecordingContainer):
+        closed = False
+        started = 0
+
+        def terminate(self, proc: object) -> None:
+            self.started += 1
+            os.kill(os.getpid(), signal.SIGTERM)  # lands during the grace wait
+            time.sleep(0.2)
+            super().terminate(proc)
+
+        def close(self) -> None:
+            self.closed = True
+
+    class _Running:
+        pid = 5150
+
+        def poll(self) -> None:
+            return None
+
+        def wait(self, timeout: float | None = None) -> int:
+            raise subprocess.TimeoutExpired("viewer", timeout or 0)
+
+    monkeypatch.setattr(operations._build, "_ProcessContainer", _SignalledContainer)
+    monkeypatch.setattr(operations._build.subprocess, "Popen", lambda *a, **k: _Running())
+
+    with pytest.raises(TerminatedBySignal), terminate_on_signals():
+        view_app(AppViewRequest(app_dir=app_dir, reset_on_open=False, duration_s=0.01))
+
+    container = _RecordingContainer.instances[-1]
+    assert isinstance(container, _SignalledContainer)
+    # Every teardown that started ran to the end: none was cut off mid-wait.
+    assert container.started == len(container.terminated) >= 1
+    assert container.terminated[-1] == 5150
+    assert container.closed

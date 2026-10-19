@@ -48,6 +48,7 @@ from ._git import (
 )
 from ._runner import (
     _ProcessContainer,
+    allow_child_starts,
     format_subprocess_error,
     jlink_failure_hint,
     print_captured_output,
@@ -129,6 +130,7 @@ def extract_view_command(build_dir: Path, target: str) -> list[str]:
 __all__ = [
     "GIT_PROTOCOL_ALLOWLIST_FLAGS",
     "TerminatedBySignal",
+    "allow_child_starts",
     "defer_termination",
     "die_with_parent_preexec",
     "extract_view_command",

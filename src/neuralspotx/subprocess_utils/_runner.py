@@ -58,6 +58,16 @@ def _untrack(proc: subprocess.Popen) -> None:
         _LIVE.pop(id(proc), None)
 
 
+def allow_child_starts() -> None:
+    """Clear the shutdown state left by :func:`terminate_live_children`.
+
+    A real ``nsx`` process exits right after an interrupt; a process that
+    embeds the CLI and calls it again must not inherit the refusal.
+    """
+
+    _SHUTTING_DOWN.clear()
+
+
 def terminate_live_children() -> None:
     """Stop every child tree started by :func:`run`/:func:`run_capture` that is still running.
 

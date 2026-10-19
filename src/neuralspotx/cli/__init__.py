@@ -34,6 +34,7 @@ from ..models import CommandCategory, CommandHint, CommandScope, OutdatedReport
 from ..project_config import resolve_app_dir
 from ..subprocess_utils import (
     TerminatedBySignal,
+    allow_child_starts,
     format_subprocess_error,
     terminate_live_children,
     terminate_on_signals,
@@ -1408,6 +1409,9 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     configure_logging(args.verbose, quiet=args.quiet)
     operations.set_verbosity(args.verbose)
+    # Each invocation starts able to spawn children, even in a process that
+    # embeds the CLI and was interrupted before.
+    allow_child_starts()
     try:
         # SIGTERM/SIGHUP raise TerminatedBySignal (a KeyboardInterrupt), so
         # child processes are stopped exactly as they are on Ctrl-C.

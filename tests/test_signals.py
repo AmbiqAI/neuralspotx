@@ -621,3 +621,63 @@ def test_handlers_are_restored_when_a_signal_lands_during_installation(
     monkeypatch.undo()
 
     assert {s: signal.getsignal(s) for s in before} == before
+
+
+def test_no_child_is_even_spawned_once_nsx_is_shutting_down(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from neuralspotx.subprocess_utils import _runner, run, terminate_live_children
+    from neuralspotx.subprocess_utils._runner import ChildStartRefused
+
+    spawned: list[object] = []
+    monkeypatch.setattr(
+        _runner.subprocess,
+        "Popen",
+        lambda *a, **k: spawned.append(a),  # noqa: ARG005
+    )
+    terminate_live_children()
+
+    with pytest.raises(ChildStartRefused):
+        run([sys.executable, "-c", "pass"])
+    assert spawned == []
+
+
+def test_git_retry_rechecks_shutdown_after_the_backoff(
+    fresh_shutdown_flag: object, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import threading
+
+    from neuralspotx.subprocess_utils import _git
+
+    assert isinstance(fresh_shutdown_flag, threading.Event)
+    # Shutdown begins while the worker is sleeping between attempts.
+    monkeypatch.setattr(_git, "_sleep", lambda _delay: fresh_shutdown_flag.set())
+    calls = 0
+
+    def _flaky_git() -> None:
+        nonlocal calls
+        calls += 1
+        raise subprocess.CalledProcessError(128, ["git", "fetch"], output="", stderr="")
+
+    with pytest.raises(subprocess.CalledProcessError):
+        _git._git_network_retry(_flaky_git, label="git fetch")
+    assert calls == 1
+
+
+@posix_only
+def test_cli_call_starts_with_child_starts_allowed(monkeypatch: pytest.MonkeyPatch) -> None:
+    """An embedded CLI interrupted once must not refuse children on its next call."""
+
+    from neuralspotx.subprocess_utils import _runner, run, terminate_live_children
+
+    terminate_live_children()
+    ran: list[str] = []
+
+    def _doctor(_args: object) -> None:
+        run([sys.executable, "-c", "pass"])
+        ran.append("ok")
+
+    monkeypatch.setattr(cli, "cmd_doctor", _doctor)
+    assert cli.main(["doctor"]) == 0
+    assert ran == ["ok"]
+    assert not _runner._SHUTTING_DOWN.is_set()
