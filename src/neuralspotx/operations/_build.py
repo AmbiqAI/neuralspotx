@@ -689,7 +689,10 @@ def view_app_impl(
         # Otherwise it keeps running detached and holds the SEGGER debug
         # interface, blocking later ``nsx flash``/``view`` on every board.
         if viewer_proc is not None:
-            _terminate_viewer(viewer_proc)
+            # Deferred, so a signal during the grace wait cannot cut off the
+            # escalation to SIGKILL.
+            with defer_termination():
+                _terminate_viewer(viewer_proc)
         container.close()
         if capture_file is not None:
             capture_file.close()

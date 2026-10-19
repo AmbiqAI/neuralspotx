@@ -111,10 +111,17 @@ class _Child:
         self.proc: subprocess.Popen | None = None
 
     def stop(self) -> None:
-        """Kill the child's process tree if it was started."""
+        """Kill the child's process tree if it was started.
+
+        Runs with interrupts deferred: a signal arriving during the grace
+        wait would otherwise cut off the escalation to SIGKILL, leaving a
+        child that ignores SIGTERM running and, after ``release()``,
+        unregistered.
+        """
 
         if self.proc is not None:
-            self.container.terminate(self.proc)
+            with defer_termination():
+                self.container.terminate(self.proc)
 
     def release(self) -> None:
         """Unregister the child and release its container."""

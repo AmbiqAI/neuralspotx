@@ -496,3 +496,59 @@ def test_cleanup_kills_a_grandchild_that_ignores_sigterm_and_holds_the_pipe(
             os.kill(grandchild, signal.SIGKILL)
         except ProcessLookupError:
             pass
+
+
+@posix_only
+def test_ctrl_c_after_sigterm_does_not_cut_cleanup_short() -> None:
+    cleaned = False
+    with pytest.raises(TerminatedBySignal), terminate_on_signals():
+        try:
+            os.kill(os.getpid(), signal.SIGTERM)
+            time.sleep(5)
+        finally:
+            os.kill(os.getpid(), signal.SIGINT)
+            time.sleep(0.2)
+            cleaned = True
+    assert cleaned
+
+
+_IGNORES_SIGTERM = (
+    "import signal, time; signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(60)"
+)
+
+
+@posix_only
+@pytest.mark.parametrize("runner", ["run", "run_capture"])
+def test_signal_during_timeout_cleanup_still_kills_a_stubborn_child(
+    runner: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A SIGTERM during the grace wait must not stop the escalation to SIGKILL."""
+
+    import threading
+
+    from neuralspotx import subprocess_utils
+    from neuralspotx.subprocess_utils import _runner
+
+    started: list[subprocess.Popen] = []
+    real_popen = _runner._popen
+
+    def _recording_popen(cmd: list[str], **kwargs: object) -> subprocess.Popen:
+        proc = real_popen(cmd, **kwargs)
+        started.append(proc)
+        return proc
+
+    monkeypatch.setattr(_runner, "_popen", _recording_popen)
+    # The child times out at 0.5 s; cleanup then waits up to 2 s before SIGKILL.
+    # This SIGTERM lands in that grace wait.
+    timer = threading.Timer(1.2, os.kill, args=(os.getpid(), signal.SIGTERM))
+    try:
+        with pytest.raises(TerminatedBySignal), terminate_on_signals():
+            timer.start()
+            getattr(subprocess_utils, runner)([sys.executable, "-c", _IGNORES_SIGTERM], timeout=0.5)
+        assert started[0].wait(timeout=10) is not None
+        assert id(started[0]) not in _runner._LIVE
+    finally:
+        timer.cancel()
+        for proc in started:
+            if proc.poll() is None:
+                proc.kill()

@@ -32,6 +32,10 @@ from types import FrameType
 # POSIX signals that should stop ``nsx`` and its children. SIGINT already
 # raises KeyboardInterrupt by default.
 _TERMINATION_SIGNALS: tuple[str, ...] = ("SIGTERM", "SIGHUP")
+# Every signal terminate_on_signals() handles. SIGINT keeps raising a plain
+# KeyboardInterrupt, but goes through the same deferral and, once any of
+# them arrives, all are ignored until cleanup ends.
+_HANDLED_SIGNALS: tuple[str, ...] = ("SIGINT", *_TERMINATION_SIGNALS)
 
 # ``prctl(PR_SET_PDEATHSIG, sig)`` from <linux/prctl.h>.
 _PR_SET_PDEATHSIG = 1
@@ -69,12 +73,13 @@ _PENDING: int | None = None
 
 @contextmanager
 def defer_termination() -> Iterator[None]:
-    """Hold a SIGTERM/SIGHUP until the block ends, then raise it.
+    """Hold an interrupt (SIGINT, SIGTERM, SIGHUP) until the block ends, then raise it.
 
-    Wrap the spawn-and-register step of a child process: a signal that
-    lands between the child starting and its registration would otherwise
-    raise with the child not yet reachable by any cleanup. A no-op outside
-    the main thread, where signals are never raised.
+    Wrap steps that must not be cut short: starting and registering a
+    child (otherwise it could start unreachable by any cleanup) and
+    stopping one (otherwise a child that ignores SIGTERM could survive the
+    escalation to SIGKILL). Takes effect under :func:`terminate_on_signals`;
+    a no-op outside the main thread, where signals are never raised.
     """
 
     global _DEFER_DEPTH, _PENDING
@@ -88,21 +93,28 @@ def defer_termination() -> Iterator[None]:
         _DEFER_DEPTH -= 1
         if _DEFER_DEPTH == 0 and _PENDING is not None:
             signum, _PENDING = _PENDING, None
-            raise TerminatedBySignal(signum)
+            raise _interrupt_for(signum)
+
+
+def _interrupt_for(signum: int) -> KeyboardInterrupt:
+    if signum == signal.SIGINT:
+        return KeyboardInterrupt()
+    return TerminatedBySignal(signum)
 
 
 def _installed_signals() -> list[int]:
-    return [s for name in _TERMINATION_SIGNALS if (s := getattr(signal, name, None)) is not None]
+    return [s for name in _HANDLED_SIGNALS if (s := getattr(signal, name, None)) is not None]
 
 
 @contextmanager
 def terminate_on_signals() -> Iterator[None]:
     """Raise :class:`TerminatedBySignal` on SIGTERM/SIGHUP inside the block.
 
-    A signal whose inherited disposition is "ignore" (for example SIGHUP
-    under ``nohup``) is left ignored. After the first signal the others
-    are ignored too, so cleanup — stopping child processes — runs to the
-    end; SIGKILL still works. A no-op on Windows and outside the main
+    SIGINT still raises a plain ``KeyboardInterrupt``. A signal whose
+    inherited disposition is "ignore" (for example SIGHUP under ``nohup``)
+    is left ignored. After the first of these signals all of them are
+    ignored, so cleanup — stopping child processes — runs to the end;
+    SIGKILL still works. A no-op on Windows and outside the main
     thread (signal handlers can only be installed there). Previous
     handlers are restored on exit.
     """
@@ -120,7 +132,7 @@ def terminate_on_signals() -> Iterator[None]:
         if _DEFER_DEPTH:
             _PENDING = signum
             return
-        raise TerminatedBySignal(signum)
+        raise _interrupt_for(signum)
 
     for signum in _installed_signals():
         current = signal.getsignal(signum)
