@@ -153,22 +153,7 @@ def test_cli_exits_130_on_ctrl_c_without_a_traceback(
     assert "interrupted by Ctrl-C" in capsys.readouterr().err
 
 
-@pytest.fixture
-def fresh_shutdown_flag(monkeypatch: pytest.MonkeyPatch) -> object:
-    """terminate_live_children() sets a process-wide flag; keep it per test."""
-
-    import threading
-
-    from neuralspotx.subprocess_utils import _git, _runner
-
-    flag = threading.Event()
-    monkeypatch.setattr(_runner, "_SHUTTING_DOWN", flag)
-    monkeypatch.setattr(_git, "_SHUTTING_DOWN", flag)
-    return flag
-
-
 @posix_only
-@pytest.mark.usefixtures("fresh_shutdown_flag")
 def test_terminate_live_children_stops_a_worker_threads_child() -> None:
     import threading
 
@@ -237,7 +222,6 @@ def test_attach_does_not_raise_when_the_job_object_cannot_be_used(
     assert closed == [7]
 
 
-@pytest.mark.usefixtures("fresh_shutdown_flag")
 def test_no_child_starts_once_nsx_is_shutting_down() -> None:
     from neuralspotx.subprocess_utils import run, run_capture, terminate_live_children
     from neuralspotx.subprocess_utils._runner import ChildStartRefused
