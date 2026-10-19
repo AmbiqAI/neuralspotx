@@ -341,7 +341,8 @@ def _sync_local_entry(
         )
 
         # Mirror is already in sync with current source: skip.
-        if not ctx.force and on_disk_hash == source_hash:
+        # --frozen never re-mirrors a matching tree, even with --force.
+        if on_disk_hash == source_hash and (ctx.frozen or not ctx.force):
             vendored_paths.add(vendored_dir)
             return board_overlay_changed
 
@@ -405,7 +406,8 @@ def _sync_local_board_overlay(
     destination_hash = hash_tree(destination) if destination.exists() else None
     if destination_hash == source_hash:
         return 0
-    if ctx.frozen:
+    # A missing overlay is created even under --frozen; one that differs is not.
+    if ctx.frozen and destination_hash is not None:
         raise NSXIntegrityError(
             f"Local board module '{name}' at {destination.relative_to(ctx.app_dir)} "
             f"does not match source {source_board_dir}. Refusing under --frozen.",

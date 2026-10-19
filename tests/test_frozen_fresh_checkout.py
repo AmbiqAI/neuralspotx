@@ -24,6 +24,7 @@ from neuralspotx.nsx_lock import (
 from neuralspotx.operations import _sync
 from neuralspotx.operations._sync import (
     _sync_fetchable_entry,
+    _sync_local_board_overlay,
     _sync_local_entry,
     _SyncContext,
     _verify_packaged_cmake_tree,
@@ -458,3 +459,64 @@ def test_frozen_refuses_a_local_mirror_that_differs(
     with pytest.raises(NSXModuleError, match="Refusing under --frozen"):
         _sync_local_entry(ctx, "demo-local", entry, mirror, set())
     assert calls == []
+
+
+def test_frozen_with_force_leaves_a_matching_local_mirror_alone(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    source, mirror, entry, ctx = _local_setup(tmp_path)
+    _write_tree(mirror, (source / "src.c").read_text(encoding="utf-8"))
+    ctx = _SyncContext(
+        app_dir=ctx.app_dir,
+        registry=ctx.registry,
+        cmake_nsx=ctx.cmake_nsx,
+        frozen=True,
+        force=True,
+    )
+    calls: list[str] = []
+    monkeypatch.setattr(
+        module_registry,
+        "_vendor_local_module_into_app",
+        lambda app_dir, name, registry: calls.append(name),  # noqa: ARG005
+    )
+
+    assert _sync_local_entry(ctx, "demo-local", entry, mirror, set()) == 0
+    assert calls == []
+
+
+def _overlay_ctx(tmp_path: Path) -> tuple[_SyncContext, Path, Path]:
+    app_dir = tmp_path / "app"
+    source = tmp_path / "board-src"
+    _write_tree(source / "boards" / "demo_evb", "board files")
+    ctx = _SyncContext(
+        app_dir=app_dir,
+        registry={
+            "modules": {
+                "nsx-board-demo": {
+                    "project": "demo-boards",
+                    "revision": "local",
+                    "metadata": "boards/demo_evb/nsx-module.yaml",
+                }
+            }
+        },
+        cmake_nsx=app_dir / "cmake" / "nsx",
+        frozen=True,
+        force=False,
+    )
+    return ctx, source, app_dir / "boards" / "demo_evb"
+
+
+def test_frozen_creates_a_missing_local_board_overlay(tmp_path: Path) -> None:
+    ctx, source, destination = _overlay_ctx(tmp_path)
+
+    assert _sync_local_board_overlay(ctx, "nsx-board-demo", source, None) == 1
+    assert hash_tree(destination) == hash_tree(source / "boards" / "demo_evb")
+
+
+def test_frozen_refuses_a_local_board_overlay_that_differs(tmp_path: Path) -> None:
+    ctx, source, destination = _overlay_ctx(tmp_path)
+    _write_tree(destination, "edited board")
+
+    with pytest.raises(NSXIntegrityError, match="Refusing under --frozen"):
+        _sync_local_board_overlay(ctx, "nsx-board-demo", source, None)
+    assert (destination / "src.c").read_text(encoding="utf-8") == "edited board"

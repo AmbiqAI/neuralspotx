@@ -67,7 +67,9 @@ class AppActionRequest:
         frozen: When a module sync is needed (fresh workspace, or an
             existing build directory reconfiguring), verify ``modules/``
             against ``nsx.lock`` and raise instead of silently
-            re-vendoring on any drift. Mirrors ``AppSyncRequest.frozen``.
+            re-vendoring on any drift; modules missing from disk are
+            fetched at their locked revision and verified. Mirrors
+            ``AppSyncRequest.frozen``.
             Use this to iterate on a hand-patched vendored module
             without ``configure``/``build``/``flash`` silently reverting
             it on the next run.
