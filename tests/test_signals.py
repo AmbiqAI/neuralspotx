@@ -153,7 +153,22 @@ def test_cli_exits_130_on_ctrl_c_without_a_traceback(
     assert "interrupted by Ctrl-C" in capsys.readouterr().err
 
 
+@pytest.fixture
+def fresh_shutdown_flag(monkeypatch: pytest.MonkeyPatch) -> object:
+    """terminate_live_children() sets a process-wide flag; keep it per test."""
+
+    import threading
+
+    from neuralspotx.subprocess_utils import _git, _runner
+
+    flag = threading.Event()
+    monkeypatch.setattr(_runner, "_SHUTTING_DOWN", flag)
+    monkeypatch.setattr(_git, "_SHUTTING_DOWN", flag)
+    return flag
+
+
 @posix_only
+@pytest.mark.usefixtures("fresh_shutdown_flag")
 def test_terminate_live_children_stops_a_worker_threads_child() -> None:
     import threading
 
@@ -220,3 +235,43 @@ def test_attach_does_not_raise_when_the_job_object_cannot_be_used(
 
     container.attach(_NoHandle())  # ty: ignore[invalid-argument-type]  # deliberate stand-in without _handle
     assert closed == [7]
+
+
+@pytest.mark.usefixtures("fresh_shutdown_flag")
+def test_no_child_starts_once_nsx_is_shutting_down() -> None:
+    from neuralspotx.subprocess_utils import run, run_capture, terminate_live_children
+    from neuralspotx.subprocess_utils._runner import ChildStartRefused
+
+    terminate_live_children()
+
+    with pytest.raises(ChildStartRefused):
+        run([sys.executable, "-c", "pass"])
+    with pytest.raises(ChildStartRefused):
+        run_capture([sys.executable, "-c", "pass"])
+
+
+def test_git_retry_stops_once_nsx_is_shutting_down(
+    fresh_shutdown_flag: object, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import threading
+
+    from neuralspotx.subprocess_utils import _git
+
+    assert isinstance(fresh_shutdown_flag, threading.Event)
+    slept: list[float] = []
+    monkeypatch.setattr(_git, "_sleep", slept.append)
+    calls = 0
+
+    def _killed_git() -> None:
+        nonlocal calls
+        calls += 1
+        # A git child stopped by the cleanup: non-zero exit, no output,
+        # which the retry logic would otherwise treat as transient.
+        fresh_shutdown_flag.set()
+        raise subprocess.CalledProcessError(-15, ["git", "fetch"], output="", stderr="")
+
+    with pytest.raises(subprocess.CalledProcessError):
+        _git._git_network_retry(_killed_git, label="git fetch")
+
+    assert calls == 1
+    assert slept == []

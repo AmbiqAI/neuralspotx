@@ -21,6 +21,17 @@ from ._winjob import _ProcessContainer
 # children (parallel git) are stopped through this registry.
 _LIVE_LOCK = threading.Lock()
 _LIVE: dict[int, tuple[_ProcessContainer, subprocess.Popen]] = {}
+# Set by terminate_live_children(): nsx is exiting, so no new child may
+# start (a worker's git retry would otherwise outlive the cleanup).
+_SHUTTING_DOWN = threading.Event()
+
+
+class ChildStartRefused(KeyboardInterrupt):
+    """Raised instead of starting a child once nsx is shutting down.
+
+    A ``KeyboardInterrupt`` so retry loops that catch only subprocess
+    errors let it through.
+    """
 
 
 def _track(container: _ProcessContainer, proc: subprocess.Popen) -> None:
@@ -34,9 +45,14 @@ def _untrack(proc: subprocess.Popen) -> None:
 
 
 def terminate_live_children() -> None:
-    """Stop every child tree started by :func:`run`/:func:`run_capture` that is still running."""
+    """Stop every child tree started by :func:`run`/:func:`run_capture` that is still running.
+
+    Also refuses any later start (see :class:`ChildStartRefused`): this is
+    called when nsx is exiting on an interrupt.
+    """
 
     with _LIVE_LOCK:
+        _SHUTTING_DOWN.set()
         live = list(_LIVE.values())
     for container, proc in live:
         container.terminate(proc)
@@ -53,6 +69,8 @@ def _popen(cmd: list[str], **kwargs: Any) -> subprocess.Popen:
     raised as :class:`subprocess.CalledProcessError` by the callers.
     """
 
+    if _SHUTTING_DOWN.is_set():
+        raise ChildStartRefused(f"nsx is shutting down; not starting {cmd[0]!r}")
     try:
         return subprocess.Popen(cmd, **kwargs)
     except FileNotFoundError as exc:

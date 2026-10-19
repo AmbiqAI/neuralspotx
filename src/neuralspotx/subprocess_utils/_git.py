@@ -15,6 +15,8 @@ import sys
 import time
 from pathlib import Path
 
+from ._runner import _SHUTTING_DOWN
+
 _log = logging.getLogger(__name__)
 
 
@@ -399,7 +401,9 @@ def _git_network_retry(operation, *, label, before_retry=None):
         try:
             return operation()
         except (subprocess.CalledProcessError, subprocess.TimeoutExpired) as exc:
-            if attempt >= attempts or not _is_transient_git_error(exc):
+            if attempt >= attempts or not _is_transient_git_error(exc) or _SHUTTING_DOWN.is_set():
+                # Also no retry once nsx is shutting down: the child was
+                # stopped on purpose.
                 raise
             # Exponential backoff, capped at ``max_delay`` so many repos
             # (or a high NSX_GIT_RETRIES) can't stack into long stalls,
