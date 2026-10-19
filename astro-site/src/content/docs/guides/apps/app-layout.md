@@ -94,8 +94,9 @@ and a `cmake/.gitignore` covering `cmake/nsx/`.
 it tracked.
 
 :::tip[Checking a clone builds the same thing]
-`nsx sync --frozen` fails rather than correcting when `modules/` does not match `nsx.lock`,
-and `nsx lock --check` reports manifest drift without writing. Together they are the CI
+`nsx sync --frozen` fails rather than correcting when `modules/` does not match `nsx.lock`.
+On a fresh clone it fetches the missing modules at their locked revisions and fails if any
+differs from the lock. `nsx lock --check` reports manifest drift without writing. Together they are the CI
 check that a tree has not quietly moved. See
 [Lock and sync](/neuralspotx/guides/modules/lock-and-sync/).
 :::

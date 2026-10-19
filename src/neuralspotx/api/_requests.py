@@ -67,7 +67,9 @@ class AppActionRequest:
         frozen: When a module sync is needed (fresh workspace, or an
             existing build directory reconfiguring), verify ``modules/``
             against ``nsx.lock`` and raise instead of silently
-            re-vendoring on any drift. Mirrors ``AppSyncRequest.frozen``.
+            re-vendoring on any drift; modules missing from disk are
+            fetched at their locked revision and verified. Mirrors
+            ``AppSyncRequest.frozen``.
             Use this to iterate on a hand-patched vendored module
             without ``configure``/``build``/``flash`` silently reverting
             it on the next run.
@@ -174,7 +176,10 @@ class AppSyncRequest:
 
     Attributes:
         app_dir: App directory containing ``nsx.lock``.
-        frozen: Read-only mode — verify content hashes, do not modify.
+        frozen: Never modify a vendored tree — verify content hashes and
+            fail on drift. Modules missing from disk are still fetched
+            (over the network for git modules) at their locked revision
+            and must match the lock exactly.
         force: Re-vendor every module even if content_hash matches.
         timeout_s: Per-subprocess wall-clock budget (seconds).  Applied
             to every individual ``git clone`` / ``git fetch`` invoked

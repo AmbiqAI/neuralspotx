@@ -87,9 +87,8 @@ def _check_example_boards(example_dir: Path) -> list[str]:
     Examples only vendor the board(s) they build, so this does not require
     every canonical board to be present — it only verifies that whatever a
     given example DID vendor still matches ``src/neuralspotx/boards/``. Only
-    files actually present in the vendored board dir are compared, so the
-    intentionally git-ignored ``board.yaml`` (regenerated on sync) does not
-    have to exist on a clean checkout.
+    files actually present in the vendored board dir are compared, so a
+    board dir that omits a file (such as ``board.yaml``) still passes.
     """
 
     boards_root = example_dir / "boards"

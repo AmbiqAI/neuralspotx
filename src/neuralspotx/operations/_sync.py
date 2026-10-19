@@ -2,7 +2,10 @@
 
 from __future__ import annotations
 
+import re
 import shutil
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -12,10 +15,11 @@ from .._io import info
 from .._logging import get_logger
 from ..file_lock import app_lock
 from ..models import AppConfig
-from ..module_registry import _update_module_clone, expand_profile_seeds
+from ..module_registry import _rmtree, _update_module_clone, expand_profile_seeds
 from ..nsx_lock import (
     NSX_TOOLING_AUTOGEN_FILES,
     LockKind,
+    NsxLock,
     ResolvedModule,
     hash_manifest,
     hash_tree,
@@ -72,10 +76,11 @@ def _ensure_app_modules(app_dir: Path, board: str | None = None, *, frozen: bool
 
     Args:
         frozen: Verify ``modules/`` against ``nsx.lock`` and raise on any
-            drift instead of silently re-vendoring. Threaded through from
-            ``configure_app``/``build_app``/``flash_app`` so a hand-patched
-            vendored module is never overwritten by an implicit
-            reconfigure — the caller finds out immediately instead.
+            drift instead of silently re-vendoring; missing modules are
+            still fetched at their locked revision and verified. Threaded
+            through from ``configure_app``/``build_app``/``flash_app`` so a
+            hand-patched vendored module is never overwritten by an
+            implicit reconfigure — the caller finds out immediately instead.
     """
 
     sync_app_impl(app_dir, board=board, frozen=frozen)
@@ -131,19 +136,49 @@ def sync_app_impl(
     upstream would produce, nothing is written.
 
     Args:
-        frozen: Read-only mode. Verify that the on-disk vendored tree
-            matches each lock entry's ``content_hash`` and raise
+        frozen: Never modify a vendored tree. Verify that each one on
+            disk matches its lock entry's ``content_hash`` and raise
             :class:`NSXError` on any mismatch instead of correcting it.
-            Also raises if ``nsx.yml`` has changed since ``nsx.lock``
-            was written (manifest-hash drift). This does NOT detect
-            upstream drift on its own — ``nsx outdated`` is the tool
-            for comparing the lock against current upstream HEADs.
+            A fetchable module missing from disk (a fresh checkout) is
+            fetched at its locked revision and must match the lock
+            exactly. Also raises if ``nsx.yml`` has changed since
+            ``nsx.lock`` was written (manifest-hash drift). This does NOT
+            detect upstream drift of present modules — ``nsx outdated``
+            is the tool for comparing the lock against current upstream
+            HEADs.
         force: Re-vendor every fetchable module even if its on-disk
             tree already matches the locked content_hash.
     """
 
     with app_lock(app_dir):
         _sync_app_impl_unlocked(app_dir, board=board, frozen=frozen, force=force)
+
+
+# A git object id: SHA-1 (40 hex) or SHA-256 (64 hex).
+_FULL_SHA = re.compile(r"[0-9a-f]{40}(?:[0-9a-f]{24})?")
+
+
+def _is_absent(path: Path) -> bool:
+    """A missing or empty directory holds nothing that sync must protect."""
+
+    return not path.exists() or (path.is_dir() and not any(path.iterdir()))
+
+
+@contextmanager
+def _remove_on_failure(path: Path, *, created: bool) -> Iterator[None]:
+    """Remove ``path`` if the body fails and this sync created it.
+
+    A write that fails or is interrupted part way leaves a partial tree;
+    removing it lets the next run write it again instead of refusing it as
+    a local change. A tree that existed before is never removed.
+    """
+
+    try:
+        yield
+    except BaseException:
+        if created and path.exists():
+            _rmtree(path)
+        raise
 
 
 @dataclass(frozen=True, slots=True)
@@ -331,17 +366,22 @@ def _sync_local_entry(
         )
 
         # Mirror is already in sync with current source: skip.
-        if not ctx.force and on_disk_hash == source_hash:
+        # --frozen never re-mirrors a matching tree, even with --force.
+        if on_disk_hash == source_hash and (ctx.frozen or not ctx.force):
             vendored_paths.add(vendored_dir)
             return board_overlay_changed
 
-        if ctx.frozen:
+        # Under --frozen a missing mirror is created (the source already
+        # matched the lock above); an existing one that differs is refused.
+        mirror_absent = _is_absent(vendored_dir)
+        if ctx.frozen and not mirror_absent:
             raise NSXModuleError(
                 f"Local module '{name}' mirror at {entry.vendored_at} "
                 f"does not match source {source_dir}. Refusing under "
                 "--frozen."
             )
-        _vendor_local_module_into_app(ctx.app_dir, name, ctx.registry)
+        with _remove_on_failure(vendored_dir, created=mirror_absent):
+            _vendor_local_module_into_app(ctx.app_dir, name, ctx.registry)
         vendored_paths.add(vendored_dir)
         return 1 + board_overlay_changed
 
@@ -373,7 +413,6 @@ def _sync_local_board_overlay(
         return 0
 
     from ..metadata import registry_entry_for_module
-    from ..module_registry import _rmtree
     from ..nsx_lock import _HASH_EXCLUDE_DIRS
 
     registry_entry = registry_entry_for_module(ctx.registry, name)
@@ -393,7 +432,9 @@ def _sync_local_board_overlay(
     destination_hash = hash_tree(destination) if destination.exists() else None
     if destination_hash == source_hash:
         return 0
-    if ctx.frozen:
+    # A missing overlay is created even under --frozen; one that differs is not.
+    overlay_absent = _is_absent(destination)
+    if ctx.frozen and not overlay_absent:
         raise NSXIntegrityError(
             f"Local board module '{name}' at {destination.relative_to(ctx.app_dir)} "
             f"does not match source {source_board_dir}. Refusing under --frozen.",
@@ -403,12 +444,13 @@ def _sync_local_board_overlay(
     if destination.exists():
         _rmtree(destination)
     destination.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(
-        source_board_dir,
-        destination,
-        dirs_exist_ok=True,
-        ignore=shutil.ignore_patterns(*sorted(_HASH_EXCLUDE_DIRS)),
-    )
+    with _remove_on_failure(destination, created=overlay_absent):
+        shutil.copytree(
+            source_board_dir,
+            destination,
+            dirs_exist_ok=True,
+            ignore=shutil.ignore_patterns(*sorted(_HASH_EXCLUDE_DIRS)),
+        )
     return 1
 
 
@@ -437,44 +479,88 @@ def _sync_fetchable_entry(
         )
     else:
         on_disk_hash = hash_tree(vendored_dir) if vendored_dir.exists() else None
-    if not ctx.force and on_disk_hash == entry.content_hash:
+    # --frozen never re-vendors a matching tree, even with --force.
+    if on_disk_hash == entry.content_hash and (ctx.frozen or not ctx.force):
         vendored_paths.add(vendored_dir)
         return 0
 
-    if ctx.frozen:
+    # Under --frozen a module that is present but differs is never touched.
+    # A missing one (a fresh checkout: modules/ is gitignored) overwrites
+    # nothing, so it is fetched at the locked revision and verified below.
+    was_missing = _is_absent(vendored_dir)
+    if ctx.frozen and not was_missing:
+        if entry.kind == LockKind.PACKAGED:
+            remedy = (
+                "it was written by a different neuralspotx version than "
+                "nsx.lock records; run `nsx lock` after an upgrade"
+            )
+        else:
+            remedy = "revert the local changes"
         raise NSXIntegrityError(
-            f"Module '{name}' on-disk content does not match nsx.lock "
-            f"({entry.vendored_at}). Refusing to modify under --frozen.",
+            f"Module '{name}' at {entry.vendored_at} does not match nsx.lock "
+            f"(expected {entry.content_hash}, got {on_disk_hash}). Refusing "
+            f"to modify it under --frozen: {remedy}, or drop --frozen to "
+            "re-vendor it.",
+            module=name,
+        )
+    if ctx.frozen and entry.kind == LockKind.GIT and not entry.commit:
+        raise NSXIntegrityError(
+            f"Module '{name}' is missing at {entry.vendored_at} and its "
+            "nsx.lock entry records no commit, so --frozen cannot restore it "
+            "exactly. Run `nsx lock` to re-record it, or drop --frozen.",
+            module=name,
+        )
+    if entry.kind == LockKind.GIT and entry.commit and not _FULL_SHA.fullmatch(entry.commit):
+        # The value reaches git as an argument; only accept a full object id.
+        raise NSXIntegrityError(
+            f"Module '{name}' has an invalid commit in nsx.lock "
+            f"({entry.commit!r}); expected a full hexadecimal SHA. "
+            "Run `nsx lock` to re-record it.",
             module=name,
         )
 
-    if entry.kind == LockKind.PACKAGED:
-        _vendor_packaged_module_into_app(ctx.app_dir, name, ctx.registry)
-    elif entry.kind == LockKind.GIT:
-        # Re-vendor at the exact locked commit (not the branch tip).
-        if entry.commit:
-            _vendor_git_module_at_commit(
-                ctx.app_dir,
-                name,
-                ctx.registry,
-                entry.commit,
-                content_hash=entry.content_hash,
-            )
-        else:
-            _update_module_clone(ctx.app_dir, name, ctx.registry)
+    with _remove_on_failure(vendored_dir, created=was_missing):
+        if entry.kind == LockKind.PACKAGED:
+            _vendor_packaged_module_into_app(ctx.app_dir, name, ctx.registry)
+        elif entry.kind == LockKind.GIT:
+            # Re-vendor at the exact locked commit (not the branch tip).
+            if entry.commit:
+                _vendor_git_module_at_commit(
+                    ctx.app_dir,
+                    name,
+                    ctx.registry,
+                    entry.commit,
+                    content_hash=entry.content_hash,
+                )
+            else:
+                _update_module_clone(ctx.app_dir, name, ctx.registry)
 
     # Verify the materialized tree matches what the lock recorded.
     # Mismatch here means upstream content drifted since lock
     # (force-pushed git history, packaged source bumped without a
     # tool_version bump, etc.).
     #
-    # Skip the verification for ``cmake/nsx``: that path is
-    # unconditionally refreshed by ``_copy_packaged_tree`` at the end of
-    # the sync, so its on-disk state mid-loop is transient and any
-    # mismatch here would produce a misleading "drifted since lock"
-    # warning even when the final state is correct.
+    # Skip the verification for ``cmake/nsx``: that path is refreshed by
+    # ``_copy_packaged_tree`` and verified at the end of the sync, so its
+    # on-disk state mid-loop is transient and any mismatch here would
+    # produce a misleading "drifted since lock" warning even when the
+    # final state is correct.
     if vendored_dir != ctx.cmake_nsx:
         post_hash = hash_tree(vendored_dir) if vendored_dir.exists() else None
+        if post_hash != entry.content_hash and ctx.frozen:
+            # Only a missing module reaches here under --frozen, so this
+            # tree is the one just fetched; remove it rather than leave
+            # content that does not match the lock.
+            if vendored_dir.exists():
+                _rmtree(vendored_dir)
+            raise NSXIntegrityError(
+                f"Module '{name}' fetched at its locked revision does not "
+                f"match nsx.lock (expected {entry.content_hash}, got "
+                f"{post_hash}). The upstream content differs from what the "
+                "lock recorded, for example after rewritten history. Run "
+                "`nsx lock` to re-record it, or drop --frozen.",
+                module=name,
+            )
         if post_hash != entry.content_hash:
             _log.warning(
                 "upstream for '%s' has drifted since lock "
@@ -538,6 +624,9 @@ def _sync_app_impl_unlocked(
         _log.warning("nsx.yml has changed since nsx.lock was written; run `nsx lock` to refresh.")
 
     cmake_nsx = app_dir / "cmake" / "nsx"
+    # Under --frozen, a cmake/nsx tree this sync creates is removed again if
+    # it fails verification, so a retry with the matching tool restores it.
+    cmake_nsx_was_missing = _is_absent(cmake_nsx)
     ctx = _SyncContext(
         app_dir=app_dir,
         registry=registry,
@@ -577,21 +666,53 @@ def _sync_app_impl_unlocked(
         # Packaged / git: fetchable upstream artifacts.
         changed += _sync_fetchable_entry(ctx, name, entry, vendored_dir, vendored_paths)
 
-    # Always refresh the packaged cmake tree and regenerate
-    # modules.cmake + modules/.gitignore — these are cheap and keep
-    # the build inputs aligned.
-    _copy_packaged_tree("neuralspotx", "cmake", app_dir / "cmake" / "nsx")
-    _write_cmake_nsx_gitignore(app_dir)
-    ordered_modules = list(lock.modules)
-    _write_app_module_file(app_dir, nsx_cfg, module_names=ordered_modules)
-    _write_modules_gitignore_for_module_names(
-        app_dir, nsx_cfg, _locked_module_union(app_dir, ordered_modules)
-    )
+    # Refresh the packaged cmake tree and regenerate modules.cmake +
+    # modules/.gitignore — these are cheap and keep the build inputs
+    # aligned. Under --frozen an existing cmake/nsx was already verified
+    # against the lock above, so it is not overwritten with whatever
+    # neuralspotx version happens to be installed. A tree this sync
+    # creates is removed again if any step up to its verification fails.
+    with _remove_on_failure(cmake_nsx, created=cmake_nsx_was_missing):
+        if not frozen or cmake_nsx_was_missing:
+            _copy_packaged_tree("neuralspotx", "cmake", cmake_nsx)
+        _write_cmake_nsx_gitignore(app_dir)
+        ordered_modules = list(lock.modules)
+        _write_app_module_file(app_dir, nsx_cfg, module_names=ordered_modules)
+        _write_modules_gitignore_for_module_names(
+            app_dir, nsx_cfg, _locked_module_union(app_dir, ordered_modules)
+        )
 
-    # Now that ``cmake/nsx`` has been replaced by _copy_packaged_tree,
-    # verify any packaged lock entry mapped to that path against its
-    # recorded content_hash. Done after the refresh so the warning (if
-    # any) reflects the final on-disk state, not the pre-refresh state.
+        # Verify any packaged lock entry mapped to ``cmake/nsx`` against
+        # its recorded content_hash. Done after the refresh so the warning
+        # (if any) reflects the final on-disk state.
+        _verify_packaged_cmake_tree(
+            app_dir, lock, cmake_nsx, frozen=frozen, created=cmake_nsx_was_missing
+        )
+
+    if changed:
+        info(f"Synced {changed} module{'s' if changed != 1 else ''} from nsx.lock.")
+    else:
+        info("All modules already match nsx.lock.")
+
+
+def _verify_packaged_cmake_tree(
+    app_dir: Path,
+    lock: NsxLock,
+    cmake_nsx: Path,
+    *,
+    frozen: bool,
+    created: bool,
+) -> None:
+    """Check the refreshed ``cmake/nsx`` tree against its packaged lock entry.
+
+    Args:
+        frozen: Raise :class:`NSXIntegrityError` on a mismatch instead of
+            warning.
+        created: ``cmake/nsx`` did not exist before this sync. Under
+            ``frozen`` a mismatched tree is then removed before raising, so
+            it is not mistaken for a hand-edited tree on the next run.
+    """
+
     for name, entry in lock.modules.items():
         if entry.kind != LockKind.PACKAGED:
             continue
@@ -602,19 +723,25 @@ def _sync_app_impl_unlocked(
             if cmake_nsx.exists()
             else None
         )
-        if post_hash != entry.content_hash:
-            _log.warning(
-                "upstream for '%s' has drifted since lock "
-                "(expected %s, got %s); run `nsx lock` to re-record.",
-                name,
-                entry.content_hash,
-                post_hash,
+        if post_hash == entry.content_hash:
+            continue
+        if frozen:
+            if created and cmake_nsx.exists():
+                _rmtree(cmake_nsx)
+            raise NSXIntegrityError(
+                f"Packaged module '{name}' at {entry.vendored_at} does not "
+                f"match nsx.lock (expected {entry.content_hash}, got "
+                f"{post_hash}); this neuralspotx version ships different "
+                "content. Run `nsx lock` to re-record it, or drop --frozen.",
+                module=name,
             )
-
-    if changed:
-        info(f"Synced {changed} module{'s' if changed != 1 else ''} from nsx.lock.")
-    else:
-        info("All modules already match nsx.lock.")
+        _log.warning(
+            "upstream for '%s' has drifted since lock "
+            "(expected %s, got %s); run `nsx lock` to re-record.",
+            name,
+            entry.content_hash,
+            post_hash,
+        )
 
 
 def update_app_impl(
