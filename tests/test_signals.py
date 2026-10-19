@@ -259,3 +259,33 @@ def test_git_retry_stops_once_nsx_is_shutting_down(
 
     assert calls == 1
     assert slept == []
+
+
+@posix_only
+def test_child_registered_after_shutdown_began_is_stopped(
+    fresh_shutdown_flag: object,
+) -> None:
+    """The race: a worker passes the start check, then cleanup snapshots, then it registers."""
+
+    import threading
+
+    from neuralspotx.subprocess_utils import _runner
+    from neuralspotx.subprocess_utils._runner import ChildStartRefused, _ProcessContainer
+
+    assert isinstance(fresh_shutdown_flag, threading.Event)
+    proc = subprocess.Popen(
+        [sys.executable, "-c", "import time; time.sleep(60)"], start_new_session=True
+    )
+    try:
+        container = _ProcessContainer()
+        container.attach(proc)
+        fresh_shutdown_flag.set()  # cleanup has taken its snapshot
+
+        with pytest.raises(ChildStartRefused):
+            _runner._track(container, proc)
+
+        assert proc.wait(timeout=10) is not None
+        assert id(proc) not in _runner._LIVE
+    finally:
+        if proc.poll() is None:
+            proc.kill()

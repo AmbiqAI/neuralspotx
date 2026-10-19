@@ -35,8 +35,21 @@ class ChildStartRefused(KeyboardInterrupt):
 
 
 def _track(container: _ProcessContainer, proc: subprocess.Popen) -> None:
+    """Register a just-started child, or stop it if nsx is shutting down.
+
+    Checked under the same lock terminate_live_children() takes its
+    snapshot with, so every child is either in that snapshot or stopped
+    here: a worker that passed the check in :func:`_popen` before shutdown
+    began cannot leave an untracked child behind.
+    """
+
     with _LIVE_LOCK:
-        _LIVE[id(proc)] = (container, proc)
+        if not _SHUTTING_DOWN.is_set():
+            _LIVE[id(proc)] = (container, proc)
+            return
+    container.terminate(proc)
+    container.close()
+    raise ChildStartRefused(f"nsx is shutting down; stopped {proc.args!r}")
 
 
 def _untrack(proc: subprocess.Popen) -> None:
