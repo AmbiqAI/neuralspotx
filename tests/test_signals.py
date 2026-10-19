@@ -346,3 +346,62 @@ def test_git_retry_backoff_wakes_when_shutdown_begins(fresh_shutdown_flag: objec
     started = time.monotonic()
     _git._sleep(30)
     assert time.monotonic() - started < 5
+
+
+_HOOK_UNDER_CLI_STATE = textwrap.dedent(
+    """
+    import os, signal, sys, time
+    from neuralspotx.subprocess_utils import (
+        defer_termination, die_with_parent_preexec, terminate_on_signals,
+    )
+
+    hook = die_with_parent_preexec()
+    with terminate_on_signals(), defer_termination():
+        hook()  # what the forked viewer runs before exec
+        os.kill(os.getpid(), signal.SIGTERM)
+        time.sleep(5)
+    sys.exit(0)
+    """
+)
+
+
+@pytest.mark.skipif(not sys.platform.startswith("linux"), reason="PR_SET_PDEATHSIG is Linux-only")
+def test_parent_death_hook_is_not_deferred_by_inherited_cli_state() -> None:
+    """The pre-exec child inherits the CLI's handler and deferral; SIGTERM must still end it."""
+
+    result = subprocess.run(
+        [sys.executable, "-c", _HOOK_UNDER_CLI_STATE], capture_output=True, timeout=30
+    )
+    assert result.returncode == -signal.SIGTERM, result.stderr.decode()
+
+
+@posix_only
+@pytest.mark.parametrize("runner", ["run", "run_capture"])
+def test_signal_during_startup_is_cleaned_up_without_global_cleanup(
+    runner: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A library caller under terminate_on_signals(), with no CLI cleanup afterwards."""
+
+    from neuralspotx import subprocess_utils
+    from neuralspotx.subprocess_utils import _runner
+
+    real_popen = _runner._popen
+    started: list[subprocess.Popen] = []
+
+    def _popen_then_signal(cmd: list[str], **kwargs: object) -> subprocess.Popen:
+        proc = real_popen(cmd, **kwargs)
+        started.append(proc)
+        os.kill(os.getpid(), signal.SIGTERM)
+        time.sleep(0.2)
+        return proc
+
+    monkeypatch.setattr(_runner, "_popen", _popen_then_signal)
+    try:
+        with pytest.raises(TerminatedBySignal), terminate_on_signals():
+            getattr(subprocess_utils, runner)([sys.executable, "-c", "import time; time.sleep(60)"])
+        assert started[0].wait(timeout=10) is not None
+        assert id(started[0]) not in _runner._LIVE
+    finally:
+        for proc in started:
+            if proc.poll() is None:
+                proc.kill()

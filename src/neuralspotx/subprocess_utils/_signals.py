@@ -157,6 +157,10 @@ def die_with_parent_preexec() -> Callable[[], None] | None:
     parent_pid = os.getpid()
 
     def _die_with_parent() -> None:
+        # Between fork and exec the child still runs nsx's Python signal
+        # handlers and deferral state, which would hold this SIGTERM and lose
+        # it at exec. Restore the default action first so it ends the child.
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
         prctl(_PR_SET_PDEATHSIG, signal.SIGTERM, 0, 0, 0)
         # If nsx died between fork and prctl, the signal will never come.
         if os.getppid() != parent_pid:

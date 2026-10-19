@@ -95,6 +95,31 @@ def _popen(cmd: list[str], **kwargs: Any) -> subprocess.Popen:
         raise NSXToolchainError(f"failed to launch {cmd[0]!r}: {exc}") from exc
 
 
+def _start_child(cmd: list[str], **kwargs: Any) -> tuple[_ProcessContainer, subprocess.Popen]:
+    """Spawn, contain and register a child, leaving nothing behind on interrupt.
+
+    A SIGTERM/SIGHUP that lands during startup is held until the child is
+    registered (:func:`defer_termination`) and then raised here; any
+    failure or interrupt stops what was started before re-raising, so the
+    caller only ever holds a fully tracked child.
+    """
+
+    container = _ProcessContainer()
+    proc: subprocess.Popen | None = None
+    try:
+        with defer_termination():
+            proc = _popen(cmd, **kwargs)
+            container.attach(proc)
+            _track(container, proc)
+    except BaseException:
+        if proc is not None:
+            container.terminate(proc)
+            _untrack(proc)
+        container.close()
+        raise
+    return container, proc
+
+
 def _split_emitted_lines(pending: bytes, *, at_eof: bool) -> tuple[list[tuple[str, str]], bytes]:
     """Split streamed *pending* bytes into ``(text, terminator)`` segments.
 
@@ -168,30 +193,23 @@ def run(
     parent's stdio directly (legacy behaviour).
     """
     effective = _effective_timeout(timeout)
-    # A SIGTERM/SIGHUP during spawn-and-register is held until the child
-    # is registered, so the CLI's cleanup can always reach it.
-    with defer_termination():
-        if on_line is not None:
-            # Binary pipe: we read raw bytes (``os.read`` on POSIX,
-            # ``readline`` on Windows) and decode ourselves so we can split
-            # on \r as well as \n and re-emit the original terminator for
-            # in-place progress.
-            proc = _popen(
-                cmd,
-                cwd=str(cwd) if cwd else None,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                start_new_session=(os.name != "nt"),
-            )
-        else:
-            proc = _popen(
-                cmd,
-                cwd=str(cwd) if cwd else None,
-                start_new_session=(os.name != "nt"),
-            )
-        container = _ProcessContainer()
-        container.attach(proc)
-        _track(container, proc)
+    if on_line is not None:
+        # Binary pipe: we read raw bytes (``os.read`` on POSIX, ``readline``
+        # on Windows) and decode ourselves so we can split on \r as well as
+        # \n and re-emit the original terminator for in-place progress.
+        container, proc = _start_child(
+            cmd,
+            cwd=str(cwd) if cwd else None,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            start_new_session=(os.name != "nt"),
+        )
+    else:
+        container, proc = _start_child(
+            cmd,
+            cwd=str(cwd) if cwd else None,
+            start_new_session=(os.name != "nt"),
+        )
     try:
         try:
             if on_line is not None and proc.stdout is not None:
@@ -307,18 +325,14 @@ def run_capture(
     Same timeout / process-tree semantics as :func:`run`.
     """
     effective = _effective_timeout(timeout)
-    with defer_termination():
-        proc = _popen(
-            cmd,
-            cwd=str(cwd) if cwd else None,
-            text=True,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            start_new_session=(os.name != "nt"),
-        )
-        container = _ProcessContainer()
-        container.attach(proc)
-        _track(container, proc)
+    container, proc = _start_child(
+        cmd,
+        cwd=str(cwd) if cwd else None,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        start_new_session=(os.name != "nt"),
+    )
     try:
         try:
             out, err = proc.communicate(timeout=effective)
