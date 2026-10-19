@@ -47,15 +47,15 @@ projects:
   helia-rt:
     name: helia-rt
     url: https://github.com/AmbiqAI/helia-rt.git
-    # helia-rt-v2.2.0 requires ns-cmsis-nn >= 7.46.0; the pin above satisfies it.
-    revision: helia-rt-v2.2.0
+    # helia-rt-v2.2.1 requires ns-cmsis-nn >= 7.47.0; the pin above satisfies it.
+    revision: helia-rt-v2.2.1
     path: modules/helia-rt
   helia-rt-source:
     name: helia-rt-source
     url: https://github.com/AmbiqAI/helia-rt.git
     # Same helia-rt revision as the helia-rt project above; consumed by
     # nsx-tflite-micro (reference / upstream CMSIS-NN TFLM builds).
-    revision: helia-rt-v2.2.0
+    revision: helia-rt-v2.2.1
     path: modules/helia-rt-source
   arm-cmsis-nn:
     name: arm-cmsis-nn
@@ -259,12 +259,12 @@ modules:
   nsx-helia-rt:
     project: helia-rt
     # Tracks the helia-rt project pin above.
-    revision: helia-rt-v2.2.0
+    revision: helia-rt-v2.2.1
     metadata: modules/helia-rt/nsx/nsx-module.yaml
   helia-rt-source:
     project: helia-rt-source
     # Tracks the helia-rt-source project pin above.
-    revision: helia-rt-v2.2.0
+    revision: helia-rt-v2.2.1
     metadata: modules/helia-rt-source/nsx-source/nsx-module.yaml
   arm-cmsis-nn:
     project: arm-cmsis-nn
