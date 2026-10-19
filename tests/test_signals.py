@@ -438,3 +438,61 @@ def test_signal_right_after_startup_deferral_is_cleaned_up_locally(
         for proc in started:
             if proc.poll() is None:
                 proc.kill()
+
+
+_LEADER_WITH_STUBBORN_GRANDCHILD = textwrap.dedent(
+    """
+    import subprocess, sys, time
+    grandchild = subprocess.Popen([
+        sys.executable, "-c",
+        "import signal, time; signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(60)",
+    ])
+    open(sys.argv[1], "w").write(str(grandchild.pid))
+    time.sleep(60)
+    """
+)
+
+
+@posix_only
+def test_cleanup_kills_a_grandchild_that_ignores_sigterm_and_holds_the_pipe(
+    tmp_path: Path,
+) -> None:
+    """A capture worker must not stay blocked on a descendant that survives SIGTERM."""
+
+    import threading
+
+    from neuralspotx.subprocess_utils import _runner, run_capture, terminate_live_children
+
+    pid_file = tmp_path / "grandchild.pid"
+    errors: list[BaseException] = []
+
+    def _worker() -> None:
+        try:
+            run_capture([sys.executable, "-c", _LEADER_WITH_STUBBORN_GRANDCHILD, str(pid_file)])
+        except BaseException as exc:  # noqa: BLE001
+            errors.append(exc)
+
+    thread = threading.Thread(target=_worker, daemon=True)
+    thread.start()
+    deadline = time.monotonic() + 15
+    while not (pid_file.exists() and pid_file.read_text() and _runner._LIVE):
+        assert time.monotonic() < deadline, "grandchild never started"
+        time.sleep(0.05)
+    grandchild = int(pid_file.read_text())
+    time.sleep(0.3)  # let the grandchild install its SIGTERM ignore
+
+    try:
+        terminate_live_children()
+        thread.join(timeout=15)
+
+        assert not thread.is_alive(), "capture worker stayed blocked on the surviving grandchild"
+        assert errors and isinstance(errors[0], subprocess.CalledProcessError)
+        deadline = time.monotonic() + 10
+        while _alive(grandchild):
+            assert time.monotonic() < deadline, "grandchild survived cleanup"
+            time.sleep(0.05)
+    finally:
+        try:
+            os.kill(grandchild, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
