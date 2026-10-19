@@ -174,7 +174,10 @@ class AppSyncRequest:
 
     Attributes:
         app_dir: App directory containing ``nsx.lock``.
-        frozen: Read-only mode — verify content hashes, do not modify.
+        frozen: Never modify a vendored tree — verify content hashes and
+            fail on drift. Modules missing from disk are still fetched
+            (over the network for git modules) at their locked revision
+            and must match the lock exactly.
         force: Re-vendor every module even if content_hash matches.
         timeout_s: Per-subprocess wall-clock budget (seconds).  Applied
             to every individual ``git clone`` / ``git fetch`` invoked

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 import shutil
 from dataclasses import dataclass
 from pathlib import Path
@@ -149,6 +150,10 @@ def sync_app_impl(
 
     with app_lock(app_dir):
         _sync_app_impl_unlocked(app_dir, board=board, frozen=frozen, force=force)
+
+
+# A git object id: SHA-1 (40 hex) or SHA-256 (64 hex).
+_FULL_SHA = re.compile(r"[0-9a-f]{40}(?:[0-9a-f]{24})?")
 
 
 @dataclass(frozen=True, slots=True)
@@ -340,7 +345,9 @@ def _sync_local_entry(
             vendored_paths.add(vendored_dir)
             return board_overlay_changed
 
-        if ctx.frozen:
+        # Under --frozen a missing mirror is created (the source already
+        # matched the lock above); an existing one that differs is refused.
+        if ctx.frozen and on_disk_hash is not None:
             raise NSXModuleError(
                 f"Local module '{name}' mirror at {entry.vendored_at} "
                 f"does not match source {source_dir}. Refusing under "
@@ -443,19 +450,30 @@ def _sync_fetchable_entry(
         )
     else:
         on_disk_hash = hash_tree(vendored_dir) if vendored_dir.exists() else None
-    if not ctx.force and on_disk_hash == entry.content_hash:
+    # --frozen never re-vendors a matching tree, even with --force.
+    if on_disk_hash == entry.content_hash and (ctx.frozen or not ctx.force):
         vendored_paths.add(vendored_dir)
         return 0
 
     # Under --frozen a module that is present but differs is never touched.
     # A missing one (a fresh checkout: modules/ is gitignored) overwrites
     # nothing, so it is fetched at the locked revision and verified below.
-    if ctx.frozen and on_disk_hash is not None:
+    # An empty directory (for example left by an older, interrupted run)
+    # holds nothing to protect, so it counts as missing.
+    was_missing = on_disk_hash is None or not any(vendored_dir.iterdir())
+    if ctx.frozen and not was_missing:
+        if entry.kind == LockKind.PACKAGED:
+            remedy = (
+                "it was written by a different neuralspotx version than "
+                "nsx.lock records; run `nsx lock` after an upgrade"
+            )
+        else:
+            remedy = "revert the local changes"
         raise NSXIntegrityError(
             f"Module '{name}' at {entry.vendored_at} does not match nsx.lock "
-            f"(expected {entry.content_hash}, got {on_disk_hash}). "
-            "Refusing to modify it under --frozen; revert the local changes "
-            "or drop --frozen to re-vendor it.",
+            f"(expected {entry.content_hash}, got {on_disk_hash}). Refusing "
+            f"to modify it under --frozen: {remedy}, or drop --frozen to "
+            "re-vendor it.",
             module=name,
         )
     if ctx.frozen and entry.kind == LockKind.GIT and not entry.commit:
@@ -465,21 +483,37 @@ def _sync_fetchable_entry(
             "exactly. Run `nsx lock` to re-record it, or drop --frozen.",
             module=name,
         )
+    if entry.kind == LockKind.GIT and entry.commit and not _FULL_SHA.fullmatch(entry.commit):
+        # The value reaches git as an argument; only accept a full object id.
+        raise NSXIntegrityError(
+            f"Module '{name}' has an invalid commit in nsx.lock "
+            f"({entry.commit!r}); expected a full hexadecimal SHA. "
+            "Run `nsx lock` to re-record it.",
+            module=name,
+        )
 
-    if entry.kind == LockKind.PACKAGED:
-        _vendor_packaged_module_into_app(ctx.app_dir, name, ctx.registry)
-    elif entry.kind == LockKind.GIT:
-        # Re-vendor at the exact locked commit (not the branch tip).
-        if entry.commit:
-            _vendor_git_module_at_commit(
-                ctx.app_dir,
-                name,
-                ctx.registry,
-                entry.commit,
-                content_hash=entry.content_hash,
-            )
-        else:
-            _update_module_clone(ctx.app_dir, name, ctx.registry)
+    try:
+        if entry.kind == LockKind.PACKAGED:
+            _vendor_packaged_module_into_app(ctx.app_dir, name, ctx.registry)
+        elif entry.kind == LockKind.GIT:
+            # Re-vendor at the exact locked commit (not the branch tip).
+            if entry.commit:
+                _vendor_git_module_at_commit(
+                    ctx.app_dir,
+                    name,
+                    ctx.registry,
+                    entry.commit,
+                    content_hash=entry.content_hash,
+                )
+            else:
+                _update_module_clone(ctx.app_dir, name, ctx.registry)
+    except BaseException:
+        # A fetch that fails or is interrupted part way leaves a partial
+        # tree; remove it if this sync created it, so the next run fetches
+        # again instead of reporting local changes.
+        if was_missing and vendored_dir.exists():
+            _rmtree(vendored_dir)
+        raise
 
     # Verify the materialized tree matches what the lock recorded.
     # Mismatch here means upstream content drifted since lock
@@ -502,8 +536,9 @@ def _sync_fetchable_entry(
             raise NSXIntegrityError(
                 f"Module '{name}' fetched at its locked revision does not "
                 f"match nsx.lock (expected {entry.content_hash}, got "
-                f"{post_hash}); its upstream changed since the lock was "
-                "written. Run `nsx lock` to re-record it, or drop --frozen.",
+                f"{post_hash}). The upstream content differs from what the "
+                "lock recorded, for example after rewritten history. Run "
+                "`nsx lock` to re-record it, or drop --frozen.",
                 module=name,
             )
         if post_hash != entry.content_hash:

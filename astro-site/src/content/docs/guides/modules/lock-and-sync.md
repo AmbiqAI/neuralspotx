@@ -89,7 +89,7 @@ Three flags turn this pair into a build check.
 
 ```bash
 nsx lock --check          # report manifest and resolution drift, write nothing
-nsx sync --frozen         # fail if modules/ does not match the lock
+nsx sync --frozen         # fail if modules/ differs from the lock; fetch only what is missing
 nsx outdated --exit-code  # fail if a git module lags its upstream
 ```
 
@@ -102,7 +102,13 @@ module:
 ```text
 Vendored module 'my-sensor' content drifted from lock ...
 Local source for 'my-sensor' at /home/you/src/my-sensor has drifted ...
+Module 'my-sensor' at modules/my-sensor does not match nsx.lock ...
 ```
+
+A module that is missing, as on a fresh clone where `modules/` is gitignored, is not drift.
+`--frozen` fetches it at the commit in `nsx.lock` (git modules need network access) and fails
+if its content hash differs from the lock. The same holds for the `cmake/nsx` tree that ships
+with neuralspotx: after upgrading neuralspotx, run `nsx lock` once before using `--frozen`.
 
 `--frozen` is also accepted by `configure`, `build`, `flash` and `view`, where it applies
 to the implicit sync those commands would otherwise perform.
