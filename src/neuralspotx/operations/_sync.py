@@ -16,6 +16,7 @@ from ..module_registry import _update_module_clone, expand_profile_seeds
 from ..nsx_lock import (
     NSX_TOOLING_AUTOGEN_FILES,
     LockKind,
+    NsxLock,
     ResolvedModule,
     hash_manifest,
     hash_tree,
@@ -568,6 +569,9 @@ def _sync_app_impl_unlocked(
         _log.warning("nsx.yml has changed since nsx.lock was written; run `nsx lock` to refresh.")
 
     cmake_nsx = app_dir / "cmake" / "nsx"
+    # Under --frozen, a cmake/nsx tree this sync creates is removed again if
+    # it fails verification, so a retry with the matching tool restores it.
+    cmake_nsx_was_missing = not cmake_nsx.exists()
     ctx = _SyncContext(
         app_dir=app_dir,
         registry=registry,
@@ -622,6 +626,34 @@ def _sync_app_impl_unlocked(
     # verify any packaged lock entry mapped to that path against its
     # recorded content_hash. Done after the refresh so the warning (if
     # any) reflects the final on-disk state, not the pre-refresh state.
+    _verify_packaged_cmake_tree(
+        app_dir, lock, cmake_nsx, frozen=frozen, created=cmake_nsx_was_missing
+    )
+
+    if changed:
+        info(f"Synced {changed} module{'s' if changed != 1 else ''} from nsx.lock.")
+    else:
+        info("All modules already match nsx.lock.")
+
+
+def _verify_packaged_cmake_tree(
+    app_dir: Path,
+    lock: NsxLock,
+    cmake_nsx: Path,
+    *,
+    frozen: bool,
+    created: bool,
+) -> None:
+    """Check the refreshed ``cmake/nsx`` tree against its packaged lock entry.
+
+    Args:
+        frozen: Raise :class:`NSXIntegrityError` on a mismatch instead of
+            warning.
+        created: ``cmake/nsx`` did not exist before this sync. Under
+            ``frozen`` a mismatched tree is then removed before raising, so
+            it is not mistaken for a hand-edited tree on the next run.
+    """
+
     for name, entry in lock.modules.items():
         if entry.kind != LockKind.PACKAGED:
             continue
@@ -632,7 +664,13 @@ def _sync_app_impl_unlocked(
             if cmake_nsx.exists()
             else None
         )
-        if post_hash != entry.content_hash and frozen:
+        if post_hash == entry.content_hash:
+            continue
+        if frozen:
+            from ..module_registry import _rmtree
+
+            if created and cmake_nsx.exists():
+                _rmtree(cmake_nsx)
             raise NSXIntegrityError(
                 f"Packaged module '{name}' at {entry.vendored_at} does not "
                 f"match nsx.lock (expected {entry.content_hash}, got "
@@ -640,19 +678,13 @@ def _sync_app_impl_unlocked(
                 "content. Run `nsx lock` to re-record it, or drop --frozen.",
                 module=name,
             )
-        if post_hash != entry.content_hash:
-            _log.warning(
-                "upstream for '%s' has drifted since lock "
-                "(expected %s, got %s); run `nsx lock` to re-record.",
-                name,
-                entry.content_hash,
-                post_hash,
-            )
-
-    if changed:
-        info(f"Synced {changed} module{'s' if changed != 1 else ''} from nsx.lock.")
-    else:
-        info("All modules already match nsx.lock.")
+        _log.warning(
+            "upstream for '%s' has drifted since lock "
+            "(expected %s, got %s); run `nsx lock` to re-record.",
+            name,
+            entry.content_hash,
+            post_hash,
+        )
 
 
 def update_app_impl(

@@ -14,9 +14,19 @@ from typing import Any
 import pytest
 
 from neuralspotx import NSXIntegrityError, module_registry
-from neuralspotx.nsx_lock import LockKind, ResolvedModule, hash_tree
+from neuralspotx.nsx_lock import (
+    NSX_TOOLING_AUTOGEN_FILES,
+    LockKind,
+    NsxLock,
+    ResolvedModule,
+    hash_tree,
+)
 from neuralspotx.operations import _sync
-from neuralspotx.operations._sync import _sync_fetchable_entry, _SyncContext
+from neuralspotx.operations._sync import (
+    _sync_fetchable_entry,
+    _SyncContext,
+    _verify_packaged_cmake_tree,
+)
 
 _COMMIT = "0123456789abcdef0123456789abcdef01234567"
 
@@ -154,4 +164,72 @@ def test_unfrozen_keeps_mismatched_fetch_and_warns(
 
     assert changed == 1
     assert (vendored_dir / "src.c").read_text(encoding="utf-8") == "upstream moved"
+    assert any("has drifted since lock" in w for w in warnings)
+
+
+def _cmake_lock(content_hash: str) -> NsxLock:
+    return NsxLock(
+        modules={
+            "nsx-cmake": ResolvedModule(
+                project="neuralspotx",
+                kind=LockKind.PACKAGED,
+                constraint="packaged",
+                vendored_at="cmake/nsx",
+                content_hash=content_hash,
+                acquired_at="2026-10-18T00:00:00+00:00",
+                tool_version="0.0.0",
+            )
+        }
+    )
+
+
+def _cmake_hash(tmp_path: Path, content: str) -> str:
+    reference = tmp_path / "cmake-reference"
+    _write_tree(reference, content)
+    return hash_tree(reference, exclude_names=NSX_TOOLING_AUTOGEN_FILES)
+
+
+def test_frozen_removes_created_cmake_tree_that_does_not_match_then_retry_restores(
+    tmp_path: Path,
+) -> None:
+    app_dir = tmp_path / "app"
+    cmake_nsx = app_dir / "cmake" / "nsx"
+    lock = _cmake_lock(_cmake_hash(tmp_path, "locked tool"))
+
+    # Sync created cmake/nsx from a different neuralspotx version.
+    _write_tree(cmake_nsx, "other tool")
+    with pytest.raises(NSXIntegrityError, match="ships different content"):
+        _verify_packaged_cmake_tree(app_dir, lock, cmake_nsx, frozen=True, created=True)
+    assert not cmake_nsx.exists()
+
+    # A retry with the matching neuralspotx version restores and passes.
+    _write_tree(cmake_nsx, "locked tool")
+    _verify_packaged_cmake_tree(app_dir, lock, cmake_nsx, frozen=True, created=True)
+    assert cmake_nsx.exists()
+
+
+def test_frozen_keeps_preexisting_cmake_tree_that_does_not_match(tmp_path: Path) -> None:
+    app_dir = tmp_path / "app"
+    cmake_nsx = app_dir / "cmake" / "nsx"
+    lock = _cmake_lock(_cmake_hash(tmp_path, "locked tool"))
+    _write_tree(cmake_nsx, "other tool")
+
+    with pytest.raises(NSXIntegrityError, match="ships different content"):
+        _verify_packaged_cmake_tree(app_dir, lock, cmake_nsx, frozen=True, created=False)
+    assert cmake_nsx.exists()
+
+
+def test_unfrozen_cmake_tree_mismatch_only_warns(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    app_dir = tmp_path / "app"
+    cmake_nsx = app_dir / "cmake" / "nsx"
+    lock = _cmake_lock(_cmake_hash(tmp_path, "locked tool"))
+    _write_tree(cmake_nsx, "other tool")
+    warnings: list[str] = []
+    monkeypatch.setattr(_sync._log, "warning", lambda msg, *args: warnings.append(msg % args))
+
+    _verify_packaged_cmake_tree(app_dir, lock, cmake_nsx, frozen=False, created=True)
+
+    assert cmake_nsx.exists()
     assert any("has drifted since lock" in w for w in warnings)
