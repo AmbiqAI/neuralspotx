@@ -93,11 +93,12 @@ after the reset before reading, and defaults to 400.
 script or a CI job, where no one is there to press Ctrl-C. Prefer `--duration` to wrapping
 the command in `timeout`.
 
-NSX stops the SEGGER viewer however the command ends: on Ctrl-C, when `--duration`
-expires, on an error, and when `nsx` receives `SIGTERM` or `SIGHUP`, as from `timeout`,
-`kill` or a canceled CI step. It then exits with status 128 plus the signal number. A
-viewer left running would hold the J-Link SWO port and block the next `nsx view` on any
-board.
+NSX stops the SEGGER viewer when the command ends: on Ctrl-C, when `--duration` expires,
+and on an error. On Linux and macOS it also stops the viewer when `nsx` receives
+`SIGTERM` or `SIGHUP`, as from `timeout`, `kill` or a canceled CI step, and then exits
+with status 128 plus the signal number. On Linux the viewer also exits if `nsx` is killed
+outright, and on Windows it is tied to `nsx` by a job object. A viewer left running would
+hold the J-Link SWO port and block the next `nsx view` on any board.
 
 ## Reset
 

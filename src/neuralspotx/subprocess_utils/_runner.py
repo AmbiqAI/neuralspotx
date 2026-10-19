@@ -6,6 +6,7 @@ import os
 import select
 import subprocess
 import sys
+import threading
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -14,6 +15,31 @@ from typing import Any
 from .._errors import NSXToolchainError
 from ._verbosity import _VERBOSITY, _effective_timeout
 from ._winjob import _ProcessContainer
+
+# Child trees started by run()/run_capture() that have not finished yet, in
+# any thread. A signal reaches only the main thread, so worker-thread
+# children (parallel git) are stopped through this registry.
+_LIVE_LOCK = threading.Lock()
+_LIVE: dict[int, tuple[_ProcessContainer, subprocess.Popen]] = {}
+
+
+def _track(container: _ProcessContainer, proc: subprocess.Popen) -> None:
+    with _LIVE_LOCK:
+        _LIVE[id(proc)] = (container, proc)
+
+
+def _untrack(proc: subprocess.Popen) -> None:
+    with _LIVE_LOCK:
+        _LIVE.pop(id(proc), None)
+
+
+def terminate_live_children() -> None:
+    """Stop every child tree started by :func:`run`/:func:`run_capture` that is still running."""
+
+    with _LIVE_LOCK:
+        live = list(_LIVE.values())
+    for container, proc in live:
+        container.terminate(proc)
 
 
 def _popen(cmd: list[str], **kwargs: Any) -> subprocess.Popen:
@@ -129,6 +155,7 @@ def run(
         )
     container = _ProcessContainer()
     container.attach(proc)
+    _track(container, proc)
     try:
         try:
             if on_line is not None and proc.stdout is not None:
@@ -227,6 +254,7 @@ def run(
             container.terminate(proc)
             raise
     finally:
+        _untrack(proc)
         container.close()
     if rc != 0:
         raise subprocess.CalledProcessError(rc, cmd)
@@ -253,6 +281,7 @@ def run_capture(
     )
     container = _ProcessContainer()
     container.attach(proc)
+    _track(container, proc)
     try:
         try:
             out, err = proc.communicate(timeout=effective)
@@ -275,6 +304,7 @@ def run_capture(
             container.terminate(proc)
             raise
     finally:
+        _untrack(proc)
         container.close()
     if proc.returncode != 0:
         raise subprocess.CalledProcessError(proc.returncode, cmd, output=out, stderr=err)

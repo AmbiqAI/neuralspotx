@@ -32,7 +32,12 @@ from ..constants import DEFAULT_BOARD
 from ..metadata import SUPPORTED_MODULE_TYPES
 from ..models import CommandCategory, CommandHint, CommandScope, OutdatedReport
 from ..project_config import resolve_app_dir
-from ..subprocess_utils import TerminatedBySignal, format_subprocess_error, terminate_on_signals
+from ..subprocess_utils import (
+    TerminatedBySignal,
+    format_subprocess_error,
+    terminate_live_children,
+    terminate_on_signals,
+)
 from ..tooling import JLinkProbe, list_jlink_probes
 from ._cmd_board import cmd_board_create, cmd_board_list, cmd_board_show
 from ._cmd_cache import cmd_cache_clean, cmd_cache_info
@@ -1381,6 +1386,21 @@ def _build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _write_stderr(text: str) -> None:
+    """Best-effort stderr write: after a hangup the terminal may be gone."""
+
+    try:
+        sys.stderr.write(text)
+        sys.stderr.flush()
+        sys.stdout.flush()
+    except OSError:
+        # The terminal is gone (SIGHUP). Point the standard streams at
+        # devnull so the interpreter's final flush cannot fail and replace
+        # our exit status with 120.
+        devnull = open(os.devnull, "w", encoding="utf-8")  # noqa: SIM115
+        sys.stdout = sys.stderr = devnull
+
+
 def main(argv: list[str] | None = None) -> int:
     if _maybe_print_tutorial(argv):
         return 0
@@ -1393,9 +1413,17 @@ def main(argv: list[str] | None = None) -> int:
         # child processes are stopped exactly as they are on Ctrl-C.
         with terminate_on_signals():
             args.func(args)
-    except TerminatedBySignal as exc:
-        sys.stderr.write(f"error: interrupted by {exc.signal_name}\n")
-        return exc.exit_code
+    except KeyboardInterrupt as exc:
+        # Ctrl-C, or SIGTERM/SIGHUP as TerminatedBySignal. The child of the
+        # interrupted call is already stopped; also stop any started from
+        # worker threads (parallel git), which the signal does not reach.
+        terminate_live_children()
+        if isinstance(exc, TerminatedBySignal):
+            reason, code = exc.signal_name, exc.exit_code
+        else:
+            reason, code = "Ctrl-C", 128 + 2
+        _write_stderr(f"error: interrupted by {reason}\n")
+        return code
     except subprocess.CalledProcessError as exc:
         if args.verbose > 0:
             raise

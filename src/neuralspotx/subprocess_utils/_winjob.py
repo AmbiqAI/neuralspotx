@@ -45,7 +45,7 @@ class _ProcessContainer:
                 self._job_handle,
                 int(proc._handle),  # ty: ignore[unresolved-attribute]  # CPython-private Win32 HANDLE; no public accessor
             )
-        except OSError:
+        except (OSError, AttributeError, TypeError, ValueError):
             # Best-effort: if Job Object creation/assignment fails (rare —
             # nested jobs on pre-Win8, restricted desktops), fall back to
             # the ``proc.kill()`` path.  We must NOT raise here or

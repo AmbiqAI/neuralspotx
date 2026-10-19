@@ -53,6 +53,7 @@ from ._runner import (
     print_captured_output,
     run,
     run_capture,
+    terminate_live_children,
 )
 from ._signals import TerminatedBySignal, die_with_parent_preexec, terminate_on_signals
 from ._verbosity import (
@@ -139,6 +140,7 @@ __all__ = [
     "run",
     "run_capture",
     "set_verbosity",
+    "terminate_live_children",
     "terminate_on_signals",
     "timeout_budget",
     "verbosity",

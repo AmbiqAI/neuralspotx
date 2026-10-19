@@ -1110,13 +1110,18 @@ def test_view_explicit_reset_overrides_apollo4_auto_policy(
     monkeypatch.setattr(operations._build, "extract_view_command", lambda *_args, **_kw: ["viewer"])
 
     class _RunningProc:
+        # Running until wait() returns, then exited, like a real viewer; a
+        # fake that stays "running" would send the cleanup's killpg to a
+        # real pid.
         pid = 1234
+        returncode: int | None = None
 
-        def poll(self) -> None:
-            return None
+        def poll(self) -> int | None:
+            return self.returncode
 
         def wait(self, timeout: float | None = None) -> int:
             del timeout
+            self.returncode = 0
             return 0
 
     monkeypatch.setattr(

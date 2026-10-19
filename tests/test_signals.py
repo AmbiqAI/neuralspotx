@@ -113,3 +113,102 @@ def test_sigterm_to_parent_stops_child_in_its_own_session(tmp_path: Path) -> Non
                 os.kill(int(pid_file.read_text()), signal.SIGKILL)
             except ProcessLookupError:
                 pass
+
+
+@posix_only
+def test_inherited_ignore_is_kept_so_nohup_still_works() -> None:
+    previous = signal.signal(signal.SIGHUP, signal.SIG_IGN)
+    try:
+        with terminate_on_signals():
+            os.kill(os.getpid(), signal.SIGHUP)
+            time.sleep(0.2)
+        assert signal.getsignal(signal.SIGHUP) == signal.SIG_IGN
+    finally:
+        signal.signal(signal.SIGHUP, previous)
+
+
+@posix_only
+def test_second_signal_during_cleanup_is_ignored() -> None:
+    cleaned = False
+    with pytest.raises(TerminatedBySignal), terminate_on_signals():
+        try:
+            os.kill(os.getpid(), signal.SIGTERM)
+            time.sleep(5)
+        finally:
+            os.kill(os.getpid(), signal.SIGTERM)
+            time.sleep(0.2)
+            cleaned = True
+    assert cleaned
+
+
+def test_cli_exits_130_on_ctrl_c_without_a_traceback(
+    monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
+) -> None:
+    def _interrupted(_args: object) -> None:
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(cli, "cmd_doctor", _interrupted)
+
+    assert cli.main(["doctor"]) == 130
+    assert "interrupted by Ctrl-C" in capsys.readouterr().err
+
+
+@posix_only
+def test_terminate_live_children_stops_a_worker_threads_child() -> None:
+    import threading
+
+    from neuralspotx.subprocess_utils import _runner, run, terminate_live_children
+
+    errors: list[BaseException] = []
+
+    def _worker() -> None:
+        try:
+            run([sys.executable, "-c", "import time; time.sleep(60)"])
+        except BaseException as exc:  # noqa: BLE001
+            errors.append(exc)
+
+    thread = threading.Thread(target=_worker)
+    thread.start()
+    deadline = time.monotonic() + 15
+    while not _runner._LIVE:
+        assert time.monotonic() < deadline, "child never registered"
+        time.sleep(0.05)
+
+    terminate_live_children()
+    thread.join(timeout=15)
+
+    assert not thread.is_alive()
+    assert errors and isinstance(errors[0], subprocess.CalledProcessError)
+    assert not _runner._LIVE
+
+
+def test_parallel_map_does_not_wait_for_running_workers_after_a_failure() -> None:
+    from neuralspotx._parallel import parallel_map
+
+    def _work(item: int) -> int:
+        if item == 0:
+            raise RuntimeError("first item failed")
+        time.sleep(3)
+        return item
+
+    started = time.monotonic()
+    with pytest.raises(RuntimeError):
+        parallel_map(_work, [0, 1, 2], max_workers=3)
+    assert time.monotonic() - started < 2
+
+
+def test_attach_does_not_raise_when_the_job_object_cannot_be_used(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A Popen stand-in without a Win32 handle must not break the caller (Windows path)."""
+
+    from neuralspotx.subprocess_utils import _winjob
+
+    monkeypatch.setattr(_winjob.os, "name", "nt")
+    container = _winjob._ProcessContainer()
+
+    class _NoHandle:
+        pid = 1
+
+    container.attach(_NoHandle())  # ty: ignore[invalid-argument-type]  # deliberate stand-in without _handle
+    container.close()
