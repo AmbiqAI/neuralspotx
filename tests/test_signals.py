@@ -552,3 +552,45 @@ def test_signal_during_timeout_cleanup_still_kills_a_stubborn_child(
         for proc in started:
             if proc.poll() is None:
                 proc.kill()
+
+
+_LEADER_EXITS_LEAVING_STUBBORN_CHILD = textwrap.dedent(
+    """
+    import subprocess, sys
+    stubborn = subprocess.Popen([
+        sys.executable, "-c",
+        "import signal, time; signal.signal(signal.SIGTERM, signal.SIG_IGN); time.sleep(60)",
+    ])
+    open(sys.argv[1], "w").write(str(stubborn.pid))
+    """
+)
+
+
+@posix_only
+def test_container_reaches_a_stubborn_descendant_after_the_leader_exited(tmp_path: Path) -> None:
+    """Like a viewer whose own process exited but left a descendant holding the probe."""
+
+    from neuralspotx.subprocess_utils._runner import _ProcessContainer
+
+    pid_file = tmp_path / "stubborn.pid"
+    leader = subprocess.Popen(
+        [sys.executable, "-c", _LEADER_EXITS_LEAVING_STUBBORN_CHILD, str(pid_file)],
+        start_new_session=True,
+    )
+    leader.wait(timeout=15)
+    stubborn = int(pid_file.read_text())
+    time.sleep(0.3)  # let it install its SIGTERM ignore
+    try:
+        assert _alive(stubborn)
+        container = _ProcessContainer()
+        container.terminate(leader)
+
+        deadline = time.monotonic() + 10
+        while _alive(stubborn):
+            assert time.monotonic() < deadline, "descendant survived after its leader exited"
+            time.sleep(0.05)
+    finally:
+        try:
+            os.kill(stubborn, signal.SIGKILL)
+        except ProcessLookupError:
+            pass

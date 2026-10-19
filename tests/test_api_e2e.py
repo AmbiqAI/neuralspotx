@@ -43,6 +43,37 @@ from neuralspotx.project_config import (
 )
 
 
+class _RecordingContainer:
+    """Stands in for the viewer's process container: records, never signals.
+
+    The view tests use fake processes with made-up pids; the real container
+    would send process-group signals to whatever real process has that pid.
+    """
+
+    terminated: list[int]
+
+    def __init__(self) -> None:
+        self.terminated = []
+        _RecordingContainer.instances.append(self)
+
+    instances: list[_RecordingContainer] = []
+
+    def attach(self, proc: object) -> None:
+        del proc
+
+    def terminate(self, proc: object) -> None:
+        self.terminated.append(getattr(proc, "pid", -1))
+
+    def close(self) -> None:
+        pass
+
+
+@pytest.fixture(autouse=True)
+def _no_real_viewer_signals(monkeypatch: pytest.MonkeyPatch) -> None:
+    _RecordingContainer.instances = []
+    monkeypatch.setattr(operations._build, "_ProcessContainer", _RecordingContainer)
+
+
 def _load_yaml(path: Path) -> dict:
     return yaml.safe_load(path.read_text(encoding="utf-8"))
 
@@ -1189,7 +1220,7 @@ def _view_ready_app(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, name: str) 
 
 
 class _FinishedViewer:
-    """A viewer that already exited: ``_terminate_viewer`` is a no-op on it."""
+    """A viewer that already exited; tearing it down is a no-op."""
 
     pid = 4242
 
@@ -1288,15 +1319,12 @@ def test_view_stops_a_running_viewer_when_an_unexpected_error_escapes(
         popen_kwargs.update(kwargs)
         return _RunningProc()
 
-    terminated: list[int] = []
     monkeypatch.setattr(operations._build.subprocess, "Popen", fake_popen)
-    monkeypatch.setattr(
-        operations._build, "_terminate_viewer", lambda proc: terminated.append(proc.pid)
-    )
 
     with pytest.raises(OSError, match="reset tool vanished"):
         view_app(AppViewRequest(app_dir=app_dir, reset_delay_ms=0, reset_on_open=True))
 
-    assert terminated == [4321]
+    # Torn down through the group-aware container, not a viewer-only kill.
+    assert [c.terminated for c in _RecordingContainer.instances] == [[4321]]
     if sys.platform.startswith("linux"):
         assert popen_kwargs["preexec_fn"] is not None

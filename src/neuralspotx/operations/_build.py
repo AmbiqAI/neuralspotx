@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 import shutil
-import signal
 import subprocess
 import sys
 import time
@@ -388,36 +387,6 @@ def flash_app_impl(
     )
 
 
-def _terminate_viewer(proc: subprocess.Popen[str] | subprocess.Popen[bytes]) -> None:
-    """Tear down the SWO viewer (and its process group) if still running."""
-
-    if proc.poll() is not None:
-        return
-    try:
-        if os.name != "nt":
-            os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
-        else:
-            proc.terminate()
-    except (ProcessLookupError, PermissionError, OSError):
-        return
-    try:
-        proc.wait(timeout=3)
-        return
-    except subprocess.TimeoutExpired:
-        pass
-    try:
-        if os.name != "nt":
-            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
-        else:
-            proc.kill()
-    except (ProcessLookupError, PermissionError, OSError):
-        pass
-    try:
-        proc.wait(timeout=2)
-    except subprocess.TimeoutExpired:
-        pass
-
-
 def _probe_serial_from_view_cmd(view_cmd: list[str]) -> str | None:
     """Extract the ``-USB <serial>`` probe serial baked into the view command."""
 
@@ -660,7 +629,7 @@ def view_app_impl(
                 try:
                     result = run_capture(reset_cmd)
                 except subprocess.CalledProcessError as exc:
-                    _terminate_viewer(viewer_proc)
+                    container.terminate(viewer_proc)
                     raise NSXError(format_subprocess_error(exc, context="Reset")) from None
                 print_captured_output(result)
             _raise_if_viewer_exited(
@@ -673,12 +642,12 @@ def view_app_impl(
         if stream_proc is not None:
             assert capture_file is not None  # noqa: S101 — opened above when streaming
             _stream_viewer(stream_proc, capture_file, deadline)
-            _terminate_viewer(stream_proc)
+            container.terminate(stream_proc)
         elif deadline is not None:
             try:
                 viewer_proc.wait(timeout=duration_s)
             except subprocess.TimeoutExpired:
-                _terminate_viewer(viewer_proc)
+                container.terminate(viewer_proc)
         else:
             viewer_proc.wait()
     except subprocess.CalledProcessError as exc:
@@ -692,7 +661,7 @@ def view_app_impl(
             # Deferred, so a signal during the grace wait cannot cut off the
             # escalation to SIGKILL.
             with defer_termination():
-                _terminate_viewer(viewer_proc)
+                container.terminate(viewer_proc)
         container.close()
         if capture_file is not None:
             capture_file.close()
