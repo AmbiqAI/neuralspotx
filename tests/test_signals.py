@@ -594,3 +594,30 @@ def test_container_reaches_a_stubborn_descendant_after_the_leader_exited(tmp_pat
             os.kill(stubborn, signal.SIGKILL)
         except ProcessLookupError:
             pass
+
+
+@posix_only
+def test_handlers_are_restored_when_a_signal_lands_during_installation(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    before = {s: signal.getsignal(s) for s in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)}
+    real_signal = signal.signal
+    fired = False
+
+    def _install_then_fire(signum: int, handler: object) -> object:
+        nonlocal fired
+        result = real_signal(signum, handler)  # ty: ignore[invalid-argument-type]  # pass-through
+        if not fired and signum == signal.SIGTERM and handler not in before.values():
+            fired = True
+            # Lands right after SIGTERM's handler is installed, before SIGHUP's.
+            os.kill(os.getpid(), signal.SIGTERM)
+            time.sleep(0.2)
+        return result
+
+    monkeypatch.setattr(signal, "signal", _install_then_fire)
+    with pytest.raises(KeyboardInterrupt):  # noqa: PT012
+        with terminate_on_signals():
+            pass
+    monkeypatch.undo()
+
+    assert {s: signal.getsignal(s) for s in before} == before

@@ -134,13 +134,16 @@ def terminate_on_signals() -> Iterator[None]:
             return
         raise _interrupt_for(signum)
 
-    for signum in _installed_signals():
-        current = signal.getsignal(signum)
-        if current == signal.SIG_IGN:
-            continue
-        previous[signum] = current
-        signal.signal(signum, _raise_terminated)
     try:
+        # Installed inside the try, so a signal that lands part way through
+        # (and raises from the handler just installed) still restores every
+        # handler already replaced.
+        for signum in _installed_signals():
+            current = signal.getsignal(signum)
+            if current == signal.SIG_IGN:
+                continue
+            previous[signum] = current
+            signal.signal(signum, _raise_terminated)
         yield
     finally:
         for signum, handler in previous.items():
