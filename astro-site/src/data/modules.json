@@ -168,16 +168,16 @@
       "provider": null,
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/helia-rt",
-      "revision": "helia-rt-v2.1.1",
+      "revision": "helia-rt-v2.2.0",
       "slug": "helia-rt-source",
-      "source_url": "https://github.com/AmbiqAI/helia-rt/tree/helia-rt-v2.1.1",
+      "source_url": "https://github.com/AmbiqAI/helia-rt/tree/helia-rt-v2.2.0",
       "summary": "Source-provider module for consumers that compile the helia-rt TFLM source tree with their own NSX runtime wrapper.",
       "type": "tooling",
       "use_cases": [
         "custom NSX TFLM wrappers",
         "reference or upstream CMSIS-NN TFLM builds"
       ],
-      "version": "2.1.1"
+      "version": "2.2.0"
     },
     {
       "agent_keywords": [
@@ -1568,9 +1568,9 @@
       "provider": null,
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/ns-cmsis-nn",
-      "revision": "v7.46.0",
+      "revision": "v7.47.0",
       "slug": "nsx-cmsis-nn",
-      "source_url": "https://github.com/AmbiqAI/ns-cmsis-nn/tree/v7.46.0",
+      "source_url": "https://github.com/AmbiqAI/ns-cmsis-nn/tree/v7.47.0",
       "summary": "Ambiq-optimized CMSIS-NN neural network kernels. Fork of ARM CMSIS-NN with MVE and DSP optimizations for Apollo SoCs.",
       "type": "algorithm",
       "use_cases": [
@@ -1579,7 +1579,7 @@
         "int8/int16/int4 quantized model support",
         "fp32/fp16 floating-point model support"
       ],
-      "version": "7.46.0"
+      "version": "7.47.0"
     },
     {
       "agent_keywords": [
@@ -1967,9 +1967,9 @@
       "provider": null,
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/helia-rt",
-      "revision": "helia-rt-v2.1.1",
+      "revision": "helia-rt-v2.2.0",
       "slug": "nsx-helia-rt",
-      "source_url": "https://github.com/AmbiqAI/helia-rt/tree/helia-rt-v2.1.1",
+      "source_url": "https://github.com/AmbiqAI/helia-rt/tree/helia-rt-v2.2.0",
       "summary": "Ambiq-optimized TensorFlow Lite for Microcontrollers (TFLM) runtime. Built from source against the nsx-cmsis-nn (ns-cmsis-nn >= 7.46.0) kernel module.",
       "type": "algorithm",
       "use_cases": [
@@ -1977,7 +1977,7 @@
         "tflite model deployment on Ambiq SoCs",
         "keyword spotting and anomaly detection models"
       ],
-      "version": "2.1.1"
+      "version": "2.2.0"
     },
     {
       "agent_keywords": [
