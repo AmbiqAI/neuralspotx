@@ -133,7 +133,7 @@ def test_packaged_registry_release_projects_are_immutable() -> None:
         if entry["project"] == "nsx-tileio"
     } == {"v0.1.0"}
     helia_rt_ref = registry["projects"]["helia-rt"]["revision"]
-    assert helia_rt_ref == "helia-rt-v2.2.0"
+    assert helia_rt_ref == "helia-rt-v2.2.1"
     assert registry["modules"]["nsx-helia-rt"]["revision"] == helia_rt_ref
     # helia-rt-source is the same repository vendored as a bare source tree;
     # it must not drift from the runtime pin.

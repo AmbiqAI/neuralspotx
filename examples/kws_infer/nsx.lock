@@ -3,7 +3,7 @@
 schema_version: 4
 targets:
   apollo510_evb:
-    generated_at: '2026-10-19T00:20:13+00:00'
+    generated_at: '2026-10-19T01:46:13+00:00'
     nsx_tool:
       version: 0.9.0
     manifest:
@@ -167,16 +167,16 @@ targets:
       nsx-helia-rt:
         project: helia-rt
         kind: git
-        constraint: helia-rt-v2.2.0
+        constraint: helia-rt-v2.2.1
         resolved:
           url: https://github.com/AmbiqAI/helia-rt.git
-          tag: helia-rt-v2.2.0
-          commit: 4f922ed365177a6533f869feffe069b0e8b7afb2
+          tag: helia-rt-v2.2.1
+          commit: 9f2da6f17084487e736b671ed5a5ce55445d929d
           vendored_at: modules/helia-rt
-          content_hash: sha256:40e364c644b3107d6dad579f57a3ecf4e73197e9519d79416f768602461973e1
-          acquired_at: '2026-10-19T00:20:20+00:00'
+          content_hash: sha256:e66f60324ff4466836eeb787cde34a553707c4e7eca5025fb6400a1209273542
+          acquired_at: '2026-10-19T01:46:18+00:00'
   apollo510b_evb:
-    generated_at: '2026-10-19T00:20:20+00:00'
+    generated_at: '2026-10-19T01:46:19+00:00'
     nsx_tool:
       version: 0.9.0
     manifest:
@@ -340,16 +340,16 @@ targets:
       nsx-helia-rt:
         project: helia-rt
         kind: git
-        constraint: helia-rt-v2.2.0
+        constraint: helia-rt-v2.2.1
         resolved:
           url: https://github.com/AmbiqAI/helia-rt.git
-          tag: helia-rt-v2.2.0
-          commit: 4f922ed365177a6533f869feffe069b0e8b7afb2
+          tag: helia-rt-v2.2.1
+          commit: 9f2da6f17084487e736b671ed5a5ce55445d929d
           vendored_at: modules/helia-rt
-          content_hash: sha256:40e364c644b3107d6dad579f57a3ecf4e73197e9519d79416f768602461973e1
-          acquired_at: '2026-10-19T00:20:21+00:00'
+          content_hash: sha256:e66f60324ff4466836eeb787cde34a553707c4e7eca5025fb6400a1209273542
+          acquired_at: '2026-10-19T01:46:19+00:00'
   apollo330mP_evb:
-    generated_at: '2026-10-19T00:20:21+00:00'
+    generated_at: '2026-10-19T01:46:20+00:00'
     nsx_tool:
       version: 0.9.0
     manifest:
@@ -513,11 +513,11 @@ targets:
       nsx-helia-rt:
         project: helia-rt
         kind: git
-        constraint: helia-rt-v2.2.0
+        constraint: helia-rt-v2.2.1
         resolved:
           url: https://github.com/AmbiqAI/helia-rt.git
-          tag: helia-rt-v2.2.0
-          commit: 4f922ed365177a6533f869feffe069b0e8b7afb2
+          tag: helia-rt-v2.2.1
+          commit: 9f2da6f17084487e736b671ed5a5ce55445d929d
           vendored_at: modules/helia-rt
-          content_hash: sha256:40e364c644b3107d6dad579f57a3ecf4e73197e9519d79416f768602461973e1
-          acquired_at: '2026-10-19T00:20:22+00:00'
+          content_hash: sha256:e66f60324ff4466836eeb787cde34a553707c4e7eca5025fb6400a1209273542
+          acquired_at: '2026-10-19T01:46:21+00:00'
