@@ -184,6 +184,9 @@ def test_kws_locks_use_recursive_ns_cmsis_nn_hash() -> None:
     lock_text = (Path(__file__).parents[1] / "examples" / "kws_infer" / "nsx.lock").read_text(
         encoding="utf-8"
     )
+    # Both are hash_tree() of the pinned ns-cmsis-nn tag: old_hash from a clone
+    # without submodules, new_hash from a recursive clone. Recompute both when
+    # the pin moves; the lock must carry only the recursive one.
     old_hash = "sha256:d42fc4a9fbf2bc07f79e6e454c18002bdc9c2b37777ccdc1af01d8e31c4241a7"
     new_hash = "sha256:c9fbd80913a9d6f0137bb497c55f2ae4e33a588f28487e35bf87815088c67b2c"
 
