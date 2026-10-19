@@ -3,9 +3,9 @@
 schema_version: 4
 targets:
   apollo510_evb:
-    generated_at: '2026-10-18T19:05:20+00:00'
+    generated_at: '2026-10-19T00:20:13+00:00'
     nsx_tool:
-      version: 0.8.1
+      version: 0.9.0
     manifest:
       path: nsx.yml
       hash: sha256:db8948ec5650564db5384cc45c2ef3e5439bbc6100b438747ea81601a6c489fd
@@ -85,10 +85,10 @@ targets:
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.8.1
+          tool_version: 0.9.0
           vendored_at: boards/apollo510_evb
           content_hash: sha256:f4f36aad1139af5835177bf688454e543f2c1b296f4d949f308582e5fa04bb50
-          acquired_at: '2026-10-17T19:44:12+00:00'
+          acquired_at: '2026-10-19T00:20:20+00:00'
       nsx-core:
         project: nsx-ambiq-sdk
         kind: git
@@ -116,10 +116,10 @@ targets:
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.8.1
+          tool_version: 0.9.0
           vendored_at: cmake/nsx
           content_hash: sha256:04de1c1329109e872fea5c65ce36e8ccec02fb2492eb5450a341b0c488d96528
-          acquired_at: '2026-10-17T19:44:12+00:00'
+          acquired_at: '2026-10-19T00:20:20+00:00'
       nsx-interrupt:
         project: nsx-ambiq-sdk
         kind: git
@@ -156,29 +156,29 @@ targets:
       nsx-cmsis-nn:
         project: ns-cmsis-nn
         kind: git
-        constraint: v7.46.0
+        constraint: v7.47.0
         resolved:
           url: https://github.com/AmbiqAI/ns-cmsis-nn.git
-          tag: v7.46.0
-          commit: 4a937fe7988935e1cfc2d8a41859fdada042c17c
+          tag: v7.47.0
+          commit: 9f793bd9343b60e794f915b285bd7b7c4a885abe
           vendored_at: modules/ns-cmsis-nn
-          content_hash: sha256:c42df34aba013c29b4f48ab526b30b088c901bd7d54300927d255c97f9721a37
-          acquired_at: '2026-10-17T19:44:12+00:00'
+          content_hash: sha256:c9fbd80913a9d6f0137bb497c55f2ae4e33a588f28487e35bf87815088c67b2c
+          acquired_at: '2026-10-19T00:20:20+00:00'
       nsx-helia-rt:
         project: helia-rt
         kind: git
-        constraint: helia-rt-v2.1.1
+        constraint: helia-rt-v2.2.0
         resolved:
           url: https://github.com/AmbiqAI/helia-rt.git
-          tag: helia-rt-v2.1.1
-          commit: 0e061ff7c185bb6397fe132844bd4fdc044bc429
+          tag: helia-rt-v2.2.0
+          commit: 4f922ed365177a6533f869feffe069b0e8b7afb2
           vendored_at: modules/helia-rt
-          content_hash: sha256:bf43b31e46dd91469ebbf2bd236f09d2d5456ed815b18f8665838ab5444e8661
-          acquired_at: '2026-10-18T03:18:14+00:00'
+          content_hash: sha256:40e364c644b3107d6dad579f57a3ecf4e73197e9519d79416f768602461973e1
+          acquired_at: '2026-10-19T00:20:20+00:00'
   apollo510b_evb:
-    generated_at: '2026-10-18T19:05:20+00:00'
+    generated_at: '2026-10-19T00:20:20+00:00'
     nsx_tool:
-      version: 0.8.1
+      version: 0.9.0
     manifest:
       path: nsx.yml
       hash: sha256:db8948ec5650564db5384cc45c2ef3e5439bbc6100b438747ea81601a6c489fd
@@ -258,10 +258,10 @@ targets:
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.8.1
+          tool_version: 0.9.0
           vendored_at: boards/apollo510b_evb
           content_hash: sha256:e40d4aa44d3f6dd974b37a7b99f71e19c33d06f6aa601ec6dc953987d693eccc
-          acquired_at: '2026-10-17T19:44:12+00:00'
+          acquired_at: '2026-10-19T00:20:21+00:00'
       nsx-core:
         project: nsx-ambiq-sdk
         kind: git
@@ -289,10 +289,10 @@ targets:
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.8.1
+          tool_version: 0.9.0
           vendored_at: cmake/nsx
           content_hash: sha256:04de1c1329109e872fea5c65ce36e8ccec02fb2492eb5450a341b0c488d96528
-          acquired_at: '2026-10-17T19:44:12+00:00'
+          acquired_at: '2026-10-19T00:20:21+00:00'
       nsx-interrupt:
         project: nsx-ambiq-sdk
         kind: git
@@ -329,29 +329,29 @@ targets:
       nsx-cmsis-nn:
         project: ns-cmsis-nn
         kind: git
-        constraint: v7.46.0
+        constraint: v7.47.0
         resolved:
           url: https://github.com/AmbiqAI/ns-cmsis-nn.git
-          tag: v7.46.0
-          commit: 4a937fe7988935e1cfc2d8a41859fdada042c17c
+          tag: v7.47.0
+          commit: 9f793bd9343b60e794f915b285bd7b7c4a885abe
           vendored_at: modules/ns-cmsis-nn
-          content_hash: sha256:c42df34aba013c29b4f48ab526b30b088c901bd7d54300927d255c97f9721a37
-          acquired_at: '2026-10-17T19:44:12+00:00'
+          content_hash: sha256:c9fbd80913a9d6f0137bb497c55f2ae4e33a588f28487e35bf87815088c67b2c
+          acquired_at: '2026-10-19T00:20:21+00:00'
       nsx-helia-rt:
         project: helia-rt
         kind: git
-        constraint: helia-rt-v2.1.1
+        constraint: helia-rt-v2.2.0
         resolved:
           url: https://github.com/AmbiqAI/helia-rt.git
-          tag: helia-rt-v2.1.1
-          commit: 0e061ff7c185bb6397fe132844bd4fdc044bc429
+          tag: helia-rt-v2.2.0
+          commit: 4f922ed365177a6533f869feffe069b0e8b7afb2
           vendored_at: modules/helia-rt
-          content_hash: sha256:bf43b31e46dd91469ebbf2bd236f09d2d5456ed815b18f8665838ab5444e8661
-          acquired_at: '2026-10-18T03:18:15+00:00'
+          content_hash: sha256:40e364c644b3107d6dad579f57a3ecf4e73197e9519d79416f768602461973e1
+          acquired_at: '2026-10-19T00:20:21+00:00'
   apollo330mP_evb:
-    generated_at: '2026-10-18T19:05:21+00:00'
+    generated_at: '2026-10-19T00:20:21+00:00'
     nsx_tool:
-      version: 0.8.1
+      version: 0.9.0
     manifest:
       path: nsx.yml
       hash: sha256:db8948ec5650564db5384cc45c2ef3e5439bbc6100b438747ea81601a6c489fd
@@ -431,10 +431,10 @@ targets:
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.8.1
+          tool_version: 0.9.0
           vendored_at: boards/apollo330mP_evb
           content_hash: sha256:883f6d50a6e470fd42ea733ec2d6a62e665e14579915b1f0e00ff5f8ac98f963
-          acquired_at: '2026-10-17T19:44:12+00:00'
+          acquired_at: '2026-10-19T00:20:22+00:00'
       nsx-core:
         project: nsx-ambiq-sdk
         kind: git
@@ -462,10 +462,10 @@ targets:
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.8.1
+          tool_version: 0.9.0
           vendored_at: cmake/nsx
           content_hash: sha256:04de1c1329109e872fea5c65ce36e8ccec02fb2492eb5450a341b0c488d96528
-          acquired_at: '2026-10-17T19:44:12+00:00'
+          acquired_at: '2026-10-19T00:20:22+00:00'
       nsx-interrupt:
         project: nsx-ambiq-sdk
         kind: git
@@ -502,22 +502,22 @@ targets:
       nsx-cmsis-nn:
         project: ns-cmsis-nn
         kind: git
-        constraint: v7.46.0
+        constraint: v7.47.0
         resolved:
           url: https://github.com/AmbiqAI/ns-cmsis-nn.git
-          tag: v7.46.0
-          commit: 4a937fe7988935e1cfc2d8a41859fdada042c17c
+          tag: v7.47.0
+          commit: 9f793bd9343b60e794f915b285bd7b7c4a885abe
           vendored_at: modules/ns-cmsis-nn
-          content_hash: sha256:c42df34aba013c29b4f48ab526b30b088c901bd7d54300927d255c97f9721a37
-          acquired_at: '2026-10-17T19:44:12+00:00'
+          content_hash: sha256:c9fbd80913a9d6f0137bb497c55f2ae4e33a588f28487e35bf87815088c67b2c
+          acquired_at: '2026-10-19T00:20:22+00:00'
       nsx-helia-rt:
         project: helia-rt
         kind: git
-        constraint: helia-rt-v2.1.1
+        constraint: helia-rt-v2.2.0
         resolved:
           url: https://github.com/AmbiqAI/helia-rt.git
-          tag: helia-rt-v2.1.1
-          commit: 0e061ff7c185bb6397fe132844bd4fdc044bc429
+          tag: helia-rt-v2.2.0
+          commit: 4f922ed365177a6533f869feffe069b0e8b7afb2
           vendored_at: modules/helia-rt
-          content_hash: sha256:bf43b31e46dd91469ebbf2bd236f09d2d5456ed815b18f8665838ab5444e8661
-          acquired_at: '2026-10-18T03:18:15+00:00'
+          content_hash: sha256:40e364c644b3107d6dad579f57a3ecf4e73197e9519d79416f768602461973e1
+          acquired_at: '2026-10-19T00:20:22+00:00'
