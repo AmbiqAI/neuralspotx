@@ -5,6 +5,7 @@ import io
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -905,6 +906,9 @@ def test_flash_and_view_reconfigure_when_probe_serial_is_supplied(
     monkeypatch.setattr(operations._build, "find_processes_holding_probe", lambda _serial: [])
 
     class _DoneProc:
+        def poll(self) -> int:
+            return 0
+
         def wait(self) -> int:
             return 0
 
@@ -1002,6 +1006,9 @@ def test_view_auto_skips_reset_for_secure_boards(
     monkeypatch.setattr(operations._build, "extract_view_command", lambda *_args, **_kw: ["viewer"])
 
     class _DoneProc:
+        def poll(self) -> int:
+            return 0
+
         pid = 1234
 
         def wait(self, timeout: float | None = None) -> int:
@@ -1058,6 +1065,9 @@ def test_view_auto_skips_reset_for_custom_board_inheriting_apollo4(
     monkeypatch.setattr(operations._build, "extract_view_command", lambda *_args, **_kw: ["viewer"])
 
     class _DoneProc:
+        def poll(self) -> int:
+            return 0
+
         pid = 1234
 
         def wait(self, timeout: float | None = None) -> int:
@@ -1142,6 +1152,9 @@ def test_view_warns_when_probe_already_in_use(
     monkeypatch.setattr(operations._build, "find_processes_holding_probe", lambda _serial: [4242])
 
     class _DoneProc:
+        def poll(self) -> int:
+            return 0
+
         pid = 1234
 
         def wait(self, timeout: float | None = None) -> int:
@@ -1234,3 +1247,51 @@ def test_view_without_capture_keeps_viewer_stdout_inherited(
     assert kw["stdin"] is subprocess.PIPE
     assert kw["start_new_session"] is (os.name != "nt")
     assert "stdout" not in kw and "text" not in kw and "bufsize" not in kw
+
+
+def test_view_stops_a_running_viewer_when_an_unexpected_error_escapes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Every exit path takes the viewer down, not only Ctrl-C (#293)."""
+
+    create_app(
+        AppCreateRequest(
+            app_dir=tmp_path / "hello_view_err", board="apollo510_evb", no_bootstrap=True
+        )
+    )
+    app_dir = tmp_path / "hello_view_err"
+    build_dir = app_dir / "build" / "apollo510_evb"
+    build_dir.mkdir(parents=True, exist_ok=True)
+    (build_dir / "build.ninja").write_text("# fake\n", encoding="utf-8")
+
+    def failing_reset(cmd: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+        del cmd, cwd
+        raise OSError("reset tool vanished")
+
+    monkeypatch.setattr(operations._build, "run_capture", failing_reset)
+    monkeypatch.setattr(operations._build, "extract_view_command", lambda *_args, **_kw: ["viewer"])
+
+    class _RunningProc:
+        pid = 4321
+
+        def poll(self) -> int | None:
+            return None
+
+    popen_kwargs: dict[str, object] = {}
+
+    def fake_popen(*_args: object, **kwargs: object) -> _RunningProc:
+        popen_kwargs.update(kwargs)
+        return _RunningProc()
+
+    terminated: list[int] = []
+    monkeypatch.setattr(operations._build.subprocess, "Popen", fake_popen)
+    monkeypatch.setattr(
+        operations._build, "_terminate_viewer", lambda proc: terminated.append(proc.pid)
+    )
+
+    with pytest.raises(OSError, match="reset tool vanished"):
+        view_app(AppViewRequest(app_dir=app_dir, reset_delay_ms=0, reset_on_open=True))
+
+    assert terminated == [4321]
+    if sys.platform.startswith("linux"):
+        assert popen_kwargs["preexec_fn"] is not None

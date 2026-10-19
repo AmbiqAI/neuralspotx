@@ -32,7 +32,7 @@ from ..constants import DEFAULT_BOARD
 from ..metadata import SUPPORTED_MODULE_TYPES
 from ..models import CommandCategory, CommandHint, CommandScope, OutdatedReport
 from ..project_config import resolve_app_dir
-from ..subprocess_utils import format_subprocess_error
+from ..subprocess_utils import TerminatedBySignal, format_subprocess_error, terminate_on_signals
 from ..tooling import JLinkProbe, list_jlink_probes
 from ._cmd_board import cmd_board_create, cmd_board_list, cmd_board_show
 from ._cmd_cache import cmd_cache_clean, cmd_cache_info
@@ -1389,7 +1389,13 @@ def main(argv: list[str] | None = None) -> int:
     configure_logging(args.verbose, quiet=args.quiet)
     operations.set_verbosity(args.verbose)
     try:
-        args.func(args)
+        # SIGTERM/SIGHUP raise TerminatedBySignal (a KeyboardInterrupt), so
+        # child processes are stopped exactly as they are on Ctrl-C.
+        with terminate_on_signals():
+            args.func(args)
+    except TerminatedBySignal as exc:
+        sys.stderr.write(f"error: interrupted by {exc.signal_name}\n")
+        return exc.exit_code
     except subprocess.CalledProcessError as exc:
         if args.verbose > 0:
             raise

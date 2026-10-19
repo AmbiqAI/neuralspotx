@@ -19,6 +19,8 @@ This package is split into mechanical submodules:
 * :mod:`._winjob` — Windows Job Object machinery for process-tree
   containment (``_ProcessContainer``).
 * :mod:`._runner` — :func:`run`, :func:`run_capture`, error formatting.
+* :mod:`._signals` — SIGTERM/SIGHUP to :class:`TerminatedBySignal` so the
+  same child cleanup as Ctrl-C runs; Linux parent-death signal.
 * :mod:`._git` — git transport hardening + git wrapper helpers.
 
 The names exported here are the stable public surface; importing from
@@ -52,6 +54,7 @@ from ._runner import (
     run,
     run_capture,
 )
+from ._signals import TerminatedBySignal, die_with_parent_preexec, terminate_on_signals
 from ._verbosity import (
     _TIMEOUT,
     _VERBOSITY,
@@ -119,6 +122,8 @@ def extract_view_command(build_dir: Path, target: str) -> list[str]:
 
 __all__ = [
     "GIT_PROTOCOL_ALLOWLIST_FLAGS",
+    "TerminatedBySignal",
+    "die_with_parent_preexec",
     "extract_view_command",
     "format_subprocess_error",
     "get_verbosity",
@@ -134,6 +139,7 @@ __all__ = [
     "run",
     "run_capture",
     "set_verbosity",
+    "terminate_on_signals",
     "timeout_budget",
     "verbosity",
 ]

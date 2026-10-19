@@ -90,7 +90,14 @@ after the reset before reading, and defaults to 400.
 
 `--capture <path>` writes the stream to a file as well as the terminal, and `--duration
 <seconds>` stops the viewer after a fixed time. Together they are what you want in a
-script or a CI job, where no one is there to press Ctrl-C.
+script or a CI job, where no one is there to press Ctrl-C. Prefer `--duration` to wrapping
+the command in `timeout`.
+
+NSX stops the SEGGER viewer however the command ends: on Ctrl-C, when `--duration`
+expires, on an error, and when `nsx` receives `SIGTERM` or `SIGHUP`, as from `timeout`,
+`kill` or a canceled CI step. It then exits with status 128 plus the signal number. A
+viewer left running would hold the J-Link SWO port and block the next `nsx view` on any
+board.
 
 ## Reset
 
