@@ -78,11 +78,16 @@ def parallel_map(
         # exception semantics.
         return [fn(item) for item in materialised]
 
-    with ThreadPoolExecutor(max_workers=workers, thread_name_prefix="nsx-resolve") as ex:
-        try:
-            return list(ex.map(fn, materialised))
-        except BaseException:
-            # Cancel anything still queued so we don't keep the
-            # interpreter alive past the failure.
-            ex.shutdown(wait=False, cancel_futures=True)
-            raise
+    ex = ThreadPoolExecutor(max_workers=workers, thread_name_prefix="nsx-resolve")
+    try:
+        results = list(ex.map(fn, materialised))
+    except BaseException:
+        # Cancel anything still queued and return without waiting for the
+        # running workers, so an interrupt (Ctrl-C, or SIGTERM raised as
+        # TerminatedBySignal) is not held up by a long git operation. The
+        # CLI then stops the child processes running at that moment; a
+        # worker finishing its current item exits with the interpreter.
+        ex.shutdown(wait=False, cancel_futures=True)
+        raise
+    ex.shutdown(wait=True)
+    return results

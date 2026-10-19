@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import os
 import shutil
-import signal
 import subprocess
 import sys
 import time
@@ -18,6 +17,9 @@ from .._io import info, line, warn
 from ..models import FlashResult
 from ..project_config import _run_cmake_configure
 from ..subprocess_utils import (
+    _ProcessContainer,
+    defer_termination,
+    die_with_parent_preexec,
     extract_view_command,
     format_subprocess_error,
     print_captured_output,
@@ -385,34 +387,18 @@ def flash_app_impl(
     )
 
 
-def _terminate_viewer(proc: subprocess.Popen[str] | subprocess.Popen[bytes]) -> None:
-    """Tear down the SWO viewer (and its process group) if still running."""
+def _stop_viewer(
+    container: _ProcessContainer, proc: subprocess.Popen[str] | subprocess.Popen[bytes]
+) -> None:
+    """Stop the viewer's process group; a signal meanwhile is held until it is done.
 
-    if proc.poll() is not None:
-        return
-    try:
-        if os.name != "nt":
-            os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
-        else:
-            proc.terminate()
-    except (ProcessLookupError, PermissionError, OSError):
-        return
-    try:
-        proc.wait(timeout=3)
-        return
-    except subprocess.TimeoutExpired:
-        pass
-    try:
-        if os.name != "nt":
-            os.killpg(os.getpgid(proc.pid), signal.SIGKILL)
-        else:
-            proc.kill()
-    except (ProcessLookupError, PermissionError, OSError):
-        pass
-    try:
-        proc.wait(timeout=2)
-    except subprocess.TimeoutExpired:
-        pass
+    Without the deferral, a SIGTERM/SIGHUP/Ctrl-C during the grace wait
+    would cut off the escalation to SIGKILL for a viewer that ignores
+    SIGTERM.
+    """
+
+    with defer_termination():
+        container.terminate(proc)
 
 
 def _probe_serial_from_view_cmd(view_cmd: list[str]) -> str | None:
@@ -601,26 +587,36 @@ def view_app_impl(
     # Text-mode handle used only when streaming to a capture file; it is
     # the same process as ``viewer_proc`` but typed for line reads.
     stream_proc: subprocess.Popen[str] | None = None
+    # Windows: a kill-on-close Job Object, so the viewer cannot outlive us.
+    # Linux: the kernel sends the viewer SIGTERM if ``nsx`` dies outright.
+    container = _ProcessContainer()
+    preexec_fn = die_with_parent_preexec()
     try:
-        if stream_output:
-            stream_proc = subprocess.Popen(
-                run_cmd,
-                cwd=str(resolved_build_dir),
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                bufsize=1,
-                start_new_session=start_new_session,
-            )
-            viewer_proc = stream_proc
-        else:
-            viewer_proc = subprocess.Popen(
-                run_cmd,
-                cwd=str(resolved_build_dir),
-                stdin=subprocess.PIPE,
-                start_new_session=start_new_session,
-            )
+        # Hold SIGTERM/SIGHUP until viewer_proc is assigned, so the finally
+        # below can always reach the viewer.
+        with defer_termination():
+            if stream_output:
+                stream_proc = subprocess.Popen(
+                    run_cmd,
+                    cwd=str(resolved_build_dir),
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,
+                    start_new_session=start_new_session,
+                    preexec_fn=preexec_fn,
+                )
+                viewer_proc = stream_proc
+            else:
+                viewer_proc = subprocess.Popen(
+                    run_cmd,
+                    cwd=str(resolved_build_dir),
+                    stdin=subprocess.PIPE,
+                    start_new_session=start_new_session,
+                    preexec_fn=preexec_fn,
+                )
+            container.attach(viewer_proc)
         viewer_pid = getattr(viewer_proc, "pid", "unknown")
         info(f"SWO viewer launched (pid={viewer_pid})")
         if effective_reset_on_open:
@@ -647,7 +643,7 @@ def view_app_impl(
                 try:
                     result = run_capture(reset_cmd)
                 except subprocess.CalledProcessError as exc:
-                    _terminate_viewer(viewer_proc)
+                    _stop_viewer(container, viewer_proc)
                     raise NSXError(format_subprocess_error(exc, context="Reset")) from None
                 print_captured_output(result)
             _raise_if_viewer_exited(
@@ -660,27 +656,30 @@ def view_app_impl(
         if stream_proc is not None:
             assert capture_file is not None  # noqa: S101 — opened above when streaming
             _stream_viewer(stream_proc, capture_file, deadline)
-            _terminate_viewer(stream_proc)
+            _stop_viewer(container, stream_proc)
         elif deadline is not None:
             try:
                 viewer_proc.wait(timeout=duration_s)
             except subprocess.TimeoutExpired:
-                _terminate_viewer(viewer_proc)
+                _stop_viewer(container, viewer_proc)
         else:
             viewer_proc.wait()
     except subprocess.CalledProcessError as exc:
         raise NSXError(format_subprocess_error(exc, context="View")) from None
-    except KeyboardInterrupt:
-        # Ctrl-C must take the viewer down with us; otherwise SWO/RTT
-        # subprocesses can keep running detached and hold the SEGGER
-        # debug interface, blocking subsequent ``nsx flash``/``view``
-        # invocations until the user manually kills them.
-        if viewer_proc is not None:
-            _terminate_viewer(viewer_proc)
-        raise
     finally:
-        if capture_file is not None:
-            capture_file.close()
+        # Every exit — normal, an error, Ctrl-C, or SIGTERM/SIGHUP (raised as
+        # TerminatedBySignal by the CLI) — takes the viewer down with us.
+        # Otherwise it keeps running detached and holds the SEGGER debug
+        # interface, blocking later ``nsx flash``/``view`` on every board.
+        try:
+            if viewer_proc is not None:
+                # A signal during this teardown is raised when it ends; the
+                # handles below are still closed.
+                _stop_viewer(container, viewer_proc)
+        finally:
+            container.close()
+            if capture_file is not None:
+                capture_file.close()
     return resolved_build_dir
 
 

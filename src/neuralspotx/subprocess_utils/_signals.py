@@ -1,0 +1,184 @@
+"""Turn termination signals into the interrupt path child cleanup already handles.
+
+Children run in their own process group (POSIX) or Job Object (Windows),
+so a signal sent to ``nsx`` does not reach them. Ctrl-C arrives as
+``KeyboardInterrupt``, and :func:`run`, :func:`run_capture` and
+``view_app_impl`` stop their child before re-raising it. ``SIGTERM``
+(``timeout``, ``kill``, a canceled CI step) and ``SIGHUP`` (a closed
+terminal) end the interpreter without running any of that cleanup, which
+leaves the child — a J-Link SWO viewer, ``ninja``, ``JLinkExe`` — running.
+
+:func:`terminate_on_signals` raises :class:`TerminatedBySignal`, a
+``KeyboardInterrupt`` subclass, from those signals so the same cleanup
+runs. :func:`die_with_parent_preexec` returns a ``preexec_fn`` that also
+makes a Linux child exit if ``nsx`` itself is killed outright.
+
+POSIX only: on Windows these signals are not delivered this way, so
+:func:`terminate_on_signals` is a no-op there and the Job Object is what
+ties children to ``nsx``.
+"""
+
+from __future__ import annotations
+
+import ctypes
+import os
+import signal
+import sys
+import threading
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
+from types import FrameType
+
+# POSIX signals that should stop ``nsx`` and its children. SIGINT already
+# raises KeyboardInterrupt by default.
+_TERMINATION_SIGNALS: tuple[str, ...] = ("SIGTERM", "SIGHUP")
+# Every signal terminate_on_signals() handles. SIGINT keeps raising a plain
+# KeyboardInterrupt, but goes through the same deferral and, once any of
+# them arrives, all are ignored until cleanup ends.
+_HANDLED_SIGNALS: tuple[str, ...] = ("SIGINT", *_TERMINATION_SIGNALS)
+
+# ``prctl(PR_SET_PDEATHSIG, sig)`` from <linux/prctl.h>.
+_PR_SET_PDEATHSIG = 1
+
+
+class TerminatedBySignal(KeyboardInterrupt):
+    """Raised in the main thread when ``nsx`` receives a termination signal."""
+
+    def __init__(self, signum: int) -> None:
+        super().__init__(signum)
+        self.signum = signum
+
+    @property
+    def signal_name(self) -> str:
+        """The signal's name, for example ``SIGTERM``."""
+
+        try:
+            return signal.Signals(self.signum).name
+        except ValueError:
+            return f"signal {self.signum}"
+
+    @property
+    def exit_code(self) -> int:
+        """Shell convention for a process ended by a signal: 128 + signum."""
+
+        return 128 + self.signum
+
+
+# Main-thread deferral: while > 0 a termination signal is recorded in
+# _PENDING instead of raised, then raised when the region ends. Signal
+# handlers only ever run in the main thread, so plain globals suffice.
+_DEFER_DEPTH = 0
+_PENDING: int | None = None
+
+
+@contextmanager
+def defer_termination() -> Iterator[None]:
+    """Hold an interrupt (SIGINT, SIGTERM, SIGHUP) until the block ends, then raise it.
+
+    Wrap steps that must not be cut short: starting and registering a
+    child (otherwise it could start unreachable by any cleanup) and
+    stopping one (otherwise a child that ignores SIGTERM could survive the
+    escalation to SIGKILL). Takes effect under :func:`terminate_on_signals`;
+    a no-op outside the main thread, where signals are never raised.
+    """
+
+    global _DEFER_DEPTH, _PENDING
+    if threading.current_thread() is not threading.main_thread():
+        yield
+        return
+    _DEFER_DEPTH += 1
+    try:
+        yield
+    finally:
+        _DEFER_DEPTH -= 1
+        if _DEFER_DEPTH == 0 and _PENDING is not None:
+            signum, _PENDING = _PENDING, None
+            raise _interrupt_for(signum)
+
+
+def _interrupt_for(signum: int) -> KeyboardInterrupt:
+    if signum == signal.SIGINT:
+        return KeyboardInterrupt()
+    return TerminatedBySignal(signum)
+
+
+def _installed_signals() -> list[int]:
+    return [s for name in _HANDLED_SIGNALS if (s := getattr(signal, name, None)) is not None]
+
+
+@contextmanager
+def terminate_on_signals() -> Iterator[None]:
+    """Raise :class:`TerminatedBySignal` on SIGTERM/SIGHUP inside the block.
+
+    SIGINT still raises a plain ``KeyboardInterrupt``. A signal whose
+    inherited disposition is "ignore" (for example SIGHUP under ``nohup``)
+    is left ignored. After the first of these signals all of them are
+    ignored, so cleanup — stopping child processes — runs to the end;
+    SIGKILL still works. A no-op on Windows and outside the main
+    thread (signal handlers can only be installed there). Previous
+    handlers are restored on exit.
+    """
+
+    if os.name == "nt" or threading.current_thread() is not threading.main_thread():
+        yield
+        return
+
+    previous: dict[int, Callable[[int, FrameType | None], object] | int | None] = {}
+
+    def _raise_terminated(signum: int, _frame: FrameType | None) -> None:
+        global _PENDING
+        for other in previous:
+            signal.signal(other, signal.SIG_IGN)
+        if _DEFER_DEPTH:
+            _PENDING = signum
+            return
+        raise _interrupt_for(signum)
+
+    try:
+        # Installed inside the try, so a signal that lands part way through
+        # (and raises from the handler just installed) still restores every
+        # handler already replaced.
+        for signum in _installed_signals():
+            current = signal.getsignal(signum)
+            if current == signal.SIG_IGN:
+                continue
+            previous[signum] = current
+            signal.signal(signum, _raise_terminated)
+        yield
+    finally:
+        for signum, handler in previous.items():
+            # ``None`` means a handler not installed from Python; the
+            # default action is the closest restorable equivalent.
+            signal.signal(signum, handler if handler is not None else signal.SIG_DFL)
+
+
+def die_with_parent_preexec() -> Callable[[], None] | None:
+    """Return a ``preexec_fn`` that ties a Linux child's life to ``nsx``.
+
+    The child asks the kernel for SIGTERM when its parent thread exits
+    (``PR_SET_PDEATHSIG``), which covers ``nsx`` being killed with SIGKILL,
+    where no handler runs. The thread that spawns the child must outlive
+    it, which holds for ``view_app_impl``: it waits on the viewer. Returns
+    ``None`` off Linux or when ``prctl`` is unavailable.
+    """
+
+    if not sys.platform.startswith("linux"):
+        return None
+    try:
+        # Resolve prctl here, in the parent, not after fork in the child.
+        prctl = ctypes.CDLL(None, use_errno=True).prctl
+    except (OSError, AttributeError):
+        return None
+    parent_pid = os.getpid()
+
+    def _die_with_parent() -> None:
+        # Between fork and exec the child still runs nsx's Python signal
+        # handlers and deferral state, which would hold this SIGTERM and lose
+        # it at exec. Restore the default action first so it ends the child.
+        signal.signal(signal.SIGTERM, signal.SIG_DFL)
+        prctl(_PR_SET_PDEATHSIG, signal.SIGTERM, 0, 0, 0)
+        # If nsx died between fork and prctl, the signal will never come.
+        if os.getppid() != parent_pid:
+            os.kill(os.getpid(), signal.SIGTERM)
+
+    return _die_with_parent

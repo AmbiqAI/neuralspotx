@@ -22,6 +22,71 @@ import ctypes
 import os
 import signal
 import subprocess
+import time
+
+
+def _group_alive(pgid: int) -> bool:
+    """Whether any process is still in process group *pgid*."""
+
+    try:
+        os.killpg(pgid, 0)
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    return True
+
+
+def _terminate_posix_group(proc: subprocess.Popen, *, grace_s: float = 2.0) -> None:
+    """SIGTERM *proc*'s process group, then SIGKILL whatever is left.
+
+    Children start in their own session, so the leader's pid is the group
+    id, which stays in use while any member is alive, even after the leader
+    exits. A descendant that ignores SIGTERM (and may hold an output pipe
+    open) is therefore still reached, whether or not the leader is gone.
+    A child that does not lead its own group is signalled on its own, so
+    nsx never signals its own group.
+    """
+
+    pgid = proc.pid
+    try:
+        leads_group = os.getpgid(proc.pid) == proc.pid
+    except ProcessLookupError:
+        # The leader is gone; its group may still have members.
+        leads_group = True
+    except OSError:
+        leads_group = False
+
+    if not leads_group:
+        if proc.poll() is None:
+            try:
+                proc.terminate()
+                proc.wait(timeout=grace_s)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+            except (ProcessLookupError, OSError):
+                pass
+        return
+
+    if proc.poll() is not None and not _group_alive(pgid):
+        return
+    try:
+        os.killpg(pgid, signal.SIGTERM)
+    except (ProcessLookupError, OSError):
+        return
+    deadline = time.monotonic() + grace_s
+    while time.monotonic() < deadline:
+        if proc.poll() is not None and not _group_alive(pgid):
+            return
+        time.sleep(0.05)
+    try:
+        os.killpg(pgid, signal.SIGKILL)
+    except (ProcessLookupError, OSError):
+        pass
+    try:
+        proc.wait(timeout=2)
+    except subprocess.TimeoutExpired:
+        pass
 
 
 class _ProcessContainer:
@@ -45,7 +110,7 @@ class _ProcessContainer:
                 self._job_handle,
                 int(proc._handle),  # ty: ignore[unresolved-attribute]  # CPython-private Win32 HANDLE; no public accessor
             )
-        except OSError:
+        except (OSError, AttributeError, TypeError, ValueError):
             # Best-effort: if Job Object creation/assignment fails (rare —
             # nested jobs on pre-Win8, restricted desktops), fall back to
             # the ``proc.kill()`` path.  We must NOT raise here or
@@ -54,24 +119,20 @@ class _ProcessContainer:
 
     def terminate(self, proc: subprocess.Popen) -> None:
         """Kill the entire tree rooted at *proc*."""
+        if os.name != "nt":
+            try:
+                _terminate_posix_group(proc)
+            finally:
+                self._close_handle()
+            return
         if proc.poll() is not None:
             self._close_handle()
             return
         try:
-            if os.name == "nt":
-                if self._job_handle is not None:
-                    _terminate_job(self._job_handle)
-                else:
-                    proc.kill()
+            if self._job_handle is not None:
+                _terminate_job(self._job_handle)
             else:
-                pgid = os.getpgid(proc.pid)
-                os.killpg(pgid, signal.SIGTERM)
-                try:
-                    proc.wait(timeout=2)
-                    return
-                except subprocess.TimeoutExpired:
-                    pass
-                os.killpg(pgid, signal.SIGKILL)
+                proc.kill()
             try:
                 proc.wait(timeout=2)
             except subprocess.TimeoutExpired:

@@ -6,14 +6,80 @@ import os
 import select
 import subprocess
 import sys
+import threading
 import time
 from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 from .._errors import NSXToolchainError
+from ._signals import defer_termination
 from ._verbosity import _VERBOSITY, _effective_timeout
 from ._winjob import _ProcessContainer
+
+# Child trees started by run()/run_capture() that have not finished yet, in
+# any thread. A signal reaches only the main thread, so worker-thread
+# children (parallel git) are stopped through this registry.
+_LIVE_LOCK = threading.Lock()
+_LIVE: dict[int, tuple[_ProcessContainer, subprocess.Popen]] = {}
+# Set by terminate_live_children(): nsx is exiting, so no new child may
+# start (a worker's git retry would otherwise outlive the cleanup).
+_SHUTTING_DOWN = threading.Event()
+
+
+class ChildStartRefused(KeyboardInterrupt):
+    """Raised instead of starting a child once nsx is shutting down.
+
+    A ``KeyboardInterrupt`` so retry loops that catch only subprocess
+    errors let it through.
+    """
+
+
+def _track(container: _ProcessContainer, proc: subprocess.Popen) -> None:
+    """Register a just-started child, or stop it if nsx is shutting down.
+
+    Checked under the same lock terminate_live_children() takes its
+    snapshot with, so every child is either in that snapshot or stopped
+    here: a worker that passed the check in :func:`_popen` before shutdown
+    began cannot leave an untracked child behind.
+    """
+
+    with _LIVE_LOCK:
+        if not _SHUTTING_DOWN.is_set():
+            _LIVE[id(proc)] = (container, proc)
+            return
+    container.terminate(proc)
+    container.close()
+    raise ChildStartRefused(f"nsx is shutting down; stopped {proc.args!r}")
+
+
+def _untrack(proc: subprocess.Popen) -> None:
+    with _LIVE_LOCK:
+        _LIVE.pop(id(proc), None)
+
+
+def allow_child_starts() -> None:
+    """Clear the shutdown state left by :func:`terminate_live_children`.
+
+    A real ``nsx`` process exits right after an interrupt; a process that
+    embeds the CLI and calls it again must not inherit the refusal.
+    """
+
+    _SHUTTING_DOWN.clear()
+
+
+def terminate_live_children() -> None:
+    """Stop every child tree started by :func:`run`/:func:`run_capture` that is still running.
+
+    Also refuses any later start (see :class:`ChildStartRefused`): this is
+    called when nsx is exiting on an interrupt.
+    """
+
+    with _LIVE_LOCK:
+        _SHUTTING_DOWN.set()
+        live = list(_LIVE.values())
+    for container, proc in live:
+        container.terminate(proc)
 
 
 def _popen(cmd: list[str], **kwargs: Any) -> subprocess.Popen:
@@ -27,6 +93,8 @@ def _popen(cmd: list[str], **kwargs: Any) -> subprocess.Popen:
     raised as :class:`subprocess.CalledProcessError` by the callers.
     """
 
+    if _SHUTTING_DOWN.is_set():
+        raise ChildStartRefused(f"nsx is shutting down; not starting {cmd[0]!r}")
     try:
         return subprocess.Popen(cmd, **kwargs)
     except FileNotFoundError as exc:
@@ -35,6 +103,59 @@ def _popen(cmd: list[str], **kwargs: Any) -> subprocess.Popen:
         ) from exc
     except OSError as exc:
         raise NSXToolchainError(f"failed to launch {cmd[0]!r}: {exc}") from exc
+
+
+class _Child:
+    """A child process from spawn to release, owned by one runner call.
+
+    The runner creates it, and enters its cleanup scope, *before* starting
+    the child; :func:`_start_child` fills it in while termination signals
+    are deferred. A SIGTERM/SIGHUP can therefore only be raised where the
+    runner's cleanup already covers the child.
+    """
+
+    __slots__ = ("container", "proc")
+
+    def __init__(self) -> None:
+        self.container = _ProcessContainer()
+        self.proc: subprocess.Popen | None = None
+
+    def stop(self) -> None:
+        """Kill the child's process tree if it was started.
+
+        Runs with interrupts deferred: a signal arriving during the grace
+        wait would otherwise cut off the escalation to SIGKILL, leaving a
+        child that ignores SIGTERM running and, after ``release()``,
+        unregistered.
+        """
+
+        if self.proc is not None:
+            with defer_termination():
+                self.container.terminate(self.proc)
+
+    def release(self) -> None:
+        """Unregister the child and release its container."""
+
+        if self.proc is not None:
+            _untrack(self.proc)
+        self.container.close()
+
+
+def _start_child(child: _Child, cmd: list[str], **kwargs: Any) -> subprocess.Popen:
+    """Spawn, contain and register a child into *child*.
+
+    Runs with SIGTERM/SIGHUP deferred (:func:`defer_termination`), so the
+    child is recorded in *child* and registered before any such signal is
+    raised. The caller must already be inside the scope that calls
+    ``child.stop()``/``child.release()``.
+    """
+
+    with defer_termination():
+        proc = _popen(cmd, **kwargs)
+        child.proc = proc
+        child.container.attach(proc)
+        _track(child.container, proc)
+    return proc
 
 
 def _split_emitted_lines(pending: bytes, *, at_eof: bool) -> tuple[list[tuple[str, str]], bytes]:
@@ -110,27 +231,30 @@ def run(
     parent's stdio directly (legacy behaviour).
     """
     effective = _effective_timeout(timeout)
-    if on_line is not None:
-        # Binary pipe: we read raw bytes (``os.read`` on POSIX, ``readline``
-        # on Windows) and decode ourselves so we can split on \r as well as
-        # \n and re-emit the original terminator for in-place progress.
-        proc = _popen(
-            cmd,
-            cwd=str(cwd) if cwd else None,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            start_new_session=(os.name != "nt"),
-        )
-    else:
-        proc = _popen(
-            cmd,
-            cwd=str(cwd) if cwd else None,
-            start_new_session=(os.name != "nt"),
-        )
-    container = _ProcessContainer()
-    container.attach(proc)
+    child = _Child()
     try:
         try:
+            if on_line is not None:
+                # Binary pipe: we read raw bytes (``os.read`` on POSIX,
+                # ``readline`` on Windows) and decode ourselves so we can
+                # split on \r as well as \n and re-emit the original
+                # terminator for in-place progress.
+                proc = _start_child(
+                    child,
+                    cmd,
+                    cwd=str(cwd) if cwd else None,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    start_new_session=(os.name != "nt"),
+                )
+            else:
+                proc = _start_child(
+                    child,
+                    cmd,
+                    cwd=str(cwd) if cwd else None,
+                    start_new_session=(os.name != "nt"),
+                )
+            container = child.container
             if on_line is not None and proc.stdout is not None:
                 # Stream output through the callback while still enforcing
                 # the wall-clock timeout. On POSIX we ``select`` on the raw
@@ -212,7 +336,7 @@ def run(
             else:
                 rc = proc.wait(timeout=effective)
         except subprocess.TimeoutExpired as exc:
-            container.terminate(proc)
+            child.stop()
             # Report the full budget; the inner wait may have carried only
             # the remainder. A timeout is unreachable without a budget, so
             # fall back to the expired exception's own value.
@@ -224,10 +348,10 @@ def run(
             # both isolate the child from our terminal's signals, so the
             # Ctrl-C the user typed does NOT propagate.  Kill the whole tree
             # before re-raising, otherwise hung builds/flashes keep running.
-            container.terminate(proc)
+            child.stop()
             raise
     finally:
-        container.close()
+        child.release()
     if rc != 0:
         raise subprocess.CalledProcessError(rc, cmd)
 
@@ -243,24 +367,26 @@ def run_capture(
     Same timeout / process-tree semantics as :func:`run`.
     """
     effective = _effective_timeout(timeout)
-    proc = _popen(
-        cmd,
-        cwd=str(cwd) if cwd else None,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        start_new_session=(os.name != "nt"),
-    )
-    container = _ProcessContainer()
-    container.attach(proc)
+    child = _Child()
     try:
         try:
+            proc = _start_child(
+                child,
+                cmd,
+                cwd=str(cwd) if cwd else None,
+                text=True,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                start_new_session=(os.name != "nt"),
+            )
             out, err = proc.communicate(timeout=effective)
         except subprocess.TimeoutExpired as exc:
-            container.terminate(proc)
+            child.stop()
             # Drain any buffered output so the caller can still log it.
             try:
-                out, err = proc.communicate(timeout=1)
+                timed_out = child.proc
+                assert timed_out is not None  # noqa: S101 — only communicate() times out
+                out, err = timed_out.communicate(timeout=1)
             except Exception:  # noqa: BLE001
                 out, err = "", ""
             raise subprocess.TimeoutExpired(
@@ -272,10 +398,10 @@ def run_capture(
         except KeyboardInterrupt:
             # See note in :func:`run` — the child is isolated from our
             # terminal's SIGINT; tear the tree down before re-raising.
-            container.terminate(proc)
+            child.stop()
             raise
     finally:
-        container.close()
+        child.release()
     if proc.returncode != 0:
         raise subprocess.CalledProcessError(proc.returncode, cmd, output=out, stderr=err)
     return subprocess.CompletedProcess(cmd, proc.returncode, stdout=out, stderr=err)

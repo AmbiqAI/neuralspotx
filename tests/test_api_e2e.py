@@ -5,6 +5,7 @@ import io
 import json
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -40,6 +41,37 @@ from neuralspotx.project_config import (
     _vendored_metadata_relpath,
     _vendored_target_dir,
 )
+
+
+class _RecordingContainer:
+    """Stands in for the viewer's process container: records, never signals.
+
+    The view tests use fake processes with made-up pids; the real container
+    would send process-group signals to whatever real process has that pid.
+    """
+
+    terminated: list[int]
+
+    def __init__(self) -> None:
+        self.terminated = []
+        _RecordingContainer.instances.append(self)
+
+    instances: list[_RecordingContainer] = []
+
+    def attach(self, proc: object) -> None:
+        del proc
+
+    def terminate(self, proc: object) -> None:
+        self.terminated.append(getattr(proc, "pid", -1))
+
+    def close(self) -> None:
+        pass
+
+
+@pytest.fixture(autouse=True)
+def _no_real_viewer_signals(monkeypatch: pytest.MonkeyPatch) -> None:
+    _RecordingContainer.instances = []
+    monkeypatch.setattr(operations._build, "_ProcessContainer", _RecordingContainer)
 
 
 def _load_yaml(path: Path) -> dict:
@@ -905,6 +937,9 @@ def test_flash_and_view_reconfigure_when_probe_serial_is_supplied(
     monkeypatch.setattr(operations._build, "find_processes_holding_probe", lambda _serial: [])
 
     class _DoneProc:
+        def poll(self) -> int:
+            return 0
+
         def wait(self) -> int:
             return 0
 
@@ -1002,6 +1037,9 @@ def test_view_auto_skips_reset_for_secure_boards(
     monkeypatch.setattr(operations._build, "extract_view_command", lambda *_args, **_kw: ["viewer"])
 
     class _DoneProc:
+        def poll(self) -> int:
+            return 0
+
         pid = 1234
 
         def wait(self, timeout: float | None = None) -> int:
@@ -1058,6 +1096,9 @@ def test_view_auto_skips_reset_for_custom_board_inheriting_apollo4(
     monkeypatch.setattr(operations._build, "extract_view_command", lambda *_args, **_kw: ["viewer"])
 
     class _DoneProc:
+        def poll(self) -> int:
+            return 0
+
         pid = 1234
 
         def wait(self, timeout: float | None = None) -> int:
@@ -1100,13 +1141,18 @@ def test_view_explicit_reset_overrides_apollo4_auto_policy(
     monkeypatch.setattr(operations._build, "extract_view_command", lambda *_args, **_kw: ["viewer"])
 
     class _RunningProc:
+        # Running until wait() returns, then exited, like a real viewer; a
+        # fake that stays "running" would send the cleanup's killpg to a
+        # real pid.
         pid = 1234
+        returncode: int | None = None
 
-        def poll(self) -> None:
-            return None
+        def poll(self) -> int | None:
+            return self.returncode
 
         def wait(self, timeout: float | None = None) -> int:
             del timeout
+            self.returncode = 0
             return 0
 
     monkeypatch.setattr(
@@ -1142,6 +1188,9 @@ def test_view_warns_when_probe_already_in_use(
     monkeypatch.setattr(operations._build, "find_processes_holding_probe", lambda _serial: [4242])
 
     class _DoneProc:
+        def poll(self) -> int:
+            return 0
+
         pid = 1234
 
         def wait(self, timeout: float | None = None) -> int:
@@ -1171,7 +1220,7 @@ def _view_ready_app(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, name: str) 
 
 
 class _FinishedViewer:
-    """A viewer that already exited: ``_terminate_viewer`` is a no-op on it."""
+    """A viewer that already exited; tearing it down is a no-op."""
 
     pid = 4242
 
@@ -1234,3 +1283,99 @@ def test_view_without_capture_keeps_viewer_stdout_inherited(
     assert kw["stdin"] is subprocess.PIPE
     assert kw["start_new_session"] is (os.name != "nt")
     assert "stdout" not in kw and "text" not in kw and "bufsize" not in kw
+
+
+def test_view_stops_a_running_viewer_when_an_unexpected_error_escapes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Every exit path takes the viewer down, not only Ctrl-C (#293)."""
+
+    create_app(
+        AppCreateRequest(
+            app_dir=tmp_path / "hello_view_err", board="apollo510_evb", no_bootstrap=True
+        )
+    )
+    app_dir = tmp_path / "hello_view_err"
+    build_dir = app_dir / "build" / "apollo510_evb"
+    build_dir.mkdir(parents=True, exist_ok=True)
+    (build_dir / "build.ninja").write_text("# fake\n", encoding="utf-8")
+
+    def failing_reset(cmd: list[str], cwd: Path | None = None) -> subprocess.CompletedProcess[str]:
+        del cmd, cwd
+        raise OSError("reset tool vanished")
+
+    monkeypatch.setattr(operations._build, "run_capture", failing_reset)
+    monkeypatch.setattr(operations._build, "extract_view_command", lambda *_args, **_kw: ["viewer"])
+
+    class _RunningProc:
+        pid = 4321
+
+        def poll(self) -> int | None:
+            return None
+
+    popen_kwargs: dict[str, object] = {}
+
+    def fake_popen(*_args: object, **kwargs: object) -> _RunningProc:
+        popen_kwargs.update(kwargs)
+        return _RunningProc()
+
+    monkeypatch.setattr(operations._build.subprocess, "Popen", fake_popen)
+
+    with pytest.raises(OSError, match="reset tool vanished"):
+        view_app(AppViewRequest(app_dir=app_dir, reset_delay_ms=0, reset_on_open=True))
+
+    # Torn down through the group-aware container, not a viewer-only kill.
+    assert [c.terminated for c in _RecordingContainer.instances] == [[4321]]
+    if sys.platform.startswith("linux"):
+        assert popen_kwargs["preexec_fn"] is not None
+
+
+def test_view_teardown_finishes_and_closes_handles_when_a_signal_lands_mid_teardown(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A SIGTERM during the viewer's grace wait is held until teardown ends (#293)."""
+
+    import os
+    import signal
+    import time
+
+    from neuralspotx.subprocess_utils import TerminatedBySignal, terminate_on_signals
+
+    if os.name == "nt":
+        pytest.skip("POSIX signals")
+    app_dir = _view_ready_app(tmp_path, monkeypatch, "hello_view_teardown")
+
+    class _SignalledContainer(_RecordingContainer):
+        closed = False
+        started = 0
+
+        def terminate(self, proc: object) -> None:
+            self.started += 1
+            os.kill(os.getpid(), signal.SIGTERM)  # lands during the grace wait
+            time.sleep(0.2)
+            super().terminate(proc)
+
+        def close(self) -> None:
+            self.closed = True
+
+    class _Running:
+        pid = 5150
+
+        def poll(self) -> None:
+            return None
+
+        def wait(self, timeout: float | None = None) -> int:
+            raise subprocess.TimeoutExpired("viewer", timeout or 0)
+
+    monkeypatch.setattr(operations._build, "_ProcessContainer", _SignalledContainer)
+    monkeypatch.setattr(operations._build.subprocess, "Popen", lambda *a, **k: _Running())
+
+    with pytest.raises(TerminatedBySignal), terminate_on_signals():
+        view_app(AppViewRequest(app_dir=app_dir, reset_on_open=False, duration_s=0.01))
+
+    container = _RecordingContainer.instances[-1]
+    assert isinstance(container, _SignalledContainer)
+    # Every teardown that started ran to the end: none was cut off mid-wait.
+    assert container.started == len(container.terminated) >= 1
+    assert container.terminated[-1] == 5150
+    assert container.closed
