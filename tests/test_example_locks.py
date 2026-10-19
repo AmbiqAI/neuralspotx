@@ -55,3 +55,37 @@ def test_example_lock_resolves_one_sdk_release(example: Path) -> None:
     assert not wrong, (
         f"{example.name}/nsx.lock resolves {_SDK_PROJECT} modules away from {expected}: {wrong}"
     )
+
+
+def _packaged_cmake_hash(tmp_path: Path) -> str:
+    from neuralspotx.nsx_lock import NSX_TOOLING_AUTOGEN_FILES, hash_tree
+    from neuralspotx.project_config import _copy_packaged_tree
+
+    tree = tmp_path / "cmake-nsx"
+    _copy_packaged_tree("neuralspotx", "cmake", tree)
+    return hash_tree(tree, exclude_names=NSX_TOOLING_AUTOGEN_FILES)
+
+
+@pytest.mark.parametrize("example", _EXAMPLES, ids=lambda p: p.name)
+def test_example_lock_records_the_packaged_cmake_tree(example: Path, tmp_path: Path) -> None:
+    """Editing src/neuralspotx/cmake/ requires relocking the examples.
+
+    Each example lock hashes the packaged cmake/nsx tree. If they drift,
+    `nsx configure --frozen` on a fresh checkout of the example fails; run
+    `nsx lock --app-dir examples/<name> --module nsx-tooling` for each one.
+    """
+
+    expected = _packaged_cmake_hash(tmp_path)
+    lock = yaml.safe_load((example / "nsx.lock").read_text(encoding="utf-8"))
+    found = {
+        target_name: entry["resolved"]["content_hash"]
+        for target_name, target in lock["targets"].items()
+        for entry in target["modules"].values()
+        if entry.get("kind") == "packaged" and entry["resolved"].get("vendored_at") == "cmake/nsx"
+    }
+    assert found, f"{example.name}/nsx.lock records no packaged cmake/nsx tree"
+    stale = {target: digest for target, digest in found.items() if digest != expected}
+    assert not stale, (
+        f"{example.name}/nsx.lock records a stale cmake/nsx hash for {sorted(stale)}; "
+        f"run `nsx lock --app-dir examples/{example.name} --module nsx-tooling`"
+    )

@@ -3,7 +3,7 @@
 schema_version: 4
 targets:
   apollo510_evb:
-    generated_at: '2026-10-19T01:46:13+00:00'
+    generated_at: '2026-10-19T03:43:20+00:00'
     nsx_tool:
       version: 0.9.0
     manifest:
@@ -118,8 +118,8 @@ targets:
         resolved:
           tool_version: 0.9.0
           vendored_at: cmake/nsx
-          content_hash: sha256:04de1c1329109e872fea5c65ce36e8ccec02fb2492eb5450a341b0c488d96528
-          acquired_at: '2026-10-19T00:20:20+00:00'
+          content_hash: sha256:63471d75018f8bbb91522575541788a5ee7d9a3c7c75a1fec37022ddec9f5d8d
+          acquired_at: '2026-10-19T03:43:26+00:00'
       nsx-interrupt:
         project: nsx-ambiq-sdk
         kind: git
@@ -176,7 +176,7 @@ targets:
           content_hash: sha256:e66f60324ff4466836eeb787cde34a553707c4e7eca5025fb6400a1209273542
           acquired_at: '2026-10-19T01:46:18+00:00'
   apollo510b_evb:
-    generated_at: '2026-10-19T01:46:19+00:00'
+    generated_at: '2026-10-19T03:43:26+00:00'
     nsx_tool:
       version: 0.9.0
     manifest:
@@ -291,8 +291,8 @@ targets:
         resolved:
           tool_version: 0.9.0
           vendored_at: cmake/nsx
-          content_hash: sha256:04de1c1329109e872fea5c65ce36e8ccec02fb2492eb5450a341b0c488d96528
-          acquired_at: '2026-10-19T00:20:21+00:00'
+          content_hash: sha256:63471d75018f8bbb91522575541788a5ee7d9a3c7c75a1fec37022ddec9f5d8d
+          acquired_at: '2026-10-19T03:43:26+00:00'
       nsx-interrupt:
         project: nsx-ambiq-sdk
         kind: git
@@ -349,7 +349,7 @@ targets:
           content_hash: sha256:e66f60324ff4466836eeb787cde34a553707c4e7eca5025fb6400a1209273542
           acquired_at: '2026-10-19T01:46:19+00:00'
   apollo330mP_evb:
-    generated_at: '2026-10-19T01:46:20+00:00'
+    generated_at: '2026-10-19T03:43:26+00:00'
     nsx_tool:
       version: 0.9.0
     manifest:
@@ -464,8 +464,8 @@ targets:
         resolved:
           tool_version: 0.9.0
           vendored_at: cmake/nsx
-          content_hash: sha256:04de1c1329109e872fea5c65ce36e8ccec02fb2492eb5450a341b0c488d96528
-          acquired_at: '2026-10-19T00:20:22+00:00'
+          content_hash: sha256:63471d75018f8bbb91522575541788a5ee7d9a3c7c75a1fec37022ddec9f5d8d
+          acquired_at: '2026-10-19T03:43:26+00:00'
       nsx-interrupt:
         project: nsx-ambiq-sdk
         kind: git

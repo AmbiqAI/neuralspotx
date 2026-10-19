@@ -11,8 +11,9 @@ LOCK_SCHEMA_VERSION = 4
 
 # Schema version of the on-disk ``git-artifact-hashes-vN.json`` user cache.
 # This versions both the layout and the hashing semantics: v2 includes
-# recursively hydrated git submodules in artifact hashes.
-_ARTIFACT_HASH_CACHE_SCHEMA_VERSION = 2
+# recursively hydrated git submodules in artifact hashes; v3 orders files
+# case-sensitively on every OS (Windows hashes changed, POSIX did not).
+_ARTIFACT_HASH_CACHE_SCHEMA_VERSION = 3
 
 # Files/dirs to exclude when hashing a vendored module tree.
 # Local-source mirrors should ignore developer-only environment/cache

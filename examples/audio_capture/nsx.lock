@@ -3,9 +3,9 @@
 schema_version: 4
 targets:
   apollo510_evb:
-    generated_at: '2026-10-18T19:05:08+00:00'
+    generated_at: '2026-10-19T03:43:16+00:00'
     nsx_tool:
-      version: 0.8.1
+      version: 0.9.0
     manifest:
       path: nsx.yml
       hash: sha256:edbadf47cded3f15d53e73883bcf0e4f05624fe4453c6ec8380667132b97f26b
@@ -85,10 +85,10 @@ targets:
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.8.1
+          tool_version: 0.9.0
           vendored_at: boards/apollo510_evb
           content_hash: sha256:f4f36aad1139af5835177bf688454e543f2c1b296f4d949f308582e5fa04bb50
-          acquired_at: '2026-10-18T16:44:11+00:00'
+          acquired_at: '2026-10-19T03:18:30+00:00'
       nsx-core:
         project: nsx-ambiq-sdk
         kind: git
@@ -116,10 +116,10 @@ targets:
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.8.1
+          tool_version: 0.9.0
           vendored_at: cmake/nsx
-          content_hash: sha256:04de1c1329109e872fea5c65ce36e8ccec02fb2492eb5450a341b0c488d96528
-          acquired_at: '2026-10-18T16:44:11+00:00'
+          content_hash: sha256:63471d75018f8bbb91522575541788a5ee7d9a3c7c75a1fec37022ddec9f5d8d
+          acquired_at: '2026-10-19T03:43:16+00:00'
       nsx-audio:
         project: nsx-ambiq-sdk
         kind: git
@@ -132,9 +132,9 @@ targets:
           content_hash: sha256:da17c45a3cf02797d1703f3c55beea770078cb2cb8829c7211413877089a559e
           acquired_at: '2026-10-18T19:05:14+00:00'
   apollo510b_evb:
-    generated_at: '2026-10-18T19:05:15+00:00'
+    generated_at: '2026-10-19T03:43:16+00:00'
     nsx_tool:
-      version: 0.8.1
+      version: 0.9.0
     manifest:
       path: nsx.yml
       hash: sha256:edbadf47cded3f15d53e73883bcf0e4f05624fe4453c6ec8380667132b97f26b
@@ -214,10 +214,10 @@ targets:
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.8.1
+          tool_version: 0.9.0
           vendored_at: boards/apollo510b_evb
           content_hash: sha256:e40d4aa44d3f6dd974b37a7b99f71e19c33d06f6aa601ec6dc953987d693eccc
-          acquired_at: '2026-10-18T16:44:11+00:00'
+          acquired_at: '2026-10-19T03:18:30+00:00'
       nsx-core:
         project: nsx-ambiq-sdk
         kind: git
@@ -245,10 +245,10 @@ targets:
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.8.1
+          tool_version: 0.9.0
           vendored_at: cmake/nsx
-          content_hash: sha256:04de1c1329109e872fea5c65ce36e8ccec02fb2492eb5450a341b0c488d96528
-          acquired_at: '2026-10-18T16:44:11+00:00'
+          content_hash: sha256:63471d75018f8bbb91522575541788a5ee7d9a3c7c75a1fec37022ddec9f5d8d
+          acquired_at: '2026-10-19T03:43:16+00:00'
       nsx-audio:
         project: nsx-ambiq-sdk
         kind: git
@@ -261,9 +261,9 @@ targets:
           content_hash: sha256:da17c45a3cf02797d1703f3c55beea770078cb2cb8829c7211413877089a559e
           acquired_at: '2026-10-18T19:05:15+00:00'
   apollo330mP_evb:
-    generated_at: '2026-10-18T19:05:15+00:00'
+    generated_at: '2026-10-19T03:43:17+00:00'
     nsx_tool:
-      version: 0.8.1
+      version: 0.9.0
     manifest:
       path: nsx.yml
       hash: sha256:edbadf47cded3f15d53e73883bcf0e4f05624fe4453c6ec8380667132b97f26b
@@ -343,10 +343,10 @@ targets:
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.8.1
+          tool_version: 0.9.0
           vendored_at: boards/apollo330mP_evb
           content_hash: sha256:883f6d50a6e470fd42ea733ec2d6a62e665e14579915b1f0e00ff5f8ac98f963
-          acquired_at: '2026-10-18T16:44:12+00:00'
+          acquired_at: '2026-10-19T03:18:30+00:00'
       nsx-core:
         project: nsx-ambiq-sdk
         kind: git
@@ -374,10 +374,10 @@ targets:
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.8.1
+          tool_version: 0.9.0
           vendored_at: cmake/nsx
-          content_hash: sha256:04de1c1329109e872fea5c65ce36e8ccec02fb2492eb5450a341b0c488d96528
-          acquired_at: '2026-10-18T16:44:12+00:00'
+          content_hash: sha256:63471d75018f8bbb91522575541788a5ee7d9a3c7c75a1fec37022ddec9f5d8d
+          acquired_at: '2026-10-19T03:43:17+00:00'
       nsx-audio:
         project: nsx-ambiq-sdk
         kind: git
@@ -390,9 +390,9 @@ targets:
           content_hash: sha256:da17c45a3cf02797d1703f3c55beea770078cb2cb8829c7211413877089a559e
           acquired_at: '2026-10-18T19:05:15+00:00'
   apollo510dL_evb:
-    generated_at: '2026-10-18T19:05:15+00:00'
+    generated_at: '2026-10-19T03:43:17+00:00'
     nsx_tool:
-      version: 0.8.1
+      version: 0.9.0
     manifest:
       path: nsx.yml
       hash: sha256:edbadf47cded3f15d53e73883bcf0e4f05624fe4453c6ec8380667132b97f26b
@@ -472,10 +472,10 @@ targets:
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.8.1
+          tool_version: 0.9.0
           vendored_at: boards/apollo510dL_evb
           content_hash: sha256:13e2eb556c15c24b1c3a64bf9b43f4f893ec0f0742f05b5c34c82f642c7a5dd2
-          acquired_at: '2026-10-18T16:44:12+00:00'
+          acquired_at: '2026-10-19T03:18:30+00:00'
       nsx-core:
         project: nsx-ambiq-sdk
         kind: git
@@ -503,10 +503,10 @@ targets:
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.8.1
+          tool_version: 0.9.0
           vendored_at: cmake/nsx
-          content_hash: sha256:04de1c1329109e872fea5c65ce36e8ccec02fb2492eb5450a341b0c488d96528
-          acquired_at: '2026-10-18T16:44:12+00:00'
+          content_hash: sha256:63471d75018f8bbb91522575541788a5ee7d9a3c7c75a1fec37022ddec9f5d8d
+          acquired_at: '2026-10-19T03:43:17+00:00'
       nsx-audio:
         project: nsx-ambiq-sdk
         kind: git

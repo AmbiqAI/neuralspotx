@@ -17,6 +17,7 @@ from pathlib import Path
 from .. import module_cache
 from .._cache_paths import nsx_cache_root
 from ..models import CacheCleanResult, CacheEntry, CacheInfo
+from ..nsx_lock import _ARTIFACT_HASH_CACHE_SCHEMA_VERSION
 
 
 def _dir_size_bytes(path: Path) -> int:
@@ -64,12 +65,14 @@ def clean_cache_impl(*, dry_run: bool = False) -> CacheCleanResult:
     module_root = module_cache.module_cache_root()
     module_entries = len(module_cache.iter_entries())
     module_count = module_entries or int(module_root.exists() or module_root.is_symlink())
+    # Every artifact-hash cache generation up to the current one, so cleanup
+    # also removes the files older releases wrote. v1 had no suffix.
+    artifact_hash_files = [root / "git-artifact-hashes.json"] + [
+        root / f"git-artifact-hashes-v{version}.json"
+        for version in range(2, _ARTIFACT_HASH_CACHE_SCHEMA_VERSION + 1)
+    ]
     cache_files = (
-        # v1/legacy path, retained here so cleanup migrates old installations.
-        root / "git-artifact-hashes.json",
-        root / "git-artifact-hashes.json.lock",
-        root / "git-artifact-hashes-v2.json",
-        root / "git-artifact-hashes-v2.json.lock",
+        *(f for path in artifact_hash_files for f in (path, path.with_name(path.name + ".lock"))),
         root / "resolve-ref-cache.json",
         root / "resolve-ref-cache.json.lock",
     )

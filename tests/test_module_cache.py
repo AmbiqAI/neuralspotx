@@ -690,6 +690,8 @@ class TestPublicCacheApi:
             root / "git-artifact-hashes.json.lock",
             root / "git-artifact-hashes-v2.json",
             root / "git-artifact-hashes-v2.json.lock",
+            root / "git-artifact-hashes-v3.json",
+            root / "git-artifact-hashes-v3.json.lock",
             root / "resolve-ref-cache.json",
             root / "resolve-ref-cache.json.lock",
         )
@@ -699,12 +701,12 @@ class TestPublicCacheApi:
         unrelated.write_text("not owned by neuralSPOT-X", encoding="utf-8")
 
         preview = api.clean_cache(dry_run=True)
-        assert preview.removed_count == 7
+        assert preview.removed_count == len(known_files) + 1  # + the module cache
         assert module_cache.module_cache_root().exists()
         assert all(path.exists() for path in known_files)
 
         result = api.clean_cache()
-        assert result.removed_count == 7
+        assert result.removed_count == len(known_files) + 1
         assert not module_cache.module_cache_root().exists()
         assert all(not path.exists() for path in known_files)
         assert unrelated.read_text(encoding="utf-8") == "not owned by neuralSPOT-X"
