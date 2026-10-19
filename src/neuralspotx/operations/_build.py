@@ -19,6 +19,7 @@ from ..models import FlashResult
 from ..project_config import _run_cmake_configure
 from ..subprocess_utils import (
     _ProcessContainer,
+    defer_termination,
     die_with_parent_preexec,
     extract_view_command,
     format_subprocess_error,
@@ -608,28 +609,31 @@ def view_app_impl(
     container = _ProcessContainer()
     preexec_fn = die_with_parent_preexec()
     try:
-        if stream_output:
-            stream_proc = subprocess.Popen(
-                run_cmd,
-                cwd=str(resolved_build_dir),
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.STDOUT,
-                text=True,
-                bufsize=1,
-                start_new_session=start_new_session,
-                preexec_fn=preexec_fn,
-            )
-            viewer_proc = stream_proc
-        else:
-            viewer_proc = subprocess.Popen(
-                run_cmd,
-                cwd=str(resolved_build_dir),
-                stdin=subprocess.PIPE,
-                start_new_session=start_new_session,
-                preexec_fn=preexec_fn,
-            )
-        container.attach(viewer_proc)
+        # Hold SIGTERM/SIGHUP until viewer_proc is assigned, so the finally
+        # below can always reach the viewer.
+        with defer_termination():
+            if stream_output:
+                stream_proc = subprocess.Popen(
+                    run_cmd,
+                    cwd=str(resolved_build_dir),
+                    stdin=subprocess.PIPE,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.STDOUT,
+                    text=True,
+                    bufsize=1,
+                    start_new_session=start_new_session,
+                    preexec_fn=preexec_fn,
+                )
+                viewer_proc = stream_proc
+            else:
+                viewer_proc = subprocess.Popen(
+                    run_cmd,
+                    cwd=str(resolved_build_dir),
+                    stdin=subprocess.PIPE,
+                    start_new_session=start_new_session,
+                    preexec_fn=preexec_fn,
+                )
+            container.attach(viewer_proc)
         viewer_pid = getattr(viewer_proc, "pid", "unknown")
         info(f"SWO viewer launched (pid={viewer_pid})")
         if effective_reset_on_open:

@@ -12,7 +12,6 @@ import os
 import random
 import subprocess
 import sys
-import time
 from pathlib import Path
 
 from ._runner import _SHUTTING_DOWN
@@ -244,7 +243,10 @@ _PERMANENT_GIT_ERROR_PATTERNS: tuple[str, ...] = (
 
 
 # Indirection so tests can disable real sleeping between retries.
-_sleep = time.sleep
+def _sleep(delay: float) -> None:
+    """Back off between retries; wakes early once nsx is shutting down."""
+
+    _SHUTTING_DOWN.wait(delay)
 
 
 def _env_int(name: str, default: int, *, minimum: int, maximum: int) -> int:
@@ -420,6 +422,8 @@ def _git_network_retry(operation, *, label, before_retry=None):
                 delay,
             )
             _sleep(delay)
+            if _SHUTTING_DOWN.is_set():
+                raise
             if before_retry is not None:
                 before_retry()
     raise AssertionError("unreachable")  # pragma: no cover

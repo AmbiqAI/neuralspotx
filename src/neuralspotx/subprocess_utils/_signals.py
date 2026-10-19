@@ -60,6 +60,37 @@ class TerminatedBySignal(KeyboardInterrupt):
         return 128 + self.signum
 
 
+# Main-thread deferral: while > 0 a termination signal is recorded in
+# _PENDING instead of raised, then raised when the region ends. Signal
+# handlers only ever run in the main thread, so plain globals suffice.
+_DEFER_DEPTH = 0
+_PENDING: int | None = None
+
+
+@contextmanager
+def defer_termination() -> Iterator[None]:
+    """Hold a SIGTERM/SIGHUP until the block ends, then raise it.
+
+    Wrap the spawn-and-register step of a child process: a signal that
+    lands between the child starting and its registration would otherwise
+    raise with the child not yet reachable by any cleanup. A no-op outside
+    the main thread, where signals are never raised.
+    """
+
+    global _DEFER_DEPTH, _PENDING
+    if threading.current_thread() is not threading.main_thread():
+        yield
+        return
+    _DEFER_DEPTH += 1
+    try:
+        yield
+    finally:
+        _DEFER_DEPTH -= 1
+        if _DEFER_DEPTH == 0 and _PENDING is not None:
+            signum, _PENDING = _PENDING, None
+            raise TerminatedBySignal(signum)
+
+
 def _installed_signals() -> list[int]:
     return [s for name in _TERMINATION_SIGNALS if (s := getattr(signal, name, None)) is not None]
 
@@ -83,8 +114,12 @@ def terminate_on_signals() -> Iterator[None]:
     previous: dict[int, Callable[[int, FrameType | None], object] | int | None] = {}
 
     def _raise_terminated(signum: int, _frame: FrameType | None) -> None:
+        global _PENDING
         for other in previous:
             signal.signal(other, signal.SIG_IGN)
+        if _DEFER_DEPTH:
+            _PENDING = signum
+            return
         raise TerminatedBySignal(signum)
 
     for signum in _installed_signals():

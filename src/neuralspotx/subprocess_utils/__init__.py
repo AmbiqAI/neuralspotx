@@ -55,7 +55,12 @@ from ._runner import (
     run_capture,
     terminate_live_children,
 )
-from ._signals import TerminatedBySignal, die_with_parent_preexec, terminate_on_signals
+from ._signals import (
+    TerminatedBySignal,
+    defer_termination,
+    die_with_parent_preexec,
+    terminate_on_signals,
+)
 from ._verbosity import (
     _TIMEOUT,
     _VERBOSITY,
@@ -124,6 +129,7 @@ def extract_view_command(build_dir: Path, target: str) -> list[str]:
 __all__ = [
     "GIT_PROTOCOL_ALLOWLIST_FLAGS",
     "TerminatedBySignal",
+    "defer_termination",
     "die_with_parent_preexec",
     "extract_view_command",
     "format_subprocess_error",

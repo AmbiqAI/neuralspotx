@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from .._errors import NSXToolchainError
+from ._signals import defer_termination
 from ._verbosity import _VERBOSITY, _effective_timeout
 from ._winjob import _ProcessContainer
 
@@ -167,26 +168,30 @@ def run(
     parent's stdio directly (legacy behaviour).
     """
     effective = _effective_timeout(timeout)
-    if on_line is not None:
-        # Binary pipe: we read raw bytes (``os.read`` on POSIX, ``readline``
-        # on Windows) and decode ourselves so we can split on \r as well as
-        # \n and re-emit the original terminator for in-place progress.
-        proc = _popen(
-            cmd,
-            cwd=str(cwd) if cwd else None,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            start_new_session=(os.name != "nt"),
-        )
-    else:
-        proc = _popen(
-            cmd,
-            cwd=str(cwd) if cwd else None,
-            start_new_session=(os.name != "nt"),
-        )
-    container = _ProcessContainer()
-    container.attach(proc)
-    _track(container, proc)
+    # A SIGTERM/SIGHUP during spawn-and-register is held until the child
+    # is registered, so the CLI's cleanup can always reach it.
+    with defer_termination():
+        if on_line is not None:
+            # Binary pipe: we read raw bytes (``os.read`` on POSIX,
+            # ``readline`` on Windows) and decode ourselves so we can split
+            # on \r as well as \n and re-emit the original terminator for
+            # in-place progress.
+            proc = _popen(
+                cmd,
+                cwd=str(cwd) if cwd else None,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.STDOUT,
+                start_new_session=(os.name != "nt"),
+            )
+        else:
+            proc = _popen(
+                cmd,
+                cwd=str(cwd) if cwd else None,
+                start_new_session=(os.name != "nt"),
+            )
+        container = _ProcessContainer()
+        container.attach(proc)
+        _track(container, proc)
     try:
         try:
             if on_line is not None and proc.stdout is not None:
@@ -302,17 +307,18 @@ def run_capture(
     Same timeout / process-tree semantics as :func:`run`.
     """
     effective = _effective_timeout(timeout)
-    proc = _popen(
-        cmd,
-        cwd=str(cwd) if cwd else None,
-        text=True,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        start_new_session=(os.name != "nt"),
-    )
-    container = _ProcessContainer()
-    container.attach(proc)
-    _track(container, proc)
+    with defer_termination():
+        proc = _popen(
+            cmd,
+            cwd=str(cwd) if cwd else None,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            start_new_session=(os.name != "nt"),
+        )
+        container = _ProcessContainer()
+        container.attach(proc)
+        _track(container, proc)
     try:
         try:
             out, err = proc.communicate(timeout=effective)

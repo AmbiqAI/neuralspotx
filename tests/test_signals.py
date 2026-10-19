@@ -289,3 +289,60 @@ def test_child_registered_after_shutdown_began_is_stopped(
     finally:
         if proc.poll() is None:
             proc.kill()
+
+
+@posix_only
+def test_defer_termination_holds_a_signal_until_the_block_ends() -> None:
+    from neuralspotx.subprocess_utils import defer_termination
+
+    reached_end = False
+    with pytest.raises(TerminatedBySignal), terminate_on_signals():
+        with defer_termination():
+            os.kill(os.getpid(), signal.SIGTERM)
+            time.sleep(0.2)
+            reached_end = True
+    assert reached_end
+
+
+@posix_only
+@pytest.mark.parametrize("runner", ["run", "run_capture"])
+def test_signal_during_child_startup_still_reaches_cleanup(
+    runner: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A signal right after the child starts, before registration, must not orphan it."""
+
+    from neuralspotx import subprocess_utils
+    from neuralspotx.subprocess_utils import _runner, terminate_live_children
+
+    real_popen = _runner._popen
+    started: list[subprocess.Popen] = []
+
+    def _popen_then_signal(cmd: list[str], **kwargs: object) -> subprocess.Popen:
+        proc = real_popen(cmd, **kwargs)
+        started.append(proc)
+        os.kill(os.getpid(), signal.SIGTERM)
+        time.sleep(0.2)  # give the handler a chance to run mid-startup
+        return proc
+
+    monkeypatch.setattr(_runner, "_popen", _popen_then_signal)
+    try:
+        with pytest.raises(TerminatedBySignal), terminate_on_signals():
+            getattr(subprocess_utils, runner)([sys.executable, "-c", "import time; time.sleep(60)"])
+        terminate_live_children()
+        assert started[0].wait(timeout=10) is not None
+    finally:
+        for proc in started:
+            if proc.poll() is None:
+                proc.kill()
+
+
+def test_git_retry_backoff_wakes_when_shutdown_begins(fresh_shutdown_flag: object) -> None:
+    import threading
+
+    from neuralspotx.subprocess_utils import _git
+
+    assert isinstance(fresh_shutdown_flag, threading.Event)
+    threading.Timer(0.1, fresh_shutdown_flag.set).start()
+    started = time.monotonic()
+    _git._sleep(30)
+    assert time.monotonic() - started < 5
