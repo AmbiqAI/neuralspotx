@@ -81,16 +81,16 @@ def _git_artifact_hash_cache_path() -> Path:
     """
 
     # Keep semantic generations in separate files so an older nsx can
-    # continue using its v1 cache after a newer release writes v2.
+    # keep using its own cache after a newer release writes a newer one.
     return nsx_cache_root() / f"git-artifact-hashes-v{_ARTIFACT_HASH_CACHE_SCHEMA_VERSION}.json"
 
 
 def _read_artifact_hash_cache() -> dict[str, str]:
     """Load the on-disk ``(url@commit) -> hash`` cache.
 
-    File layout (v2):
+    File layout (v2 and later; ``schema_version`` is the current version):
 
-        {"schema_version": 2, "entries": {"<url>@<commit>": "sha256:..."}}
+        {"schema_version": 3, "entries": {"<url>@<commit>": "sha256:..."}}
 
     Cache versions cover hashing semantics as well as the JSON layout.
     Legacy flat mappings and v1 records predate recursive submodule
@@ -190,7 +190,7 @@ def hash_git_artifact(url: str, commit: str, *, use_cache: bool = True) -> str:
 
     Caching: ``(url, commit) -> hash`` is content-addressed and
     immutable, so results are persisted to a user cache file
-    (``~/.cache/nsx/git-artifact-hashes-v2.json`` by default; override
+    (``~/.cache/nsx/git-artifact-hashes-v<N>.json`` by default; override
     with ``NSX_CACHE_DIR``) and reused across processes. Pass
     ``use_cache=False`` to force a fresh clone-and-hash. Callers that
     invoke this many times in one run should also memoize within the
