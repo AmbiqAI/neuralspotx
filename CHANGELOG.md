@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.9.1](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.9.0...neuralspotx-v0.9.1) (2026-10-19)
+
+
+### Features
+
+* **registry:** move ns-cmsis-nn to v7.47.0 and helia-rt to v2.2.0 ([#288](https://github.com/AmbiqAI/neuralspotx/issues/288)) ([ad71c8f](https://github.com/AmbiqAI/neuralspotx/commit/ad71c8fbb4d23e480effe3e057b6f07941f92b34))
+
+
+### Bug Fixes
+
+* archive one library at a time on Windows and hash lock trees the same on every OS ([#296](https://github.com/AmbiqAI/neuralspotx/issues/296)) ([efd68c4](https://github.com/AmbiqAI/neuralspotx/commit/efd68c4efe5409ac565b92078ebdc8adc16bbcc7)), closes [#294](https://github.com/AmbiqAI/neuralspotx/issues/294)
+* **cli:** stop child processes when nsx receives SIGTERM or SIGHUP ([#295](https://github.com/AmbiqAI/neuralspotx/issues/295)) ([2b72ffc](https://github.com/AmbiqAI/neuralspotx/commit/2b72ffc71f90df792825645ac9c9647f296ca019)), closes [#293](https://github.com/AmbiqAI/neuralspotx/issues/293)
+* **registry:** move helia-rt and helia-rt-source to helia-rt-v2.2.1 ([#292](https://github.com/AmbiqAI/neuralspotx/issues/292)) ([8a8829b](https://github.com/AmbiqAI/neuralspotx/commit/8a8829b1af166e776e864eb11bd732ba3d553279))
+* **sync:** fetch missing modules under --frozen so a fresh checkout configures ([#290](https://github.com/AmbiqAI/neuralspotx/issues/290)) ([f69b7e7](https://github.com/AmbiqAI/neuralspotx/commit/f69b7e71d8a610c2a8b245ca5f442c7728c8c247)), closes [#289](https://github.com/AmbiqAI/neuralspotx/issues/289)
+
 ## [0.9.0](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.8.1...neuralspotx-v0.9.0) (2026-10-18)
 
 
