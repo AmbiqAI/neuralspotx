@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import re
 import shutil
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -13,7 +15,7 @@ from .._io import info
 from .._logging import get_logger
 from ..file_lock import app_lock
 from ..models import AppConfig
-from ..module_registry import _update_module_clone, expand_profile_seeds
+from ..module_registry import _rmtree, _update_module_clone, expand_profile_seeds
 from ..nsx_lock import (
     NSX_TOOLING_AUTOGEN_FILES,
     LockKind,
@@ -154,6 +156,29 @@ def sync_app_impl(
 
 # A git object id: SHA-1 (40 hex) or SHA-256 (64 hex).
 _FULL_SHA = re.compile(r"[0-9a-f]{40}(?:[0-9a-f]{24})?")
+
+
+def _is_absent(path: Path) -> bool:
+    """A missing or empty directory holds nothing that sync must protect."""
+
+    return not path.exists() or (path.is_dir() and not any(path.iterdir()))
+
+
+@contextmanager
+def _remove_on_failure(path: Path, *, created: bool) -> Iterator[None]:
+    """Remove ``path`` if the body fails and this sync created it.
+
+    A write that fails or is interrupted part way leaves a partial tree;
+    removing it lets the next run write it again instead of refusing it as
+    a local change. A tree that existed before is never removed.
+    """
+
+    try:
+        yield
+    except BaseException:
+        if created and path.exists():
+            _rmtree(path)
+        raise
 
 
 @dataclass(frozen=True, slots=True)
@@ -348,13 +373,15 @@ def _sync_local_entry(
 
         # Under --frozen a missing mirror is created (the source already
         # matched the lock above); an existing one that differs is refused.
-        if ctx.frozen and on_disk_hash is not None:
+        mirror_absent = _is_absent(vendored_dir)
+        if ctx.frozen and not mirror_absent:
             raise NSXModuleError(
                 f"Local module '{name}' mirror at {entry.vendored_at} "
                 f"does not match source {source_dir}. Refusing under "
                 "--frozen."
             )
-        _vendor_local_module_into_app(ctx.app_dir, name, ctx.registry)
+        with _remove_on_failure(vendored_dir, created=mirror_absent):
+            _vendor_local_module_into_app(ctx.app_dir, name, ctx.registry)
         vendored_paths.add(vendored_dir)
         return 1 + board_overlay_changed
 
@@ -386,7 +413,6 @@ def _sync_local_board_overlay(
         return 0
 
     from ..metadata import registry_entry_for_module
-    from ..module_registry import _rmtree
     from ..nsx_lock import _HASH_EXCLUDE_DIRS
 
     registry_entry = registry_entry_for_module(ctx.registry, name)
@@ -407,7 +433,8 @@ def _sync_local_board_overlay(
     if destination_hash == source_hash:
         return 0
     # A missing overlay is created even under --frozen; one that differs is not.
-    if ctx.frozen and destination_hash is not None:
+    overlay_absent = _is_absent(destination)
+    if ctx.frozen and not overlay_absent:
         raise NSXIntegrityError(
             f"Local board module '{name}' at {destination.relative_to(ctx.app_dir)} "
             f"does not match source {source_board_dir}. Refusing under --frozen.",
@@ -417,12 +444,13 @@ def _sync_local_board_overlay(
     if destination.exists():
         _rmtree(destination)
     destination.parent.mkdir(parents=True, exist_ok=True)
-    shutil.copytree(
-        source_board_dir,
-        destination,
-        dirs_exist_ok=True,
-        ignore=shutil.ignore_patterns(*sorted(_HASH_EXCLUDE_DIRS)),
-    )
+    with _remove_on_failure(destination, created=overlay_absent):
+        shutil.copytree(
+            source_board_dir,
+            destination,
+            dirs_exist_ok=True,
+            ignore=shutil.ignore_patterns(*sorted(_HASH_EXCLUDE_DIRS)),
+        )
     return 1
 
 
@@ -439,7 +467,6 @@ def _sync_fetchable_entry(
     """
 
     from ..module_registry import (
-        _rmtree,
         _vendor_git_module_at_commit,
         _vendor_packaged_module_into_app,
     )
@@ -460,9 +487,7 @@ def _sync_fetchable_entry(
     # Under --frozen a module that is present but differs is never touched.
     # A missing one (a fresh checkout: modules/ is gitignored) overwrites
     # nothing, so it is fetched at the locked revision and verified below.
-    # An empty directory (for example left by an older, interrupted run)
-    # holds nothing to protect, so it counts as missing.
-    was_missing = on_disk_hash is None or not any(vendored_dir.iterdir())
+    was_missing = _is_absent(vendored_dir)
     if ctx.frozen and not was_missing:
         if entry.kind == LockKind.PACKAGED:
             remedy = (
@@ -494,7 +519,7 @@ def _sync_fetchable_entry(
             module=name,
         )
 
-    try:
+    with _remove_on_failure(vendored_dir, created=was_missing):
         if entry.kind == LockKind.PACKAGED:
             _vendor_packaged_module_into_app(ctx.app_dir, name, ctx.registry)
         elif entry.kind == LockKind.GIT:
@@ -509,13 +534,6 @@ def _sync_fetchable_entry(
                 )
             else:
                 _update_module_clone(ctx.app_dir, name, ctx.registry)
-    except BaseException:
-        # A fetch that fails or is interrupted part way leaves a partial
-        # tree; remove it if this sync created it, so the next run fetches
-        # again instead of reporting local changes.
-        if was_missing and vendored_dir.exists():
-            _rmtree(vendored_dir)
-        raise
 
     # Verify the materialized tree matches what the lock recorded.
     # Mismatch here means upstream content drifted since lock
@@ -608,7 +626,7 @@ def _sync_app_impl_unlocked(
     cmake_nsx = app_dir / "cmake" / "nsx"
     # Under --frozen, a cmake/nsx tree this sync creates is removed again if
     # it fails verification, so a retry with the matching tool restores it.
-    cmake_nsx_was_missing = not cmake_nsx.exists()
+    cmake_nsx_was_missing = _is_absent(cmake_nsx)
     ctx = _SyncContext(
         app_dir=app_dir,
         registry=registry,
@@ -704,8 +722,6 @@ def _verify_packaged_cmake_tree(
         if post_hash == entry.content_hash:
             continue
         if frozen:
-            from ..module_registry import _rmtree
-
             if created and cmake_nsx.exists():
                 _rmtree(cmake_nsx)
             raise NSXIntegrityError(

@@ -12,6 +12,7 @@ from pathlib import Path
 from typing import Any
 
 import pytest
+import yaml
 
 from neuralspotx import NSXIntegrityError, NSXModuleError, module_registry
 from neuralspotx.nsx_lock import (
@@ -19,16 +20,20 @@ from neuralspotx.nsx_lock import (
     LockKind,
     NsxLock,
     ResolvedModule,
+    hash_manifest,
     hash_tree,
+    write_lock,
 )
-from neuralspotx.operations import _sync
+from neuralspotx.operations import _sync, sync_app_impl
 from neuralspotx.operations._sync import (
+    _is_absent,
     _sync_fetchable_entry,
     _sync_local_board_overlay,
     _sync_local_entry,
     _SyncContext,
     _verify_packaged_cmake_tree,
 )
+from neuralspotx.project_config import _copy_packaged_tree
 
 _COMMIT = "0123456789abcdef0123456789abcdef01234567"
 
@@ -520,3 +525,122 @@ def test_frozen_refuses_a_local_board_overlay_that_differs(tmp_path: Path) -> No
     with pytest.raises(NSXIntegrityError, match="Refusing under --frozen"):
         _sync_local_board_overlay(ctx, "nsx-board-demo", source, None)
     assert (destination / "src.c").read_text(encoding="utf-8") == "edited board"
+
+
+def test_is_absent_treats_missing_and_empty_directories_alike(tmp_path: Path) -> None:
+    assert _is_absent(tmp_path / "missing")
+    (tmp_path / "empty").mkdir()
+    assert _is_absent(tmp_path / "empty")
+    _write_tree(tmp_path / "full", "x")
+    assert not _is_absent(tmp_path / "full")
+
+
+def test_frozen_creates_an_empty_local_board_overlay(tmp_path: Path) -> None:
+    ctx, source, destination = _overlay_ctx(tmp_path)
+    destination.mkdir(parents=True)
+
+    assert _sync_local_board_overlay(ctx, "nsx-board-demo", source, None) == 1
+    assert hash_tree(destination) == hash_tree(source / "boards" / "demo_evb")
+
+
+def test_interrupted_board_overlay_copy_leaves_nothing_behind(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    ctx, source, destination = _overlay_ctx(tmp_path)
+    real_copytree = _sync.shutil.copytree
+
+    def _interrupted(src: Path, dst: Path, **_: Any) -> None:  # noqa: ARG001
+        Path(dst).mkdir(parents=True, exist_ok=True)
+        (Path(dst) / "partial.c").write_text("half", encoding="utf-8")
+        raise OSError("disk full")
+
+    monkeypatch.setattr(_sync.shutil, "copytree", _interrupted)
+    with pytest.raises(OSError):
+        _sync_local_board_overlay(ctx, "nsx-board-demo", source, None)
+    assert not destination.exists()
+
+    monkeypatch.setattr(_sync.shutil, "copytree", real_copytree)
+    assert _sync_local_board_overlay(ctx, "nsx-board-demo", source, None) == 1
+
+
+def test_interrupted_local_mirror_leaves_nothing_behind(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    _source, mirror, entry, ctx = _local_setup(tmp_path)
+
+    def _interrupted(app_dir: Path, name: str, registry: dict[str, Any]) -> None:  # noqa: ARG001
+        _write_tree(mirror, "half")
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(module_registry, "_vendor_local_module_into_app", _interrupted)
+    with pytest.raises(KeyboardInterrupt):
+        _sync_local_entry(ctx, "demo-local", entry, mirror, set())
+    assert not mirror.exists()
+
+
+def _packaged_cmake_hash(tmp_path: Path) -> str:
+    reference = tmp_path / "cmake-packaged"
+    _copy_packaged_tree("neuralspotx", "cmake", reference)
+    return hash_tree(reference, exclude_names=NSX_TOOLING_AUTOGEN_FILES)
+
+
+def _write_offline_app(tmp_path: Path, tooling_hash: str) -> Path:
+    """An app whose lock needs no network: a vendored module and cmake/nsx."""
+
+    app_dir = tmp_path / "app"
+    _write_tree(app_dir / "modules" / "modA", "vendored")
+    cfg = {
+        "schema_version": 2,
+        "project": {"name": "offline"},
+        "target": {"board": "apollo510_evb", "soc": "apollo510"},
+        "toolchain": "arm-none-eabi-gcc",
+        "modules": [{"name": "modA", "source": {"vendored": True}}],
+    }
+    (app_dir / "nsx.yml").write_text(yaml.safe_dump(cfg, sort_keys=False), encoding="utf-8")
+    acquired = "2026-10-18T00:00:00+00:00"
+    lock = NsxLock(
+        manifest_hash=hash_manifest(app_dir / "nsx.yml"),
+        target={"board": "apollo510_evb", "soc": "apollo510", "toolchain": "arm-none-eabi-gcc"},
+        modules={
+            "nsx-tooling": ResolvedModule(
+                project="neuralspotx",
+                kind=LockKind.PACKAGED,
+                constraint="packaged",
+                vendored_at="cmake/nsx",
+                content_hash=tooling_hash,
+                acquired_at=acquired,
+                tool_version="0.0.0",
+            ),
+            "modA": ResolvedModule(
+                project="modA",
+                kind=LockKind.VENDORED,
+                constraint="vendored",
+                vendored_at="modules/modA",
+                content_hash=hash_tree(app_dir / "modules" / "modA"),
+                acquired_at=acquired,
+            ),
+        },
+    )
+    write_lock(app_dir, lock)
+    return app_dir
+
+
+def test_frozen_sync_removes_cmake_tree_it_filled_into_an_empty_dir_then_retry_passes(
+    tmp_path: Path,
+) -> None:
+    """Sync level: an empty cmake/nsx counts as created, so a rejected fill is removed."""
+
+    app_dir = _write_offline_app(tmp_path, tooling_hash="sha256:" + "0" * 64)
+    cmake_nsx = app_dir / "cmake" / "nsx"
+    cmake_nsx.mkdir(parents=True)
+
+    with pytest.raises(NSXIntegrityError, match="ships different content"):
+        sync_app_impl(app_dir, frozen=True)
+    assert not cmake_nsx.exists()
+
+    # Re-record the lock for the installed neuralspotx; the retry restores cmake/nsx.
+    app_dir = _write_offline_app(tmp_path, tooling_hash=_packaged_cmake_hash(tmp_path))
+    sync_app_impl(app_dir, frozen=True)
+    assert hash_tree(cmake_nsx, exclude_names=NSX_TOOLING_AUTOGEN_FILES) == _packaged_cmake_hash(
+        tmp_path
+    )
