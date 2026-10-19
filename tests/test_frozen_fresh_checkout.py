@@ -644,3 +644,51 @@ def test_frozen_sync_removes_cmake_tree_it_filled_into_an_empty_dir_then_retry_p
     assert hash_tree(cmake_nsx, exclude_names=NSX_TOOLING_AUTOGEN_FILES) == _packaged_cmake_hash(
         tmp_path
     )
+
+
+def test_frozen_sync_keeps_a_verified_cmake_tree_when_another_tool_is_installed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Sync level: --frozen does not overwrite a cmake/nsx that matches the lock."""
+
+    reference = tmp_path / "locked-tooling"
+    _write_tree(reference, "tooling the lock recorded")
+    app_dir = _write_offline_app(
+        tmp_path, tooling_hash=hash_tree(reference, exclude_names=NSX_TOOLING_AUTOGEN_FILES)
+    )
+    cmake_nsx = app_dir / "cmake" / "nsx"
+    _write_tree(cmake_nsx, "tooling the lock recorded")
+
+    def _other_tool(package: str, resource: str, dest: Path) -> None:  # noqa: ARG001
+        _write_tree(dest, "tooling from another neuralspotx")
+
+    monkeypatch.setattr(_sync, "_copy_packaged_tree", _other_tool)
+
+    sync_app_impl(app_dir, frozen=True)
+
+    assert (cmake_nsx / "src.c").read_text(encoding="utf-8") == "tooling the lock recorded"
+
+
+def test_frozen_sync_interrupted_cmake_refresh_leaves_nothing_then_retry_passes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Sync level: a fresh checkout's interrupted cmake/nsx copy is removed."""
+
+    app_dir = _write_offline_app(tmp_path, tooling_hash=_packaged_cmake_hash(tmp_path))
+    cmake_nsx = app_dir / "cmake" / "nsx"
+    real_copy = _sync._copy_packaged_tree
+
+    def _interrupted(package: str, resource: str, dest: Path) -> None:  # noqa: ARG001
+        _write_tree(dest, "half")
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(_sync, "_copy_packaged_tree", _interrupted)
+    with pytest.raises(KeyboardInterrupt):
+        sync_app_impl(app_dir, frozen=True)
+    assert not cmake_nsx.exists()
+
+    monkeypatch.setattr(_sync, "_copy_packaged_tree", real_copy)
+    sync_app_impl(app_dir, frozen=True)
+    assert hash_tree(cmake_nsx, exclude_names=NSX_TOOLING_AUTOGEN_FILES) == _packaged_cmake_hash(
+        tmp_path
+    )

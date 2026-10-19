@@ -540,11 +540,11 @@ def _sync_fetchable_entry(
     # (force-pushed git history, packaged source bumped without a
     # tool_version bump, etc.).
     #
-    # Skip the verification for ``cmake/nsx``: that path is
-    # unconditionally refreshed by ``_copy_packaged_tree`` at the end of
-    # the sync, so its on-disk state mid-loop is transient and any
-    # mismatch here would produce a misleading "drifted since lock"
-    # warning even when the final state is correct.
+    # Skip the verification for ``cmake/nsx``: that path is refreshed by
+    # ``_copy_packaged_tree`` and verified at the end of the sync, so its
+    # on-disk state mid-loop is transient and any mismatch here would
+    # produce a misleading "drifted since lock" warning even when the
+    # final state is correct.
     if vendored_dir != ctx.cmake_nsx:
         post_hash = hash_tree(vendored_dir) if vendored_dir.exists() else None
         if post_hash != entry.content_hash and ctx.frozen:
@@ -666,24 +666,28 @@ def _sync_app_impl_unlocked(
         # Packaged / git: fetchable upstream artifacts.
         changed += _sync_fetchable_entry(ctx, name, entry, vendored_dir, vendored_paths)
 
-    # Always refresh the packaged cmake tree and regenerate
-    # modules.cmake + modules/.gitignore — these are cheap and keep
-    # the build inputs aligned.
-    _copy_packaged_tree("neuralspotx", "cmake", app_dir / "cmake" / "nsx")
-    _write_cmake_nsx_gitignore(app_dir)
-    ordered_modules = list(lock.modules)
-    _write_app_module_file(app_dir, nsx_cfg, module_names=ordered_modules)
-    _write_modules_gitignore_for_module_names(
-        app_dir, nsx_cfg, _locked_module_union(app_dir, ordered_modules)
-    )
+    # Refresh the packaged cmake tree and regenerate modules.cmake +
+    # modules/.gitignore — these are cheap and keep the build inputs
+    # aligned. Under --frozen an existing cmake/nsx was already verified
+    # against the lock above, so it is not overwritten with whatever
+    # neuralspotx version happens to be installed. A tree this sync
+    # creates is removed again if any step up to its verification fails.
+    with _remove_on_failure(cmake_nsx, created=cmake_nsx_was_missing):
+        if not frozen or cmake_nsx_was_missing:
+            _copy_packaged_tree("neuralspotx", "cmake", cmake_nsx)
+        _write_cmake_nsx_gitignore(app_dir)
+        ordered_modules = list(lock.modules)
+        _write_app_module_file(app_dir, nsx_cfg, module_names=ordered_modules)
+        _write_modules_gitignore_for_module_names(
+            app_dir, nsx_cfg, _locked_module_union(app_dir, ordered_modules)
+        )
 
-    # Now that ``cmake/nsx`` has been replaced by _copy_packaged_tree,
-    # verify any packaged lock entry mapped to that path against its
-    # recorded content_hash. Done after the refresh so the warning (if
-    # any) reflects the final on-disk state, not the pre-refresh state.
-    _verify_packaged_cmake_tree(
-        app_dir, lock, cmake_nsx, frozen=frozen, created=cmake_nsx_was_missing
-    )
+        # Verify any packaged lock entry mapped to ``cmake/nsx`` against
+        # its recorded content_hash. Done after the refresh so the warning
+        # (if any) reflects the final on-disk state.
+        _verify_packaged_cmake_tree(
+            app_dir, lock, cmake_nsx, frozen=frozen, created=cmake_nsx_was_missing
+        )
 
     if changed:
         info(f"Synced {changed} module{'s' if changed != 1 else ''} from nsx.lock.")
