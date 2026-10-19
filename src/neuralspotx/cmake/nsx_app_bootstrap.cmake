@@ -3,6 +3,17 @@
 include(CMakeParseArguments)
 
 set(NSX_APP_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}")
+
+# Windows hosts: binutils ar/ranlib write a temporary file while creating an
+# archive, and parallel Ninja archive steps intermittently fail with "could not
+# create temporary file whilst writing archive: Permission denied" (#294; seen
+# on the nsx_core libraries, six of which share one directory). Run link and
+# archive steps one at a time there. Archiving takes milliseconds, and this
+# must be set before any module target is created.
+if(CMAKE_HOST_WIN32 AND CMAKE_GENERATOR MATCHES "Ninja")
+    set_property(GLOBAL APPEND PROPERTY JOB_POOLS nsx_archive=1)
+    set(CMAKE_JOB_POOL_LINK nsx_archive)
+endif()
 get_filename_component(NSX_APP_ROOT "${NSX_APP_CMAKE_DIR}/../.." ABSOLUTE)
 
 function(nsx_module_dir_for_name out_var module_name)
