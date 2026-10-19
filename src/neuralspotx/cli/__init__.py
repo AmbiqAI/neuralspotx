@@ -1412,12 +1412,17 @@ def main(argv: list[str] | None = None) -> int:
         # SIGTERM/SIGHUP raise TerminatedBySignal (a KeyboardInterrupt), so
         # child processes are stopped exactly as they are on Ctrl-C.
         with terminate_on_signals():
-            args.func(args)
+            try:
+                args.func(args)
+            except KeyboardInterrupt:
+                # Ctrl-C, or SIGTERM/SIGHUP as TerminatedBySignal. The child
+                # of the interrupted call is already stopped; also stop any
+                # started from worker threads (parallel git), which the
+                # signal does not reach. Still inside the block, so a second
+                # signal is ignored while this runs.
+                terminate_live_children()
+                raise
     except KeyboardInterrupt as exc:
-        # Ctrl-C, or SIGTERM/SIGHUP as TerminatedBySignal. The child of the
-        # interrupted call is already stopped; also stop any started from
-        # worker threads (parallel git), which the signal does not reach.
-        terminate_live_children()
         if isinstance(exc, TerminatedBySignal):
             reason, code = exc.signal_name, exc.exit_code
         else:

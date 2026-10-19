@@ -85,7 +85,8 @@ def parallel_map(
         # Cancel anything still queued and return without waiting for the
         # running workers, so an interrupt (Ctrl-C, or SIGTERM raised as
         # TerminatedBySignal) is not held up by a long git operation. The
-        # CLI then stops their child processes.
+        # CLI then stops the child processes running at that moment; a
+        # worker finishing its current item exits with the interpreter.
         ex.shutdown(wait=False, cancel_futures=True)
         raise
     ex.shutdown(wait=True)

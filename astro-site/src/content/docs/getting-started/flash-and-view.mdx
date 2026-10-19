@@ -97,8 +97,8 @@ Three options override it:
 - `--capture FILE` line-streams the output to a file as well as to your terminal.
 
 Together they make a viewer run scriptable, which is what CI and benchmark harnesses use.
-Use `--duration` rather than wrapping the command in `timeout`. NSX also stops the viewer
-if it is sent `SIGTERM`, but `--duration` ends the capture cleanly.
+Use `--duration` rather than wrapping the command in `timeout`. On Linux and macOS NSX also
+stops the viewer if it is sent `SIGTERM`, but `--duration` ends the capture cleanly.
 
 See [`nsx view`](/neuralspotx/reference/cli/view/).
 

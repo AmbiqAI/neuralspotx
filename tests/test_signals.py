@@ -202,13 +202,21 @@ def test_attach_does_not_raise_when_the_job_object_cannot_be_used(
 ) -> None:
     """A Popen stand-in without a Win32 handle must not break the caller (Windows path)."""
 
+    import types
+
     from neuralspotx.subprocess_utils import _winjob
 
-    monkeypatch.setattr(_winjob.os, "name", "nt")
+    # Drive the real Windows branch on any host: a job is created, then
+    # reading the stand-in's Win32 handle raises AttributeError.
+    closed: list[int] = []
+    monkeypatch.setattr(_winjob, "os", types.SimpleNamespace(name="nt"))
+    monkeypatch.setattr(_winjob, "_create_kill_on_close_job", lambda: 7)
+    monkeypatch.setattr(_winjob, "_assign_process_to_job", lambda job, handle: None)
+    monkeypatch.setattr(_winjob, "_close_handle", closed.append)
     container = _winjob._ProcessContainer()
 
     class _NoHandle:
         pid = 1
 
     container.attach(_NoHandle())  # ty: ignore[invalid-argument-type]  # deliberate stand-in without _handle
-    container.close()
+    assert closed == [7]
