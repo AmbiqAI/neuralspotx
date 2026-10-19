@@ -1,0 +1,20 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026, Ambiq
+# NSX board descriptor (schema_version 1).
+#
+# Source of truth for board -> SoC / SDK-provider derivation consumed by
+# neuralspotx.constants via neuralspotx/board_descriptors.py. Keep in sync
+# with board.cmake (NSX_CPU / NSX_ABI_FLAGS).
+schema_version: 1
+board:
+  name: apollo3p_evb
+  tier: evb
+  soc: apollo3p
+  registered: true
+sdk_provider: ambiqsuite
+cpu:
+  core: cortex-m4
+  float_abi: hard
+  abi: thumbv7em-fpv4sp-hard
+toolchains:
+  - arm-none-eabi-gcc

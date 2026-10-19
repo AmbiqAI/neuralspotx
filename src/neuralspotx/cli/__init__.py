@@ -633,7 +633,11 @@ def _build_parser() -> argparse.ArgumentParser:
     p_configure.add_argument(
         "--frozen",
         action="store_true",
-        help="Error on any drift between nsx.yml, nsx.lock, and modules/ instead of correcting it",
+        help=(
+            "Error on any drift between nsx.yml, nsx.lock, and modules/ instead of "
+            "correcting it; modules missing from modules/ are fetched at their "
+            "locked revision and verified"
+        ),
     )
     _add_timeout(p_configure)
     p_configure.set_defaults(func=cmd_configure)
@@ -663,7 +667,9 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help=(
             "When a (re)configure is needed (no build.ninja yet), error on any "
-            "drift between nsx.yml, nsx.lock, and modules/ instead of correcting it"
+            "drift between nsx.yml, nsx.lock, and modules/ instead of correcting it; "
+            "modules missing from modules/ are fetched at their locked revision "
+            "and verified"
         ),
     )
     _add_timeout(p_build)
@@ -699,7 +705,8 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help=(
             "When a (re)configure is needed, error on any drift between nsx.yml, "
-            "nsx.lock, and modules/ instead of correcting it. Note: passing "
+            "nsx.lock, and modules/ instead of correcting it; modules missing from "
+            "modules/ are fetched at their locked revision and verified. Note: passing "
             "--probe-serial always forces a reconfigure; --frozen only changes "
             "how the accompanying module sync behaves, not whether it runs."
         ),
@@ -748,7 +755,8 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help=(
             "When a (re)configure is needed, error on any drift between nsx.yml, "
-            "nsx.lock, and modules/ instead of correcting it. Note: passing "
+            "nsx.lock, and modules/ instead of correcting it; modules missing from "
+            "modules/ are fetched at their locked revision and verified. Note: passing "
             "--probe-serial always forces a reconfigure; --frozen only changes "
             "how the accompanying module sync behaves, not whether it runs."
         ),
@@ -861,7 +869,11 @@ def _build_parser() -> argparse.ArgumentParser:
     p_sync.add_argument(
         "--frozen",
         action="store_true",
-        help="Error on any drift between nsx.yml, nsx.lock, and modules/ instead of correcting it",
+        help=(
+            "Error on any drift between nsx.yml, nsx.lock, and modules/ instead of "
+            "correcting it; modules missing from modules/ are fetched at their "
+            "locked revision and verified"
+        ),
     )
     p_sync.add_argument(
         "--force",

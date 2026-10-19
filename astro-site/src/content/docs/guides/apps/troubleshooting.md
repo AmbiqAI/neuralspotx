@@ -107,7 +107,22 @@ Local source for 'my-module' at /home/you/src/my-module has drifted ...
 
 Something on disk no longer matches the content hash recorded in `nsx.lock`. If you
 changed the module on purpose, re-run `nsx lock` to record the new state. If you did not,
-`nsx sync` without `--frozen` restores it.
+`nsx sync` without `--frozen` restores it. A fetched module that was edited in `modules/`
+fails the same way:
+
+```text
+Module 'my-module' at modules/my-module does not match nsx.lock ...
+```
+
+A module missing from `modules/`, as on a fresh clone, is not drift: `--frozen` fetches it
+at the revision in `nsx.lock` and checks its content hash. If the upstream changed since
+the lock was written, the fetched copy is removed and the command fails:
+
+```text
+Module 'my-module' fetched at its locked revision does not match nsx.lock ...
+```
+
+Re-run `nsx lock` to record the upstream as it is now, then review the change.
 
 ```text
 /home/you/my_app/nsx.lock not found. Run `nsx lock` first (or drop --frozen).

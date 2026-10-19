@@ -72,10 +72,11 @@ def _ensure_app_modules(app_dir: Path, board: str | None = None, *, frozen: bool
 
     Args:
         frozen: Verify ``modules/`` against ``nsx.lock`` and raise on any
-            drift instead of silently re-vendoring. Threaded through from
-            ``configure_app``/``build_app``/``flash_app`` so a hand-patched
-            vendored module is never overwritten by an implicit
-            reconfigure — the caller finds out immediately instead.
+            drift instead of silently re-vendoring; missing modules are
+            still fetched at their locked revision and verified. Threaded
+            through from ``configure_app``/``build_app``/``flash_app`` so a
+            hand-patched vendored module is never overwritten by an
+            implicit reconfigure — the caller finds out immediately instead.
     """
 
     sync_app_impl(app_dir, board=board, frozen=frozen)
@@ -131,13 +132,16 @@ def sync_app_impl(
     upstream would produce, nothing is written.
 
     Args:
-        frozen: Read-only mode. Verify that the on-disk vendored tree
-            matches each lock entry's ``content_hash`` and raise
+        frozen: Never modify a vendored tree. Verify that each one on
+            disk matches its lock entry's ``content_hash`` and raise
             :class:`NSXError` on any mismatch instead of correcting it.
-            Also raises if ``nsx.yml`` has changed since ``nsx.lock``
-            was written (manifest-hash drift). This does NOT detect
-            upstream drift on its own — ``nsx outdated`` is the tool
-            for comparing the lock against current upstream HEADs.
+            A fetchable module missing from disk (a fresh checkout) is
+            fetched at its locked revision and must match the lock
+            exactly. Also raises if ``nsx.yml`` has changed since
+            ``nsx.lock`` was written (manifest-hash drift). This does NOT
+            detect upstream drift of present modules — ``nsx outdated``
+            is the tool for comparing the lock against current upstream
+            HEADs.
         force: Re-vendor every fetchable module even if its on-disk
             tree already matches the locked content_hash.
     """
@@ -425,6 +429,7 @@ def _sync_fetchable_entry(
     """
 
     from ..module_registry import (
+        _rmtree,
         _vendor_git_module_at_commit,
         _vendor_packaged_module_into_app,
     )
@@ -441,10 +446,22 @@ def _sync_fetchable_entry(
         vendored_paths.add(vendored_dir)
         return 0
 
-    if ctx.frozen:
+    # Under --frozen a module that is present but differs is never touched.
+    # A missing one (a fresh checkout: modules/ is gitignored) overwrites
+    # nothing, so it is fetched at the locked revision and verified below.
+    if ctx.frozen and on_disk_hash is not None:
         raise NSXIntegrityError(
-            f"Module '{name}' on-disk content does not match nsx.lock "
-            f"({entry.vendored_at}). Refusing to modify under --frozen.",
+            f"Module '{name}' at {entry.vendored_at} does not match nsx.lock "
+            f"(expected {entry.content_hash}, got {on_disk_hash}). "
+            "Refusing to modify it under --frozen; revert the local changes "
+            "or drop --frozen to re-vendor it.",
+            module=name,
+        )
+    if ctx.frozen and entry.kind == LockKind.GIT and not entry.commit:
+        raise NSXIntegrityError(
+            f"Module '{name}' is missing at {entry.vendored_at} and its "
+            "nsx.lock entry records no commit, so --frozen cannot restore it "
+            "exactly. Run `nsx lock` to re-record it, or drop --frozen.",
             module=name,
         )
 
@@ -475,6 +492,19 @@ def _sync_fetchable_entry(
     # warning even when the final state is correct.
     if vendored_dir != ctx.cmake_nsx:
         post_hash = hash_tree(vendored_dir) if vendored_dir.exists() else None
+        if post_hash != entry.content_hash and ctx.frozen:
+            # Only a missing module reaches here under --frozen, so this
+            # tree is the one just fetched; remove it rather than leave
+            # content that does not match the lock.
+            if vendored_dir.exists():
+                _rmtree(vendored_dir)
+            raise NSXIntegrityError(
+                f"Module '{name}' fetched at its locked revision does not "
+                f"match nsx.lock (expected {entry.content_hash}, got "
+                f"{post_hash}); its upstream changed since the lock was "
+                "written. Run `nsx lock` to re-record it, or drop --frozen.",
+                module=name,
+            )
         if post_hash != entry.content_hash:
             _log.warning(
                 "upstream for '%s' has drifted since lock "
@@ -602,6 +632,14 @@ def _sync_app_impl_unlocked(
             if cmake_nsx.exists()
             else None
         )
+        if post_hash != entry.content_hash and frozen:
+            raise NSXIntegrityError(
+                f"Packaged module '{name}' at {entry.vendored_at} does not "
+                f"match nsx.lock (expected {entry.content_hash}, got "
+                f"{post_hash}); this neuralspotx version ships different "
+                "content. Run `nsx lock` to re-record it, or drop --frozen.",
+                module=name,
+            )
         if post_hash != entry.content_hash:
             _log.warning(
                 "upstream for '%s' has drifted since lock "
