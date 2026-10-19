@@ -405,3 +405,36 @@ def test_signal_during_startup_is_cleaned_up_without_global_cleanup(
         for proc in started:
             if proc.poll() is None:
                 proc.kill()
+
+
+@posix_only
+@pytest.mark.parametrize("runner", ["run", "run_capture"])
+def test_signal_right_after_startup_deferral_is_cleaned_up_locally(
+    runner: str, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The handoff: a signal just after the child is started, before the runner's own code resumes."""
+
+    from neuralspotx import subprocess_utils
+    from neuralspotx.subprocess_utils import _runner
+
+    started: list[subprocess.Popen] = []
+    real_start = _runner._start_child
+
+    def _start_then_signal(*args: object, **kwargs: object) -> object:
+        result = real_start(*args, **kwargs)  # ty: ignore[invalid-argument-type]  # pass-through wrapper
+        started.extend(proc for _container, proc in list(_runner._LIVE.values()))
+        os.kill(os.getpid(), signal.SIGTERM)
+        time.sleep(0.2)
+        return result
+
+    monkeypatch.setattr(_runner, "_start_child", _start_then_signal)
+    try:
+        with pytest.raises(TerminatedBySignal), terminate_on_signals():
+            getattr(subprocess_utils, runner)([sys.executable, "-c", "import time; time.sleep(60)"])
+        assert started, "no child was registered"
+        assert started[0].wait(timeout=10) is not None
+        assert not _runner._LIVE
+    finally:
+        for proc in started:
+            if proc.poll() is None:
+                proc.kill()
