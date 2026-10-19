@@ -15,7 +15,10 @@ from ._constants import _ARTIFACT_HASH_CACHE_SCHEMA_VERSION, _HASH_EXCLUDE_DIRS
 def _iter_files(root: Path, *, exclude_names: frozenset[str] = frozenset()) -> Iterable[Path]:
     """Yield files under *root*, skipping excluded directories and names."""
 
-    for child in sorted(root.rglob("*")):
+    # Order by the relative path's components, which compare
+    # case-sensitively on every OS. Sorting Path objects folds case on
+    # Windows, so the same tree hashed differently there (#294).
+    for child in sorted(root.rglob("*"), key=lambda p: p.relative_to(root).parts):
         if not child.is_file():
             continue
         rel_parts = child.relative_to(root).parts

@@ -11,7 +11,9 @@ set(NSX_APP_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}")
 # archive steps one at a time there. Archiving takes milliseconds, and this
 # must be set before any module target is created.
 if(CMAKE_HOST_WIN32 AND CMAKE_GENERATOR MATCHES "Ninja")
-    set_property(GLOBAL APPEND PROPERTY JOB_POOLS nsx_archive=1)
+    # Setting the JOB_POOLS property stops CMake reading CMAKE_JOB_POOLS,
+    # so carry any pools the app defined that way over.
+    set_property(GLOBAL APPEND PROPERTY JOB_POOLS ${CMAKE_JOB_POOLS} nsx_archive=1)
     set(CMAKE_JOB_POOL_LINK nsx_archive)
 endif()
 get_filename_component(NSX_APP_ROOT "${NSX_APP_CMAKE_DIR}/../.." ABSOLUTE)

@@ -1431,3 +1431,37 @@ class TestAddVendoredModule:
         assert not (app / "modules" / "my-aot").exists()
         cfg = yaml.safe_load((app / "nsx.yml").read_text(encoding="utf-8"))
         assert cfg["modules"] in (None, [])
+
+
+def test_hash_tree_orders_files_case_sensitively_on_every_os(tmp_path: Path) -> None:
+    """The lock hash must not depend on the host OS (#294).
+
+    Sorting Path objects folds case on Windows, which put README.md after
+    nsx-module.yaml there and changed every content_hash. Pin the hash to
+    its specification: files ordered by their case-sensitive relative path.
+    """
+
+    import hashlib
+
+    from neuralspotx.nsx_lock import hash_tree
+
+    files = {
+        "README.md": "readme",
+        "nsx-module.yaml": "meta",
+        "packages/Board.cmake": "board",
+        "packages/apollo.cmake": "apollo",
+        "Zeta.txt": "z",
+        "alpha.txt": "a",
+    }
+    for rel, text in files.items():
+        path = tmp_path / rel
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(text.encode("utf-8"))
+
+    expected = hashlib.sha256()
+    for rel in sorted(files, key=lambda r: tuple(r.split("/"))):
+        expected.update(rel.encode("utf-8") + b"\0")
+        expected.update(hashlib.sha256(files[rel].encode("utf-8")).hexdigest().encode("ascii"))
+        expected.update(b"\n")
+
+    assert hash_tree(tmp_path) == "sha256:" + expected.hexdigest()
