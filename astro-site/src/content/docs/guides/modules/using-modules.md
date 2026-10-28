@@ -125,6 +125,20 @@ a packaged or vendored module has no upstream tip to compare against. `--json` r
 [Lock and sync](/neuralspotx/guides/modules/lock-and-sync/) covers the resolution and
 pinning behind all of this, including how to pin a module to an exact revision.
 
+### Moving sensor applications to v1
+
+The packaged registry pins `nsx-sensors` to `v1.0.0`. This is a breaking driver
+API update: applications moving from v0 must migrate their includes and driver
+calls to the caller-owned context API and explicitly link the NSX bus adapter
+when they use it. Follow the released
+[sensor migration guide](https://github.com/AmbiqAI/nsx-sensors/blob/v1.0.0/docs/migration/portable-foundation.md)
+and [NSX integration guide](https://github.com/AmbiqAI/nsx-sensors/blob/v1.0.0/docs/nsx-port.md)
+before updating an existing application. Rebuild all code that uses the drivers.
+
+Installing a newer NSX tool does not itself rewrite an application's vendored
+sources or lockfile. Review the dependency changes when you next update the app;
+keep an explicit registry override if it must remain on the older sensor API.
+
 ## Optional dependencies are information, not installs
 
 Only `depends.required` is resolved. A manifest's `depends.optional` is searchable
