@@ -3,7 +3,7 @@
 schema_version: 4
 targets:
   apollo510_evb:
-    generated_at: '2026-10-28T19:47:34+00:00'
+    generated_at: '2026-10-28T21:32:26+00:00'
     nsx_tool:
       version: 0.9.0
     manifest:
@@ -17,63 +17,69 @@ targets:
       nsx-ambiqsuite:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:34+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-cmsis-core:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:34+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-ambiq-hal:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:34+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-ambiq-bsp:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:34+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-soc-hal:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:34+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-cmsis-startup:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:34+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-board-apollo510-evb:
         project: neuralspotx
         kind: packaged
@@ -86,13 +92,14 @@ targets:
       nsx-core:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:34+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-pmu-armv8m:
         project: nsx-pmu-armv8m
         kind: git
@@ -116,25 +123,27 @@ targets:
       nsx-interrupt:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:34+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-timer:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:34+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
   apollo510b_evb:
-    generated_at: '2026-10-28T19:47:34+00:00'
+    generated_at: '2026-10-28T21:32:26+00:00'
     nsx_tool:
       version: 0.9.0
     manifest:
@@ -148,63 +157,69 @@ targets:
       nsx-ambiqsuite:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:34+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-cmsis-core:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:34+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-ambiq-hal:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:34+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-ambiq-bsp:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:34+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-soc-hal:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:34+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-cmsis-startup:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:34+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-board-apollo510b-evb:
         project: neuralspotx
         kind: packaged
@@ -217,13 +232,14 @@ targets:
       nsx-core:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:34+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-pmu-armv8m:
         project: nsx-pmu-armv8m
         kind: git
@@ -247,25 +263,27 @@ targets:
       nsx-interrupt:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:34+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-timer:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:34+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
   apollo330mP_evb:
-    generated_at: '2026-10-28T19:54:11+00:00'
+    generated_at: '2026-10-28T21:32:26+00:00'
     nsx_tool:
       version: 0.9.0
     manifest:
@@ -279,63 +297,69 @@ targets:
       nsx-ambiqsuite:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:35+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-cmsis-core:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:35+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-ambiq-hal:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:35+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-ambiq-bsp:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:35+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-soc-hal:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:35+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-cmsis-startup:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:35+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-board-apollo330mp-evb:
         project: neuralspotx
         kind: packaged
@@ -348,13 +372,14 @@ targets:
       nsx-core:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:35+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-pmu-armv8m:
         project: nsx-pmu-armv8m
         kind: git
@@ -378,25 +403,27 @@ targets:
       nsx-interrupt:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:35+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-timer:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:35+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
   apollo510dL_evb:
-    generated_at: '2026-10-28T19:52:21+00:00'
+    generated_at: '2026-10-28T21:32:26+00:00'
     nsx_tool:
       version: 0.9.0
     manifest:
@@ -410,63 +437,69 @@ targets:
       nsx-ambiqsuite:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:35+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-cmsis-core:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:35+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-ambiq-hal:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:35+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-ambiq-bsp:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:35+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-soc-hal:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:35+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-cmsis-startup:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:35+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-board-apollo510dl-evb:
         project: neuralspotx
         kind: packaged
@@ -479,13 +512,14 @@ targets:
       nsx-core:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:35+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-pmu-armv8m:
         project: nsx-pmu-armv8m
         kind: git
@@ -509,25 +543,27 @@ targets:
       nsx-interrupt:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:35+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-timer:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:35+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
   apollo4p_blue_kxr_evb:
-    generated_at: '2026-10-28T19:47:35+00:00'
+    generated_at: '2026-10-28T21:32:26+00:00'
     nsx_tool:
       version: 0.9.0
     manifest:
@@ -541,63 +577,69 @@ targets:
       nsx-ambiqsuite:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:35+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-cmsis-core:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:35+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-ambiq-hal:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:35+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-ambiq-bsp:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:35+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-soc-hal:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:35+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-cmsis-startup:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:35+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-board-apollo4p-blue-kxr-evb:
         project: neuralspotx
         kind: packaged
@@ -610,13 +652,14 @@ targets:
       nsx-core:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:35+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-tooling:
         project: neuralspotx
         kind: packaged
@@ -629,20 +672,22 @@ targets:
       nsx-interrupt:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:35+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'
       nsx-timer:
         project: nsx-ambiq-sdk
         kind: git
-        constraint: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
+        constraint: v5.2.27
         resolved:
           url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
+          tag: v5.2.27
           commit: 993b7901a82008ac4cd523ffe0b125a016a8f6a8
           vendored_at: modules/nsx-ambiq-sdk
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
-          acquired_at: '2026-10-28T19:47:35+00:00'
+          acquired_at: '2026-10-28T21:32:26+00:00'

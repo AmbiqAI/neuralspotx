@@ -15,15 +15,16 @@ NSX board and SoC modules.
 One repo, [`nsx-ambiq-sdk`](https://github.com/AmbiqAI/nsx-ambiq-sdk), vendors
 the AmbiqSuite drop, the HAL/BSP wrappers, and the shared NSX module set for
 every supported SoC (Apollo2 through Apollo5, plus the experimental atomiq110).
-Stable resolution pins every SDK module and SoC family to commit
-`993b7901a82008ac4cd523ffe0b125a016a8f6a8`, the merged 5.2.27 preparation
-([SDK PR #124](https://github.com/AmbiqAI/nsx-ambiq-sdk/pull/124)). This is an
-immutable commit pin; it does not imply that a release tag has been published.
+Stable resolution pins every SDK module and SoC family to the published
+[`v5.2.27` release](https://github.com/AmbiqAI/nsx-ambiq-sdk/releases/tag/v5.2.27),
+which resolves to `993b7901a82008ac4cd523ffe0b125a016a8f6a8`. This immutable
+tag selects the same SDK content qualified in
+[NSX PR #297](https://github.com/AmbiqAI/neuralspotx/pull/297).
 
 The `nsx-ambiqsuite`, `nsx-ambiq-hal` and `nsx-ambiq-bsp` modules are thin
 metadata views onto that same project and revision.
 
-The [5.2.27 release record](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/993b7901a82008ac4cd523ffe0b125a016a8f6a8/release/nsx-ambiq-sdk-5.2.27.yaml)
+The [5.2.27 release record](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/v5.2.27/release/nsx-ambiq-sdk-5.2.27.yaml)
 accounts for the accumulated NSX startup, memory-policy, power, performance,
 debug, timer, USB, I2C and audio integration fixes. It also includes the
 Apollo2/3/3p C++ constructor startup correction. The entire AmbiqSuite provider
@@ -31,7 +32,7 @@ tree and all 73 HAL/BSP archives remain unchanged from 5.2.26; this is not a
 new upstream AmbiqSuite intake. Apollo330P and Apollo510L use the SDK default
 DTCM layout; the unsupported `itcm` profile is no longer offered by their
 board fragments. Qualification scope and exclusions are recorded
-in the [SDK qualification report](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/993b7901a82008ac4cd523ffe0b125a016a8f6a8/release/qualification-5.2.27.md).
+in the [SDK qualification report](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/v5.2.27/release/qualification-5.2.27.md).
 
 Board profiles depend on the provider module for their SoC family, and NSX
 vendors the resolved SDK content into the generated app. See
