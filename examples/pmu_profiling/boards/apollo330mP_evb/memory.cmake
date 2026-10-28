@@ -8,21 +8,16 @@ if(NSX_TOOLCHAIN_FAMILY STREQUAL "armclang")
     set(NSX_STARTUP_SOURCE "${NSX_CORE_DIR}/src/apollo330P/armclang/startup_keil6.c")
     set(NSX_SYSTEM_SOURCE "${NSX_AMBIQSUITE_ROOT}/CMSIS/AmbiqMicro/Source/system_apollo330P.c")
     set(_nsx_linker_script_default "${NSX_CORE_DIR}/src/apollo330P/armclang/linker_script_sbl.sct")
-    set(_nsx_linker_script_itcm "${NSX_CORE_DIR}/src/apollo330P/armclang/linker_script_itcm_sbl.sct")
-    set(_nsx_linker_script_nbl "${NSX_CORE_DIR}/src/apollo330P/armclang/linker_script_nbl.sct")
 else()
     set(NSX_STARTUP_SOURCE "${NSX_CORE_DIR}/src/apollo330P/gcc/startup_gcc.c")
     set(NSX_SYSTEM_SOURCE "${NSX_AMBIQSUITE_ROOT}/CMSIS/AmbiqMicro/Source/system_apollo330P.c")
     set(_nsx_linker_script_default "${NSX_CORE_DIR}/src/apollo330P/gcc/linker_script_sbl.ld")
-    set(_nsx_linker_script_itcm "${NSX_CORE_DIR}/src/apollo330P/gcc/linker_script_itcm_sbl.ld")
-    set(_nsx_linker_script_nbl "${NSX_CORE_DIR}/src/apollo330P/gcc/linker_script_nbl.ld")
 endif()
 
 if(NOT DEFINED NSX_LINKER_SCRIPT)
     if(COMMAND nsx_select_linker_script)
         nsx_select_linker_script(
             DEFAULT "${_nsx_linker_script_default}"
-            ITCM "${_nsx_linker_script_itcm}"
         )
     else()
         # SDK predates named linker profiles — fall back to the default script.
@@ -30,12 +25,4 @@ if(NOT DEFINED NSX_LINKER_SCRIPT)
     endif()
 endif()
 
-# Apollo330P's GCC/ATfE startup selects its TCM copy symbols at compile time.
-# The ITCM profile defines only the ITCM load-region symbols, so propagate the
-# matching definition through the already-created SoC flags target.
-if(NSX_LINKER_SCRIPT STREQUAL "${_nsx_linker_script_itcm}" OR
-   NSX_LINKER_SCRIPT STREQUAL "${_nsx_linker_script_nbl}")
-    target_compile_definitions(${NSX_SOC_FLAGS_TARGET} INTERFACE
-        NSX_STARTUP_COPY_ITCM_TEXT=1
-    )
-endif()
+# This SoC has no ITCM; the SDK default executes hot code from DTCM.

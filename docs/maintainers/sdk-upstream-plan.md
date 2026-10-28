@@ -28,7 +28,9 @@ accounts for the accumulated NSX startup, memory-policy, power, performance,
 debug, timer, USB, I2C and audio integration fixes. It also includes the
 Apollo2/3/3p C++ constructor startup correction. The entire AmbiqSuite provider
 tree and all 73 HAL/BSP archives remain unchanged from 5.2.26; this is not a
-new upstream AmbiqSuite intake. Qualification scope and exclusions are recorded
+new upstream AmbiqSuite intake. Apollo330P and Apollo510L use the SDK default
+DTCM layout; the unsupported `itcm` profile is no longer offered by their
+board fragments. Qualification scope and exclusions are recorded
 in the [SDK qualification report](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/993b7901a82008ac4cd523ffe0b125a016a8f6a8/release/qualification-5.2.27.md).
 
 Board profiles depend on the provider module for their SoC family, and NSX
