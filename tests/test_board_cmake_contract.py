@@ -250,17 +250,15 @@ def test_board_cmake_contract(tmp_path: Path, board: str, family: str) -> None:
     )
 
 
-def test_apollo330_itcm_profile_selects_itcm_startup_copy(tmp_path: Path) -> None:
-    capture = _capture(
-        tmp_path,
-        board="apollo330mP_evb",
-        family="gcc",
-        linker_profile="itcm",
+@pytest.mark.parametrize("board", ["apollo330mP_evb", "apollo510dL_evb"])
+@pytest.mark.parametrize("family", TOOLCHAIN_FAMILIES)
+def test_small_m55_boards_do_not_offer_itcm(tmp_path: Path, board: str, family: str) -> None:
+    capture = _capture(tmp_path, board=board, family=family)
+    selection = next(
+        line for line in capture.splitlines() if line.startswith("nsx_select_linker_script:")
     )
-    assert (
-        "target_compile_definitions: nsx_soc_apollo330P_flags;INTERFACE;"
-        "NSX_STARTUP_COPY_ITCM_TEXT=1"
-    ) in capture
+    assert ";ITCM;" not in selection
+    assert "NSX_STARTUP_COPY_ITCM_TEXT" not in capture
 
 
 @pytest.mark.parametrize(
@@ -291,14 +289,15 @@ def test_atomiq110_itcm_profile_selects_itcm_nbl_script(
     assert "_sbl" not in capture
 
 
-def test_apollo330_nbl_override_selects_itcm_startup_copy(tmp_path: Path) -> None:
+def test_apollo330_nbl_override_preserves_dtcm_startup(tmp_path: Path) -> None:
     capture = _capture(
         tmp_path,
         board="apollo330mP_evb",
         family="gcc",
         linker_script="/stub/app/modules/nsx-core/src/apollo330P/gcc/linker_script_nbl.ld",
     )
+    assert "NSX_STARTUP_COPY_ITCM_TEXT" not in capture
     assert (
-        "target_compile_definitions: nsx_soc_apollo330P_flags;INTERFACE;"
-        "NSX_STARTUP_COPY_ITCM_TEXT=1"
-    ) in capture
+        "NSX_LINKER_SCRIPT=/stub/app/modules/nsx-core/src/apollo330P/gcc/linker_script_nbl.ld"
+        in capture
+    )

@@ -248,9 +248,9 @@
       "provider": null,
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
-      "revision": "v5.2.26",
+      "revision": "993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "slug": "nsx-ambiq-bsp",
-      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.26",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "summary": "Curated BSP wrapper surface for board-support integration on AmbiqSuite targets (all SoCs).",
       "type": "backend_specific",
       "use_cases": [
@@ -258,7 +258,7 @@
         "stable BSP access without wiring raw SDK board files by hand",
         "dependency for board-oriented application bring-up"
       ],
-      "version": "5.2.26"
+      "version": "5.2.27"
     },
     {
       "agent_keywords": [
@@ -329,9 +329,9 @@
       "provider": null,
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
-      "revision": "v5.2.26",
+      "revision": "993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "slug": "nsx-ambiq-hal",
-      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.26",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "summary": "Curated Ambiq HAL wrapper surface for AmbiqSuite targets (all SoCs).",
       "type": "backend_specific",
       "use_cases": [
@@ -339,7 +339,7 @@
         "wrap raw SDK HAL content behind a stable NSX-facing surface",
         "dependency for platform and BSP integration"
       ],
-      "version": "5.2.26"
+      "version": "5.2.27"
     },
     {
       "agent_keywords": [
@@ -400,9 +400,9 @@
       "provider": null,
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
-      "revision": "v5.2.26",
+      "revision": "993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "slug": "nsx-ambiq-usb",
-      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.26",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "summary": "Unified AmbiqSuite USB substrate (TinyUSB) for Apollo4P and Apollo5 SoCs.",
       "type": "backend_specific",
       "use_cases": [
@@ -410,7 +410,7 @@
         "expose SDK-vendored TinyUSB sources to higher-level USB modules",
         "support bare-metal or framework-selected USB service loops"
       ],
-      "version": "5.2.26"
+      "version": "5.2.27"
     },
     {
       "agent_keywords": [
@@ -476,9 +476,9 @@
       "provider": "ambiqsuite",
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
-      "revision": "v5.2.26",
+      "revision": "993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "slug": "nsx-ambiqsuite",
-      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.26",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "summary": "Unified AmbiqSuite SDK provider covering all staged Apollo NSX targets.",
       "type": "sdk_provider",
       "use_cases": [
@@ -486,7 +486,7 @@
         "provide upstream SDK content for platform stacks",
         "foundation for the Ambiq HAL and BSP layers"
       ],
-      "version": "5.2.26"
+      "version": "5.2.27"
     },
     {
       "agent_keywords": [
@@ -544,9 +544,9 @@
       "provider": null,
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
-      "revision": "v5.2.26",
+      "revision": "993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "slug": "nsx-audio",
-      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.26",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "summary": "PDM audio capture helper for AmbiqSuite-backed NSX targets with staged PDM support.",
       "type": "backend_specific",
       "use_cases": [
@@ -554,7 +554,7 @@
         "receive DMA-backed PCM sample callbacks from a PDM microphone",
         "provide a stable NSX audio API across AmbiqSuite releases"
       ],
-      "version": "5.2.26"
+      "version": "5.2.27"
     },
     {
       "agent_keywords": [
@@ -613,9 +613,9 @@
       "provider": null,
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
-      "revision": "v5.2.26",
+      "revision": "993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "slug": "nsx-ble",
-      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.26",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "summary": "Optional app-facing Bluetooth LE convenience API. Ports the legacy neuralSPOT ns-ble wrapper onto NSX, providing simple \"define a service + read/write/notify characteristics with callbacks\" bring-up on top of the Cordio host stack (nsx-cordio).",
       "type": "backend_specific",
       "use_cases": [
@@ -623,7 +623,7 @@
         "port existing neuralSPOT ns-ble applications to NSX with minimal source changes",
         "drive the Cordio stack from a FreeRTOS dispatcher task"
       ],
-      "version": "5.2.26"
+      "version": "5.2.27"
     },
     {
       "agent_keywords": [],
@@ -1503,9 +1503,9 @@
       "provider": null,
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
-      "revision": "v5.2.26",
+      "revision": "993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "slug": "nsx-cmsis-core",
-      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.26",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "summary": "Standalone CMSIS-Core(M) header package (ARM CMSIS_6 v6.2.0), decoupled from AmbiqSuite SDK vendoring.",
       "type": "backend_specific",
       "use_cases": [
@@ -1513,7 +1513,7 @@
         "compiler intrinsics dispatch (gcc / armclang / iccarm / clang)",
         "m-profile architecture extensions (Armv7-M, Armv8-M, Armv8.1-M)"
       ],
-      "version": "5.2.26"
+      "version": "5.2.27"
     },
     {
       "agent_keywords": [
@@ -1634,9 +1634,9 @@
       "provider": null,
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
-      "revision": "v5.2.26",
+      "revision": "993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "slug": "nsx-cmsis-startup",
-      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.26",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "summary": "CMSIS and startup integration for vector tables, startup code, and early boot wiring.",
       "type": "backend_specific",
       "use_cases": [
@@ -1644,7 +1644,7 @@
         "vector table integration",
         "common boot and reset initialization"
       ],
-      "version": "5.2.26"
+      "version": "5.2.27"
     },
     {
       "agent_keywords": [
@@ -1708,9 +1708,9 @@
       "provider": null,
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
-      "revision": "v5.2.26",
+      "revision": "993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "slug": "nsx-cordio",
-      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.26",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "summary": "Optional Cordio/WSF Bluetooth LE host stack. Vendors the AmbiqSuite third_party Cordio stack (ble-host + ble-profiles + WSF) at AmbiqSuite stable-2026.06.18 (caaf5af860) plus NSX edits, and builds it from source for the active SoC's BLE transport. Low-level stack only; the app-facing convenience API lives in nsx-ble.",
       "type": "backend_specific",
       "use_cases": [
@@ -1718,7 +1718,7 @@
         "build the WSF FreeRTOS port for the active SoC",
         "supply the SoC-specific BLE HCI transport driver (Cooper on Apollo4P, integrated BLE on Apollo3/Apollo3P, EM9305 on Apollo510B)"
       ],
-      "version": "5.2.26"
+      "version": "5.2.27"
     },
     {
       "agent_keywords": [
@@ -1777,9 +1777,9 @@
       "provider": null,
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
-      "revision": "v5.2.26",
+      "revision": "993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "slug": "nsx-core",
-      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.26",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "summary": "Core runtime initialization, universal helpers, and byte ring-buffer support.",
       "type": "runtime",
       "use_cases": [
@@ -1789,7 +1789,7 @@
         "byte ring-buffer support",
         "most NSX applications"
       ],
-      "version": "5.2.26"
+      "version": "5.2.27"
     },
     {
       "agent_keywords": [
@@ -1904,9 +1904,9 @@
       "provider": null,
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
-      "revision": "v5.2.26",
+      "revision": "993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "slug": "nsx-freertos",
-      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.26",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "summary": "Optional FreeRTOS kernel middleware. Vendors a pinned upstream FreeRTOS-Kernel and builds the SoC-selected CMSIS port. Kernel/heap policy and FreeRTOSConfig.h are owned by the application.",
       "type": "backend_specific",
       "use_cases": [
@@ -1914,7 +1914,7 @@
         "provide kernel objects (tasks, queues, semaphores, timers) to higher-level modules",
         "opt-in RTOS scheduling without baking kernel or heap policy into the core SDK"
       ],
-      "version": "5.2.26"
+      "version": "5.2.27"
     },
     {
       "agent_keywords": [
@@ -2031,9 +2031,9 @@
       "provider": null,
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
-      "revision": "v5.2.26",
+      "revision": "993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "slug": "nsx-i2c",
-      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.26",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "summary": "I2C bus API contract and register-access helpers for AmbiqSuite-backed NSX targets.",
       "type": "backend_specific",
       "use_cases": [
@@ -2042,7 +2042,7 @@
         "simple peripheral communication",
         "base dependency for optional I2C device-driver modules"
       ],
-      "version": "5.2.26"
+      "version": "5.2.27"
     },
     {
       "agent_keywords": [
@@ -2149,9 +2149,9 @@
       "provider": null,
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
-      "revision": "v5.2.26",
+      "revision": "993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "slug": "nsx-npu",
-      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.26",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "summary": "Atomiq110 glue for the Arm Ethos-U85 NPU: power-domain sequencing, IRQ wiring, and performance-mode selection on top of the pristine upstream driver (nsx-ethos-u-driver) so TFLM runtimes can dispatch Vela-compiled command streams to the NPU.",
       "type": "backend_specific",
       "use_cases": [
@@ -2159,7 +2159,7 @@
         "Vela-compiled TFLite model execution",
         "NPU power and performance mode control"
       ],
-      "version": "5.2.26"
+      "version": "5.2.27"
     },
     {
       "agent_keywords": [
@@ -2214,9 +2214,9 @@
       "provider": null,
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
-      "revision": "v5.2.26",
+      "revision": "993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "slug": "nsx-perf",
-      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.26",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "summary": "Generic performance measurement helpers for timing and lightweight profiling.",
       "type": "runtime",
       "use_cases": [
@@ -2224,7 +2224,7 @@
         "timing-critical code measurement",
         "lightweight profiling bring-up"
       ],
-      "version": "5.2.26"
+      "version": "5.2.27"
     },
     {
       "agent_keywords": [
@@ -2431,9 +2431,9 @@
       "provider": null,
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
-      "revision": "v5.2.26",
+      "revision": "993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "slug": "nsx-power",
-      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.26",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "summary": "AmbiqSuite power-management helpers for sleep policy, shutdown control, and low-power workflows across supported Apollo3, Apollo4, and Apollo5 targets.",
       "type": "backend_specific",
       "use_cases": [
@@ -2441,7 +2441,7 @@
         "sleep and wake control",
         "power-policy experimentation and validation"
       ],
-      "version": "5.2.26"
+      "version": "5.2.27"
     },
     {
       "agent_keywords": [
@@ -2569,9 +2569,9 @@
       "provider": null,
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
-      "revision": "v5.2.26",
+      "revision": "993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "slug": "nsx-soc-hal",
-      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.26",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "summary": "Shared SoC-level HAL integration layer for NSX targets.",
       "type": "soc",
       "use_cases": [
@@ -2579,7 +2579,7 @@
         "common low-level platform access",
         "base dependency for most NSX runtime modules"
       ],
-      "version": "5.2.26"
+      "version": "5.2.27"
     },
     {
       "agent_keywords": [
@@ -2633,9 +2633,9 @@
       "provider": null,
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
-      "revision": "v5.2.26",
+      "revision": "993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "slug": "nsx-spi",
-      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.26",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "summary": "SPI wrapper helpers for talking to SPI-attached devices and peripherals.",
       "type": "backend_specific",
       "use_cases": [
@@ -2643,7 +2643,7 @@
         "board validation with SPI devices",
         "reusable SPI communication support"
       ],
-      "version": "5.2.26"
+      "version": "5.2.27"
     },
     {
       "agent_keywords": [
@@ -2942,9 +2942,9 @@
       "provider": null,
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
-      "revision": "v5.2.26",
+      "revision": "993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "slug": "nsx-uart",
-      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.26",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "summary": "UART wrapper helpers for serial communication, console I/O, and simple host-device links.",
       "type": "backend_specific",
       "use_cases": [
@@ -2952,7 +2952,7 @@
         "host-device communication",
         "UART console or bridge workflows"
       ],
-      "version": "5.2.26"
+      "version": "5.2.27"
     },
     {
       "agent_keywords": [
@@ -3012,9 +3012,9 @@
       "provider": null,
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
-      "revision": "v5.2.26",
+      "revision": "993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "slug": "nsx-usb",
-      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.26",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/993b7901a82008ac4cd523ffe0b125a016a8f6a8",
       "summary": "USB CDC serial driver for Ambiq SoCs using the SDK-hosted TinyUSB substrate.",
       "type": "backend_specific",
       "use_cases": [
@@ -3022,7 +3022,7 @@
         "Streaming sensor or audio data to a PC",
         "Console I/O over USB"
       ],
-      "version": "5.2.26"
+      "version": "5.2.27"
     }
   ],
   "registry_schema_version": 1,

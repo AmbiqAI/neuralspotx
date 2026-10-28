@@ -89,3 +89,24 @@ def test_example_lock_records_the_packaged_cmake_tree(example: Path, tmp_path: P
         f"{example.name}/nsx.lock records a stale cmake/nsx hash for {sorted(stale)}; "
         f"run `nsx lock --app-dir examples/{example.name} --module nsx-tooling`"
     )
+
+
+@pytest.mark.parametrize("example", _EXAMPLES, ids=lambda p: p.name)
+def test_example_lock_records_current_board_content(example: Path) -> None:
+    """A board fragment change must not leave frozen example builds stale."""
+    from neuralspotx.nsx_lock import NSX_TOOLING_AUTOGEN_FILES, hash_tree
+
+    lock = yaml.safe_load((example / "nsx.lock").read_text(encoding="utf-8"))
+    for target in lock["targets"].values():
+        for entry in target["modules"].values():
+            if entry.get("kind") != "packaged":
+                continue
+            relative = Path(entry["resolved"]["vendored_at"])
+            if relative.parts[0] != "boards":
+                continue
+            expected = entry["resolved"]["content_hash"]
+            packaged = _REPO / "src" / "neuralspotx" / relative
+            assert hash_tree(packaged, exclude_names=NSX_TOOLING_AUTOGEN_FILES) == expected
+            vendored = example / relative
+            if vendored.exists():
+                assert hash_tree(vendored, exclude_names=NSX_TOOLING_AUTOGEN_FILES) == expected

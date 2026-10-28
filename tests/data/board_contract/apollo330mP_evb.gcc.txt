@@ -2,7 +2,7 @@
 nsx_load_soc_facts: apollo330P
 nsx_soc_flags_target: nsx_soc_apollo330P_flags
 nsx_module_dir_for_name: _nsx_core_module_dir;nsx-core
-nsx_select_linker_script: DEFAULT;/stub/app/modules/nsx-core/src/apollo330P/gcc/linker_script_sbl.ld;ITCM;/stub/app/modules/nsx-core/src/apollo330P/gcc/linker_script_itcm_sbl.ld
+nsx_select_linker_script: DEFAULT;/stub/app/modules/nsx-core/src/apollo330P/gcc/linker_script_sbl.ld
 nsx_assert_file_exists: /stub/app/modules/nsx-core/src/apollo330P/gcc/linker_script_sbl.ld
 nsx_assert_file_exists: /stub/app/modules/nsx-core/src/apollo330P/gcc/startup_gcc.c
 nsx_assert_file_exists: /stub/ambiqsuite/CMSIS/AmbiqMicro/Source/system_apollo330P.c

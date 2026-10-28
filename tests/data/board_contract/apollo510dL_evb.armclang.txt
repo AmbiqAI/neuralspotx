@@ -2,7 +2,7 @@
 nsx_load_soc_facts: apollo510L
 nsx_soc_flags_target: nsx_soc_apollo510L_flags
 nsx_module_dir_for_name: _nsx_core_module_dir;nsx-core
-nsx_select_linker_script: DEFAULT;/stub/app/modules/nsx-core/src/apollo510L/armclang/linker_script_sbl.sct;ITCM;/stub/app/modules/nsx-core/src/apollo510L/armclang/linker_script_itcm_sbl.sct
+nsx_select_linker_script: DEFAULT;/stub/app/modules/nsx-core/src/apollo510L/armclang/linker_script_sbl.sct
 nsx_assert_file_exists: /stub/app/modules/nsx-core/src/apollo510L/armclang/linker_script_sbl.sct
 nsx_assert_file_exists: /stub/app/modules/nsx-core/src/apollo510L/armclang/startup_keil6.c
 nsx_assert_file_exists: /stub/ambiqsuite/CMSIS/AmbiqMicro/Source/system_apollo510L.c
