@@ -265,7 +265,7 @@ targets:
           content_hash: sha256:d0a8c6fdf45245b1d5eaffb95608dc083200349747477c98ce3e26b5ed1e9293
           acquired_at: '2026-10-28T19:47:34+00:00'
   apollo330mP_evb:
-    generated_at: '2026-10-28T19:52:21+00:00'
+    generated_at: '2026-10-28T19:54:11+00:00'
     nsx_tool:
       version: 0.9.0
     manifest:
@@ -343,8 +343,8 @@ targets:
         resolved:
           tool_version: 0.9.0
           vendored_at: boards/apollo330mP_evb
-          content_hash: sha256:98dabcecae517a5d7df03672b908cd2c8b99e05738df0eb2a2fbc81d38ffd485
-          acquired_at: '2026-10-28T19:52:21+00:00'
+          content_hash: sha256:91f001e86397c1f7a6bb2a0159154716ea71e3c6657247ef75366909e0678b66
+          acquired_at: '2026-10-28T19:54:11+00:00'
       nsx-core:
         project: nsx-ambiq-sdk
         kind: git
