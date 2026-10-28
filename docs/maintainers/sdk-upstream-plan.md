@@ -15,36 +15,21 @@ NSX board and SoC modules.
 One repo, [`nsx-ambiq-sdk`](https://github.com/AmbiqAI/nsx-ambiq-sdk), vendors
 the AmbiqSuite drop, the HAL/BSP wrappers, and the shared NSX module set for
 every supported SoC (Apollo2 through Apollo5, plus the experimental atomiq110).
-Stable resolution uses the immutable `v5.2.26` release for every SoC family.
+Stable resolution pins every SDK module and SoC family to commit
+`993b7901a82008ac4cd523ffe0b125a016a8f6a8`, the merged 5.2.27 preparation
+([SDK PR #124](https://github.com/AmbiqAI/nsx-ambiq-sdk/pull/124)). This is an
+immutable commit pin; it does not imply that a release tag has been published.
 
-The provider and wrapper modules NSX resolves are thin metadata views onto that
-one project:
+The `nsx-ambiqsuite`, `nsx-ambiq-hal` and `nsx-ambiq-bsp` modules are thin
+metadata views onto that same project and revision.
 
-| Provider / wrapper module | Project | Revision |
-|---|---|---|
-| `nsx-ambiqsuite` | `nsx-ambiq-sdk` | `v5.2.26` |
-| `nsx-ambiq-hal` | `nsx-ambiq-sdk` | `v5.2.26` |
-| `nsx-ambiq-bsp` | `nsx-ambiq-sdk` | `v5.2.26` |
-
-`v5.2.26` is the release recorded in
-[`release/nsx-ambiq-sdk-5.2.26.yaml`](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/v5.2.26/release/nsx-ambiq-sdk-5.2.26.yaml)
-(AmbiqAI/nsx-ambiq-sdk#84). Before it, the Apollo families resolved `v5.2.24`
-and atomiq110 resolved `v5.2.25`. Moving every family to one release brings:
-
-- the clang C++ fixes to the AmbiqSuite headers, so C++ applications build
-  with ATfE on the supported Apollo3, Apollo4, Apollo5 and atomiq110 boards
-  (nsx-ambiq-sdk #81, #83; upstream fix tracked in #82). apollo2 still does
-  not build, for an unrelated SDK reason;
-- the heap symbols in the apollo2/apollo3/apollo3p GCC linker scripts, so
-  GCC and ATfE applications link on Apollo3 and Apollo3 Blue Plus
-  (nsx-ambiq-sdk #85, #86);
-- the 5.2.25 content (atomiq110 platform, `nsx-npu`, `nsx-core`/`nsx-power`
-  updates) for the Apollo families as well.
-
-The non-atomiq110 HAL/BSP archives are byte-identical to `v5.2.24`. The
-release record lists every changed file per upgrade path and the open known
-deviations, including atomiq110's header/archive mismatch and C++ global
-constructors on apollo2/3/3p (nsx-ambiq-sdk #87).
+The [5.2.27 release record](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/993b7901a82008ac4cd523ffe0b125a016a8f6a8/release/nsx-ambiq-sdk-5.2.27.yaml)
+accounts for the accumulated NSX startup, memory-policy, power, performance,
+debug, timer, USB, I2C and audio integration fixes. It also includes the
+Apollo2/3/3p C++ constructor startup correction. The entire AmbiqSuite provider
+tree and all 73 HAL/BSP archives remain unchanged from 5.2.26; this is not a
+new upstream AmbiqSuite intake. Qualification scope and exclusions are recorded
+in the [SDK qualification report](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/993b7901a82008ac4cd523ffe0b125a016a8f6a8/release/qualification-5.2.27.md).
 
 Board profiles depend on the provider module for their SoC family, and NSX
 vendors the resolved SDK content into the generated app. See
