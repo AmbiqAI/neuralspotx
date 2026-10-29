@@ -2449,8 +2449,13 @@
         "imu",
         "max86150",
         "mpu6050",
+        "bme688",
         "ina228",
+        "tsl2540",
+        "tsl2541",
+        "t5838",
         "ledstick",
+        "icm42670",
         "icm45605",
         "6dof"
       ],
@@ -2461,6 +2466,13 @@
         "spi_devices",
         "measurement_devices",
         "accessories",
+        "bme688",
+        "environmental_sensing",
+        "tsl254x",
+        "ambient_light",
+        "t5838",
+        "acoustic_activity_detection",
+        "icm42670",
         "icm45605",
         "6dof"
       ],
@@ -2495,7 +2507,13 @@
         ]
       },
       "example_refs": [],
-      "integrations": {},
+      "integrations": {
+        "zephyr": {
+          "kconfig": "zephyr/Kconfig",
+          "module_yml": "zephyr/module.yml",
+          "path": "zephyr"
+        }
+      },
       "manifest_error": null,
       "manifest_source": "git",
       "metadata_path": "modules/nsx-sensors/nsx-module.yaml",
@@ -2504,19 +2522,21 @@
       "provider": null,
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/nsx-sensors",
-      "revision": "v0.3.0",
+      "revision": "v1.0.0",
       "slug": "nsx-sensors",
-      "source_url": "https://github.com/AmbiqAI/nsx-sensors/tree/v0.3.0",
-      "summary": "Reusable external sensor and accessory drivers built on NSX transport modules.",
+      "source_url": "https://github.com/AmbiqAI/nsx-sensors/tree/v1.0.0",
+      "summary": "Nine portable driver cores; shared NSX/Zephyr I2C/SPI adapters and separate T5838 AAD control.",
       "type": "runtime",
       "use_cases": [
         "imu bring-up",
         "bio-sensor capture",
+        "temperature, pressure, humidity, and raw gas resistance",
         "current and voltage monitoring",
         "simple i2c accessory control",
+        "ambient light counts and microphone activity control",
         "6dof imu bring-up"
       ],
-      "version": "0.3.0"
+      "version": "1.0.0"
     },
     {
       "agent_keywords": [
