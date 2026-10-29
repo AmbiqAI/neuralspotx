@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.9.2](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.9.1...neuralspotx-v0.9.2) (2026-10-29)
+
+
+### Features
+
+* **registry:** promote nsx-sensors to v1.0.0 ([#299](https://github.com/AmbiqAI/neuralspotx/issues/299)) ([93849c1](https://github.com/AmbiqAI/neuralspotx/commit/93849c195c8e7f07bd5e17261fa76d025624f39e))
+
 ## [0.9.1](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.9.0...neuralspotx-v0.9.1) (2026-10-28)
 
 
