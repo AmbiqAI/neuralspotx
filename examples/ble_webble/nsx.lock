@@ -227,7 +227,7 @@ targets:
         resolved:
           tool_version: 0.9.0
           vendored_at: boards/apollo3p_evb
-          content_hash: sha256:7bf351243fc0f16ee1912446afe0b90aa038eb70c66a56ab08caeb6e1f693221
+          content_hash: sha256:a74f14c319f163858b9878ec76111a09e8eac2c20eb91126c3ab3b1a6709f3b9
           acquired_at: '2026-10-19T03:18:38+00:00'
       nsx-core:
         project: nsx-ambiq-sdk
