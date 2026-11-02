@@ -95,10 +95,8 @@ Then either activate the virtual environment with `source .venv/bin/activate`, o
 every command with `uv run`, as in `uv run nsx doctor`.
 :::
 
-NSX has no `--version` flag. The top-level parser takes `-h`, `-v` for verbosity and `-q`
-for quiet, and nothing else; `nsx --version` fails with
-`the following arguments are required: command`. Use `nsx doctor` to confirm the install,
-which is what you want to run next anyway.
+Run `nsx --version` to print the installed NSX distribution version. `-v` still
+controls verbosity; use `nsx doctor` next to check the host tools.
 
 ## 5. Confirm the install
 

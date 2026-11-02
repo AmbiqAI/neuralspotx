@@ -114,9 +114,9 @@ def _validate_baseline(value: Any, *, origin: str = "nsx.yml") -> None:
 def _validate_module_sources(modules: tuple[AppModule, ...], *, origin: str = "nsx.yml") -> None:
     """Validate each ``modules[i].source`` declares at most one source kind.
 
-    A dependency's source is exactly one of ``path`` / ``vendored`` / ``git``
-    (or none, meaning registry-resolved). ``rev`` only makes sense with
-    ``git``. Conflicting combinations fail fast with the offending field path.
+    Supported sources are ``path`` / ``vendored`` or registry resolution.
+    Parse reserved ``git`` / ``rev`` fields to report precise errors, but reject
+    unsupported Git source declarations before resolution.
     """
 
     for idx, module in enumerate(modules):
@@ -140,6 +140,13 @@ def _validate_module_sources(modules: tuple[AppModule, ...], *, origin: str = "n
             raise NSXConfigError(
                 f"{origin}: modules[{idx}] ('{module.name}') source 'rev' requires 'git'",
                 field=f"modules[{idx}].source.rev",
+            )
+        if src.git is not None:
+            raise NSXConfigError(
+                f"{origin}: modules[{idx}] ('{module.name}') uses source.git, which is "
+                "not supported by the resolver. Use a registry override, source.path, "
+                "or source.vendored instead.",
+                field=f"modules[{idx}].source.git",
             )
 
 

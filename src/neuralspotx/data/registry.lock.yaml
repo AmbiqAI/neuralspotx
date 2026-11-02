@@ -219,6 +219,22 @@ modules:
     project: nsx-ambiq-sdk
     revision: v5.2.27
     metadata: modules/nsx-spi/nsx-module.yaml
+  nsx-timer:
+    project: nsx-ambiq-sdk
+    revision: v5.2.27
+    metadata: modules/nsx-timer/nsx-module.yaml
+  nsx-interrupt:
+    project: nsx-ambiq-sdk
+    revision: v5.2.27
+    metadata: modules/nsx-interrupt/nsx-module.yaml
+  nsx-gpio:
+    project: nsx-ambiq-sdk
+    revision: v5.2.27
+    metadata: modules/nsx-gpio/nsx-module.yaml
+  nsx-psram:
+    project: nsx-ambiq-sdk
+    revision: v5.2.27
+    metadata: modules/nsx-psram/nsx-module.yaml
   nsx-audio:
     project: nsx-ambiq-sdk
     revision: v5.2.27

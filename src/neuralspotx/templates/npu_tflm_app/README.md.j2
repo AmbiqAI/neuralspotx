@@ -22,7 +22,8 @@ pip install ethos-u-vela
 vela your_model.tflite --accelerator-config ethos-u85-256 --output-dir vela_out
 ```
 
-`ethos-u85-256` matches the 256-MAC Ethos-U85 configuration on atomiq110.
+`ethos-u85-256` is the Vela configuration used in this example. Confirm the
+accelerator configuration against your target specification before compiling a model.
 Vela wraps supported subgraphs in an `ethos-u` custom op; fully-supported
 models become a single NPU op (100% offload).
 

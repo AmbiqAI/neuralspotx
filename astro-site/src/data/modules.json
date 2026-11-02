@@ -1,5 +1,5 @@
 {
-  "module_count": 50,
+  "module_count": 54,
   "modules": [
     {
       "agent_keywords": [
@@ -1918,6 +1918,73 @@
     },
     {
       "agent_keywords": [
+        "gpio",
+        "pin",
+        "digital",
+        "interrupt",
+        "edge"
+      ],
+      "anti_use_cases": [],
+      "capabilities": [
+        "gpio",
+        "digital_io",
+        "pin_interrupt"
+      ],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "*"
+        ],
+        "socs": [
+          "apollo330P",
+          "apollo510",
+          "apollo510b",
+          "apollo510L",
+          "atomiq110",
+          "apollo4l",
+          "apollo4p",
+          "apollo3",
+          "apollo3p"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "atfe",
+          "armclang"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-core",
+          "nsx-soc-hal",
+          "nsx-interrupt"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/nsx-gpio/nsx-module.yaml",
+      "name": "nsx-gpio",
+      "project": "nsx-ambiq-sdk",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
+      "revision": "v5.2.27",
+      "slug": "nsx-gpio",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.27",
+      "summary": "GPIO configuration, level I/O, and edge-triggered pin interrupts layered on nsx-interrupt.",
+      "type": "runtime",
+      "use_cases": [
+        "drive and read board pins",
+        "toggle indicator or trigger pins for profiling",
+        "register edge-triggered callbacks for input pins"
+      ],
+      "version": "5.2.27"
+    },
+    {
+      "agent_keywords": [
         "tflm",
         "tensorflow",
         "inference",
@@ -2041,6 +2108,72 @@
         "shared register read/write helpers for I2C devices",
         "simple peripheral communication",
         "base dependency for optional I2C device-driver modules"
+      ],
+      "version": "5.2.27"
+    },
+    {
+      "agent_keywords": [
+        "interrupt",
+        "irq",
+        "nvic",
+        "vector",
+        "isr"
+      ],
+      "anti_use_cases": [],
+      "capabilities": [
+        "interrupt",
+        "irq_dispatch",
+        "nvic"
+      ],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "*"
+        ],
+        "socs": [
+          "apollo330P",
+          "apollo510",
+          "apollo510b",
+          "apollo510L",
+          "atomiq110",
+          "apollo4l",
+          "apollo4p",
+          "apollo3",
+          "apollo3p"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "atfe",
+          "armclang"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-core",
+          "nsx-soc-hal"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/nsx-interrupt/nsx-module.yaml",
+      "name": "nsx-interrupt",
+      "project": "nsx-ambiq-sdk",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
+      "revision": "v5.2.27",
+      "slug": "nsx-interrupt",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.27",
+      "summary": "Per-SDK interrupt-dispatch layer that owns startup vector symbols and routes NVIC IRQ lines to registered handlers.",
+      "type": "runtime",
+      "use_cases": [
+        "centralized IRQ-line handler registration",
+        "GPIO bank vector ownership for nsx-gpio",
+        "dedicated peripheral IRQ routing for transport modules"
       ],
       "version": "5.2.27"
     },
@@ -2440,6 +2573,78 @@
         "low-power application behavior",
         "sleep and wake control",
         "power-policy experimentation and validation"
+      ],
+      "version": "5.2.27"
+    },
+    {
+      "agent_keywords": [
+        "psram",
+        "external memory",
+        "arena",
+        "weights",
+        "xip"
+      ],
+      "anti_use_cases": [],
+      "capabilities": [
+        "psram",
+        "external-memory",
+        "xip",
+        "synchronous-transfer",
+        "timing-diagnostics"
+      ],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "apollo3p_evb",
+          "apollo3p_evb_cygnus",
+          "apollo330mP_evb",
+          "apollo510_evb",
+          "apollo510b_evb",
+          "apollo510dL_evb",
+          "apollo4p_evb_disp_shield_rev2"
+        ],
+        "socs": [
+          "apollo330P",
+          "apollo510",
+          "apollo510L",
+          "apollo510b",
+          "apollo3p",
+          "apollo4p"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "armclang",
+          "atfe"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-core",
+          "nsx-soc-hal",
+          "nsx-interrupt"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/nsx-psram/nsx-module.yaml",
+      "name": "nsx-psram",
+      "project": "nsx-ambiq-sdk",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
+      "revision": "v5.2.27",
+      "slug": "nsx-psram",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.27",
+      "summary": "BSP-aware external PSRAM initialization shim for supported Apollo3p, Apollo4 Display Shield, Apollo5, and Apollo330 NSX boards.",
+      "type": "runtime",
+      "use_cases": [
+        "place model weights in PSRAM",
+        "place tensor arena in PSRAM",
+        "enable external volatile memory through a stable NSX API"
       ],
       "version": "5.2.27"
     },
@@ -2856,6 +3061,72 @@
         "receive Tileio slot and UIO updates from a host"
       ],
       "version": "0.1.0"
+    },
+    {
+      "agent_keywords": [
+        "timer",
+        "ticker",
+        "interrupt",
+        "callback"
+      ],
+      "anti_use_cases": [],
+      "capabilities": [
+        "timer",
+        "ticker",
+        "periodic_callback"
+      ],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "*"
+        ],
+        "socs": [
+          "apollo330P",
+          "apollo510",
+          "apollo510b",
+          "apollo510L",
+          "atomiq110",
+          "apollo4l",
+          "apollo4p",
+          "apollo3",
+          "apollo3p"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc",
+          "atfe",
+          "armclang"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-core",
+          "nsx-interrupt",
+          "nsx-soc-hal"
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/nsx-timer/nsx-module.yaml",
+      "name": "nsx-timer",
+      "project": "nsx-ambiq-sdk",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk",
+      "revision": "v5.2.27",
+      "slug": "nsx-timer",
+      "source_url": "https://github.com/AmbiqAI/nsx-ambiq-sdk/tree/v5.2.27",
+      "summary": "Caller-directed timer, ticker, and periodic callback helpers for AmbiqSuite-backed NSX targets.",
+      "type": "runtime",
+      "use_cases": [
+        "reusable microsecond ticker reads",
+        "periodic interrupt callbacks",
+        "low-level timer service for SDK transport modules"
+      ],
+      "version": "5.2.27"
     },
     {
       "agent_keywords": [],
