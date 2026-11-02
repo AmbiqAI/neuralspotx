@@ -139,3 +139,14 @@ NSX is intended for:
 2. bring-up and smoke-test apps
 3. simple interface examples
 4. lightweight bare-metal workflows
+
+## Build-local module inputs
+
+The selected board's module closure is emitted to
+`<build-dir>/nsx/modules.cmake`. The source-tree `cmake/nsx/modules.cmake`
+entry point is a stable loader for that file, so existing app CMakeLists do not
+need string rewrites. Lock/sync seed the default board build directory;
+configure and incremental build operations refresh the selected build directory
+from its lock, including custom paths. Different boards no longer overwrite
+one another's CMake module list. Shared app-local vendoring and its coordination
+remain unchanged; concurrent dependency updates are not isolated source trees.

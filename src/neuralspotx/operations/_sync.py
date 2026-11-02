@@ -86,21 +86,15 @@ def _ensure_app_modules(app_dir: Path, board: str | None = None, *, frozen: bool
     sync_app_impl(app_dir, board=board, frozen=frozen)
 
 
-def regenerate_active_board_glue(app_dir: Path, board: str | None = None) -> None:
-    """Refresh the active board's CMake glue without re-vendoring modules.
+def regenerate_active_board_glue(
+    app_dir: Path, board: str | None = None, *, build_dir: Path | None = None
+) -> None:
+    """Refresh build-local module inputs from the selected board's lock.
 
-    The generated glue (``cmake/nsx/modules.cmake`` + ``modules/.gitignore``)
-    lives at a board-agnostic path but its content is board-specific: the
-    ``NSX_APP_MODULES`` list differs per board. Because ``build`` / ``flash``
-    / ``view`` only run a full sync when ``build.ninja`` is missing,
-    alternating builds across boards would otherwise reconfigure against the
-    previously-synced board's stale module list (e.g. an Apollo5-only
-    ``nsx-pmu-armv8m`` leaking into an Apollo4 build).
-
-    This is a cheap, idempotent refresh: it reads the active board's lock for
-    the authoritative module set and rewrites the glue only when it actually
-    changed. It does not hash or re-vendor module trees. When no lock exists
-    yet it is a no-op — the full sync path will create one.
+    The source-tree loader is board-neutral. Only the selected build's module
+    list changes; other builds retain their own closure for plain CMake
+    reconfiguration. No module trees are hashed or re-vendored here. Without
+    a lock this is a no-op; normal configure first obtains one through sync.
     """
 
     board_key = _board_key_for_app(app_dir, board)
@@ -113,7 +107,10 @@ def regenerate_active_board_glue(app_dir: Path, board: str | None = None) -> Non
         nsx_cfg = _apply_active_target(nsx_cfg, app_cfg.resolve_target(board))
     nsx_cfg = expand_profile_seeds(nsx_cfg, _load_registry())
     ordered_modules = list(lock.modules)
-    _write_app_module_file(app_dir, nsx_cfg, module_names=ordered_modules)
+    if build_dir is None:
+        _write_app_module_file(app_dir, nsx_cfg, module_names=ordered_modules)
+    else:
+        _write_app_module_file(app_dir, nsx_cfg, module_names=ordered_modules, build_dir=build_dir)
     _write_modules_gitignore_for_module_names(
         app_dir, nsx_cfg, _locked_module_union(app_dir, ordered_modules)
     )

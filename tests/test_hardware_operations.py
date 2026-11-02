@@ -40,7 +40,7 @@ def _stub_build_context(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, build_d
         lambda *_args, **_kwargs: (tmp_path, "primary", "apollo510_evb", build_dir),
     )
     monkeypatch.setattr(_build, "warn_if_lock_stale", lambda *_args: None)
-    monkeypatch.setattr(_build, "regenerate_active_board_glue", lambda *_args: None)
+    monkeypatch.setattr(_build, "regenerate_active_board_glue", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(_build, "_ensure_app_modules", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(_build, "_run_cmake_configure", lambda *_args, **_kwargs: None)
 

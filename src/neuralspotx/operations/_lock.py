@@ -954,10 +954,8 @@ def _lock_app_impl_unlocked(
     # board family catalog rather than the top-level registry map.
     nsx_cfg = expand_profile_seeds(nsx_cfg, _load_registry())
     ordered_modules = list(lock.modules)
-    # The CMake glue (modules.cmake, modules/.gitignore) is not board-keyed,
-    # so on a multi-target lock-all the last board in the loop wins here.
-    # That is benign: ``nsx sync``/build regenerates this glue for the
-    # board actually being built before CMake configure runs.
+    # Each board writes its own default build-directory module input.
+    # The shared source-tree loader contains no board-specific state.
     _write_app_module_file(app_dir, nsx_cfg, module_names=ordered_modules)
     _write_modules_gitignore_for_module_names(app_dir, nsx_cfg, ordered_modules)
     # ``write_lock`` already stamps ``lock.path`` for us.

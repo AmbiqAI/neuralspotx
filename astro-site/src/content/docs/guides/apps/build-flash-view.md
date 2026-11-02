@@ -38,6 +38,18 @@ baked into the generated SEGGER command files.
 is enough. It drives Ninja through CMake and leaves the linked image, the `.bin` and the
 `.map` in `build/<board>/`.
 
+Configure also enables `compile_commands.json` in the selected build directory
+for clangd and static-analysis tools. Each build keeps its own module inputs at
+`<build-dir>/nsx/modules.cmake`, including when you choose a custom `--build-dir`.
+After configuring board A and then board B, plain CMake reconfiguration of A
+continues to use A's module list. Shared vendored sources still require normal
+NSX lock/sync coordination; build-local inputs do not isolate dependency updates.
+
+For an existing app, run `nsx configure` once for each build directory after
+upgrading. If a build directory is missing its inputs, or its selected board does
+not match them, the loader reports how to regenerate them. The existing
+`cmake/nsx/modules.cmake` include remains the app entry point.
+
 `--jobs`, `--target` and `--update` are accepted by both `build` and `flash`. `--jobs`
 sets the parallelism. `--target` selects a CMake target to build, or an executable to
 flash. `--update` re-resolves constraints to upstream tip and re-vendors first.

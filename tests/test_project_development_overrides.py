@@ -380,7 +380,9 @@ def test_local_path_overrides_packaged_neuralspotx_project(tmp_path: Path) -> No
 
     sync_app(app_dir)
     assert (app_dir / "modules" / "neuralspotx" / "LOCAL_CHECKOUT.txt").is_file()
-    modules_cmake = (app_dir / "cmake" / "nsx" / "modules.cmake").read_text(encoding="utf-8")
+    modules_cmake = (app_dir / "build" / "apollo510_evb" / "nsx" / "modules.cmake").read_text(
+        encoding="utf-8"
+    )
     assert (
         'set(NSX_APP_MODULE_DIR_nsx_tooling "modules/neuralspotx/src/neuralspotx/cmake")'
         in modules_cmake

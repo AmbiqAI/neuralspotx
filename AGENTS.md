@@ -40,6 +40,11 @@ Generated apps vendor their dependencies.
 
 Do not replace vendoring with implicit shared build-time dependency resolution.
 
+Generated module inputs belong to the selected build directory at
+`<build-dir>/nsx/modules.cmake`. The app-local `cmake/nsx/modules.cmake` is a
+board-neutral loader retained for existing app CMake entry points. Never put
+an active board's module closure back in that shared source-tree file.
+
 ### Registry-Driven Built-Ins
 
 Built-in NSX modules and SDK providers are resolved through packaged registry

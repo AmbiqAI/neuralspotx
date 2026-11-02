@@ -228,7 +228,7 @@ def build_app_impl(
         build_dir=build_dir,
     )
     warn_if_lock_stale(resolved_app_dir, resolved_board)
-    regenerate_active_board_glue(resolved_app_dir, resolved_board)
+    regenerate_active_board_glue(resolved_app_dir, resolved_board, build_dir=resolved_build_dir)
     if not (resolved_build_dir / "build.ninja").exists() or not _sdk_root_cache_matches(
         resolved_build_dir, sdk_root
     ):
@@ -287,7 +287,7 @@ def flash_app_impl(
         build_dir=build_dir,
     )
     warn_if_lock_stale(resolved_app_dir, resolved_board)
-    regenerate_active_board_glue(resolved_app_dir, resolved_board)
+    regenerate_active_board_glue(resolved_app_dir, resolved_board, build_dir=resolved_build_dir)
     jlink_executable = find_segger_tool(JLINK_NAMES)
     needs_configure = (
         probe_serial is not None
@@ -519,7 +519,7 @@ def view_app_impl(
         build_dir=build_dir,
     )
     warn_if_lock_stale(resolved_app_dir, resolved_board)
-    regenerate_active_board_glue(resolved_app_dir, resolved_board)
+    regenerate_active_board_glue(resolved_app_dir, resolved_board, build_dir=resolved_build_dir)
     if (
         probe_serial is not None
         or not (resolved_build_dir / "build.ninja").exists()
