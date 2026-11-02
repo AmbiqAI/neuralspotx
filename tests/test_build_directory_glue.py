@@ -109,6 +109,7 @@ def test_manifest_board_case_uses_canonical_identity_and_path(app: Path) -> None
     cfg["target"] = {"board": "APOLLO510_EVB"}
     _write_app_module_file(app, cfg, module_names=["alpha"])
     build = app / "build" / BOARDS[0]
-    assert not (app / "build" / "APOLLO510_EVB").exists()
+    # Inspect stored spelling; exists() folds case on Windows and macOS.
+    assert "APOLLO510_EVB" not in {path.name for path in (app / "build").iterdir()}
     result = cmake("-S", str(app), "-B", str(build), f"-DNSX_BOARD={BOARDS[0]}")
     assert result.returncode == 0, result.stdout + result.stderr
