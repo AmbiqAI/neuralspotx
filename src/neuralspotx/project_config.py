@@ -684,6 +684,7 @@ def _write_app_module_file(
     board = app_cfg.target.get("board") or app_cfg.default_board()
     if not isinstance(board, str) or not board:
         raise NSXConfigError("Cannot generate module inputs without a target board")
+    board = normalize_board(board)
     destination = build_dir if build_dir is not None else app_dir / "build" / board
     ordered_module_names = module_names or AppConfig.from_mapping(nsx_cfg).module_names()
     registry = _effective_registry(_load_registry(), nsx_cfg, app_dir=app_dir)

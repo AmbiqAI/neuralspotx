@@ -100,3 +100,15 @@ def test_missing_and_mismatched_inputs_are_actionable(app: Path) -> None:
     assert result.returncode != 0
     assert "module inputs belong to" in result.stderr
     configure(app, build, BOARDS[1])
+
+
+def test_manifest_board_case_uses_canonical_identity_and_path(app: Path) -> None:
+    from neuralspotx.project_config import _write_app_module_file
+
+    cfg = yaml.safe_load((app / "nsx.yml").read_text())
+    cfg["target"] = {"board": "APOLLO510_EVB"}
+    _write_app_module_file(app, cfg, module_names=["alpha"])
+    build = app / "build" / BOARDS[0]
+    assert not (app / "build" / "APOLLO510_EVB").exists()
+    result = cmake("-S", str(app), "-B", str(build), f"-DNSX_BOARD={BOARDS[0]}")
+    assert result.returncode == 0, result.stdout + result.stderr
