@@ -380,3 +380,11 @@ def test_expired_allowance_is_reported_with_removal_condition() -> None:
     assert "sdk@feat/bringup" in message
     assert "Re-pin to the next sdk release tag." in message
     assert "2026-10-15" in message
+
+
+def test_sdk_family_modules_are_visible_in_the_registry_catalog() -> None:
+    registry = load_registry()
+    sdk_names = {
+        name for family in registry["soc_families"].values() for name in family["sdk_modules"]
+    }
+    assert sdk_names <= registry["modules"].keys()

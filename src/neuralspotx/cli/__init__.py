@@ -23,6 +23,8 @@ import json
 import os
 import subprocess
 import sys
+from importlib.metadata import PackageNotFoundError
+from importlib.metadata import version as distribution_version
 from pathlib import Path
 
 from .. import api, operations
@@ -508,6 +510,11 @@ def _build_parser() -> argparse.ArgumentParser:
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog=_format_help_groups(),
     )
+    try:
+        installed_version = distribution_version("neuralspotx")
+    except PackageNotFoundError:
+        installed_version = "unknown (distribution not installed)"
+    parser.add_argument("--version", action="version", version=f"nsx {installed_version}")
     parser.add_argument(
         "-v",
         "--verbose",

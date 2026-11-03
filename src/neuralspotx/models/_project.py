@@ -102,7 +102,9 @@ class ModuleSource:
     * **path** -- a local / editable checkout (``source: {path: ../foo}``).
     * **vendored** -- committed in-tree, never touched by sync
       (``source: {vendored: true}``).
-    * **git** -- a pinned git remote (``source: {git: <url>, rev: <ref>}``).
+
+    ``git`` / ``rev`` fields are retained for diagnostics of unsupported input;
+    the project loader rejects them. Use a registry override for Git remotes.
     """
 
     path: str | None = None

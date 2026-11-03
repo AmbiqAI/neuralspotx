@@ -219,3 +219,15 @@ def test_g5_update_proceeds_with_yes(tmp_path: Path, monkeypatch: pytest.MonkeyP
     code = cli.main(["update", "--app-dir", str(tmp_path), "--yes"])
     assert code == 0
     assert len(update_calls) == 1
+
+
+def test_version_uses_installed_distribution_without_an_app(monkeypatch, tmp_path) -> None:
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        cli, "distribution_version", lambda name: "9.8.7" if name == "neuralspotx" else "wrong"
+    )
+    out, err, code = _invoke("--version")
+    assert code == 0
+    assert out.strip() == "nsx 9.8.7"
+    assert not err
+    assert cli._build_parser().parse_args(["-v", "doctor"]).verbose == 1

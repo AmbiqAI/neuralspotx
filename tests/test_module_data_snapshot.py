@@ -169,17 +169,12 @@ def test_every_repo_url_is_the_registry_project_url(modules, registry_lock):
 def test_dependencies_name_modules_that_exist(modules):
     """Every dependency should be a module the catalog can link to.
 
-    Four are not, so the catalog renders them as plain names rather than links.
-    They are pinned here rather than ignored: the set is a fact about the
-    registry, and a fifth one appearing should be somebody's decision, not a
-    silent change to what the catalog links.
+    The external nsx-harness is not cataloged. Keep that exception explicit;
+    all SDK dependencies must resolve to catalog entries.
     """
 
     dangling_by_design = {
         ("nsx-ethos-u-driver", "nsx-harness"),
-        ("nsx-power", "nsx-timer"),
-        ("nsx-uart", "nsx-interrupt"),
-        ("nsx-usb", "nsx-timer"),
     }
     known = {entry["name"] for entry in modules["modules"]}
     dangling = {

@@ -51,7 +51,7 @@ schemas:
       - {path: "modules[].revision", type: string, required: false, description: "Tag, branch or commit constraint for this module."}
       - {path: "modules[].boards", type: list of string, required: false, description: "Restrict the dependency to a subset of targets.supported."}
       - {path: "modules[].local", type: bool, required: false, description: "Mirror the module from an external path on every sync."}
-      - {path: "modules[].source", type: map, required: false, description: "Exactly one of path (external directory), vendored (true, committed in this repo) or git (URL, with optional rev)."}
+      - {path: "modules[].source", type: map, required: false, description: "Either path (external directory) or vendored (true, committed in this repo); omit for registry resolution. source.git is unsupported: use a registry override for a Git remote."}
       - {path: module_registry.projects, type: map, required: false, description: "App-local project overrides keyed by project name, each with url, revision, path or local_path."}
       - {path: module_registry.modules, type: map, required: false, description: "App-local module overrides keyed by module name, each with project, revision and optional metadata."}
       - {path: tooling, type: map, required: false, description: "Tool settings passed through to the generated build. Keys are preserved as written."}
@@ -89,7 +89,7 @@ schemas:
           revision: v1.0.0
           boards: [apollo510_evb]
           local: false
-          source: { git: 'https://example.invalid/r.git', rev: main }
+          source: { path: '../local-uart' }
       module_registry:
         projects:
           nsx-core:

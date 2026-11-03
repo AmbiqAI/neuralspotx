@@ -18,6 +18,7 @@ closure, and the v2 validation errors (multi-source, ``rev`` without ``git``,
 from __future__ import annotations
 
 import pytest
+import yaml
 
 from neuralspotx._errors import NSXConfigError
 from neuralspotx.models import AppModule, NsxProject
@@ -219,3 +220,22 @@ def test_per_target_requires_is_rejected() -> None:
         NsxProject.from_mapping(cfg)
 
     assert excinfo.value.field == f"targets.supported.{BOARD}.requires"
+
+
+@pytest.mark.parametrize(
+    "source",
+    [
+        {"git": "https://example.invalid/repo.git"},
+        {"git": "https://example.invalid/repo.git", "rev": "v1.0.0"},
+    ],
+)
+def test_unsupported_git_source_rejected_by_project_loader(source, tmp_path) -> None:
+    from neuralspotx.project_config import load_project_config
+
+    cfg = _base_cfg(modules=[{"name": "acme", "source": source}])
+    config = tmp_path / "nsx.yml"
+    config.write_text(yaml.safe_dump(cfg), encoding="utf-8")
+    with pytest.raises(NSXConfigError, match="registry override") as excinfo:
+        load_project_config(config)
+    assert excinfo.value.field == "modules[0].source.git"
+    assert "acme" in str(excinfo.value)

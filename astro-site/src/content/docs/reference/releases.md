@@ -109,10 +109,10 @@ Two things pin separately from the CLI:
 Each GitHub release carries the wheel, the source distribution and a
 `SHA256SUMS` manifest covering both. The same files are on PyPI, byte for byte.
 
-The `nsx` command does not print its own version, so ask the package:
+Ask the installed CLI for its distribution version:
 
 ```bash
-python -c "import importlib.metadata as m; print(m.version('neuralspotx'))"
+nsx --version
 ```
 
 or `uv tool list` if you installed it as a tool, `pipx list` if you used pipx.

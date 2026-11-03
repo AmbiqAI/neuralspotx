@@ -141,6 +141,20 @@ def main() -> int:
             f"Expected neuralspotx to load from {install_root}, loaded {package_path} instead"
         )
 
+    import io
+    from contextlib import redirect_stdout
+    from importlib.metadata import version
+
+    output = io.StringIO()
+    with redirect_stdout(output):
+        try:
+            nsx_main(["--version"])
+        except SystemExit as exc:
+            if exc.code != 0:
+                raise RuntimeError("Installed nsx --version failed") from exc
+    if output.getvalue().strip() != f"nsx {version('neuralspotx')}":
+        raise RuntimeError("CLI version does not match the installed distribution")
+
     _smoke_packaged_licenses(package_path.parent)
 
     init_result = nsx_main([

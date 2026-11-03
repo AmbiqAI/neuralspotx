@@ -87,7 +87,7 @@ targets:
         resolved:
           tool_version: 0.9.0
           vendored_at: boards/apollo510_evb
-          content_hash: sha256:f4f36aad1139af5835177bf688454e543f2c1b296f4d949f308582e5fa04bb50
+          content_hash: sha256:bfa0227548392f341b8a8b965256d3eb4a0aa40c1fb3b9e2d096bb45958182be
           acquired_at: '2026-10-19T03:19:16+00:00'
       nsx-core:
         project: nsx-ambiq-sdk
@@ -205,7 +205,7 @@ targets:
         resolved:
           tool_version: 0.9.0
           vendored_at: boards/apollo510b_evb
-          content_hash: sha256:e40d4aa44d3f6dd974b37a7b99f71e19c33d06f6aa601ec6dc953987d693eccc
+          content_hash: sha256:12f85843d38bcbdf0e340ea0a717bd2eeab04491f822ea783a02833f4a7d2e17
           acquired_at: '2026-10-19T03:19:16+00:00'
       nsx-core:
         project: nsx-ambiq-sdk
@@ -323,7 +323,7 @@ targets:
         resolved:
           tool_version: 0.9.0
           vendored_at: boards/apollo330mP_evb
-          content_hash: sha256:91f001e86397c1f7a6bb2a0159154716ea71e3c6657247ef75366909e0678b66
+          content_hash: sha256:6f972faddeed83a9994b78730aa149c7645ea6a96bddd9de78f9d446049e0c4e
           acquired_at: '2026-10-28T19:54:15+00:00'
       nsx-core:
         project: nsx-ambiq-sdk
@@ -441,7 +441,7 @@ targets:
         resolved:
           tool_version: 0.9.0
           vendored_at: boards/apollo510dL_evb
-          content_hash: sha256:84b95992c78c8345ed3fa8d8aa733b0a4d5a806f5390e535125dc84e8c5f0554
+          content_hash: sha256:e0c3fea007918ac20d8b8d7a774f042974cddf141a33200dc89dcd2ccb877767
           acquired_at: '2026-10-28T19:52:24+00:00'
       nsx-core:
         project: nsx-ambiq-sdk
