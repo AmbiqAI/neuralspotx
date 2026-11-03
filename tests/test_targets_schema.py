@@ -241,6 +241,7 @@ def test_configure_uses_per_board_target_toolchain(
 
     project_config._run_cmake_configure(tmp_path, tmp_path / "build", "apollo510b_evb")
     cmd = captured["cmd"]
+    assert "-DCMAKE_EXPORT_COMPILE_COMMANDS=ON" in cmd
     tc_arg = next(a for a in cmd if a.startswith("-DCMAKE_TOOLCHAIN_FILE="))
     assert SUPPORTED_TOOLCHAINS["armclang"] in tc_arg
 

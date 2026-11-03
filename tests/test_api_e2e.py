@@ -740,7 +740,7 @@ def test_full_clean_removes_build_directory(tmp_path: Path) -> None:
     )
 
     build_dir = tmp_path / "hello_clean" / "build" / "apollo510_evb"
-    build_dir.mkdir(parents=True)
+    build_dir.mkdir(parents=True, exist_ok=True)
     (build_dir / "build.ninja").write_text("# fake\n", encoding="utf-8")
 
     clean_app(
