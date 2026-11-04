@@ -114,9 +114,34 @@ class ModuleSource:
     extra: dict[str, Any] | None = None
 
     @classmethod
-    def from_mapping(cls, data: dict[str, Any] | None) -> ModuleSource:
-        if not isinstance(data, dict):
+    def from_mapping(
+        cls,
+        data: dict[str, Any] | None,
+        *,
+        origin: str = "nsx.yml",
+        field: str = "source",
+    ) -> ModuleSource:
+        if data is None:
             return cls()
+        if not isinstance(data, dict):
+            raise NSXConfigError(f"{origin}: '{field}' must be a mapping", field=field)
+        for key in ("path", "git", "rev"):
+            if key in data and (not isinstance(data[key], str) or not data[key].strip()):
+                hint = (
+                    " Git sources are unsupported; use a registry override, source.path, "
+                    "or source.vendored instead."
+                    if key == "git"
+                    else ""
+                )
+                raise NSXConfigError(
+                    f"{origin}: '{field}.{key}' must be a non-empty string.{hint}",
+                    field=f"{field}.{key}",
+                )
+        if "vendored" in data and not isinstance(data["vendored"], bool):
+            raise NSXConfigError(
+                f"{origin}: '{field}.vendored' must be a boolean (true or false)",
+                field=f"{field}.vendored",
+            )
         path = data.get("path")
         git = data.get("git")
         rev = data.get("rev")
@@ -204,6 +229,12 @@ class AppModule:
         project = data.get("project")
         revision = data.get("revision")
         source_data = data.get("source")
+        if "source" in data and not isinstance(source_data, dict):
+            raise NSXConfigError(
+                f"{origin}: modules[{index}].source must be a mapping; "
+                "omit it for registry resolution",
+                field=f"modules[{index}].source",
+            )
         boards_data = data.get("boards")
         boards: tuple[str, ...] = ()
         if boards_data is not None:
@@ -226,7 +257,7 @@ class AppModule:
             revision=revision if isinstance(revision, str) and revision else None,
             local=bool(data.get("local")),
             source=ModuleSource.from_mapping(
-                source_data if isinstance(source_data, dict) else None
+                source_data, origin=origin, field=f"modules[{index}].source"
             ),
             boards=boards,
             extra=extra or None,

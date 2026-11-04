@@ -239,3 +239,82 @@ def test_unsupported_git_source_rejected_by_project_loader(source, tmp_path) -> 
         load_project_config(config)
     assert excinfo.value.field == "modules[0].source.git"
     assert "acme" in str(excinfo.value)
+
+
+@pytest.mark.parametrize("key", ["path", "git", "rev"])
+@pytest.mark.parametrize("value", [None, False, 123, "", " \t", [], {"url": "repo"}])
+def test_malformed_source_strings_fail_before_normalization(key, value, tmp_path) -> None:
+    from neuralspotx.project_config import load_project_config
+
+    config = tmp_path / "nsx.yml"
+    config.write_text(
+        yaml.safe_dump(_base_cfg(modules=[{"name": "nsx-core", "source": {key: value}}])),
+        encoding="utf-8",
+    )
+    with pytest.raises(NSXConfigError, match="non-empty string") as excinfo:
+        load_project_config(config)
+    assert excinfo.value.field == f"modules[0].source.{key}"
+    assert str(config) in str(excinfo.value)
+
+
+@pytest.mark.parametrize("value", [None, 0, 1, "true", "false", [], {}])
+def test_vendored_source_requires_a_boolean(value, tmp_path) -> None:
+    from neuralspotx.project_config import load_project_config
+
+    config = tmp_path / "nsx.yml"
+    config.write_text(
+        yaml.safe_dump(_base_cfg(modules=[{"name": "nsx-core", "source": {"vendored": value}}])),
+        encoding="utf-8",
+    )
+    with pytest.raises(NSXConfigError, match="boolean") as excinfo:
+        load_project_config(config)
+    assert excinfo.value.field == "modules[0].source.vendored"
+
+
+@pytest.mark.parametrize("source", [None, False, "../local", []])
+def test_explicit_source_requires_a_mapping(source, tmp_path) -> None:
+    from neuralspotx.project_config import load_project_config
+
+    config = tmp_path / "nsx.yml"
+    config.write_text(
+        yaml.safe_dump(_base_cfg(modules=[{"name": "nsx-core", "source": source}])),
+        encoding="utf-8",
+    )
+    with pytest.raises(NSXConfigError, match="omit it for registry resolution") as excinfo:
+        load_project_config(config)
+    assert excinfo.value.field == "modules[0].source"
+
+
+@pytest.mark.parametrize("source", [{}, {"vendored": False}, {"extension": {"custom": 1}}])
+def test_explicit_registry_source_remains_valid(source) -> None:
+    project = NsxProject.from_mapping(_base_cfg(modules=[{"name": "nsx-core", "source": source}]))
+    assert project.modules[0].source_kind == "registry"
+    if "extension" in source:
+        assert project.modules[0].source.to_mapping() == source
+
+
+@pytest.mark.parametrize("source", [{"git": False}, {"path": 123}, {"vendored": "true"}])
+def test_configure_rejects_invalid_source_before_dependency_acquisition(
+    source, tmp_path, monkeypatch
+) -> None:
+    import subprocess
+    from unittest.mock import Mock
+
+    from neuralspotx import configure_app
+    from neuralspotx.operations import _build
+
+    config = tmp_path / "nsx.yml"
+    config.write_text(
+        yaml.safe_dump(_base_cfg(modules=[{"name": "nsx-core", "source": source}])),
+        encoding="utf-8",
+    )
+    acquire = Mock(side_effect=AssertionError("dependency acquisition must not run"))
+    spawn = Mock(side_effect=AssertionError("no git or build subprocess may run"))
+    monkeypatch.setattr(_build, "_ensure_app_modules", acquire)
+    monkeypatch.setattr(subprocess, "Popen", spawn)
+    with pytest.raises(NSXConfigError) as excinfo:
+        configure_app(tmp_path)
+    assert excinfo.value.field == f"modules[0].source.{next(iter(source))}"
+    acquire.assert_not_called()
+    spawn.assert_not_called()
+    assert sorted(p.name for p in tmp_path.iterdir()) == ["nsx.yml"]

@@ -63,12 +63,14 @@ tool for noticing that a pinned module has fallen behind, rather than a floating
 moves without telling you.
 
 :::caution[A git source in a module entry is rejected]
-`nsx.yml` parses a `source.git` block, but the resolver does not accept one:
+The project loader rejects `source.git` before resolving or downloading dependencies.
+Use a registry override, `source.path`, or `source.vendored` instead.
 
-```text
-nsx.yml: module 'my-sensor' uses a git source, which is not yet supported by the
-resolver. Use a registry, path, or vendored source for now.
-```
+An explicit `source` block must be a mapping. `path`, `git`, and `rev` values must be
+non-empty strings; `vendored` must be a YAML boolean (`true` or `false`). Invalid values
+such as `git: false`, `path: 123`, or `vendored: "true"` produce a field-specific error
+instead of falling back to registry resolution. Omit `source` or use `{}` for registry
+resolution. `vendored: false` also leaves registry resolution selected.
 
 To resolve a module from a repository, register it as an app-local project instead. See
 [Custom modules](/neuralspotx/guides/modules/custom-modules/).
