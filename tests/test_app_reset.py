@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 import subprocess
 from pathlib import Path
 
@@ -133,6 +134,9 @@ def test_cli_app_and_standalone(tmp_path: Path, reset_calls: list[dict[str, obje
 def test_real_cmake_exports_and_clears_resolved_settings(
     tmp_path: Path, reset_calls: list[dict[str, object]]
 ) -> None:
+    for tool in ("cmake", "ninja"):
+        if shutil.which(tool) is None:
+            pytest.skip(f"{tool} required for real CMake integration test")
     app, build = _app(tmp_path, "my_custom_board")
     # Configure actual packaged helper code with a host-only target: no SDK,
     # compiler, network, probe, or guessed Ninja command text is needed.
