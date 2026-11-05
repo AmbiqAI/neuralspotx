@@ -247,16 +247,25 @@ def flash_app(
 
 def reset_target(
     *,
-    device: str,
+    device: str | None = None,
+    app_dir: PathLike = ".",
+    board: str | None = None,
+    build_dir: PathLike | None = None,
     probe_serial: str | None = None,
     kind: Literal["debug", "swpoi"] = "debug",
     interface: str = "SWD",
-    speed_khz: int = 4000,
+    speed_khz: int | None = None,
     timeout_s: float | None = None,
     verify_reconnect: bool = False,
     emit: Emitter | None = None,
 ) -> ResetResult:
-    """Perform an explicit J-Link reset without changing flash policy.
+    """Reset a configured app or an explicit J-Link device.
+
+    With ``device`` supplied, app selectors are ignored and no app is needed.
+    Otherwise resolve device and default speed from the selected app/board's
+    CMake cache. Run :func:`configure_app` first; reset never configures, builds,
+    or synchronizes modules. An explicit probe serial overrides the configured
+    serial. Standalone resets default to 4000 kHz.
 
     ``swpoi`` writes ``0x1B`` to Ambiq RSTGEN at ``0x40000004``. The
     resulting target disconnect is accepted only when J-Link output contains
@@ -265,7 +274,10 @@ def reset_target(
     """
 
     with using_emitter(emit), timeout_budget(timeout_s):
-        return operations.reset_target_impl(
+        return operations.reset_impl(
+            app_dir=Path(app_dir),
+            board=board,
+            build_dir=Path(build_dir) if build_dir is not None else None,
             device=device,
             probe_serial=probe_serial,
             kind=kind,

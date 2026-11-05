@@ -73,6 +73,7 @@ from ._modules import (
     remove_module_impl,
     update_modules_impl,
 )
+from ._reset import reset_impl
 from ._sbom import coerce_sbom_format, generate_sbom_impl
 from ._sync import sync_app_impl, update_app_impl
 
@@ -96,6 +97,7 @@ __all__ = [
     "configure_app_impl",
     "flash_app_impl",
     "reset_target_impl",
+    "reset_impl",
     "view_app_impl",
     # Doctor
     "doctor_impl",
