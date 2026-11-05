@@ -34,6 +34,7 @@ function(nsx_add_segger_targets app_target)
 
     # Resolved board facts for app-aware reset. FORCE also clears a previous
     # board's values when the current configuration omits a setting.
+    set(NSX_RESET_BOARD "${NSX_BOARD}" CACHE INTERNAL "Board owning reset settings" FORCE)
     set(NSX_RESET_DEVICE "${NSX_SEGGER_DEVICE}" CACHE INTERNAL "Resolved reset device" FORCE)
     set(NSX_RESET_SPEED_KHZ "${NSX_SEGGER_IF_SPEED}" CACHE INTERNAL "Resolved reset speed" FORCE)
 

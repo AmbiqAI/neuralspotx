@@ -47,7 +47,9 @@ def _app_reset_settings(
     source = _cmake_cache_value(build, "CMAKE_HOME_DIRECTORY")
     if source is None or Path(source).resolve() != app:
         raise invalid("CMake cache belongs to a different app or is incomplete")
-    if _cmake_cache_value(build, "NSX_BOARD") != selected_board:
+    if any(
+        _cmake_cache_value(build, key) != selected_board for key in ("NSX_BOARD", "NSX_RESET_BOARD")
+    ):
         raise invalid("CMake cache does not match the selected board")
     device = _cmake_cache_value(build, "NSX_RESET_DEVICE")
     speed = _cmake_cache_value(build, "NSX_RESET_SPEED_KHZ")

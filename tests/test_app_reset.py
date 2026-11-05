@@ -29,6 +29,7 @@ def _app(tmp_path: Path, board: str = "apollo510b_evb") -> tuple[Path, Path]:
 def _cache(app: Path, build: Path, board: str) -> None:
     (build / "CMakeCache.txt").write_text(
         f"CMAKE_HOME_DIRECTORY:INTERNAL={app.as_posix()}\nNSX_BOARD:STRING={board}\n"
+        f"NSX_RESET_BOARD:INTERNAL={board}\n"
         "NSX_RESET_DEVICE:INTERNAL=CustomDevice\nNSX_RESET_SPEED_KHZ:INTERNAL=1200\n"
         "NSX_JLINK_SERIAL:STRING=1234\n",
         encoding="utf-8",
@@ -152,6 +153,16 @@ def test_real_cmake_exports_and_clears_resolved_settings(
     result = api.reset_target(app_dir=app)
     assert result.device == "BoardOverride"
     assert result.speed_khz == 750
+    # A failed board switch updates CMake's requested NSX_BOARD but leaves
+    # old generated files and device facts behind. Those facts must not be
+    # attributed to the newly requested board.
+    cmake.write_text(prefix + 'message(FATAL_ERROR "SDK unavailable")\n', encoding="utf-8")
+    failed_cmd = [*cmd[:-1], "-DNSX_BOARD=apollo510_evb"]
+    failed = subprocess.run(failed_cmd, capture_output=True, text=True)
+    assert failed.returncode != 0
+    with pytest.raises(NSXConfigError, match="selected board"):
+        api.reset_target(app_dir=app, board="apollo510_evb", build_dir=build)
+    assert len(reset_calls) == 1
     cmake.write_text(prefix + "nsx_add_segger_targets(demo)\n", encoding="utf-8")
     subprocess.run(cmd, check=True, capture_output=True, text=True)
     with pytest.raises(NSXConfigError, match="settings are missing"):

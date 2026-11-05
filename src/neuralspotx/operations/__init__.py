@@ -61,7 +61,6 @@ from ._cache import cache_info_impl, clean_cache_impl
 from ._common import OutdatedStatus, ProfileStatus, get_verbosity, set_verbosity, verbosity
 from ._doctor import doctor_impl
 from ._hardware import reset_target_impl
-from ._reset import reset_impl
 from ._lock import (
     lock_app_impl,
     lock_freshness_warning,
@@ -74,6 +73,7 @@ from ._modules import (
     remove_module_impl,
     update_modules_impl,
 )
+from ._reset import reset_impl
 from ._sbom import coerce_sbom_format, generate_sbom_impl
 from ._sync import sync_app_impl, update_app_impl
 

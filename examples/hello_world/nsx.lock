@@ -3,7 +3,7 @@
 schema_version: 4
 targets:
   apollo510_evb:
-    generated_at: '2026-11-05T14:30:07+00:00'
+    generated_at: '2026-11-05T14:32:16+00:00'
     nsx_tool:
       version: 0.9.2
     manifest:
@@ -118,10 +118,10 @@ targets:
         resolved:
           tool_version: 0.9.2
           vendored_at: cmake/nsx
-          content_hash: sha256:61da7b4dd8d1b6f87eac8098848e38dcc9a58c9c1d3c678e32786b413e5794c1
-          acquired_at: '2026-11-05T14:30:07+00:00'
+          content_hash: sha256:56f702c627065348c455970eaf6d30f24cd54c33dd280fe1190ab4592d2077e7
+          acquired_at: '2026-11-05T14:32:16+00:00'
   apollo510b_evb:
-    generated_at: '2026-11-05T14:30:07+00:00'
+    generated_at: '2026-11-05T14:32:16+00:00'
     nsx_tool:
       version: 0.9.2
     manifest:
@@ -236,10 +236,10 @@ targets:
         resolved:
           tool_version: 0.9.2
           vendored_at: cmake/nsx
-          content_hash: sha256:61da7b4dd8d1b6f87eac8098848e38dcc9a58c9c1d3c678e32786b413e5794c1
-          acquired_at: '2026-11-05T14:30:07+00:00'
+          content_hash: sha256:56f702c627065348c455970eaf6d30f24cd54c33dd280fe1190ab4592d2077e7
+          acquired_at: '2026-11-05T14:32:16+00:00'
   apollo330mP_evb:
-    generated_at: '2026-11-05T14:30:07+00:00'
+    generated_at: '2026-11-05T14:32:16+00:00'
     nsx_tool:
       version: 0.9.2
     manifest:
@@ -354,10 +354,10 @@ targets:
         resolved:
           tool_version: 0.9.2
           vendored_at: cmake/nsx
-          content_hash: sha256:61da7b4dd8d1b6f87eac8098848e38dcc9a58c9c1d3c678e32786b413e5794c1
-          acquired_at: '2026-11-05T14:30:07+00:00'
+          content_hash: sha256:56f702c627065348c455970eaf6d30f24cd54c33dd280fe1190ab4592d2077e7
+          acquired_at: '2026-11-05T14:32:16+00:00'
   apollo510dL_evb:
-    generated_at: '2026-11-05T14:30:08+00:00'
+    generated_at: '2026-11-05T14:32:17+00:00'
     nsx_tool:
       version: 0.9.2
     manifest:
@@ -472,10 +472,10 @@ targets:
         resolved:
           tool_version: 0.9.2
           vendored_at: cmake/nsx
-          content_hash: sha256:61da7b4dd8d1b6f87eac8098848e38dcc9a58c9c1d3c678e32786b413e5794c1
-          acquired_at: '2026-11-05T14:30:08+00:00'
+          content_hash: sha256:56f702c627065348c455970eaf6d30f24cd54c33dd280fe1190ab4592d2077e7
+          acquired_at: '2026-11-05T14:32:17+00:00'
   apollo4p_blue_kxr_evb:
-    generated_at: '2026-11-05T14:30:08+00:00'
+    generated_at: '2026-11-05T14:32:17+00:00'
     nsx_tool:
       version: 0.9.2
     manifest:
@@ -579,5 +579,5 @@ targets:
         resolved:
           tool_version: 0.9.2
           vendored_at: cmake/nsx
-          content_hash: sha256:61da7b4dd8d1b6f87eac8098848e38dcc9a58c9c1d3c678e32786b413e5794c1
-          acquired_at: '2026-11-05T14:30:08+00:00'
+          content_hash: sha256:56f702c627065348c455970eaf6d30f24cd54c33dd280fe1190ab4592d2077e7
+          acquired_at: '2026-11-05T14:32:17+00:00'
