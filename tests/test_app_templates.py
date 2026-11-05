@@ -185,6 +185,8 @@ def test_blinky_template_renders_without_console_or_rtos(tmp_path: Path) -> None
     cmake = (app / "CMakeLists.txt").read_text(encoding="utf-8")
     assert 'nsx_select_sdk_provider("${NSX_BOARD}")' in cmake
     assert "${NSX_AMBIQSUITE_ROOT}/devices/am_devices_led.c" in cmake
+    assert "nsx::board\n" in cmake
+    assert "nsx::board_apollo510_evb" not in cmake
     manifest = yaml.safe_load((app / "nsx.yml").read_text(encoding="utf-8"))
     assert manifest["modules"] == []
     assert (app / ".gitignore").is_file()

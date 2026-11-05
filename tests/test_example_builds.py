@@ -20,6 +20,7 @@ import tempfile
 from pathlib import Path
 
 import pytest
+import yaml
 
 EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "examples"
 
@@ -191,11 +192,22 @@ def test_generated_blinky_builds(board: str) -> None:
     with tempfile.TemporaryDirectory(prefix="nsxb-") as root:
         app = Path(root) / "blink"
         subprocess.run(
-            ["nsx", "create-app", str(app), "--board", board, "--template", "blinky"],
+            ["nsx", "create-app", str(app), "--board", "apollo510_evb", "--template", "blinky"],
             check=True,
             timeout=300,
         )
-        options = ["--app-dir", str(app)]
+        # Exercise switching a generated app, not just one scaffold per board.
+        manifest_path = app / "nsx.yml"
+        manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+        # Replace creation-time single-board/profile selection with a multi-board app.
+        for key in ("target", "profile", "profile_status"):
+            manifest.pop(key, None)
+        manifest["targets"] = {
+            "default": "apollo510_evb",
+            "supported": sorted({"apollo510_evb", board}),
+        }
+        manifest_path.write_text(yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8")
+        options = ["--app-dir", str(app), "--board", board]
         if _TOOLCHAIN != "arm-none-eabi-gcc":
             options += ["--toolchain", _TOOLCHAIN]
         subprocess.run(["nsx", "configure", *options], check=True, timeout=300)
