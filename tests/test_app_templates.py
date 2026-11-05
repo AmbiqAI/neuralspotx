@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import glob
+import shutil
+import subprocess
 import tomllib
 from pathlib import Path
 
@@ -169,3 +171,50 @@ def test_npu_tflm_template_renders_and_seeds_modules(tmp_path: Path) -> None:
     manifest = yaml.safe_load((app_dir / "nsx.yml").read_text(encoding="utf-8"))
     declared = [entry["name"] for entry in manifest["modules"]]
     assert declared == ["nsx-helia-rt", "nsx-npu"]
+
+
+def test_blinky_template_renders_without_console_or_rtos(tmp_path: Path) -> None:
+    app = tmp_path / "blink"
+    create_app_impl(app, board="apollo510_evb", template="blinky", no_bootstrap=True)
+    main = (app / "src/main.c").read_text(encoding="utf-8")
+    assert "am_bsp_psLEDs[0]" in main
+    assert "am_devices_led_toggle" in main
+    assert "nsx_printf" not in main
+    assert "FreeRTOS" not in main
+    assert "#error" in main and "--template default" in main
+    cmake = (app / "CMakeLists.txt").read_text(encoding="utf-8")
+    assert 'nsx_select_sdk_provider("${NSX_BOARD}")' in cmake
+    assert "${NSX_AMBIQSUITE_ROOT}/devices/am_devices_led.c" in cmake
+    manifest = yaml.safe_load((app / "nsx.yml").read_text(encoding="utf-8"))
+    assert manifest["modules"] == []
+    assert (app / ".gitignore").is_file()
+    assert "{{" not in (app / "README.md").read_text(encoding="utf-8")
+
+
+@pytest.mark.parametrize("led_count", [None, 0, 1])
+def test_blinky_requires_a_nonempty_bsp_led_table(tmp_path: Path, led_count: int | None) -> None:
+    compiler = shutil.which("cc") or shutil.which("clang")
+    if compiler is None:
+        pytest.skip("C preprocessor required")
+    app = tmp_path / "blink"
+    create_app_impl(app, board="apollo510_evb", template="blinky", no_bootstrap=True)
+    headers = tmp_path / "headers"
+    headers.mkdir()
+    for name in ("nsx_core.h", "am_devices_led.h"):
+        (headers / name).touch()
+    (headers / "am_bsp.h").write_text(
+        "" if led_count is None else f"#define AM_BSP_NUM_LEDS {led_count}\n",
+        encoding="utf-8",
+    )
+    result = subprocess.run(
+        [compiler, "-E", "-I", str(headers), str(app / "src/main.c")],
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    if led_count:
+        assert result.returncode == 0, result.stderr
+    else:
+        assert result.returncode != 0
+        assert "Blinky requires a BSP LED table" in result.stderr
+        assert "--template default" in result.stderr

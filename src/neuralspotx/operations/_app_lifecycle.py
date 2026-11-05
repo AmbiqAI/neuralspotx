@@ -103,6 +103,10 @@ APP_TEMPLATES: dict[str, AppTemplate] = {
         template_dir="external_app",
         description="Minimal hello-world app (SWO printf loop).",
     ),
+    "blinky": AppTemplate(
+        template_dir="blinky_app",
+        description="Bare-metal LED blink using the board BSP (requires an LED).",
+    ),
     "npu-tflm": AppTemplate(
         template_dir="npu_tflm_app",
         modules=("nsx-helia-rt", "nsx-npu"),

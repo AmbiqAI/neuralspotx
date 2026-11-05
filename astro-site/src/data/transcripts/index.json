@@ -1,5 +1,5 @@
 {
-  "_note": "Abbreviated setup/build captures; flash stages and view output are illustrative examples, not a hardware capture.",
+  "_note": "Illustrative abbreviated commands and output; not a captured hardware run.",
   "stages": [
     {
       "id": "install",
@@ -52,15 +52,15 @@
       "label": "Create",
       "title": "Create an app for a board",
       "command": "nsx create-app",
-      "caption": "A complete app directory for a real board: nsx.yml, CMakeLists.txt, sources and the starter modules.",
+      "caption": "Create a bare-metal LED blinky app using the selected board BSP.",
       "lines": [
         {
           "kind": "command",
-          "text": "nsx create-app hello_ap510 --board apollo510_evb"
+          "text": "nsx create-app blinky_ap510 --board apollo510_evb --template blinky"
         },
         {
           "kind": "success",
-          "text": "Created app 'hello_ap510' at: /home/you/hello_ap510"
+          "text": "Created app 'blinky_ap510' at: /home/you/blinky_ap510"
         },
         {
           "kind": "output",
@@ -68,7 +68,7 @@
         },
         {
           "kind": "output",
-          "text": "  1) cd /home/you/hello_ap510"
+          "text": "  1) cd /home/you/blinky_ap510"
         },
         {
           "kind": "output",
@@ -85,11 +85,7 @@
       "lines": [
         {
           "kind": "command",
-          "text": "cd hello_ap510 && nsx configure"
-        },
-        {
-          "kind": "success",
-          "text": "Configured app at: /home/you/hello_ap510"
+          "text": "cd blinky_ap510 && nsx configure"
         },
         {
           "kind": "command",
@@ -97,15 +93,7 @@
         },
         {
           "kind": "muted",
-          "text": "[..] (24 compile, archive and link steps)"
-        },
-        {
-          "kind": "output",
-          "text": "   text    data     bss     dec     hex filename"
-        },
-        {
-          "kind": "output",
-          "text": "  19080     592  507312  526984   80a88 hello_ap510"
+          "text": "[Compile, link and generate blinky_ap510.bin]"
         }
       ]
     },
@@ -132,22 +120,18 @@
     },
     {
       "id": "view",
-      "label": "View",
-      "title": "Watch it run",
-      "command": "nsx view",
-      "caption": "nsx view opens the SWO viewer and streams the firmware's output back to your terminal.",
+      "label": "Observe",
+      "title": "Watch the LED blink",
+      "command": "Observe the board",
+      "caption": "The first BSP LED alternates on and off every half second. No SWO viewer is needed.",
       "lines": [
         {
-          "kind": "command",
-          "text": "nsx view"
+          "kind": "muted",
+          "text": "[On the board: first BSP LED blinks]"
         },
         {
-          "kind": "output",
-          "text": "nsx hello from generated app"
-        },
-        {
-          "kind": "output",
-          "text": "nsx hello from generated app"
+          "kind": "muted",
+          "text": "[Try the default template next for SWO text output]"
         }
       ]
     }

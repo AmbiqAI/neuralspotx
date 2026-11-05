@@ -13,7 +13,7 @@ you want to act on an app somewhere else.
 ## Configure
 
 ```bash
-cd hello_ap510
+cd blinky_ap510
 nsx configure
 ```
 
@@ -29,11 +29,8 @@ cloning anything missing. Then it runs CMake to generate a Ninja build tree unde
   copy
 />
 
-Captured on macOS 26 with the Arm GNU toolchain, in an app created by `nsx create-app`.
-CMake's compiler detection block is collapsed and the app path is replaced by
-`/home/you/hello_ap510`. Because `create-app` already vendored the starter modules, the
-sync step reports that they match; on an app created with `--no-bootstrap`, or after you
-edit `nsx.yml`, this is where the clones happen instead.
+Illustrative output for the blinky app. Compiler details, paths and module-sync
+messages vary by host and cache state.
 
 Afterwards the app has three things it did not have before:
 
@@ -63,15 +60,14 @@ nsx build
   copy
 />
 
-Same host and app as above, with the middle of the Ninja log collapsed and the artifact
-path shortened. Ninja numbers the link step 23 of 24 and prints nothing for the last one.
-The section sizes are from that one build; yours will differ as soon as the app does.
+Illustrative build summary. Exact Ninja steps and image sizes depend on the
+board, toolchain and app sources.
 
 The artifacts land in `build/apollo510_evb/`:
 
-- `hello_ap510`, the linked ELF. Under GCC it has no file extension.
-- `hello_ap510.bin`, the raw image that gets programmed.
-- `hello_ap510.map`, the linker map.
+- `blinky_ap510`, the linked ELF. Under GCC it has no file extension.
+- `blinky_ap510.bin`, the raw image that gets programmed.
+- `blinky_ap510.map`, the linker map.
 - `jlink/`, the generated SEGGER command files that `nsx flash` and `nsx view` use.
 
 ## Options you are likely to reach for
