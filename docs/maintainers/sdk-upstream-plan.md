@@ -16,23 +16,22 @@ One repo, [`nsx-ambiq-sdk`](https://github.com/AmbiqAI/nsx-ambiq-sdk), vendors
 the AmbiqSuite drop, the HAL/BSP wrappers, and the shared NSX module set for
 every supported SoC (Apollo2 through Apollo5, plus the experimental atomiq110).
 Stable resolution pins every SDK module and SoC family to the published
-[`v5.2.27` release](https://github.com/AmbiqAI/nsx-ambiq-sdk/releases/tag/v5.2.27),
-which resolves to `993b7901a82008ac4cd523ffe0b125a016a8f6a8`. This immutable
-tag selects the same SDK content qualified in
-[NSX PR #297](https://github.com/AmbiqAI/neuralspotx/pull/297).
+[`v5.2.28` release](https://github.com/AmbiqAI/nsx-ambiq-sdk/releases/tag/v5.2.28).
+The immutable tag and regenerated example locks select the SDK content
+qualified in [NSX PR #306](https://github.com/AmbiqAI/neuralspotx/pull/306).
 
 The `nsx-ambiqsuite`, `nsx-ambiq-hal` and `nsx-ambiq-bsp` modules are thin
 metadata views onto that same project and revision.
 
-The [5.2.27 release record](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/v5.2.27/release/nsx-ambiq-sdk-5.2.27.yaml)
-accounts for the accumulated NSX startup, memory-policy, power, performance,
-debug, timer, USB, I2C and audio integration fixes. It also includes the
-Apollo2/3/3p C++ constructor startup correction. The entire AmbiqSuite provider
-tree and all 73 HAL/BSP archives remain unchanged from 5.2.26; this is not a
-new upstream AmbiqSuite intake. Apollo330P and Apollo510L use the SDK default
-DTCM layout; the unsupported `itcm` profile is no longer offered by their
-board fragments. Qualification scope and exclusions are recorded
-in the [SDK qualification report](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/v5.2.27/release/qualification-5.2.27.md).
+The [5.2.28 release record](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/v5.2.28/release/nsx-ambiq-sdk-5.2.28.yaml)
+adds shared-memory header-order/compiler integration fixes, BLE notification
+timer lifecycle fixes and explicit rejection of unsupported AT110 timer
+integration. The generated AmbiqSuite payload under `modules/nsx-ambiqsuite/sdk/`,
+including all 73 HAL/BSP archives, remains unchanged from 5.2.27; wrapper
+metadata reflects the new distribution version. This is not a new upstream
+AmbiqSuite intake. Apollo330P and Apollo510L retain the SDK default DTCM layout.
+Qualification scope, bounded AP510B debugger-reset evidence and exclusions are
+recorded in the [SDK qualification report](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/v5.2.28/release/qualification-5.2.28.md).
 
 Board profiles depend on the provider module for their SoC family, and NSX
 vendors the resolved SDK content into the generated app. See
