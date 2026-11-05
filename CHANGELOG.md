@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.9.3](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.9.2...neuralspotx-v0.9.3) (2026-11-05)
+
+
+### Features
+
+* resolve reset device from app board configuration ([#307](https://github.com/AmbiqAI/neuralspotx/issues/307)) ([824b4ef](https://github.com/AmbiqAI/neuralspotx/commit/824b4ef8b69d41dabda0826671a890137e6d43c0))
+
+
+### Bug Fixes
+
+* **build:** isolate generated module inputs per build directory ([#301](https://github.com/AmbiqAI/neuralspotx/issues/301)) ([2e2a8c0](https://github.com/AmbiqAI/neuralspotx/commit/2e2a8c0e52d15e94abcb841e338f2d8ecc9461fe))
+* promote SDK 5.2.28 registry pin ([#306](https://github.com/AmbiqAI/neuralspotx/issues/306)) ([bdaf97f](https://github.com/AmbiqAI/neuralspotx/commit/bdaf97f8f70c005c8e1a115e82ea61d9243a0794))
+* resolve registry and CLI backlog defects ([#302](https://github.com/AmbiqAI/neuralspotx/issues/302)) ([2dcaa72](https://github.com/AmbiqAI/neuralspotx/commit/2dcaa727900ed6563f6865ded1ed68152a35e812))
+* validate module source fields before normalization ([#305](https://github.com/AmbiqAI/neuralspotx/issues/305)) ([07745fe](https://github.com/AmbiqAI/neuralspotx/commit/07745fe892c37598275906e47a74ca9f84c65f08))
+
 ## [0.9.2](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.9.1...neuralspotx-v0.9.2) (2026-10-29)
 
 
