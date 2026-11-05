@@ -61,6 +61,7 @@ from ._cache import cache_info_impl, clean_cache_impl
 from ._common import OutdatedStatus, ProfileStatus, get_verbosity, set_verbosity, verbosity
 from ._doctor import doctor_impl
 from ._hardware import reset_target_impl
+from ._reset import reset_impl
 from ._lock import (
     lock_app_impl,
     lock_freshness_warning,
@@ -96,6 +97,7 @@ __all__ = [
     "configure_app_impl",
     "flash_app_impl",
     "reset_target_impl",
+    "reset_impl",
     "view_app_impl",
     # Doctor
     "doctor_impl",

@@ -28,6 +28,7 @@ from ..subprocess_utils import (
 )
 from ..tooling import JLINK_NAMES, find_processes_holding_probe, find_segger_tool
 from . import _common
+from ._cmake_cache import _cmake_cache_value
 from ._common import _resolve_build_context
 from ._hardware import (
     flash_programming_verified,
@@ -36,21 +37,6 @@ from ._hardware import (
 )
 from ._lock import warn_if_lock_stale
 from ._sync import _ensure_app_modules, regenerate_active_board_glue
-
-
-def _cmake_cache_value(build_dir: Path, variable: str) -> str | None:
-    """Return one typed CMake cache value without invoking CMake."""
-
-    cache_file = build_dir / "CMakeCache.txt"
-    try:
-        lines = cache_file.read_text(encoding="utf-8").splitlines()
-    except (OSError, UnicodeDecodeError):
-        return None
-    prefix = f"{variable}:"
-    for cache_line in lines:
-        if cache_line.startswith(prefix) and "=" in cache_line:
-            return cache_line.split("=", 1)[1]
-    return None
 
 
 def _same_executable_path(cached: str | None, resolved: str | None) -> bool:

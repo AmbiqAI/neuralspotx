@@ -32,6 +32,11 @@ function(nsx_add_segger_targets app_target)
         set(NSX_SEGGER_CONFIG_OK ON)
     endif()
 
+    # Resolved board facts for app-aware reset. FORCE also clears a previous
+    # board's values when the current configuration omits a setting.
+    set(NSX_RESET_DEVICE "${NSX_SEGGER_DEVICE}" CACHE INTERNAL "Resolved reset device" FORCE)
+    set(NSX_RESET_SPEED_KHZ "${NSX_SEGGER_IF_SPEED}" CACHE INTERNAL "Resolved reset speed" FORCE)
+
     find_program(NSX_JLINK_EXE NAMES JLinkExe JLink JLink.exe)
     find_program(NSX_JLINK_SWO_EXE NAMES JLinkSWOViewerCL JLinkSWOViewer_CL JLinkSWOViewerCL.exe JLinkSWOViewer_CL.exe)
 
