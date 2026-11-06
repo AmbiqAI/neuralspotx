@@ -1,5 +1,6 @@
 #include <string.h>
 #include "nsx_core.h"
+#include "nsx_system.h"
 #include "nsx_mem.h"
 #include "nsx_audio.h"
 
@@ -25,13 +26,18 @@ static void audio_cb(nsx_audio_config_t *cfg, void *buffer, uint32_t num_samples
 }
 
 int main(void) {
-    nsx_core_config_t core_cfg = {
-        .api = &nsx_core_V1_0_0,
+    const nsx_system_config_t system_cfg = {
+        .perf_mode = NSX_PERF_LOW,
+        .enable_cache = true,
+        .debug = {.transport = NSX_DEBUG_ITM},
     };
-    (void)nsx_core_init(&core_cfg);
-
-    nsx_itm_printf_enable();
-    nsx_cache_enable();
+    uint32_t status = nsx_system_init(&system_cfg);
+    if (status != 0) {
+        /* Hardware/debug setup may have failed before printf became available. */
+        while (1) {
+        }
+    }
+    nsx_printf("Audio system initialized\r\n");
 
     nsx_audio_config_t audio = {
         .source = NSX_AUDIO_SOURCE_PDM,
@@ -46,12 +52,19 @@ int main(void) {
         .user_ctx = NULL,
     };
 
-    if (nsx_audio_init(&audio) != 0) {
-        nsx_printf("Audio init failed\r\n");
+    status = nsx_audio_init(&audio);
+    if (status != 0) {
+        nsx_printf("Audio init failed: %lu\r\n", (unsigned long)status);
         while (1) {
         }
     }
-    nsx_audio_start(&audio);
+    nsx_interrupt_master_enable();
+    status = nsx_audio_start(&audio);
+    if (status != 0) {
+        nsx_printf("Audio start failed: %lu\r\n", (unsigned long)status);
+        while (1) {
+        }
+    }
 
     nsx_printf("Audio capture started: %u Hz, %u ch, %u samples/frame\r\n", SAMPLE_RATE,
                NUM_CHANNELS, NUM_SAMPLES);
