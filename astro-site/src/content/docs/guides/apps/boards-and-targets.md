@@ -119,7 +119,10 @@ different modules.
 
 ## Adding a second target
 
-1. Add the board to `targets.supported` in `nsx.yml`.
+1. Add the board to `targets.supported` in `nsx.yml`. For a freshly generated app,
+   replace its singular `target` block with the multi-target form above and remove
+   the creation-time `profile` and `profile_status` keys so each board uses its own
+   implicit profile.
 2. Run `nsx lock` so the new board gets its own resolved section in `nsx.lock`.
 3. Build it with `nsx build --board <new-board>`.
 
@@ -127,6 +130,18 @@ If the new board's closure cannot be satisfied, the lock step is where you find 
 the build. Source that needs to differ per family belongs in a per-family overlay rather
 than behind preprocessor conditionals; see
 [Multi-target and portability](/neuralspotx/guides/concepts/multi-target/).
+
+### Existing generated apps
+
+App CMake targets should link `nsx::board`, the alias for the currently selected board.
+Older `default` and `npu-tflm` scaffolds instead embedded the creation-time board, for
+example `nsx::board_apollo510_evb`. Before switching boards in one of those apps, replace
+that entry in `target_link_libraries(...)` with `nsx::board` and run `nsx configure`
+for the selected board. NSX does not rewrite your app-owned `CMakeLists.txt` on upgrade.
+
+This changes board selection, not hardware compatibility: app sources and modules must
+still support the selected target. In particular, the NPU template requires an
+`atomiq110` board.
 
 ## Boards NSX does not package
 

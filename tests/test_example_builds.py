@@ -187,12 +187,13 @@ def test_example_builds_for_extra_board(example_app: Path, board: str) -> None:
 
 @pytest.mark.timeout(2 * 300 + _BUILD_TIMEOUT_S)
 @pytest.mark.parametrize("board", ["apollo3p_evb", "apollo4p_blue_kxr_evb", "apollo510_evb"])
-def test_generated_blinky_builds(board: str) -> None:
-    """Compile the actual generated scaffold and pinned SDK LED driver together."""
+@pytest.mark.parametrize("template", ["blinky", "default"])
+def test_generated_app_builds(board: str, template: str) -> None:
+    """Build generated scaffolds with the selected board, including board switches."""
     with tempfile.TemporaryDirectory(prefix="nsxb-") as root:
         app = Path(root) / "blink"
         subprocess.run(
-            ["nsx", "create-app", str(app), "--board", "apollo510_evb", "--template", "blinky"],
+            ["nsx", "create-app", str(app), "--board", "apollo510_evb", "--template", template],
             check=True,
             timeout=300,
         )

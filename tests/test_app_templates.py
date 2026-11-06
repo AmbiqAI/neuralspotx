@@ -138,6 +138,8 @@ def test_default_template_renders_hello_world(tmp_path: Path) -> None:
     assert (app_dir / "src" / "main.c").is_file()
     cmake = (app_dir / "CMakeLists.txt").read_text(encoding="utf-8")
     assert "NSX_HELIA_RT_ENABLE_ETHOSU" not in cmake
+    assert "nsx::board\n" in cmake
+    assert "nsx::board_apollo510_evb" not in cmake
 
     manifest = yaml.safe_load((app_dir / "nsx.yml").read_text(encoding="utf-8"))
     assert manifest["modules"] == []
@@ -160,6 +162,8 @@ def test_npu_tflm_template_renders_and_seeds_modules(tmp_path: Path) -> None:
     cmake = (app_dir / "CMakeLists.txt").read_text(encoding="utf-8")
     assert "NSX_HELIA_RT_ENABLE_ETHOSU" in cmake
     assert "nsx::npu" in cmake
+    assert "nsx::board\n" in cmake
+    assert "nsx::board_atomiq110_fpga_turbo" not in cmake
     assert "nsx::helia_rt" in cmake
     # ns-cmsis-nn >= 7.3x stops configure if the pre-rename switch is set.
     assert "set(ARM_NN_ENABLE_F32 ON" in cmake
