@@ -35,7 +35,7 @@ target_include_directories({{ app_name }} PRIVATE
 )
 
 target_link_libraries({{ app_name }} PRIVATE
-    nsx::board_{{ board }}
+    nsx::board
     nsx::runtime_core
     nsx::helia_rt
     nsx::npu
