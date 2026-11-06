@@ -1,0 +1,28 @@
+/* SPDX-License-Identifier: BSD-3-Clause */
+/* Copyright (c) 2026, Ambiq */
+#include "nsx_core.h"
+#include "am_bsp.h"
+#include "am_devices_led.h"
+
+#if !defined(AM_BSP_NUM_LEDS) || AM_BSP_NUM_LEDS < 1
+#error "Blinky requires a BSP LED table; use --template default for boards without LEDs."
+#else
+
+int main(void)
+{
+    nsx_core_config_t cfg = {
+        .api = &nsx_core_V1_0_0,
+    };
+    (void)nsx_core_init(&cfg);
+
+    /* Use the BSP pin, polarity and drive mode for its first LED only. */
+    am_devices_led_init(&am_bsp_psLEDs[0]);
+    am_devices_led_off(am_bsp_psLEDs, 0);
+
+    while (1) {
+        am_devices_led_toggle(am_bsp_psLEDs, 0);
+        nsx_delay_us(500000);
+    }
+}
+
+#endif

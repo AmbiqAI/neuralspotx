@@ -2,11 +2,11 @@
   "createRun": [
     {
       "kind": "command",
-      "text": "nsx create-app hello_ap510 --board apollo510_evb"
+      "text": "nsx create-app blinky_ap510 --board apollo510_evb --template blinky"
     },
     {
       "kind": "success",
-      "text": "Created app 'hello_ap510' at: /home/you/hello_ap510"
+      "text": "Created app 'blinky_ap510' at: /home/you/blinky_ap510"
     },
     {
       "kind": "output",
@@ -14,7 +14,7 @@
     },
     {
       "kind": "output",
-      "text": "  1) cd /home/you/hello_ap510"
+      "text": "  1) cd /home/you/blinky_ap510"
     },
     {
       "kind": "output",
@@ -26,11 +26,11 @@
     },
     {
       "kind": "output",
-      "text": "Cloning into '/home/you/hello_ap510/modules/nsx-ambiq-sdk'..."
+      "text": "Cloning into '/home/you/blinky_ap510/modules/nsx-ambiq-sdk'..."
     },
     {
       "kind": "output",
-      "text": "Cloning into '/home/you/hello_ap510/modules/nsx-pmu-armv8m'..."
+      "text": "Cloning into '/home/you/blinky_ap510/modules/nsx-pmu-armv8m'..."
     }
   ]
 }

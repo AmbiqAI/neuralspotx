@@ -20,6 +20,7 @@ import tempfile
 from pathlib import Path
 
 import pytest
+import yaml
 
 EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "examples"
 
@@ -182,3 +183,33 @@ def test_example_builds_for_extra_board(example_app: Path, board: str) -> None:
     assert any(
         (build_dir / name).exists() for name in (f"{app_name}.axf", f"{app_name}.elf", app_name)
     ), f"Expected an ELF for {app_name} under {build_dir}"
+
+
+@pytest.mark.timeout(2 * 300 + _BUILD_TIMEOUT_S)
+@pytest.mark.parametrize("board", ["apollo3p_evb", "apollo4p_blue_kxr_evb", "apollo510_evb"])
+def test_generated_blinky_builds(board: str) -> None:
+    """Compile the actual generated scaffold and pinned SDK LED driver together."""
+    with tempfile.TemporaryDirectory(prefix="nsxb-") as root:
+        app = Path(root) / "blink"
+        subprocess.run(
+            ["nsx", "create-app", str(app), "--board", "apollo510_evb", "--template", "blinky"],
+            check=True,
+            timeout=300,
+        )
+        # Exercise switching a generated app, not just one scaffold per board.
+        manifest_path = app / "nsx.yml"
+        manifest = yaml.safe_load(manifest_path.read_text(encoding="utf-8"))
+        # Replace creation-time single-board/profile selection with a multi-board app.
+        for key in ("target", "profile", "profile_status"):
+            manifest.pop(key, None)
+        manifest["targets"] = {
+            "default": "apollo510_evb",
+            "supported": sorted({"apollo510_evb", board}),
+        }
+        manifest_path.write_text(yaml.safe_dump(manifest, sort_keys=False), encoding="utf-8")
+        options = ["--app-dir", str(app), "--board", board]
+        if _TOOLCHAIN != "arm-none-eabi-gcc":
+            options += ["--toolchain", _TOOLCHAIN]
+        subprocess.run(["nsx", "configure", *options], check=True, timeout=300)
+        subprocess.run(["nsx", "build", *options], check=True, timeout=_BUILD_TIMEOUT_S)
+        assert (app / "build" / board / "blink.bin").is_file()

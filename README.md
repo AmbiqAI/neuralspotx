@@ -60,7 +60,7 @@ requires:
 ```bash
 uv tool install neuralspotx
 nsx doctor
-nsx create-app hello_ap510 --board apollo510_evb
+nsx create-app blinky_ap510 --board apollo510_evb --template blinky
 ```
 
 `uvx --from neuralspotx nsx doctor` runs a single command without installing
@@ -76,7 +76,7 @@ source .venv/bin/activate
 uv tool install pre-commit
 pre-commit install
 nsx doctor
-nsx create-app hello_ap510 --board apollo510_evb
+nsx create-app blinky_ap510 --board apollo510_evb --template blinky
 ```
 
 `pre-commit install` sets up the lint and pre-push hooks that CI also runs. See
@@ -85,9 +85,13 @@ nsx create-app hello_ap510 --board apollo510_evb
 Build the app:
 
 ```bash
-nsx configure --app-dir hello_ap510
-nsx build --app-dir hello_ap510
+nsx configure --app-dir blinky_ap510
+nsx build --app-dir blinky_ap510
 ```
+
+After flashing with `nsx flash --app-dir blinky_ap510`, the first BSP LED
+blinks every half second. No SWO viewer is needed. Omit `--template blinky`
+to create the existing SWO hello-world app instead.
 
 ## Repo Scope
 

@@ -18,7 +18,7 @@ test('walkthrough loops after the final step', async ({ page }) => {
   await page.goto('./');
   const journey = page.locator('nsx-journey-walkthrough');
   await journey.scrollIntoViewIfNeeded();
-  await journey.getByRole('tab', { name: '6 View' }).click();
+  await journey.getByRole('tab', { name: '6 Observe' }).click();
   await expect(journey).toHaveAttribute('data-stage', '5');
   await expect(journey).toHaveAttribute('data-stage', '0', { timeout: 15000 });
 });
@@ -27,11 +27,11 @@ test('walkthrough can pause and resume after a hidden page', async ({ page }) =>
   await page.goto('./');
   const journey = page.locator('nsx-journey-walkthrough');
   await journey.scrollIntoViewIfNeeded();
-  await journey.getByRole('tab', { name: '6 View' }).click();
-  await journey.getByRole('tab', { name: '6 View' }).click();
+  await journey.getByRole('tab', { name: '6 Observe' }).click();
+  await journey.getByRole('tab', { name: '6 Observe' }).click();
   await page.waitForTimeout(3500);
   await expect(journey).toHaveAttribute('data-stage', '5');
-  await journey.getByRole('tab', { name: '6 View' }).click();
+  await journey.getByRole('tab', { name: '6 Observe' }).click();
   await page.evaluate(() => {
     Object.defineProperty(document, 'hidden', { configurable: true, value: true });
     document.dispatchEvent(new Event('visibilitychange'));
@@ -59,10 +59,10 @@ test('active tab pauses typing and outline progress; switching preserves pause',
   await page.waitForTimeout(1000);
   expect(await panel.textContent()).toBe(content);
   expect(await outline.getAttribute('style')).toBe(progress);
-  await journey.getByRole('tab', { name: '6 View' }).click();
+  await journey.getByRole('tab', { name: '6 Observe' }).click();
   await expect(journey).toHaveAttribute('data-paused', '');
-  await expect(journey.locator('[data-stage-panel][data-active="true"] [data-line-text]').last()).toHaveText('nsx hello from generated app');
-  await journey.getByRole('tab', { name: '6 View' }).click();
+  await expect(journey.locator('[data-stage-panel][data-active="true"] [data-line-text]').last()).toHaveText('[Try the default template next for SWO text output]');
+  await journey.getByRole('tab', { name: '6 Observe' }).click();
   await expect(journey).not.toHaveAttribute('data-paused');
   await expect(journey).toHaveAttribute('data-stage', '0', { timeout: 15000 });
 });

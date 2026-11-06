@@ -1,0 +1,43 @@
+# {{ app_name }}: bare-metal blinky
+
+This app toggles the first LED in the **{{ board }}** BSP LED table every
+500 ms: roughly half a second on, half a second off. The physical LED label
+varies by board; it is the first entry of `am_bsp_psLEDs`, not necessarily
+an LED marked "0". No FreeRTOS scheduler or SWO viewer is required.
+
+## Build and run
+
+```bash
+nsx create-app {{ app_name }} --board {{ board }} --template blinky
+cd {{ app_name }}
+nsx configure
+nsx build
+nsx probes
+nsx flash
+```
+
+With multiple probes connected, add `--probe-serial <serial>` to `nsx flash`
+and `nsx reset`. After flashing, watch the board's first user LED blink.
+`nsx reset` restarts the configured app without reflashing.
+
+## Board support
+
+The app uses the selected BSP's pin, polarity and drive-mode information
+with AmbiqSuite's LED driver from the resolved SDK. It does not hardcode GPIO
+numbers. Only the first LED is configured; other LEDs are left alone.
+
+A board must provide `AM_BSP_NUM_LEDS > 0` and `am_bsp_psLEDs`. FPGA targets
+and custom BSPs without this table cannot run this template; the build
+reports that requirement. Use `--template default` for a SWO hello-world
+app instead. Check your board's LED jumpers/routing if it builds and flashes
+but no LED is visible. Build coverage alone does not verify physical LEDs.
+
+## Next
+
+Edit `src/main.c` to change the delay or choose another valid BSP LED index.
+This app emits no console output, so `nsx view` is not needed. To try SWO,
+create a separate app with `nsx create-app hello_swo --board {{ board }}
+--template default`, then configure, build, flash and view that app.
+
+`nsx.yml` owns dependencies and board selection; `modules/` and `boards/`
+contain app-local dependencies. `cmake/nsx/` contains generated NSX tooling.

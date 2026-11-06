@@ -19,6 +19,7 @@ import yaml
 # never matches leading-dot names).
 _EXPECTED_APP_FILES: dict[str, tuple[str, ...]] = {
     "default": (".gitignore",),
+    "blinky": (".gitignore", "CMakeLists.txt", "README.md", "src/main.c", "nsx.yml"),
     "npu-tflm": (
         ".gitignore",
         "src/main.cc",
@@ -30,6 +31,7 @@ _EXPECTED_APP_FILES: dict[str, tuple[str, ...]] = {
 }
 _TEMPLATE_BOARDS: dict[str, str] = {
     "default": "apollo510_evb",
+    "blinky": "apollo510_evb",
     "npu-tflm": "atomiq110_fpga_turbo",
 }
 _SPDX_HEADER = "SPDX-License-Identifier: BSD-3-Clause"
