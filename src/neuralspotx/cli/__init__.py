@@ -323,7 +323,7 @@ def cmd_clean(args: argparse.Namespace) -> None:
 @command_hint("lock", _C.MODULES, _S.APP, "nsx sync", "nsx configure", "nsx build")
 def cmd_lock(args: argparse.Namespace) -> None:
     # CLI selection implies update; the API requires update=True explicitly.
-    # Other floating constraints may also refresh during writable resolution.
+    # Selected modules expand to Git projects; unrelated matching refs are retained.
     update = bool(args.update) or bool(args.modules)
     api.lock_app(
         resolve_app_dir(args.app_dir),
@@ -364,7 +364,7 @@ _UPDATE_CONFIRM_THRESHOLD = 3
 def _confirm_update_changes(report: OutdatedReport, *, assume_yes: bool) -> None:
     """G5 confirmation gate for ``nsx update``.
 
-    Prints a one-line diff summary of what will move and, when at least
+    Prints default-target upstream availability (not a change plan) and, when at least
     ``_UPDATE_CONFIRM_THRESHOLD`` modules are outdated, requires either
     ``--yes`` or an interactive ``y`` reply on stdin. Raises
     :class:`NSXError` when the user declines or when the gate is hit
@@ -376,18 +376,20 @@ def _confirm_update_changes(report: OutdatedReport, *, assume_yes: bool) -> None
         return
 
     summary = ", ".join(f"{m.name} ({m.locked[:10]}->{m.upstream[:10]})" for m in outdated)
-    print(f"{len(outdated)} module(s) will move: {summary}")
+    print(f"Upstream updates available for {len(outdated)} default-target module(s): {summary}")
+    print("This is not an update plan; it may include unselected projects.")
 
     if assume_yes or len(outdated) < _UPDATE_CONFIRM_THRESHOLD:
         return
 
     if not sys.stdin.isatty():
         raise NSXError(
-            f"`nsx update` will move {len(outdated)} modules; pass --yes to confirm "
-            "non-interactively."
+            f"Upstream updates are available for {len(outdated)} default-target modules "
+            "(possibly including unselected projects); pass --yes to continue "
+            "with the requested update non-interactively."
         )
 
-    reply = input(f"Proceed updating {len(outdated)} modules? [y/N] ").strip().lower()
+    reply = input("Continue with the requested update? [y/N] ").strip().lower()
     if reply not in ("y", "yes"):
         raise NSXError("Aborted by user.")
 
@@ -879,8 +881,8 @@ def _build_parser() -> argparse.ArgumentParser:
         action="append",
         default=[],
         help=(
-            "Reconsider the named module (repeatable; implies --update); "
-            "other floating refs may also refresh"
+            "Refresh the named module's Git project (repeatable; implies --update); "
+            "preserve unrelated matching Git resolutions"
         ),
     )
     p_lock.add_argument(
@@ -958,13 +960,16 @@ def _build_parser() -> argparse.ArgumentParser:
         dest="modules",
         action="append",
         default=[],
-        help=("Reconsider the named module (repeatable); other floating refs may also refresh"),
+        help=(
+            "Refresh the named module's Git project; preserve unrelated matching Git resolutions"
+        ),
     )
     p_update.add_argument(
         "--yes",
         action="store_true",
         help=(
-            "Confirm large updates non-interactively. Required when "
+            "Confirm the broad default-target upstream availability gate non-interactively "
+            "(may include unselected projects). Required when "
             f"{_UPDATE_CONFIRM_THRESHOLD}+ modules will move and stdin is not a tty."
         ),
     )

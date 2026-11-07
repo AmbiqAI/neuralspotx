@@ -38,7 +38,9 @@ def lock_app(
     Normal writes re-resolve floating constraints through the TTL cache;
     matching full-SHA/tag resolutions can be reused. ``update=True`` clears
     the cache and reconsiders all or selected prior entries. ``modules`` only
-    selects entries when ``update=True``; other floating refs may also refresh.
+    selects projects when ``update=True``; matching Git resolutions in unrelated
+    projects are preserved, including branches. New entries and changed sources
+    or constraints resolve normally. Unknown selections fail before lock writes.
     Plain ``check=True`` can reuse prior branch SHAs and does not guarantee
     upstream freshness. Checks do not write lock/build glue, but may use caches.
 
@@ -144,7 +146,9 @@ def update_app(
     """Re-resolve module constraints to upstream tip and re-vendor.
 
     Equivalent to ``nsx lock --update [--module ...] && nsx sync``.
-    Selecting modules does not preserve unrelated floating refs during writes.
+    Selecting a module refreshes its Git project within each target closure;
+    unrelated matching Git resolutions are preserved. Metadata/manifest changes
+    still take effect. None or an empty selection updates all modules.
     *timeout_s* applies per individual ``git`` subprocess invoked
     during the re-resolve and re-vendor phases.
     """

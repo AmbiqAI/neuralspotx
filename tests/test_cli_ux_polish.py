@@ -190,7 +190,7 @@ def test_g5_update_prints_one_line_summary(tmp_path: Path, monkeypatch: pytest.M
     monkeypatch.setattr(cli.api, "update_app", lambda app_dir, **kw: None)
     out, _err, code = _invoke("update", "--app-dir", str(tmp_path))
     assert code == 0
-    assert "1 module(s) will move:" in out
+    assert "Upstream updates available for 1 default-target module(s):" in out
     assert "mod-0" in out
 
 
@@ -207,7 +207,7 @@ def test_g5_update_blocks_large_change_without_yes(
         cli.cmd_update(
             cli.argparse.Namespace(app_dir=str(tmp_path), modules=[], timeout=None, yes=False)
         )
-    assert "5 module(s) will move:" in out.getvalue()
+    assert "Upstream updates available for 5 default-target module(s):" in out.getvalue()
 
 
 def test_g5_update_proceeds_with_yes(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:

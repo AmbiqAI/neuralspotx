@@ -1526,7 +1526,7 @@ def test_unpinned_warnings_in_api_lock_and_readonly_check(
     assert before == after
 
 
-def test_targeted_update_keeps_pins_but_can_refresh_other_branches(
+def test_targeted_update_preserves_unselected_branch_and_tag(
     app: Path,
     monkeypatch: pytest.MonkeyPatch,
     caplog: pytest.LogCaptureFixture,
@@ -1566,9 +1566,9 @@ def test_targeted_update_keeps_pins_but_can_refresh_other_branches(
     epoch[0] = "b"
     result = lock_app_impl(app, update=True, modules=["selected"])
     assert result.modules["selected"].commit == "b" * 40
-    assert result.modules["floating"].commit == "b" * 40
+    assert result.modules["floating"].commit == "a" * 40
     assert result.modules["pinned"].commit == "a" * 40
-    assert sorted(calls) == ["https://example.com/floating.git", "https://example.com/selected.git"]
+    assert calls == ["https://example.com/selected.git"]
     assert invalidations == [True]
     # Full update also reconsiders the previously retained tag.
     calls.clear()
