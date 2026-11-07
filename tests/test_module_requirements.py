@@ -279,3 +279,29 @@ def test_skip_compat_does_not_skip_version_bounds(
     )
     with pytest.raises(NSXModuleError, match="parent.*dep"):
         resolve(registry, cfg)
+
+
+@pytest.mark.parametrize("bounds", [",", ", ,"])
+def test_effectively_empty_constraint_rejected_from_yaml(tmp_path: Path, bounds: str) -> None:
+    registry, cfg = project(
+        tmp_path,
+        [manifest("parent", required=[{"name": "dep", "version": bounds}]), manifest("dep", "0.0")],
+    )
+    with pytest.raises(ValueError, match="at least one comparison"):
+        resolve(registry, cfg)
+    with pytest.raises(NSXModuleError, match="at least one comparison"):
+        validate_materialized_requirements(
+            ["parent", "dep"], app_dir=tmp_path, nsx_cfg=cfg, registry=registry
+        )
+
+
+def test_search_indexes_requirement_bounds(tmp_path: Path) -> None:
+    from neuralspotx.module_discovery import _search_score
+
+    registry, _ = project(
+        tmp_path, [manifest("parent", required=[{"name": "dep", "version": ">=7.47.0,<8"}])]
+    )
+    record = _module_discovery_record("parent", registry)
+    score, matches = _search_score(record, "7.47.0")
+    assert score > 0
+    assert any(match.field == "depends.required.version" for match in matches)

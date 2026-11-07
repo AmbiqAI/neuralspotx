@@ -39,6 +39,8 @@ def parse_required_dependencies(entries: list[object], context: str) -> list[Mod
                     raise ValueError(f"{where}.version must be a nonempty PEP 440 constraint")
                 try:
                     spec = SpecifierSet(version)
+                    if not spec:
+                        raise InvalidSpecifier("constraint must contain at least one comparison")
                     if any(item.operator == "===" for item in spec):
                         raise InvalidSpecifier("arbitrary equality is unsupported")
                 except InvalidSpecifier as exc:

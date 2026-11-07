@@ -183,6 +183,9 @@ def _search_haystacks(record: DiscoveryRecord) -> list[tuple[str, str]]:
     if depends is not None:
         for dep in depends["required"]:
             haystacks.append(("depends.required", dep))
+        for requirement in depends.get("required_dependencies", []):
+            if requirement["version"]:
+                haystacks.append(("depends.required.version", requirement["version"]))
         for dep in depends["optional"]:
             haystacks.append(("depends.optional", dep))
     if compatibility is not None:
