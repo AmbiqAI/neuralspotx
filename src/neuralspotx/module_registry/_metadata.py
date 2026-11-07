@@ -16,6 +16,7 @@ from ..metadata import (
 )
 from ..models import ModuleMetadata
 from ..project_config import (
+    _board_overlay_dir,
     _metadata_path_relative_to_project,
     _module_clone_dir,
     _module_source_dir_relative_to_app,
@@ -23,7 +24,6 @@ from ..project_config import (
     _read_yaml,
     _registry_project_entry,
     _vendored_metadata_relpath,
-    _vendored_target_dir,
 )
 
 # ---------------------------------------------------------------------------
@@ -214,7 +214,7 @@ def _load_materialized_module_metadata(
         # nsx_bootstrap_app includes boards/<board>/board.cmake directly.
         # Local project overrides keep this separate overlay in sync via
         # _sync_local_board_overlay; its metadata can differ on cached builds.
-        source = _vendored_target_dir(app_dir, module_name, entry.metadata)
+        source = _board_overlay_dir(app_dir, metadata_rel)
     else:
         source = app_dir / _module_source_dir_relative_to_app(module_name, registry, nsx_cfg)
     path = source / Path(entry.metadata).name

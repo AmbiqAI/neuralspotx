@@ -30,13 +30,13 @@ from ..nsx_lock import (
 )
 from ..project_config import (
     _board_key_for_app,
+    _board_overlay_dir,
     _copy_packaged_tree,
     _effective_registry,
     _load_app_cfg,
     _load_registry,
     _metadata_path_relative_to_project,
     _registry_project_entry,
-    _vendored_target_dir,
     _write_app_module_file,
     _write_cmake_nsx_gitignore,
     _write_modules_gitignore_for_module_names,
@@ -420,7 +420,7 @@ def _sync_local_board_overlay(
         return 0
 
     source_board_dir = source_dir / metadata_rel.parent
-    destination = _vendored_target_dir(ctx.app_dir, name, registry_entry.metadata)
+    destination = _board_overlay_dir(ctx.app_dir, metadata_rel)
     if not source_board_dir.is_dir():
         raise NSXModuleError(
             f"Local board source for '{name}' is missing: {source_board_dir}. "

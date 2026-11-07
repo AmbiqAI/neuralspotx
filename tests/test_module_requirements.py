@@ -408,8 +408,9 @@ def test_materialized_missing_copy_never_falls_back_to_external_metadata(tmp_pat
 
 
 @pytest.mark.parametrize("overlay_invalid", [True, False])
+@pytest.mark.parametrize("monorepo", [True, False])
 def test_cached_build_reads_board_overlay_not_project_mirror(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, overlay_invalid: bool
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, overlay_invalid: bool, monorepo: bool
 ) -> None:
     from neuralspotx.operations import _build
     from neuralspotx.operations._lock import lock_app_impl
@@ -418,7 +419,9 @@ def test_cached_build_reads_board_overlay_not_project_mirror(
     board = "nsx-board-apollo510-evb"
     app = locked_app(tmp_path)
     source = app / "board-checkout"
-    relative = "src/neuralspotx/boards/apollo510_evb/nsx-module.yaml"
+    relative = (
+        "boards/" if monorepo else "src/neuralspotx/boards/"
+    ) + "apollo510_evb/nsx-module.yaml"
     source_metadata = source / relative
     source_metadata.parent.mkdir(parents=True)
     source_metadata.write_text(yaml.safe_dump(manifest(board, required=["dep"])))
@@ -428,11 +431,12 @@ def test_cached_build_reads_board_overlay_not_project_mirror(
     cfg["module_registry"]["projects"]["board-project"] = {
         "local_path": str(source),
         "revision": "v1",
+        "path": "modules/board-project",
     }
     cfg["module_registry"]["modules"][board] = {
         "project": "board-project",
         "revision": "v1",
-        "metadata": relative,
+        "metadata": ("modules/board-project/" if monorepo else "") + relative,
     }
     (app / "nsx.yml").write_text(yaml.safe_dump(cfg))
     lock_app_impl(app)
