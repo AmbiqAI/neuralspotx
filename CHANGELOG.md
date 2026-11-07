@@ -1,5 +1,21 @@
 # Changelog
 
+## [0.9.4](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.9.3...neuralspotx-v0.9.4) (2026-11-07)
+
+
+### Features
+
+* add bare-metal blinky app template ([#308](https://github.com/AmbiqAI/neuralspotx/issues/308)) ([870793f](https://github.com/AmbiqAI/neuralspotx/commit/870793f57f0d57d3dd2ca2c4feaa9d5ac2336781))
+* validate required module version constraints ([#317](https://github.com/AmbiqAI/neuralspotx/issues/317)) ([5b00de1](https://github.com/AmbiqAI/neuralspotx/commit/5b00de12179c70fc92ecb95811515c9515741ff5))
+
+
+### Bug Fixes
+
+* clarify lock refresh behavior and unpinned diagnostics ([#314](https://github.com/AmbiqAI/neuralspotx/issues/314)) ([588b732](https://github.com/AmbiqAI/neuralspotx/commit/588b7325484e7864136bac002c1b24f583d5d7b3))
+* honor board selection in existing app scaffolds ([#311](https://github.com/AmbiqAI/neuralspotx/issues/311)) ([d119c05](https://github.com/AmbiqAI/neuralspotx/commit/d119c05a63ffd774fd909e6dc50a7187f9c7a522))
+* initialize audio capture hardware before sampling ([#313](https://github.com/AmbiqAI/neuralspotx/issues/313)) ([cf7ce1a](https://github.com/AmbiqAI/neuralspotx/commit/cf7ce1a878b75d999dae1ba401d574e8e64b1876)), closes [#312](https://github.com/AmbiqAI/neuralspotx/issues/312)
+* preserve unrelated Git resolutions during targeted updates ([#316](https://github.com/AmbiqAI/neuralspotx/issues/316)) ([5ebfe6f](https://github.com/AmbiqAI/neuralspotx/commit/5ebfe6f52f595348741910364fdd80ac2acc8779))
+
 ## [0.9.3](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.9.2...neuralspotx-v0.9.3) (2026-11-05)
 
 
