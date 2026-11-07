@@ -1482,6 +1482,8 @@ def test_unpinned_warnings_in_api_lock_and_readonly_check(
     ref: str,
     multi_target: bool,
 ) -> None:
+    import logging
+
     from neuralspotx import api
     from neuralspotx._io import Event
 
@@ -1507,6 +1509,9 @@ def test_unpinned_warnings_in_api_lock_and_readonly_check(
         }
         manifest_path.write_text(yaml.safe_dump(manifest))
     count = 2 if multi_target else 1
+    logger = logging.getLogger("neuralspotx")
+    monkeypatch.setattr(logger, "handlers", [caplog.handler])
+    monkeypatch.setattr(logger, "propagate", False)
     caplog.set_level("WARNING", logger="neuralspotx")
     events: list[Event] = []
     api.lock_app(app, quiet=True, emit=events.append)

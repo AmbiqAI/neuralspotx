@@ -12,7 +12,11 @@ from neuralspotx.operations._lock_diagnostics import warn_unpinned_git_constrain
 
 
 @pytest.fixture(autouse=True)
-def warning_level(caplog: pytest.LogCaptureFixture) -> None:
+def warning_level(caplog: pytest.LogCaptureFixture, monkeypatch: pytest.MonkeyPatch) -> None:
+    # CLI logging disables propagation; capture at the documented namespace.
+    logger = logging.getLogger("neuralspotx")
+    monkeypatch.setattr(logger, "handlers", [caplog.handler])
+    monkeypatch.setattr(logger, "propagate", False)
     caplog.set_level(logging.WARNING, logger="neuralspotx")
 
 
