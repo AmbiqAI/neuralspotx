@@ -52,16 +52,17 @@ _metadata_scope: contextvars.ContextVar[dict[tuple[str, str], ModuleMetadata] | 
 
 
 @contextlib.contextmanager
-def metadata_cache_scope() -> Iterator[None]:
+def metadata_cache_scope(*, fresh: bool = False) -> Iterator[None]:
     """Enable per-operation memoization of ``_load_module_metadata``.
 
     Within this with-block, repeated calls to load a given
     ``(module_name, app_dir)`` pair return the cached parse without
     re-reading or re-validating ``nsx-module.yaml``. Nested scopes are
-    no-ops (the outermost scope owns the cache).
+    no-ops (the outermost scope owns the cache), unless fresh=True is used
+    after materialization to avoid reusing earlier file contents.
     """
 
-    if _metadata_scope.get() is not None:
+    if not fresh and _metadata_scope.get() is not None:
         yield
         return
     token = _metadata_scope.set({})

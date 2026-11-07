@@ -139,3 +139,43 @@ the accurate source, not the catalog page.
 Getting a module into the packaged registry, so that other people's apps can add it by
 name, is a change to NSX itself. See
 [Contribute a module](/neuralspotx/guides/contribute/adding-a-module/).
+
+## Required dependency versions
+
+Module metadata keeps `schema_version: 1`. Existing string dependencies work
+unchanged. To require a particular metadata version, use a structured entry:
+
+```yaml
+depends:
+  required:
+    - nsx-core
+    - name: nsx-cmsis-nn
+      version: ">=7.47.0,<8"
+  optional: []
+```
+
+The range checks the dependency's **`module.version`**, not its Git tag or the
+version of an upstream library it wraps. NSX validates all required constraints;
+it does not select or upgrade revisions. On failure, choose a compatible registry
+revision, then run `nsx lock` and `nsx sync`.
+
+Constraints use PEP 440 (`==`, `!=`, `<`, `<=`, `>`, `>=`, `~=`; commas mean AND).
+Arbitrary equality (`===`), caret ranges and OR expressions are unsupported.
+Stable bounds exclude prerelease/dev versions unless an admitting prerelease
+bound opts in; an exclusion alone does not opt in. Local versions use PEP 440
+semantics. Unconstrained modules may retain arbitrary version strings.
+
+Explicit project development overrides with metadata participate normally.
+Opaque `source: path` or `source: vendored` modules cannot satisfy a constrained
+edge; provide registry-backed metadata for them. Optional dependencies remain
+names only.
+
+Checks run during dependency resolution and against materialized metadata during
+sync, configure and build, including incremental builds. Resolution can inspect
+existing app-local metadata; it does not prove the metadata of an unmaterialized
+remote revision. If `lock --check` falls back to its recorded closure because
+metadata is unavailable, its warning explicitly says constraints cannot be
+certified. Direct CMake invocations do not run NSX's Python validation.
+
+Older NSX releases reject structured required entries. Modules adopting this
+syntax therefore require a newer NSX, while existing modules need no migration.

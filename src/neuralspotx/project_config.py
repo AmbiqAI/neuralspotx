@@ -1247,8 +1247,10 @@ def _run_cmake_configure(
             "Toolchain '%s' is experimental and not fully validated for production use.", tc
         )
 
+    from .operations._requirements import validate_app_requirements
     from .operations._sync import regenerate_active_board_glue
 
+    validate_app_requirements(app_dir, board)
     regenerate_active_board_glue(app_dir, board, build_dir=build_dir)
     toolchain_file = app_dir / "cmake" / "nsx" / "toolchains" / tc_file
     cmd = [

@@ -340,6 +340,13 @@ upgrading data. There are two artifact classes with two behaviors:
   raises with an "unsupported schema_version, expected N" message and the
   contributor updates the artifact.
 
+Pre-v1 module metadata may extend schema 1 with additive syntax when existing
+valid manifests retain their behavior and older readers reject unsupported
+requirements safely. Structured `depends.required` entries (`name`, optional
+PEP 440 `version`) are such an extension: older readers require strings and
+reject these entries. This does not authorize silently ignored requirements,
+reader migrations, or changes to other artifact schemas.
+
 When you change a schema:
 
 1. Bump the version constant (e.g. `LOCK_SCHEMA_VERSION` in

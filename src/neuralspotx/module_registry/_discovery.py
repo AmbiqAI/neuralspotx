@@ -65,7 +65,11 @@ def _module_discovery_record(
         module=copy.deepcopy(raw["module"]),
         support=copy.deepcopy(raw["support"]),
         build=copy.deepcopy(raw["build"]),
-        depends=copy.deepcopy(raw["depends"]),
+        depends={
+            **copy.deepcopy(raw["depends"]),
+            "required": metadata.required_deps,
+            "required_dependencies": [dep.to_dict() for dep in metadata.required_dependencies],
+        },
         compatibility=copy.deepcopy(raw["compatibility"]),
         **kwargs,
     )

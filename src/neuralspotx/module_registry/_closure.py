@@ -12,6 +12,7 @@ from ..models import ModuleMetadata
 from ._metadata import _load_module_metadata, metadata_cache_scope
 from ._nsx_cfg import _local_module_names, _vendored_module_names
 from ._policy import _validate_board_module_dep_policy, _validate_sdk_provider_policy
+from ._requirements import requirement_metadata_error, validate_requirement
 from ._vendoring import _acquire_modules_for_app
 
 
@@ -127,8 +128,14 @@ def _resolve_module_closure_inner(
                 "to bypass."
             )
 
-        for dep_name in module_meta.required_deps:
-            dfs(dep_name)
+        for dep in module_meta.required_dependencies:
+            try:
+                dfs(dep.name)
+            except ValueError as exc:
+                if dep.version is not None:
+                    raise requirement_metadata_error(module_name, dep, exc) from exc
+                raise
+            validate_requirement(module_name, dep, metadata_cache.get(dep.name))
 
         visiting.remove(module_name)
         visited.add(module_name)

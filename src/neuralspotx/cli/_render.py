@@ -290,7 +290,16 @@ def _print_module_detail(record: DiscoveryRecord) -> None:
     if build is not None:
         print(f"Targets: {', '.join(build['cmake']['targets'])}")
     if depends is not None:
-        print(f"Required deps: {', '.join(depends['required']) or '(none)'}")
+        requirements = depends.get("required_dependencies")
+        required = (
+            [
+                f"{dep['name']} ({dep['version']})" if dep["version"] else dep["name"]
+                for dep in requirements
+            ]
+            if requirements is not None
+            else depends["required"]
+        )
+        print(f"Required deps: {', '.join(required) or '(none)'}")
         print(f"Optional deps: {', '.join(depends['optional']) or '(none)'}")
     if compatibility is not None:
         print(f"Boards: {', '.join(compatibility['boards'])}")

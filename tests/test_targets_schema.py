@@ -16,6 +16,15 @@ from neuralspotx.models import AppConfig, ResolvedTarget
 from neuralspotx.models._loader import NsxProject
 
 
+@pytest.fixture(autouse=True)
+def _isolate_command_rendering(monkeypatch: pytest.MonkeyPatch) -> None:
+    # These tests render configure arguments without materializing an app.
+    # Real metadata checks are exercised by test_module_requirements.py.
+    from neuralspotx.operations import _requirements
+
+    monkeypatch.setattr(_requirements, "validate_app_requirements", lambda *a: None)
+
+
 def _cfg(raw: dict) -> AppConfig:
     return AppConfig.from_mapping(raw)
 

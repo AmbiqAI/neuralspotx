@@ -270,6 +270,14 @@ def _manifest_fields(data: dict[str, Any]) -> dict[str, Any]:
     module = data.get("module") or {}
     depends = data.get("depends") or {}
     compatibility = data.get("compatibility") or {}
+    from neuralspotx.models._module_dependency import parse_required_dependencies
+
+    requirements = depends.get("required_dependencies")
+    if requirements is None:
+        requirements = [
+            dep.to_dict()
+            for dep in parse_required_dependencies(depends.get("required") or [], "module catalog")
+        ]
     return {
         "type": module.get("type"),
         "category": module.get("category"),
@@ -282,7 +290,8 @@ def _manifest_fields(data: dict[str, Any]) -> dict[str, Any]:
         "agent_keywords": list(data.get("agent_keywords") or []),
         "provides": data.get("provides") or {},
         "depends": {
-            "required": list(depends.get("required") or []),
+            "required": [dep["name"] for dep in requirements],
+            "required_dependencies": requirements,
             "optional": list(depends.get("optional") or []),
         },
         "compatibility": {

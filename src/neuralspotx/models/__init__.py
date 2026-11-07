@@ -20,6 +20,7 @@ from ._command import (
 from ._discovery import DiscoveryRecord, SearchMatch, SearchResult
 from ._hardware import FlashResult, ResetResult
 from ._loader import NsxProject
+from ._module_dependency import ModuleDependency
 from ._module_metadata import ModuleMetadata
 from ._outdated import OutdatedModule, OutdatedReport, OutdatedSkip
 from ._project import (
@@ -51,6 +52,7 @@ __all__ = [
     "ModuleEntry",
     "ModuleInitRequest",
     "ModuleMetadata",
+    "ModuleDependency",
     "ModuleRegistryOverride",
     "ModuleSource",
     "NsxProject",

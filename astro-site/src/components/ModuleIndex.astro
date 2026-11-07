@@ -46,6 +46,7 @@ const modules: CatalogModule[] = [...snapshot.modules]
     capabilities: module.capabilities ?? [],
     depends: {
       required: module.depends?.required ?? [],
+      required_dependencies: module.depends?.required_dependencies,
       optional: module.depends?.optional ?? [],
     },
   }));

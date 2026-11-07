@@ -240,6 +240,7 @@ version = "0.9.3"
 source = { editable = "." }
 dependencies = [
     { name = "jinja2" },
+    { name = "packaging" },
     { name = "pyyaml" },
 ]
 
@@ -264,6 +265,7 @@ test = [
 [package.metadata]
 requires-dist = [
     { name = "jinja2", specifier = ">=3.1" },
+    { name = "packaging", specifier = ">=26.0" },
     { name = "pyyaml", specifier = ">=6.0" },
 ]
 

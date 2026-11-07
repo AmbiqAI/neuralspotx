@@ -144,7 +144,7 @@ def test_every_module_carries_every_field(modules):
         assert isinstance(entry["use_cases"], list)
         assert isinstance(entry["anti_use_cases"], list)
         assert isinstance(entry["agent_keywords"], list)
-        assert set(entry["depends"]) == {"required", "optional"}
+        assert set(entry["depends"]) == {"required", "optional", "required_dependencies"}
         assert set(entry["compatibility"]) == {"boards", "socs", "toolchains"}
 
 

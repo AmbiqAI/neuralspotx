@@ -16,6 +16,7 @@ from .._logging import get_logger
 from ..file_lock import app_lock
 from ..models import AppConfig
 from ..module_registry import _rmtree, _update_module_clone, expand_profile_seeds
+from ..module_registry._requirements import validate_materialized_requirements
 from ..nsx_lock import (
     NSX_TOOLING_AUTOGEN_FILES,
     LockKind,
@@ -674,6 +675,9 @@ def _sync_app_impl_unlocked(
             _copy_packaged_tree("neuralspotx", "cmake", cmake_nsx)
         _write_cmake_nsx_gitignore(app_dir)
         ordered_modules = list(lock.modules)
+        validate_materialized_requirements(
+            ordered_modules, app_dir=app_dir, nsx_cfg=nsx_cfg, registry=registry
+        )
         _write_app_module_file(app_dir, nsx_cfg, module_names=ordered_modules)
         _write_modules_gitignore_for_module_names(
             app_dir, nsx_cfg, _locked_module_union(app_dir, ordered_modules)

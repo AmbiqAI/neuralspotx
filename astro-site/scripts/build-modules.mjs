@@ -466,7 +466,10 @@ function modulePage(module, known, uncheckedProjects) {
     ...section('Use cases', bullets(module.use_cases)),
     ...section('What it is not for', bullets(module.anti_use_cases)),
     ...section('Provides', pairs(module.provides)),
-    ...section('Requires', depends(module.depends.required)),
+    ...section('Requires', module.depends.required_dependencies
+      ? module.depends.required_dependencies.flatMap(dep =>
+          depends([dep.name]).map(row => dep.version ? `${row} — ${code(dep.version)}` : row))
+      : depends(module.depends.required)),
     ...section('Optional dependencies', depends(module.depends.optional)),
     '## Compatibility',
     '',
