@@ -150,3 +150,15 @@ configure and incremental build operations refresh the selected build directory
 from its lock, including custom paths. Different boards no longer overwrite
 one another's CMake module list. Shared app-local vendoring and its coordination
 remain unchanged; concurrent dependency updates are not isolated source trees.
+
+## Targeted lock updates
+
+A nonempty update selection expands module names to Git registry projects within
+each target closure, matching the unit of app-local vendoring. Unrelated matching
+project/URL/constraint resolutions may be reused even for floating refs. The shared
+lock path prepares target closures once and validates selected names before writes;
+its prefetch and final resolution passes use the same reuse policy. New/changed
+inputs and current metadata still determine closure; this is not a metadata-at-commit
+resolver or a multi-target transaction. Targeted results reject incompatible artifacts
+sharing a source directory before writing that target section. The locking guide
+documents CLI/API selection, cache, check and metadata limits.

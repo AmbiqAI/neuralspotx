@@ -62,6 +62,7 @@ from ..project_config import (
 )
 from ._common import OutdatedStatus, _log
 from ._lock_diagnostics import warn_unpinned_git_constraints
+from ._lock_selection import LockInputs, selected_git_modules, validate_materialization
 
 
 def _looks_like_full_sha(ref: str) -> bool:
@@ -161,19 +162,24 @@ def _reusable_previous_git_resolution(
     *,
     constraint: str,
     url: str,
+    project: str,
     refresh_floating_refs: bool,
 ) -> tuple[str, str | None] | None:
     """Return ``(commit, tag)`` from *previous_entry* when safe to reuse.
 
-    Writable resolution only reuses matching full-SHA or recorded-tag entries.
-    Read-only checks may also reuse matching floating entries.
+    Normal writes reuse matching full-SHA or recorded-tag entries. Read-only
+    checks and unselected targeted-update rows may also reuse floating entries.
     """
 
     if previous_entry is None:
         return None
     if previous_entry.kind != LockKind.GIT:
         return None
-    if previous_entry.constraint != constraint or previous_entry.url != url:
+    if (
+        previous_entry.constraint != constraint
+        or previous_entry.url != url
+        or previous_entry.project != project
+    ):
         return None
     if not previous_entry.commit:
         return None
@@ -232,56 +238,15 @@ def _apply_active_target(nsx_cfg: dict[str, Any], target: ResolvedTarget) -> dic
     return cfg
 
 
-def _build_lock_for_app(
+def _prepare_lock_inputs(
     app_dir: Path,
     *,
     board: str | None = None,
     previous: NsxLock | None = None,
     write_side_effects: bool = True,
     use_locked_closure_on_metadata_error: bool = False,
-) -> NsxLock:
-    """Resolve every module in nsx.yml to a commit + content hash.
-
-    For ``kind=git``: ``content_hash`` is the hash of the upstream
-    working tree at the locked commit, computed by cloning into a
-    tempdir and stripping ``.git``. This is the cargo/uv-style
-    upstream-artifact integrity hash and is independent of whether the
-    module is currently materialized under ``modules/<name>/``.
-
-    For ``kind=packaged``: ``content_hash`` is the hash of the packaged
-    source tree shipped inside the ``neuralspotx`` Python wheel.
-
-    For ``kind=local`` with a registered ``local_path``:
-    ``content_hash`` is the hash of the source path (the upstream).
-
-    For ``kind=local`` without a source path (in-tree, e.g.
-    ``nsx module add --local``) and ``kind=vendored``:
-    ``content_hash`` is the hash of ``modules/<name>/`` itself \u2014 the
-    directory IS the source.
-
-    For ``kind=unresolved``: best-effort hash of whatever is on disk
-    (or the previous lock's recorded hash, if nothing is on disk).
-
-    Writable locks reuse matching pinned entries (full SHA or recorded tag).
-    Floating refs are re-resolved through the existing TTL cache. Read-only
-    checks may also reuse matching prior floating resolutions; they do not
-    guarantee upstream freshness.
-
-    When ``write_side_effects`` is False, the build-glue side effects
-    (``cmake/nsx/`` copy, ``modules.cmake``, ``modules/.gitignore``)
-    are skipped. ``nsx lock --check`` uses this so a read-only check
-    truly does not modify the on-disk app.
-
-    When ``use_locked_closure_on_metadata_error`` is True, a read-only
-    check may use the existing ``nsx.lock`` module order if dependency
-    metadata is not materialized locally. This keeps ``nsx lock --check``
-    useful on clean checkouts while preserving the package-manager rule
-    that writable lock refreshes must resolve the real dependency graph.
-    """
-
-    from ..metadata import registry_entry_for_module
-    from ..module_registry import _is_packaged_module
-
+) -> LockInputs:
+    """Resolve configuration and closure once, before targeted name validation."""
     nsx_cfg = _load_app_cfg(app_dir)
     app_cfg = AppConfig.from_mapping(nsx_cfg)
     if app_cfg.is_multi_target():
@@ -298,7 +263,6 @@ def _build_lock_for_app(
     seed_module_names = _module_names_from_nsx(nsx_cfg)
     local_names = _local_module_names(nsx_cfg)
     vendored_names = _vendored_module_names(nsx_cfg)
-    tool_version = _nsx_tool_version()
 
     try:
         module_names = _resolve_module_closure(
@@ -326,6 +290,76 @@ def _build_lock_for_app(
                 "dependency closure."
             ) from exc
 
+    return LockInputs(nsx_cfg, registry, module_names, local_names, vendored_names)
+
+
+def _build_lock_for_app(
+    app_dir: Path,
+    *,
+    board: str | None = None,
+    previous: NsxLock | None = None,
+    write_side_effects: bool = True,
+    use_locked_closure_on_metadata_error: bool = False,
+    prepared: LockInputs | None = None,
+    selected: frozenset[str] | None = None,
+) -> NsxLock:
+    """Resolve every module in nsx.yml to a commit + content hash.
+
+    For ``kind=git``: ``content_hash`` is the hash of the upstream
+    working tree at the locked commit, computed by cloning into a
+    tempdir and stripping ``.git``. This is the cargo/uv-style
+    upstream-artifact integrity hash and is independent of whether the
+    module is currently materialized under ``modules/<name>/``.
+
+    For ``kind=packaged``: ``content_hash`` is the hash of the packaged
+    source tree shipped inside the ``neuralspotx`` Python wheel.
+
+    For ``kind=local`` with a registered ``local_path``:
+    ``content_hash`` is the hash of the source path (the upstream).
+
+    For ``kind=local`` without a source path (in-tree, e.g.
+    ``nsx module add --local``) and ``kind=vendored``:
+    ``content_hash`` is the hash of ``modules/<name>/`` itself \u2014 the
+    directory IS the source.
+
+    For ``kind=unresolved``: best-effort hash of whatever is on disk
+    (or the previous lock's recorded hash, if nothing is on disk).
+
+    Normal writable locks reuse matching pinned entries and refresh floating
+    refs through the TTL cache. Targeted updates force selected Git projects
+    and preserve unrelated matching resolutions. Checks can reuse prior
+    floating resolutions; plain checks do not guarantee upstream freshness.
+
+    When ``write_side_effects`` is False, the build-glue side effects
+    (``cmake/nsx/`` copy, ``modules.cmake``, ``modules/.gitignore``)
+    are skipped. ``nsx lock --check`` uses this so a read-only check
+    truly does not modify the on-disk app.
+
+    When ``use_locked_closure_on_metadata_error`` is True, a read-only
+    check may use the existing ``nsx.lock`` module order if dependency
+    metadata is not materialized locally. This keeps ``nsx lock --check``
+    useful on clean checkouts while preserving the package-manager rule
+    that writable lock refreshes must resolve the real dependency graph.
+    """
+
+    from ..metadata import registry_entry_for_module
+    from ..module_registry import _is_packaged_module
+
+    inputs = prepared or _prepare_lock_inputs(
+        app_dir,
+        board=board,
+        previous=previous,
+        write_side_effects=write_side_effects,
+        use_locked_closure_on_metadata_error=use_locked_closure_on_metadata_error,
+    )
+    nsx_cfg, registry = inputs.config, inputs.registry
+    module_names = inputs.module_names
+    local_names, vendored_names = inputs.local_names, inputs.vendored_names
+    tool_version = _nsx_tool_version()
+    refresh_modules = (
+        selected_git_modules(inputs, selected) if selected is not None else frozenset()
+    )
+
     if write_side_effects:
         # Regenerate the deterministic side-effects that ``nsx sync`` produces
         # at the end of every run. These are not module trees; they are the
@@ -349,7 +383,7 @@ def _build_lock_for_app(
     )
 
     prev_modules = previous.modules if previous else {}
-    refresh_floating_git_refs = write_side_effects
+    refresh_floating_git_refs = write_side_effects and selected is None
     # Per-call cache: a single ``nsx lock`` invocation may have multiple
     # modules sharing one (url, commit) pair; clone once.
     git_artifact_hash_cache: dict[tuple[str, str], str] = {}
@@ -386,13 +420,14 @@ def _build_lock_for_app(
             cons = str(ent.revision or "main")
             prev = prev_modules.get(nm)
             reusable = _reusable_previous_git_resolution(
-                prev,
+                None if nm in refresh_modules else prev,
                 constraint=cons,
                 url=proj.url,
+                project=ent.project,
                 refresh_floating_refs=refresh_floating_git_refs,
             )
             if reusable is not None:
-                # Re-use of a pinned previous SHA short-circuits resolve_ref.
+                # An allowed prior resolution short-circuits resolve_ref.
                 continue
             jobs[(proj.url, cons)] = None
         return list(jobs.keys())
@@ -435,9 +470,10 @@ def _build_lock_for_app(
             cons = str(ent.revision or "main")
             prev = prev_modules.get(nm)
             reusable = _reusable_previous_git_resolution(
-                prev,
+                None if nm in refresh_modules else prev,
                 constraint=cons,
                 url=proj.url,
+                project=ent.project,
                 refresh_floating_refs=refresh_floating_git_refs,
             )
             if reusable is not None:
@@ -621,9 +657,10 @@ def _build_lock_for_app(
         commit: str
         tag: str | None
         reusable = _reusable_previous_git_resolution(
-            previous_entry,
+            None if name in refresh_modules else previous_entry,
             constraint=constraint,
             url=url,
+            project=entry.project,
             refresh_floating_refs=refresh_floating_git_refs,
         )
         if reusable is not None:
@@ -725,6 +762,8 @@ def _build_lock_for_app(
             commit=commit,
         )
 
+    if selected is not None:
+        validate_materialization(app_dir, lock)
     _preserve_unchanged_timestamps(previous, lock)
     warn_unpinned_git_constraints(lock)
     return lock
@@ -813,9 +852,9 @@ def lock_app_impl(
             single combined ``nsx.lock`` (``targets:`` map).
         update: Invalidate the resolve cache and reconsider prior resolutions
             for all modules, or the named modules when supplied.
-        modules: Select prior entries to reconsider with ``update=True``.
-            Alone this has no effect. Other floating refs may also refresh
-            during writable locking; this is not an isolation guarantee.
+        modules: Select projects through module names with ``update=True``.
+            Alone this has no effect. Unrelated matching Git resolutions
+            are preserved; new entries and changed sources/constraints resolve.
         check: Read-only mode. Resolve as usual but, instead of writing,
             compare against the on-disk lock and raise
             :class:`NSXError` when they would differ. Useful in CI to
@@ -839,17 +878,31 @@ def lock_app_impl(
     # so it does not need the per-app advisory lock and CI can verify
     # multiple apps in parallel without contention.
     if check:
+        prepared = _prepare_targeted_inputs(app_dir, boards, update, modules, check=True)
         results = [
             _lock_app_impl_unlocked(
-                app_dir, board=b, update=update, modules=modules, check=True, quiet=quiet
+                app_dir,
+                board=b,
+                update=update,
+                modules=modules,
+                check=True,
+                quiet=quiet,
+                prepared=prepared.get(b),
             )
             for b in boards
         ]
         return results[0]
     with app_lock(app_dir):
+        prepared = _prepare_targeted_inputs(app_dir, boards, update, modules, check=False)
         results = [
             _lock_app_impl_unlocked(
-                app_dir, board=b, update=update, modules=modules, check=False, quiet=quiet
+                app_dir,
+                board=b,
+                update=update,
+                modules=modules,
+                check=False,
+                quiet=quiet,
+                prepared=prepared.get(b),
             )
             for b in boards
         ]
@@ -875,6 +928,32 @@ def lock_app_impl(
     return results[0]
 
 
+def _prepare_targeted_inputs(
+    app_dir: Path,
+    boards: list[str],
+    update: bool,
+    modules: list[str] | None,
+    *,
+    check: bool,
+) -> dict[str, LockInputs]:
+    if not update or not modules:
+        return {}
+    prepared = {
+        board: _prepare_lock_inputs(app_dir, board=board, write_side_effects=not check)
+        for board in boards
+    }
+    present = {name for inputs in prepared.values() for name in inputs.module_names}
+    unknown = set(modules) - present
+    if unknown:
+        raise NSXConfigError(
+            "Selected modules are absent from the requested target closures: "
+            + ", ".join(sorted(unknown))
+            + ". Check module names and board selection, or run a full update. "
+            "No lock sections were written."
+        )
+    return prepared
+
+
 def _lock_app_impl_unlocked(
     app_dir: Path,
     *,
@@ -883,6 +962,7 @@ def _lock_app_impl_unlocked(
     modules: list[str] | None = None,
     check: bool = False,
     quiet: bool = False,
+    prepared: LockInputs | None = None,
 ) -> NsxLock:
     board_key = _lock_board_key(_load_app_cfg(app_dir), board)
     try:
@@ -907,19 +987,7 @@ def _lock_app_impl_unlocked(
 
         _resolve_cache.invalidate_all()
 
-        if previous and modules:
-            # Drop the named entries from `previous` so they get re-resolved.
-            kept = {n: e for n, e in previous.modules.items() if n not in set(modules)}
-            previous = NsxLock(
-                schema_version=previous.schema_version,
-                generated_at=previous.generated_at,
-                nsx_tool_version=previous.nsx_tool_version,
-                manifest_path=previous.manifest_path,
-                manifest_hash=previous.manifest_hash,
-                target=previous.target,
-                modules=kept,
-            )
-        elif previous and not modules:
+        if previous and not modules:
             previous = None  # full refresh
 
     lock = _build_lock_for_app(
@@ -928,6 +996,8 @@ def _lock_app_impl_unlocked(
         previous=previous,
         write_side_effects=not check,
         use_locked_closure_on_metadata_error=bool(check and not update and on_disk_lock),
+        prepared=prepared,
+        selected=frozenset(modules) if update and modules else None,
     )
     lock_file = lock_path(app_dir)
 
@@ -987,7 +1057,7 @@ def _diff_locks(previous: NsxLock | None, fresh: NsxLock) -> list[str]:
     """Return a human-readable list of differences relevant to drift detection.
 
     Compares only the resolution-affecting fields (manifest hash, kind,
-    constraint, commit, content_hash) — not timestamps or the tool
+    source identity, constraint, commit, content_hash) — not timestamps or the tool
     version, which legitimately move on every regenerate.
     """
 
@@ -1009,6 +1079,16 @@ def _diff_locks(previous: NsxLock | None, fresh: NsxLock) -> list[str]:
     for name in sorted(prev_names & fresh_names):
         a = previous.modules[name]
         b = fresh.modules[name]
+        # Registry inputs can change independently of nsx.yml. Identical
+        # commits/content do not imply identical source or materialization.
+        for label, old, new in (
+            ("project", a.project, b.project),
+            ("source URL", a.url, b.url),
+            ("vendored path", Path(a.vendored_at), Path(b.vendored_at)),
+        ):
+            if old != new:
+                # URL values may contain credentials; report only the field.
+                diffs.append(f"~ {name}: {label} differs")
         if a.kind != b.kind:
             diffs.append(f"~ {name}: kind {a.kind} -> {b.kind}")
         if a.constraint != b.constraint:

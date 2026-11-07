@@ -154,7 +154,7 @@ lock, and the third builds without either being allowed to move.
 ```bash
 nsx outdated                        # what has moved upstream
 nsx lock --update                   # clear cache and reconsider all resolutions
-nsx lock --module nsx-audio         # reconsider a selected entry; implies --update
+nsx lock --module nsx-audio         # refresh the selected project; implies --update
 nsx update                          # re-resolve and sync in one step
 ```
 
@@ -162,14 +162,38 @@ nsx update                          # re-resolve and sync in one step
 has no upstream tip to compare against. It tells you which modules it skipped and why, and
 `--json` gives `checked`, `skipped` and `outdated_count` for a script.
 
-`nsx update` is `lock --update` followed by `sync`. It prompts before changing the lock
-unless you pass `--yes`.
+`nsx update` is `lock --update` followed by `sync`. Its preliminary report shows
+upstream availability for the default target, **not a targeted change plan**; it
+may include unselected projects. Three or more outdated modules in that report
+require confirmation (or `--yes`), even for a targeted request.
 
-Selection is not an isolation guarantee: writable `lock --module X` and
-`update --module X` can also refresh unrelated floating refs. Matching unselected
-full-SHA/tag entries may be reused. In the Python API, `lock_app(modules=["X"])`
-alone does not request an update; pass `update=True` explicitly. This differs from
-the CLI's `lock --module X`, which implies `--update`.
+`lock --module X` and `update --module X` refresh every Git module belonging to X's
+registry project in each applicable target closure. Modules sharing a project share
+one vendored source directory. Unrelated projects retain matching prior Git commits
+and tags, including floating branches. Separate projects sharing a URL are not
+selected together. Conflicting Git commits or mixed Git/unresolved rows sharing one
+directory are rejected before writing the affected lock section; align revisions,
+retry unreachable refs, or give separate projects distinct paths.
+
+This preserves compatible Git resolutions, not the entire lockfile: changed project
+identities, URLs or constraints resolve normally, new dependencies are added, removed
+dependencies disappear, and local/vendored/packaged content is rehashed. Closure uses
+the existing metadata acquisition rules, including app-local metadata precedence;
+it does not discover a new remote dependency graph at the updated commit. If upstream
+metadata changes, materialize it with `sync` and run `lock` again. A normal writable
+`lock` refreshes floating refs; review that subsequent diff too.
+
+Without a usable prior lock there are no resolutions to preserve. Unknown selections
+fail before lock sections are written. With multiple targets, a selection need only
+exist in one requested target; it applies where present. A board-restricted operation
+preserves other board sections. Later failures are not an all-target transaction.
+`lock --check --update --module X` uses the same selection rules without writing the
+lock or build glue; cache changes are still possible.
+
+In the Python API, `lock_app(modules=["X"])` alone does not request an update;
+pass `update=True` explicitly. CLI `lock --module X` implies `--update`. None or an
+empty list with `update=True` requests a full refresh. `update_app` locks all targets
+and syncs the default target, retaining its existing shared-source behavior.
 
 Review the diff to `nsx.lock` before committing an update. It is the only record of what
 your firmware is built from.

@@ -152,8 +152,9 @@ class AppLockRequest:
     Attributes:
         app_dir: App directory containing ``nsx.yml``.
         update: Invalidate the resolve cache and reconsider prior resolutions.
-        modules: Select entries to reconsider with ``update=True``; alone this
-            has no effect. Other floating refs may also refresh on writes.
+        modules: Select Git projects through their module names with ``update=True``;
+            alone this has no effect. Unrelated matching Git resolutions are
+            preserved; new entries and changed sources/constraints still resolve.
         check: Do not write lock/build glue; fail on manifest/resolution drift.
             Matching prior branch SHAs may be reused, so this is not an
             upstream freshness check.
@@ -216,7 +217,8 @@ class AppUpdateRequest:
 
     Attributes:
         app_dir: App directory containing ``nsx.yml``.
-        modules: Optional list of module names to update; ``None`` means all.
+        modules: Module names selecting projects to update; ``None`` or empty
+            means all. Unrelated matching Git resolutions are preserved.
         timeout_s: Per-subprocess wall-clock budget (seconds).  Applied
             to every individual ``git`` subprocess invoked during the
             re-resolve and re-vendor phases.

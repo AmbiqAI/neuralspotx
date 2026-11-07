@@ -82,6 +82,12 @@ change — see "Project Record Lifecycle" in
 the metadata model reference on the docs site and
 `neuralspotx.registry_policy.orphaned_registry_project_report`.
 
+Targeted lock updates select Git registry projects through module names, matching
+the project vendoring unit. Preserve unrelated compatible prior Git resolutions;
+new entries and changed project/URL/constraint inputs still resolve. Keep selection
+and reuse in shared operations and validate targeted shared-directory consistency
+before writing the affected lock section.
+
 ### Library-First Direction
 
 The intended layering is:
