@@ -49,8 +49,14 @@ def validate_materialization(app_dir: Path, lock: NsxLock) -> None:
     for rows in groups.values():
         if len(rows) < 2:
             continue
-        identities = {(row.kind, row.url, row.commit, row.content_hash) for _, row in rows}
-        if len(identities) > 1:
+        if all(row.kind == LockKind.UNRESOLVED for _, row in rows):
+            # Unresolved rows verify local content; no remote identity is
+            # materialized. Different URLs can describe the same fallback tree.
+            consistent = len({row.content_hash for _, row in rows}) == 1
+        else:
+            identities = {(row.kind, row.url, row.commit, row.content_hash) for _, row in rows}
+            consistent = len(identities) == 1
+        if not consistent:
             names = ", ".join(sorted(name for name, _ in rows))
             raise NSXConfigError(
                 f"Targeted update for board '{lock.target.get('board', '<unspecified>')}' "

@@ -326,3 +326,43 @@ def test_shared_project_update_then_frozen_sync_from_local_git(
     sync_app_impl(app.root)
     assert (app.root / "modules/shared/payload.txt").read_text() == "updated artifact\n"
     sync_app_impl(app.root, frozen=True)
+
+
+def test_unresolved_only_shared_directory_uses_content_identity(app: App) -> None:
+    import shutil
+
+    app.add("one")
+    app.add("two")
+    # Two offline sources describe one local fallback artifact.
+    shutil.copytree(app.root / "modules/two/two", app.root / "modules/one/two")
+    app.config["module_registry"]["projects"]["two"]["path"] = "modules/one"
+    app.save()
+    app.remote.clear()
+    old = lock_app_impl(app.root)
+    result = lock_app_impl(app.root, update=True, modules=["one"])
+    assert {row.kind for row in result.modules.values()} == {LockKind.UNRESOLVED}
+    assert result.modules["one"].url != result.modules["two"].url
+    assert result.modules["one"].content_hash == result.modules["two"].content_hash
+    assert result.modules["one"].content_hash == old.modules["one"].content_hash
+
+
+def test_unresolved_only_conflicting_hashes_are_rejected(tmp_path: Path) -> None:
+    from neuralspotx.nsx_lock import NsxLock, ResolvedModule
+    from neuralspotx.operations._lock_selection import validate_materialization
+
+    lock = NsxLock(
+        modules={
+            name: ResolvedModule(
+                project=name,
+                kind=LockKind.UNRESOLVED,
+                constraint="main",
+                vendored_at="modules/shared",
+                content_hash="sha256:" + char * 64,
+                acquired_at="",
+                url=f"https://example.invalid/{name}.git",
+            )
+            for name, char in (("one", "a"), ("two", "b"))
+        }
+    )
+    with pytest.raises(NSXConfigError, match="resolved artifacts differ"):
+        validate_materialization(tmp_path, lock)
