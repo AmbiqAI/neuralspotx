@@ -1471,3 +1471,107 @@ def test_hash_tree_orders_files_case_sensitively_on_every_os(tmp_path: Path) -> 
         expected.update(b"\n")
 
     assert hash_tree(tmp_path) == "sha256:" + expected.hexdigest()
+
+
+@pytest.mark.parametrize("ref", ["main", "deadbee"])
+@pytest.mark.parametrize("multi_target", [False, True])
+def test_unpinned_warnings_in_api_lock_and_readonly_check(
+    app: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+    ref: str,
+    multi_target: bool,
+) -> None:
+    import logging
+
+    from neuralspotx import api
+    from neuralspotx._io import Event
+
+    calls: list[str] = []
+
+    def resolve(url: str, revision: str) -> tuple[str, str]:
+        calls.append(revision)
+        return "a" * 40, "branch"
+
+    monkeypatch.setattr(operations._lock, "resolve_ref", resolve)
+    monkeypatch.setattr(operations._lock, "hash_git_artifact", lambda *_: "sha256:" + "f" * 64)
+    _write_nsx_yml(
+        app, [{"name": "fake-mod"}], registry_overrides=_pinned_git_project_overrides(ref)
+    )
+    _write_fake_git_metadata(app)
+    if multi_target:
+        manifest_path = app / "nsx.yml"
+        manifest = yaml.safe_load(manifest_path.read_text())
+        manifest.pop("target")
+        manifest["targets"] = {
+            "default": "apollo510_evb",
+            "supported": ["apollo510_evb", "apollo510b_evb"],
+        }
+        manifest_path.write_text(yaml.safe_dump(manifest))
+    count = 2 if multi_target else 1
+    logger = logging.getLogger("neuralspotx")
+    monkeypatch.setattr(logger, "handlers", [caplog.handler])
+    monkeypatch.setattr(logger, "propagate", False)
+    caplog.set_level("WARNING", logger="neuralspotx")
+    events: list[Event] = []
+    api.lock_app(app, quiet=True, emit=events.append)
+    assert len([r for r in caplog.records if "Unpinned Git" in r.message]) == count
+    assert not any("Unpinned Git" in e.message for e in events)
+    before = {p.relative_to(app): p.read_bytes() for p in app.rglob("*") if p.is_file()}
+    caplog.clear()
+    api.lock_app(app, check=True, emit=events.append)
+    assert calls == [ref] * count  # Plain check keeps the prior branch SHA; no freshness claim.
+    assert len([r for r in caplog.records if "Unpinned Git" in r.message]) == count
+    after = {p.relative_to(app): p.read_bytes() for p in app.rglob("*") if p.is_file()}
+    assert before == after
+
+
+def test_targeted_update_keeps_pins_but_can_refresh_other_branches(
+    app: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    import copy
+
+    from neuralspotx import _resolve_cache
+
+    registry = copy.deepcopy(_GIT_PROJECT_OVERRIDES)
+    modules = []
+    for name, ref in (("selected", "v1"), ("floating", "main"), ("pinned", "v1")):
+        registry["projects"][name] = {
+            "url": f"https://example.com/{name}.git",
+            "revision": ref,
+            "path": f"modules/{name}",
+        }
+        registry["modules"][name] = {
+            "project": name,
+            "metadata": f"modules/{name}/nsx/nsx-module.yaml",
+        }
+        modules.append({"name": name})
+        _write_local_project_with_nested_nsx(app / "modules" / name, module_name=name)
+    _write_nsx_yml(app, modules, registry_overrides=registry)
+    epoch = ["a"]
+    calls: list[str] = []
+
+    def resolve(url: str, ref: str) -> tuple[str, str]:
+        calls.append(url)
+        return epoch[0] * 40, "tag" if ref == "v1" else "branch"
+
+    monkeypatch.setattr(operations._lock, "resolve_ref", resolve)
+    monkeypatch.setattr(operations._lock, "hash_git_artifact", lambda *_: "sha256:" + "f" * 64)
+    invalidations: list[bool] = []
+    monkeypatch.setattr(_resolve_cache, "invalidate_all", lambda: invalidations.append(True))
+    lock_app_impl(app)
+    calls.clear()
+    epoch[0] = "b"
+    result = lock_app_impl(app, update=True, modules=["selected"])
+    assert result.modules["selected"].commit == "b" * 40
+    assert result.modules["floating"].commit == "b" * 40
+    assert result.modules["pinned"].commit == "a" * 40
+    assert sorted(calls) == ["https://example.com/floating.git", "https://example.com/selected.git"]
+    assert invalidations == [True]
+    # Full update also reconsiders the previously retained tag.
+    calls.clear()
+    epoch[0] = "c"
+    lock_app_impl(app, update=True)
+    assert len(calls) == 3 and invalidations == [True, True]

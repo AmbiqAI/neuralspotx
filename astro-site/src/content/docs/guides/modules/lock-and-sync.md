@@ -38,29 +38,49 @@ land on different module sets in the same lock file. The full schema is on the g
 
 ## Pinning a module
 
-By default a module resolves to whatever revision NSX's registry pins for it. To hold one
-module somewhere else, give the entry a revision in `nsx.yml`:
+By default a module uses its packaged registry revision. To override a project's
+revision in `nsx.yml`, use the registry override (this applies to its modules):
 
 ```yaml
-modules:
-  - name: nsx-audio
-    revision: v0.4.1
+module_registry:
+  projects:
+    nsx-ambiq-sdk:
+      revision: v5.2.28
 ```
 
-`revision` accepts a tag, a branch or a commit. NSX resolves it through the remote at lock
-time and records the commit it landed on, so the lock is exact even when the constraint is
-not:
+For a module-specific override, use `module_registry.modules.<module>.revision`.
+A `revision` field directly under the app's top-level `modules` entries does not
+set the effective registry revision. Check the resulting constraints in `nsx.lock`.
 
-- A **commit** is already exact. It resolves to itself and never moves.
-- A **tag** is exact in practice. It resolves to the commit the tag points at, and it is
-  recorded alongside the commit so the lock says which tag you asked for.
-- A **branch** is a moving constraint. It resolves to the tip at lock time, and re-running
-  `nsx lock --update` moves it. Between updates the lock still pins a single commit, so
-  the build does not shift underneath you.
+`revision` accepts a tag, branch or full 40-character commit SHA. Git-backed lock
+entries record exact commits even when their constraints can move:
 
-Pin a branch only when you are tracking something you also control. `nsx outdated` is the
-tool for noticing that a pinned module has fallen behind, rather than a floating ref that
-moves without telling you.
+- A **full commit SHA** resolves to itself.
+- A **tag** records both the tag and its resolved commit. Matching previous tag
+  resolutions can be reused. If upstream moves a tag, an explicit update may change
+  its resolved commit; a committed lock remains the reproducibility anchor.
+- A **branch** can resolve differently on subsequent `nsx lock` writes. Normal
+  locking uses the resolve-ref cache (default TTL: 300 seconds); `--update` clears
+  that cache. Re-resolution does not necessarily mean a fresh network lookup.
+
+### Unpinned Git diagnostics
+
+Each resolved board lock warns about Git constraints that are neither full SHAs nor
+recorded tags, grouping modules by project, source and revision. The warning also
+appears during `nsx lock --check`; it does not fail the command or imply that a
+recorded commit has changed. To stabilize future resolution, set an explicit tag
+or full commit SHA in the registry override above, then review the new lock.
+
+Packaged, local and vendored entries are excluded. In particular, the packaged
+`neuralspotx@main` registry self-reference represents bytes from the installed tool,
+recorded as `kind: packaged`, rather than a remotely resolved branch. This is based
+on source kind, not a generic warning exemption for a project name. Unresolved
+sources retain their separate fallback warnings; they do not have exact commits.
+
+These diagnostics use the `neuralspotx` logger (stderr in the CLI, suppressed by
+normal `-q` filtering). API callers capture them with a logging handler, not the
+`emit=` callback. API `quiet=True` suppresses summaries, not warnings. The separate
+age-based stale-lock warning and its settings are unchanged.
 
 :::caution[A git source in a module entry is rejected]
 The project loader rejects `source.git` before resolving or downloading dependencies.
@@ -95,8 +115,12 @@ nsx sync --frozen         # fail if modules/ differs from the lock; fetch only w
 nsx outdated --exit-code  # fail if a git module lags its upstream
 ```
 
-`nsx lock --check` is read-only. It prints what would change and exits non-zero if
-anything would, which catches an `nsx.yml` edit that was never locked.
+`nsx lock --check` does not write the lock or build glue, but can use or populate
+caches. It checks manifest/content consistency and exits non-zero on drift. Matching
+previous Git resolutions, including branch SHAs, can be reused: a successful check
+is not proof that branches match their latest upstream tips. `nsx lock --check
+--update` clears the resolve cache and reconsiders previous resolutions without
+writing the lock/build glue; it reports drift rather than applying it.
 
 `nsx sync --frozen` refuses to correct. Every form of drift becomes an error naming the
 module:
@@ -129,8 +153,8 @@ lock, and the third builds without either being allowed to move.
 
 ```bash
 nsx outdated                        # what has moved upstream
-nsx lock --update                   # re-resolve everything to upstream tip
-nsx lock --update --module nsx-audio  # re-resolve one module
+nsx lock --update                   # clear cache and reconsider all resolutions
+nsx lock --module nsx-audio         # reconsider a selected entry; implies --update
 nsx update                          # re-resolve and sync in one step
 ```
 
@@ -140,6 +164,12 @@ has no upstream tip to compare against. It tells you which modules it skipped an
 
 `nsx update` is `lock --update` followed by `sync`. It prompts before changing the lock
 unless you pass `--yes`.
+
+Selection is not an isolation guarantee: writable `lock --module X` and
+`update --module X` can also refresh unrelated floating refs. Matching unselected
+full-SHA/tag entries may be reused. In the Python API, `lock_app(modules=["X"])`
+alone does not request an update; pass `update=True` explicitly. This differs from
+the CLI's `lock --module X`, which implies `--update`.
 
 Review the diff to `nsx.lock` before committing an update. It is the only record of what
 your firmware is built from.
