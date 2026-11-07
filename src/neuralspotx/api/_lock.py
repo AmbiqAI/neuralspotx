@@ -35,6 +35,16 @@ def lock_app(
     Returns the resolved :class:`~neuralspotx.nsx_lock.NsxLock`. The
     filesystem path to the lock file is available on ``lock.path``.
     *timeout_s* applies per ``git`` / ``git ls-remote`` subprocess.
+    Normal writes re-resolve floating constraints through the TTL cache;
+    matching full-SHA/tag resolutions can be reused. ``update=True`` clears
+    the cache and reconsiders all or selected prior entries. ``modules`` only
+    selects entries when ``update=True``; other floating refs may also refresh.
+    Plain ``check=True`` can reuse prior branch SHAs and does not guarantee
+    upstream freshness. Checks do not write lock/build glue, but may use caches.
+
+    Unpinned Git diagnostics use the ``neuralspotx`` logger, not ``emit``.
+    Attach a logging handler to capture them; ``quiet`` only hides summaries.
+
     *resolve_ttl_s* overrides the ``NSX_RESOLVE_TTL`` env for this call
     (e.g. ``1800`` for 30 min in long workflows; ``0`` to disable).
     """
@@ -134,6 +144,7 @@ def update_app(
     """Re-resolve module constraints to upstream tip and re-vendor.
 
     Equivalent to ``nsx lock --update [--module ...] && nsx sync``.
+    Selecting modules does not preserve unrelated floating refs during writes.
     *timeout_s* applies per individual ``git`` subprocess invoked
     during the re-resolve and re-vendor phases.
     """

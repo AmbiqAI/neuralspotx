@@ -61,6 +61,7 @@ from ..project_config import (
     validate_app_module_alignment,
 )
 from ._common import OutdatedStatus, _log
+from ._lock_diagnostics import warn_unpinned_git_constraints
 
 
 def _looks_like_full_sha(ref: str) -> bool:
@@ -164,8 +165,8 @@ def _reusable_previous_git_resolution(
 ) -> tuple[str, str | None] | None:
     """Return ``(commit, tag)`` from *previous_entry* when safe to reuse.
 
-    Only pinned git constraints qualify; every other case yields ``None``
-    so the caller re-resolves against the remote.
+    Writable resolution only reuses matching full-SHA or recorded-tag entries.
+    Read-only checks may also reuse matching floating entries.
     """
 
     if previous_entry is None:
@@ -261,10 +262,10 @@ def _build_lock_for_app(
     For ``kind=unresolved``: best-effort hash of whatever is on disk
     (or the previous lock's recorded hash, if nothing is on disk).
 
-        Re-uses entries from *previous* (the existing lock) only when the
-        constraint is pinned (exact SHA or previously-resolved tag).
-        Floating refs such as branches are re-resolved on every
-        ``nsx lock`` so the lockfile tracks the current upstream tip.
+    Writable locks reuse matching pinned entries (full SHA or recorded tag).
+    Floating refs are re-resolved through the existing TTL cache. Read-only
+    checks may also reuse matching prior floating resolutions; they do not
+    guarantee upstream freshness.
 
     When ``write_side_effects`` is False, the build-glue side effects
     (``cmake/nsx/`` copy, ``modules.cmake``, ``modules/.gitignore``)
@@ -626,7 +627,7 @@ def _build_lock_for_app(
             refresh_floating_refs=refresh_floating_git_refs,
         )
         if reusable is not None:
-            # Re-use the previously resolved SHA only for pinned refs.
+            # Reuse permitted by the writable/read-only policy above.
             commit, tag = reusable
         else:
             try:
@@ -725,6 +726,7 @@ def _build_lock_for_app(
         )
 
     _preserve_unchanged_timestamps(previous, lock)
+    warn_unpinned_git_constraints(lock)
     return lock
 
 
@@ -809,13 +811,16 @@ def lock_app_impl(
         board: Restrict locking to this board. ``None`` locks every
             supported board. All boards are written as sections of the
             single combined ``nsx.lock`` (``targets:`` map).
-        update: When True, re-resolve every module's constraint to its
-            current upstream HEAD/tag (equivalent to ``nsx update``).
-        modules: When given alongside ``update``, only re-resolve these.
+        update: Invalidate the resolve cache and reconsider prior resolutions
+            for all modules, or the named modules when supplied.
+        modules: Select prior entries to reconsider with ``update=True``.
+            Alone this has no effect. Other floating refs may also refresh
+            during writable locking; this is not an isolation guarantee.
         check: Read-only mode. Resolve as usual but, instead of writing,
             compare against the on-disk lock and raise
             :class:`NSXError` when they would differ. Useful in CI to
-            assert that the lock is up to date with ``nsx.yml``.
+            assert consistency with ``nsx.yml``. Matching prior branch SHAs
+            may be reused; this does not guarantee upstream freshness.
         quiet: Suppress the post-write "Wrote ... / modules: ..."
             summary print. Useful when ``nsx lock`` is invoked
             implicitly by another command (e.g. the lock-missing path

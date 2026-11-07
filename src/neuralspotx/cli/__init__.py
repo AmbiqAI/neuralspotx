@@ -322,8 +322,8 @@ def cmd_clean(args: argparse.Namespace) -> None:
 
 @command_hint("lock", _C.MODULES, _S.APP, "nsx sync", "nsx configure", "nsx build")
 def cmd_lock(args: argparse.Namespace) -> None:
-    # `--module X` re-resolves only the named module(s); per its `--help`
-    # text it implies `--update` (the modules filter is a no-op without it).
+    # CLI selection implies update; the API requires update=True explicitly.
+    # Other floating constraints may also refresh during writable resolution.
     update = bool(args.update) or bool(args.modules)
     api.lock_app(
         resolve_app_dir(args.app_dir),
@@ -867,19 +867,28 @@ def _build_parser() -> argparse.ArgumentParser:
     p_lock.add_argument(
         "--update",
         action="store_true",
-        help="Re-resolve constraints to current upstream tip (otherwise reuses prior SHAs)",
+        help=(
+            "Clear the resolve cache and reconsider prior resolutions; "
+            "normal lock also re-resolves floating refs through the TTL cache"
+        ),
     )
     p_lock.add_argument(
         "--module",
         dest="modules",
         action="append",
         default=[],
-        help="Only re-resolve the named module (may be repeated; implies --update)",
+        help=(
+            "Reconsider the named module (repeatable; implies --update); "
+            "other floating refs may also refresh"
+        ),
     )
     p_lock.add_argument(
         "--check",
         action="store_true",
-        help=("Exit non-zero if nsx.lock is out of date with nsx.yml (do not write); useful in CI"),
+        help=(
+            "Check manifest/resolution consistency without writing lock/build glue; "
+            "may reuse prior branch SHAs, so does not guarantee upstream freshness"
+        ),
     )
     _add_timeout(p_lock)
     p_lock.set_defaults(func=cmd_lock)
@@ -948,7 +957,7 @@ def _build_parser() -> argparse.ArgumentParser:
         dest="modules",
         action="append",
         default=[],
-        help="Only update the named module (may be repeated)",
+        help=("Reconsider the named module (repeatable); other floating refs may also refresh"),
     )
     p_update.add_argument(
         "--yes",

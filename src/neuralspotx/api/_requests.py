@@ -151,9 +151,12 @@ class AppLockRequest:
 
     Attributes:
         app_dir: App directory containing ``nsx.yml``.
-        update: Re-resolve module constraints to current upstream HEAD/tag.
-        modules: When given alongside ``update``, only re-resolve these.
-        check: Read-only mode — fail if ``nsx.lock`` would change.
+        update: Invalidate the resolve cache and reconsider prior resolutions.
+        modules: Select entries to reconsider with ``update=True``; alone this
+            has no effect. Other floating refs may also refresh on writes.
+        check: Do not write lock/build glue; fail on manifest/resolution drift.
+            Matching prior branch SHAs may be reused, so this is not an
+            upstream freshness check.
         quiet: Suppress the post-write summary print.
         timeout_s: Per-subprocess wall-clock budget (seconds).
         resolve_ttl_s: Override the resolve-ref cache TTL for this call.
