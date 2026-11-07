@@ -405,3 +405,51 @@ def test_materialized_missing_copy_never_falls_back_to_external_metadata(tmp_pat
         validate_materialized_requirements(
             ["dep", "parent"], app_dir=tmp_path, nsx_cfg=cfg, registry=registry
         )
+
+
+@pytest.mark.parametrize("overlay_invalid", [True, False])
+def test_cached_build_reads_board_overlay_not_project_mirror(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, overlay_invalid: bool
+) -> None:
+    from neuralspotx.operations import _build
+    from neuralspotx.operations._lock import lock_app_impl
+    from neuralspotx.operations._sync import sync_app_impl
+
+    board = "nsx-board-apollo510-evb"
+    app = locked_app(tmp_path)
+    source = app / "board-checkout"
+    relative = "src/neuralspotx/boards/apollo510_evb/nsx-module.yaml"
+    source_metadata = source / relative
+    source_metadata.parent.mkdir(parents=True)
+    source_metadata.write_text(yaml.safe_dump(manifest(board, required=["dep"])))
+    (source_metadata.parent / "board.cmake").write_text("# test board overlay")
+    cfg = yaml.safe_load((app / "nsx.yml").read_text())
+    cfg["modules"].append(board)
+    cfg["module_registry"]["projects"]["board-project"] = {
+        "local_path": str(source),
+        "revision": "v1",
+    }
+    cfg["module_registry"]["modules"][board] = {
+        "project": "board-project",
+        "revision": "v1",
+        "metadata": relative,
+    }
+    (app / "nsx.yml").write_text(yaml.safe_dump(cfg))
+    lock_app_impl(app)
+    sync_app_impl(app)
+    overlay = app / "boards/apollo510_evb/nsx-module.yaml"
+    mirror = app / "modules/board-project" / relative
+    invalid = manifest(board, required=[{"name": "dep", "version": ">=2"}])
+    valid = manifest(board, required=["dep"])
+    overlay.write_text(yaml.safe_dump(invalid if overlay_invalid else valid))
+    mirror.write_text(yaml.safe_dump(valid if overlay_invalid else invalid))
+    (app / "build/apollo510_evb/build.ninja").write_text("# configured")
+    calls: list[object] = []
+    monkeypatch.setattr(_build, "run", lambda *a, **k: calls.append(a))
+    if overlay_invalid:
+        with pytest.raises(NSXModuleError, match="nsx-board-apollo510-evb.*dep.*1.0"):
+            _build.build_app_impl(app)
+        assert calls == []
+    else:
+        _build.build_app_impl(app)
+        assert len(calls) == 1

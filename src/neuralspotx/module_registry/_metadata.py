@@ -23,6 +23,7 @@ from ..project_config import (
     _read_yaml,
     _registry_project_entry,
     _vendored_metadata_relpath,
+    _vendored_target_dir,
 )
 
 # ---------------------------------------------------------------------------
@@ -207,7 +208,15 @@ def _load_materialized_module_metadata(
     Do not fall back to another copy or reuse the resolution cache here.
     """
     entry = registry_entry_for_module(registry, module_name)
-    source = app_dir / _module_source_dir_relative_to_app(module_name, registry, nsx_cfg)
+    project = _registry_project_entry(registry, entry.project)
+    metadata_rel = _metadata_path_relative_to_project(Path(entry.metadata), project.path)
+    if module_name.startswith("nsx-board-") and "boards" in metadata_rel.parts:
+        # nsx_bootstrap_app includes boards/<board>/board.cmake directly.
+        # Local project overrides keep this separate overlay in sync via
+        # _sync_local_board_overlay; its metadata can differ on cached builds.
+        source = _vendored_target_dir(app_dir, module_name, entry.metadata)
+    else:
+        source = app_dir / _module_source_dir_relative_to_app(module_name, registry, nsx_cfg)
     path = source / Path(entry.metadata).name
     if not path.is_file():
         raise NSXConfigError(
