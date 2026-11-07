@@ -970,7 +970,7 @@ def _build_parser() -> argparse.ArgumentParser:
         help=(
             "Confirm the broad default-target upstream availability gate non-interactively "
             "(may include unselected projects). Required when "
-            f"{_UPDATE_CONFIRM_THRESHOLD}+ modules will move and stdin is not a tty."
+            f"{_UPDATE_CONFIRM_THRESHOLD}+ default-target modules are outdated and stdin is not a tty."
         ),
     )
     _add_timeout(p_update)
