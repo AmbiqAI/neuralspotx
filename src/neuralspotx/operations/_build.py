@@ -36,6 +36,7 @@ from ._hardware import (
     validate_flash_target_name,
 )
 from ._lock import warn_if_lock_stale
+from ._requirements import validate_app_requirements
 from ._sync import _ensure_app_modules, regenerate_active_board_glue
 
 
@@ -226,6 +227,7 @@ def build_app_impl(
             toolchain=toolchain,
             sdk_root=sdk_root,
         )
+    validate_app_requirements(resolved_app_dir, resolved_board)
     resolved_target = target or app_name
     run(
         ["cmake", "--build", str(resolved_build_dir), "--target", resolved_target, "-j", str(jobs)],
@@ -295,6 +297,7 @@ def flash_app_impl(
             probe_serial=probe_serial,
             sdk_root=sdk_root,
         )
+    validate_app_requirements(resolved_app_dir, resolved_board)
     resolved_target = target or app_name
     validate_flash_target_name(resolved_target)
     # Build and validate every executable before invoking its CMake flash

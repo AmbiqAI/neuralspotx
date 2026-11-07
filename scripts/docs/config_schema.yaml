@@ -131,7 +131,7 @@ schemas:
       - {path: support.zephyr, type: bool, required: true, description: "Whether the module ships a Zephyr integration. When true, integrations.zephyr becomes required."}
       - {path: build.cmake.package, type: string, required: true, description: "CMake package name the module exports."}
       - {path: build.cmake.targets, type: list of string, required: true, description: "CMake targets the module exports. Must be non-empty."}
-      - {path: depends.required, type: list of string, required: true, description: "Modules that must be present. May be empty."}
+      - {path: depends.required, type: "list of string or name/version mapping", required: true, description: "Required modules. A mapping has name and optional PEP 440 version constraint checked against module.version. Bare names remain unconstrained. May be empty."}
       - {path: depends.optional, type: list of string, required: true, description: "Modules used when present. May be empty."}
       - {path: compatibility.boards, type: list of string, required: true, description: "Boards the module supports. Must be non-empty."}
       - {path: compatibility.socs, type: list of string, required: true, description: "SoCs the module supports. Must be non-empty."}

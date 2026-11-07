@@ -210,9 +210,9 @@ def validate_nsx_module_metadata(data: dict[str, Any], module_path: str) -> None
     depends = _expect_type(data, "depends", dict, module_path)
     required = _expect_type(depends, "required", list, f"{module_path}.depends")
     _expect_type(depends, "optional", list, f"{module_path}.depends")
-    for idx, dep_name in enumerate(required):
-        if not isinstance(dep_name, str):
-            raise ValueError(f"{module_path}: depends.required[{idx}] must be string module name")
+    from .models._module_dependency import parse_required_dependencies
+
+    parse_required_dependencies(required, module_path)
 
     compatibility = _expect_type(data, "compatibility", dict, module_path)
     boards = _expect_type(compatibility, "boards", list, f"{module_path}.compatibility")

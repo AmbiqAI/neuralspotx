@@ -20,7 +20,7 @@ export interface CatalogModule {
   boards: string[];
   toolchains: string[];
   capabilities: string[];
-  depends: { required: string[]; optional: string[] };
+  depends: { required: string[]; optional: string[]; required_dependencies?: { name: string; version: string | null }[] };
 }
 
 export interface ModuleBrowserProps {
@@ -208,7 +208,7 @@ export default function ModuleBrowser({ modules, wildcard = '*' }: ModuleBrowser
                   <dt>SoCs</dt><dd>{show(module.socs, wildcard)}</dd>
                   <dt>Toolchains</dt><dd>{show(module.toolchains, wildcard)}</dd>
                   <dt>Capabilities</dt><dd>{list(module.capabilities)}</dd>
-                  <dt>Required modules</dt><dd>{list(module.depends.required)}</dd>
+                  <dt>Required modules</dt><dd>{list(module.depends.required_dependencies?.map(dep => dep.version ? `${dep.name} (${dep.version})` : dep.name) ?? module.depends.required)}</dd>
                   <dt>Optional modules</dt><dd>{list(module.depends.optional)}</dd>
                   <dt>Version</dt><dd>{module.version || '—'}</dd>
                 </dl>

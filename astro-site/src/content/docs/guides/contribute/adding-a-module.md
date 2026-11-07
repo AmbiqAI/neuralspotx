@@ -97,3 +97,5 @@ NSX repository: the registry entry, its revision pin, and the tests that cover i
 with an issue on
 [AmbiqAI/neuralspotx](https://github.com/AmbiqAI/neuralspotx/issues); the repository's
 `CONTRIBUTING.md` covers development setup and the review process.
+
+Required dependencies may declare [metadata version constraints](/neuralspotx/guides/modules/custom-modules/#required-dependency-versions). Keep schema 1; existing bare dependency names remain supported.

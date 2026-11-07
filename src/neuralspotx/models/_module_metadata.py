@@ -16,6 +16,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from ._module_dependency import ModuleDependency, parse_required_dependencies
+
 
 @dataclass(frozen=True, slots=True)
 class ModuleMetadata:
@@ -45,7 +47,11 @@ class ModuleMetadata:
 
     @property
     def required_deps(self) -> list[str]:
-        return self.raw["depends"]["required"]
+        return [dep.name for dep in self.required_dependencies]
+
+    @property
+    def required_dependencies(self) -> list[ModuleDependency]:
+        return parse_required_dependencies(self.raw["depends"]["required"], self.name)
 
     @property
     def optional_deps(self) -> list[str]:

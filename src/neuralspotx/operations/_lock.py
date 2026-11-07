@@ -277,7 +277,8 @@ def _prepare_lock_inputs(
         if use_locked_closure_on_metadata_error and previous is not None:
             _log.warning(
                 "could not resolve dependency metadata for all modules (%s); "
-                "using the module closure recorded in nsx.lock for read-only check.",
+                "using the module closure recorded in nsx.lock for read-only check; "
+                "dependency version constraints cannot be certified without metadata.",
                 exc,
             )
             module_names = list(previous.modules)

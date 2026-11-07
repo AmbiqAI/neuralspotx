@@ -8,7 +8,7 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
-from .._errors import NSXResolutionError
+from .._errors import NSXConfigError, NSXResolutionError
 from ..metadata import (
     RegistryModuleEntry,
     registry_entry_for_module,
@@ -16,8 +16,10 @@ from ..metadata import (
 )
 from ..models import ModuleMetadata
 from ..project_config import (
+    _board_overlay_dir,
     _metadata_path_relative_to_project,
     _module_clone_dir,
+    _module_source_dir_relative_to_app,
     _packaged_metadata_path,
     _read_yaml,
     _registry_project_entry,
@@ -179,14 +181,54 @@ def _load_module_metadata(
 
     entry = registry_entry_for_module(registry, module_name)
     metadata_path = _module_metadata_path(module_name, entry, registry, app_dir=app_dir)
-    data = _read_yaml(metadata_path)
-    data = _normalize_legacy_registry_metadata(data, module_name)
-    validate_nsx_module_metadata(data, str(metadata_path))
-    meta = ModuleMetadata.from_raw(data)
+    meta = _read_module_metadata(metadata_path, module_name)
 
     if cache is not None and cache_key is not None:
         cache[cache_key] = meta
     return meta
+
+
+def _read_module_metadata(path: Path, module_name: str) -> ModuleMetadata:
+    data = _normalize_legacy_registry_metadata(_read_yaml(path), module_name)
+    validate_nsx_module_metadata(data, str(path))
+    return ModuleMetadata.from_raw(data)
+
+
+def _load_materialized_module_metadata(
+    module_name: str,
+    registry: dict[str, Any],
+    *,
+    app_dir: Path,
+    nsx_cfg: dict[str, Any],
+) -> ModuleMetadata:
+    """Read only the manifest beside the sources selected by generated CMake.
+
+    Resolution may prefer an external local override or packaged metadata.
+    Compilation uses the app-local mirror, which may differ on cached builds.
+    Do not fall back to another copy or reuse the resolution cache here.
+    """
+    entry = registry_entry_for_module(registry, module_name)
+    project = _registry_project_entry(registry, entry.project)
+    metadata_rel = _metadata_path_relative_to_project(Path(entry.metadata), project.path)
+    if module_name == "nsx-tooling":
+        # App templates include this bootstrap tree directly, even when the
+        # registry also mirrors a local neuralspotx development checkout.
+        source = app_dir / "cmake" / "nsx"
+    elif module_name.startswith("nsx-board-") and "boards" in metadata_rel.parts:
+        # nsx_bootstrap_app includes boards/<board>/board.cmake directly.
+        # Local project overrides keep this separate overlay in sync via
+        # _sync_local_board_overlay; its metadata can differ on cached builds.
+        source = _board_overlay_dir(app_dir, metadata_rel)
+    else:
+        source = app_dir / _module_source_dir_relative_to_app(module_name, registry, nsx_cfg)
+    filename = "nsx-module.yaml" if module_name == "nsx-tooling" else Path(entry.metadata).name
+    path = source / filename
+    if not path.is_file():
+        raise NSXConfigError(
+            f"Build-local metadata for '{module_name}' is missing at {path}. "
+            "Run `nsx sync` to materialize the locked modules before building."
+        )
+    return _read_module_metadata(path, module_name)
 
 
 def packaged_module_metadata_path(

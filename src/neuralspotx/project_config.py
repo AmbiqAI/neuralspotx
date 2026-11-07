@@ -892,6 +892,17 @@ def _vendored_metadata_relpath(metadata: str) -> Path:
     return Path("modules") / path
 
 
+def _board_overlay_dir(app_dir: Path, metadata_relative_to_project: Path) -> Path:
+    """Board overlay included directly by CMake, independent of project layout."""
+    parts = metadata_relative_to_project.parts
+    index = parts.index("boards")
+    if index + 2 >= len(parts):
+        raise NSXConfigError(
+            "Board metadata must reside under boards/<board>/; update the registry entry."
+        )
+    return app_dir / "boards" / parts[index + 1]
+
+
 def _vendored_target_dir(app_dir: Path, module_name: str, metadata: str) -> Path:
     rel = _vendored_metadata_relpath(metadata)
     if rel.parts[:1] == ("boards",) and len(rel.parts) >= 2:
@@ -1247,8 +1258,10 @@ def _run_cmake_configure(
             "Toolchain '%s' is experimental and not fully validated for production use.", tc
         )
 
+    from .operations._requirements import validate_app_requirements
     from .operations._sync import regenerate_active_board_glue
 
+    validate_app_requirements(app_dir, board)
     regenerate_active_board_glue(app_dir, board, build_dir=build_dir)
     toolchain_file = app_dir / "cmake" / "nsx" / "toolchains" / tc_file
     cmd = [

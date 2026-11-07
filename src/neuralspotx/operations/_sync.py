@@ -16,6 +16,7 @@ from .._logging import get_logger
 from ..file_lock import app_lock
 from ..models import AppConfig
 from ..module_registry import _rmtree, _update_module_clone, expand_profile_seeds
+from ..module_registry._requirements import validate_materialized_requirements
 from ..nsx_lock import (
     NSX_TOOLING_AUTOGEN_FILES,
     LockKind,
@@ -29,13 +30,13 @@ from ..nsx_lock import (
 )
 from ..project_config import (
     _board_key_for_app,
+    _board_overlay_dir,
     _copy_packaged_tree,
     _effective_registry,
     _load_app_cfg,
     _load_registry,
     _metadata_path_relative_to_project,
     _registry_project_entry,
-    _vendored_target_dir,
     _write_app_module_file,
     _write_cmake_nsx_gitignore,
     _write_modules_gitignore_for_module_names,
@@ -419,7 +420,7 @@ def _sync_local_board_overlay(
         return 0
 
     source_board_dir = source_dir / metadata_rel.parent
-    destination = _vendored_target_dir(ctx.app_dir, name, registry_entry.metadata)
+    destination = _board_overlay_dir(ctx.app_dir, metadata_rel)
     if not source_board_dir.is_dir():
         raise NSXModuleError(
             f"Local board source for '{name}' is missing: {source_board_dir}. "
@@ -654,6 +655,17 @@ def _sync_app_impl_unlocked(
         # what's already on disk matches their own expected hash.
         if vendored_dir in vendored_paths:
             _verify_duplicate_path(ctx, name, entry, vendored_dir)
+            # Project mirrors are shared, but each board has its own bootstrap
+            # overlay. A preceding sibling module must not skip that overlay.
+            if entry.kind == LockKind.LOCAL and name.startswith("nsx-board-"):
+                try:
+                    project = _registry_project_entry(ctx.registry, entry.project)
+                except (ValueError, KeyError, TypeError):
+                    project = None
+                if project is not None and project.local_path:
+                    changed += _sync_local_board_overlay(
+                        ctx, name, Path(project.local_path).expanduser().resolve(), project.path
+                    )
             continue
 
         if entry.kind == LockKind.LOCAL:
@@ -674,6 +686,9 @@ def _sync_app_impl_unlocked(
             _copy_packaged_tree("neuralspotx", "cmake", cmake_nsx)
         _write_cmake_nsx_gitignore(app_dir)
         ordered_modules = list(lock.modules)
+        validate_materialized_requirements(
+            ordered_modules, app_dir=app_dir, nsx_cfg=nsx_cfg, registry=registry
+        )
         _write_app_module_file(app_dir, nsx_cfg, module_names=ordered_modules)
         _write_modules_gitignore_for_module_names(
             app_dir, nsx_cfg, _locked_module_union(app_dir, ordered_modules)

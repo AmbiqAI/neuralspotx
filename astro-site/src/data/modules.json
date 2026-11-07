@@ -32,7 +32,8 @@
       "constraints": {},
       "depends": {
         "optional": [],
-        "required": []
+        "required": [],
+        "required_dependencies": []
       },
       "example_refs": [],
       "integrations": {},
@@ -103,6 +104,12 @@
         "optional": [],
         "required": [
           "nsx-cmsis-core"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-cmsis-core",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -156,7 +163,8 @@
       "constraints": {},
       "depends": {
         "optional": [],
-        "required": []
+        "required": [],
+        "required_dependencies": []
       },
       "example_refs": [],
       "integrations": {},
@@ -236,6 +244,16 @@
         "required": [
           "nsx-ambiqsuite",
           "nsx-ambiq-hal"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-ambiqsuite",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiq-hal",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -317,6 +335,16 @@
         "required": [
           "nsx-cmsis-core",
           "nsx-ambiqsuite"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-cmsis-core",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiqsuite",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -388,6 +416,20 @@
           "nsx-ambiqsuite",
           "nsx-ambiq-hal",
           "nsx-ambiq-bsp"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-ambiqsuite",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiq-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiq-bsp",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -464,7 +506,8 @@
       "constraints": {},
       "depends": {
         "optional": [],
-        "required": []
+        "required": [],
+        "required_dependencies": []
       },
       "example_refs": [],
       "integrations": {},
@@ -532,6 +575,16 @@
         "required": [
           "nsx-core",
           "nsx-soc-hal"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-core",
+            "version": null
+          },
+          {
+            "name": "nsx-soc-hal",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -601,6 +654,20 @@
           "nsx-core",
           "nsx-cordio",
           "nsx-freertos"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-core",
+            "version": null
+          },
+          {
+            "name": "nsx-cordio",
+            "version": null
+          },
+          {
+            "name": "nsx-freertos",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -652,6 +719,28 @@
           "nsx-soc-hal",
           "nsx-cmsis-startup",
           "nsx-ambiqsuite"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-ambiq-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiq-bsp",
+            "version": null
+          },
+          {
+            "name": "nsx-soc-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-cmsis-startup",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiqsuite",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -699,6 +788,28 @@
           "nsx-soc-hal",
           "nsx-cmsis-startup",
           "nsx-ambiqsuite"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-ambiq-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiq-bsp",
+            "version": null
+          },
+          {
+            "name": "nsx-soc-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-cmsis-startup",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiqsuite",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -746,6 +857,28 @@
           "nsx-soc-hal",
           "nsx-cmsis-startup",
           "nsx-ambiqsuite"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-ambiq-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiq-bsp",
+            "version": null
+          },
+          {
+            "name": "nsx-soc-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-cmsis-startup",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiqsuite",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -795,6 +928,28 @@
           "nsx-soc-hal",
           "nsx-cmsis-startup",
           "nsx-ambiqsuite"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-ambiq-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiq-bsp",
+            "version": null
+          },
+          {
+            "name": "nsx-soc-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-cmsis-startup",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiqsuite",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -844,6 +999,28 @@
           "nsx-soc-hal",
           "nsx-cmsis-startup",
           "nsx-ambiqsuite"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-ambiq-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiq-bsp",
+            "version": null
+          },
+          {
+            "name": "nsx-soc-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-cmsis-startup",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiqsuite",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -893,6 +1070,28 @@
           "nsx-soc-hal",
           "nsx-cmsis-startup",
           "nsx-ambiqsuite"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-ambiq-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiq-bsp",
+            "version": null
+          },
+          {
+            "name": "nsx-soc-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-cmsis-startup",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiqsuite",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -941,6 +1140,28 @@
           "nsx-soc-hal",
           "nsx-cmsis-startup",
           "nsx-ambiqsuite"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-ambiq-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiq-bsp",
+            "version": null
+          },
+          {
+            "name": "nsx-soc-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-cmsis-startup",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiqsuite",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -989,6 +1210,28 @@
           "nsx-soc-hal",
           "nsx-cmsis-startup",
           "nsx-ambiqsuite"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-ambiq-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiq-bsp",
+            "version": null
+          },
+          {
+            "name": "nsx-soc-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-cmsis-startup",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiqsuite",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -1038,6 +1281,28 @@
           "nsx-soc-hal",
           "nsx-cmsis-startup",
           "nsx-ambiqsuite"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-ambiq-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiq-bsp",
+            "version": null
+          },
+          {
+            "name": "nsx-soc-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-cmsis-startup",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiqsuite",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -1087,6 +1352,28 @@
           "nsx-soc-hal",
           "nsx-cmsis-startup",
           "nsx-ambiqsuite"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-ambiq-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiq-bsp",
+            "version": null
+          },
+          {
+            "name": "nsx-soc-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-cmsis-startup",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiqsuite",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -1136,6 +1423,28 @@
           "nsx-soc-hal",
           "nsx-cmsis-startup",
           "nsx-ambiqsuite"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-ambiq-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiq-bsp",
+            "version": null
+          },
+          {
+            "name": "nsx-soc-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-cmsis-startup",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiqsuite",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -1185,6 +1494,28 @@
           "nsx-soc-hal",
           "nsx-cmsis-startup",
           "nsx-ambiqsuite"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-ambiq-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiq-bsp",
+            "version": null
+          },
+          {
+            "name": "nsx-soc-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-cmsis-startup",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiqsuite",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -1234,6 +1565,28 @@
           "nsx-soc-hal",
           "nsx-cmsis-startup",
           "nsx-ambiqsuite"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-ambiq-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiq-bsp",
+            "version": null
+          },
+          {
+            "name": "nsx-soc-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-cmsis-startup",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiqsuite",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -1283,6 +1636,28 @@
           "nsx-soc-hal",
           "nsx-cmsis-startup",
           "nsx-ambiqsuite"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-ambiq-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiq-bsp",
+            "version": null
+          },
+          {
+            "name": "nsx-soc-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-cmsis-startup",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiqsuite",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -1332,6 +1707,28 @@
           "nsx-soc-hal",
           "nsx-cmsis-startup",
           "nsx-ambiqsuite"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-ambiq-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiq-bsp",
+            "version": null
+          },
+          {
+            "name": "nsx-soc-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-cmsis-startup",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiqsuite",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -1381,6 +1778,28 @@
           "nsx-soc-hal",
           "nsx-cmsis-startup",
           "nsx-ambiqsuite"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-ambiq-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiq-bsp",
+            "version": null
+          },
+          {
+            "name": "nsx-soc-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-cmsis-startup",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiqsuite",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -1430,6 +1849,28 @@
           "nsx-soc-hal",
           "nsx-cmsis-startup",
           "nsx-ambiqsuite"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-ambiq-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiq-bsp",
+            "version": null
+          },
+          {
+            "name": "nsx-soc-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-cmsis-startup",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiqsuite",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -1491,7 +1932,8 @@
       "constraints": {},
       "depends": {
         "optional": [],
-        "required": []
+        "required": [],
+        "required_dependencies": []
       },
       "example_refs": [],
       "integrations": {},
@@ -1556,6 +1998,12 @@
         "optional": [],
         "required": [
           "nsx-soc-hal"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-soc-hal",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -1622,6 +2070,12 @@
         "optional": [],
         "required": [
           "nsx-cmsis-core"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-cmsis-core",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -1696,6 +2150,24 @@
           "nsx-ambiq-hal",
           "nsx-ambiq-bsp",
           "nsx-freertos"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-ambiqsuite",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiq-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiq-bsp",
+            "version": null
+          },
+          {
+            "name": "nsx-freertos",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -1765,6 +2237,12 @@
         "optional": [],
         "required": [
           "nsx-soc-hal"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-soc-hal",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -1831,6 +2309,20 @@
           "nsx-cmsis-core",
           "nsx-core",
           "nsx-soc-hal"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-cmsis-core",
+            "version": null
+          },
+          {
+            "name": "nsx-core",
+            "version": null
+          },
+          {
+            "name": "nsx-soc-hal",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -1892,6 +2384,12 @@
         "optional": [],
         "required": [
           "nsx-core"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-core",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -1959,6 +2457,20 @@
           "nsx-core",
           "nsx-soc-hal",
           "nsx-interrupt"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-core",
+            "version": null
+          },
+          {
+            "name": "nsx-soc-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-interrupt",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -2022,6 +2534,20 @@
           "nsx-core",
           "nsx-soc-hal",
           "nsx-cmsis-nn"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-core",
+            "version": null
+          },
+          {
+            "name": "nsx-soc-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-cmsis-nn",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -2086,6 +2612,16 @@
         "required": [
           "nsx-core",
           "nsx-soc-hal"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-core",
+            "version": null
+          },
+          {
+            "name": "nsx-soc-hal",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -2153,6 +2689,16 @@
         "required": [
           "nsx-core",
           "nsx-soc-hal"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-core",
+            "version": null
+          },
+          {
+            "name": "nsx-soc-hal",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -2209,7 +2755,8 @@
       "constraints": {},
       "depends": {
         "optional": [],
-        "required": []
+        "required": [],
+        "required_dependencies": []
       },
       "example_refs": [],
       "integrations": {},
@@ -2270,6 +2817,20 @@
           "nsx-core",
           "nsx-soc-hal",
           "nsx-ethos-u-driver"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-core",
+            "version": null
+          },
+          {
+            "name": "nsx-soc-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-ethos-u-driver",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -2335,6 +2896,16 @@
         "required": [
           "nsx-core",
           "nsx-soc-hal"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-core",
+            "version": null
+          },
+          {
+            "name": "nsx-soc-hal",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -2406,6 +2977,12 @@
         "optional": [],
         "required": [
           "helia-dsp"
+        ],
+        "required_dependencies": [
+          {
+            "name": "helia-dsp",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -2472,6 +3049,20 @@
           "nsx-cmsis-core",
           "nsx-core",
           "nsx-soc-hal"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-cmsis-core",
+            "version": null
+          },
+          {
+            "name": "nsx-core",
+            "version": null
+          },
+          {
+            "name": "nsx-soc-hal",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -2550,6 +3141,20 @@
           "nsx-core",
           "nsx-soc-hal",
           "nsx-timer"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-core",
+            "version": null
+          },
+          {
+            "name": "nsx-soc-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-timer",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -2622,6 +3227,20 @@
           "nsx-core",
           "nsx-soc-hal",
           "nsx-interrupt"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-core",
+            "version": null
+          },
+          {
+            "name": "nsx-soc-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-interrupt",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -2707,6 +3326,20 @@
           "nsx-core",
           "nsx-i2c",
           "nsx-spi"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-core",
+            "version": null
+          },
+          {
+            "name": "nsx-i2c",
+            "version": null
+          },
+          {
+            "name": "nsx-spi",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -2780,7 +3413,8 @@
       "constraints": {},
       "depends": {
         "optional": [],
-        "required": []
+        "required": [],
+        "required_dependencies": []
       },
       "example_refs": [],
       "integrations": {},
@@ -2844,6 +3478,16 @@
         "required": [
           "nsx-core",
           "nsx-soc-hal"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-core",
+            "version": null
+          },
+          {
+            "name": "nsx-soc-hal",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -2907,6 +3551,20 @@
           "helia-rt-source",
           "nsx-core",
           "nsx-soc-hal"
+        ],
+        "required_dependencies": [
+          {
+            "name": "helia-rt-source",
+            "version": null
+          },
+          {
+            "name": "nsx-core",
+            "version": null
+          },
+          {
+            "name": "nsx-soc-hal",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -2971,6 +3629,16 @@
         "required": [
           "nsx-core",
           "nsx-ble"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-core",
+            "version": null
+          },
+          {
+            "name": "nsx-ble",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -3037,6 +3705,16 @@
         "required": [
           "nsx-core",
           "nsx-usb"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-core",
+            "version": null
+          },
+          {
+            "name": "nsx-usb",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -3101,6 +3779,20 @@
           "nsx-core",
           "nsx-interrupt",
           "nsx-soc-hal"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-core",
+            "version": null
+          },
+          {
+            "name": "nsx-interrupt",
+            "version": null
+          },
+          {
+            "name": "nsx-soc-hal",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -3156,7 +3848,8 @@
       "constraints": {},
       "depends": {
         "optional": [],
-        "required": []
+        "required": [],
+        "required_dependencies": []
       },
       "example_refs": [],
       "integrations": {},
@@ -3218,6 +3911,20 @@
           "nsx-core",
           "nsx-interrupt",
           "nsx-soc-hal"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-core",
+            "version": null
+          },
+          {
+            "name": "nsx-interrupt",
+            "version": null
+          },
+          {
+            "name": "nsx-soc-hal",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
@@ -3288,6 +3995,24 @@
           "nsx-timer",
           "nsx-soc-hal",
           "nsx-ambiq-usb"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-core",
+            "version": null
+          },
+          {
+            "name": "nsx-timer",
+            "version": null
+          },
+          {
+            "name": "nsx-soc-hal",
+            "version": null
+          },
+          {
+            "name": "nsx-ambiq-usb",
+            "version": null
+          }
         ]
       },
       "example_refs": [],
