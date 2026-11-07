@@ -858,9 +858,10 @@ def _build_parser() -> argparse.ArgumentParser:
         "lock",
         help="Resolve modules in nsx.yml to commits and write nsx.lock",
         description=(
-            "Resolve every module declared in nsx.yml to its current upstream commit "
-            "and content hash, and write the resulting nsx.lock receipt. Does not "
-            "modify the modules/ tree."
+            "Resolve module constraints from nsx.yml to commits and content hashes, "
+            "and write nsx.lock. Matching pinned resolutions may be reused; "
+            "floating refs are re-resolved through the TTL cache. "
+            "Missing dependency metadata may be acquired during resolution."
         ),
     )
     p_lock.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
