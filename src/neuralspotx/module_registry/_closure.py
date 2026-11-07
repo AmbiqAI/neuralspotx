@@ -131,7 +131,7 @@ def _resolve_module_closure_inner(
         for dep in module_meta.required_dependencies:
             try:
                 dfs(dep.name)
-            except ValueError as exc:
+            except (ValueError, NSXConfigError) as exc:
                 if dep.version is not None:
                     raise requirement_metadata_error(module_name, dep, exc) from exc
                 raise

@@ -8,7 +8,7 @@ from typing import Any
 from packaging.specifiers import SpecifierSet
 from packaging.version import InvalidVersion, Version
 
-from .._errors import NSXModuleError
+from .._errors import NSXConfigError, NSXModuleError
 from ..models import ModuleDependency, ModuleMetadata
 from ._metadata import _load_module_metadata, metadata_cache_scope
 from ._nsx_cfg import _local_module_names, _vendored_module_names
@@ -58,18 +58,19 @@ def validate_materialized_requirements(
     """Validate locked members without fetching or expanding the recorded graph."""
     opaque = _local_module_names(nsx_cfg) | _vendored_module_names(nsx_cfg)
     metadata: dict[str, ModuleMetadata] = {}
-    errors: dict[str, ValueError] = {}
+    errors: dict[str, ValueError | NSXConfigError] = {}
+    positions = {name: index for index, name in enumerate(module_names)}
     with metadata_cache_scope(fresh=True):
         for name in module_names:
             if name in opaque:
                 continue
             try:
                 metadata[name] = _load_module_metadata(name, registry, app_dir=app_dir)
-            except ValueError as exc:
+            except (ValueError, NSXConfigError) as exc:
                 errors[name] = exc
         for name, meta in metadata.items():
             for dep in meta.required_dependencies:
-                if dep.name not in module_names:
+                if dep.name not in positions:
                     raise NSXModuleError(
                         f"Module '{name}' requires '{dep.name}', which is absent from nsx.lock. "
                         "Run `nsx lock` and `nsx sync` to refresh the dependency closure."
@@ -77,6 +78,12 @@ def validate_materialized_requirements(
                 if dep.version is not None and dep.name in errors:
                     raise requirement_metadata_error(name, dep, errors[dep.name])
                 validate_requirement(name, dep, metadata.get(dep.name))
+                if positions[dep.name] >= positions[name]:
+                    raise NSXModuleError(
+                        f"Module '{name}' requires '{dep.name}', but nsx.lock does not "
+                        "place that dependency first (stale order or dependency cycle). "
+                        "Run `nsx lock` and `nsx sync` after correcting any cycle."
+                    )
         if errors:
             name, exc = next(iter(errors.items()))
             raise NSXModuleError(f"Invalid metadata for module '{name}': {exc}") from exc

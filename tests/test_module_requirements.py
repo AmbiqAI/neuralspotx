@@ -305,3 +305,53 @@ def test_search_indexes_requirement_bounds(tmp_path: Path) -> None:
     score, matches = _search_score(record, "7.47.0")
     assert score > 0
     assert any(match.field == "depends.required.version" for match in matches)
+
+
+@pytest.mark.parametrize("raw", ["", "- list-root\n", "module: [unterminated\n"])
+def test_malformed_dependency_yaml_keeps_incoming_context(tmp_path: Path, raw: str) -> None:
+    registry, cfg = project(
+        tmp_path,
+        [manifest("parent", required=[{"name": "dep", "version": ">=1"}]), manifest("dep")],
+    )
+    (tmp_path / "sources/dep/nsx-module.yaml").write_text(raw)
+    with pytest.raises(NSXModuleError, match="parent.*dep.*>=1.*invalid"):
+        resolve(registry, cfg)
+    with pytest.raises(NSXModuleError, match="parent.*dep.*>=1.*invalid"):
+        validate_materialized_requirements(
+            ["dep", "parent"], app_dir=tmp_path, nsx_cfg=cfg, registry=registry
+        )
+
+
+@pytest.mark.parametrize("new_edges", [["parent"], ["dep"], ["other"]])
+def test_materialized_cycle_or_stale_order_is_rejected(
+    tmp_path: Path, new_edges: list[object]
+) -> None:
+    registry, cfg = project(
+        tmp_path, [manifest("parent", required=["dep"]), manifest("dep"), manifest("other")]
+    )
+    order = resolve(registry, cfg, ["parent", "other"])
+    assert order == ["dep", "parent", "other"]
+    project(tmp_path, [manifest("dep", required=new_edges)])
+    with pytest.raises(NSXModuleError, match="stale order or dependency cycle"):
+        validate_materialized_requirements(order, app_dir=tmp_path, nsx_cfg=cfg, registry=registry)
+
+
+def test_cached_build_refuses_new_cycle_without_rewriting_lock(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from neuralspotx.operations import _build
+
+    app = locked_app(tmp_path)
+    original_lock = (app / "nsx.lock").read_bytes()
+    project(tmp_path, [manifest("dep", required=["parent"])])
+    build = app / "build/apollo510_evb"
+    (build / "build.ninja").write_text("# configured")
+    monkeypatch.setattr(_build, "regenerate_active_board_glue", lambda *a, **k: None)
+
+    def no_build(*args: object, **kwargs: object) -> None:
+        pytest.fail("must reject cycle before build")
+
+    monkeypatch.setattr(_build, "run", no_build)
+    with pytest.raises(NSXModuleError, match="dependency cycle"):
+        _build.build_app_impl(app)
+    assert (app / "nsx.lock").read_bytes() == original_lock
