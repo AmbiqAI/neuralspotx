@@ -6,6 +6,9 @@ set(NSX_BOARD "apollo510_evb" CACHE STRING "Target board")
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/nsx/modules.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/nsx/nsx_app_bootstrap.cmake)
 
+# Preserve CoreMark output until the host connects; explicit cache overrides win.
+set(NSX_SEGGER_RTT_BUFFER_SIZE_UP 32768 CACHE STRING "RTT channel 0 up buffer bytes")
+
 nsx_bootstrap_app(
     APP_ROOT "${CMAKE_CURRENT_LIST_DIR}"
     BOARD "${NSX_BOARD}"
@@ -44,20 +47,7 @@ target_link_libraries(coremark PRIVATE
     nsx::board
     nsx::runtime_core
     nsx::timer
+    nsx::segger_rtt
 )
-
-# ---------------------------------------------------------------------------
-# SEGGER RTT — used for score output instead of SWO/ITM.
-# RTT uses an in-SRAM ring buffer that the J-Link reads via background SWD
-# memory accesses — no peripheral pins, no TPIU/ACPR brittleness.
-# ---------------------------------------------------------------------------
-target_sources(coremark PRIVATE
-    ${CMAKE_CURRENT_LIST_DIR}/src/rtt/SEGGER_RTT.c
-)
-target_include_directories(coremark PRIVATE
-    ${CMAKE_CURRENT_LIST_DIR}/src/rtt
-    ${CMAKE_CURRENT_LIST_DIR}/src/rtt/Config
-)
-target_compile_definitions(coremark PRIVATE BUFFER_SIZE_UP=32768)
 
 nsx_finalize_app(coremark)

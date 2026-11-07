@@ -14,4 +14,5 @@ channel: stable
 modules:
   - nsx-interrupt
   - nsx-timer
+  - nsx-segger-rtt
 features: {}

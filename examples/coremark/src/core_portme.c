@@ -124,7 +124,7 @@ void portable_fini(core_portable *p) {
 }
 
 /* ── ee_printf via SEGGER RTT ──────────────────────────────── */
-/* RTT writes to an in-SRAM ring buffer that JLinkRTTLogger drains over SWD
+/* The RTT module selects non-cached memory that JLinkRTTLogger drains over SWD
  * via background memory reads — no SWO/TPIU pins, no ITM stimulus, and no
  * sensitivity to clock/baud configuration. */
 int ee_printf(const char *fmt, ...) {
@@ -137,13 +137,6 @@ int ee_printf(const char *fmt, ...) {
 
     if (n > 0) {
         SEGGER_RTT_Write(0, buf, (unsigned)n);
-#if defined(NSX_SOC_CORE_M55)
-        /* On Cortex-M55 (Apollo5) the J-Link reads the RTT control block +
-         * ring buffer over SWD, bypassing the CPU D-cache.  Clean the cache
-         * so the host sees the latest WrOff and bytes.  Cortex-M4 targets
-         * (Apollo4) have no core D-cache and need no flush. */
-        SCB_CleanDCache();
-#endif
     }
     return n;
 }

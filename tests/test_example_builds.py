@@ -21,6 +21,8 @@ from pathlib import Path
 
 import pytest
 import yaml
+from elftools.elf.elffile import ELFFile
+from elftools.elf.sections import SymbolTableSection
 
 EXAMPLES_DIR = Path(__file__).resolve().parent.parent / "examples"
 
@@ -71,7 +73,42 @@ pytestmark = pytest.mark.skipif(
 # Non-default boards also built in CI. apollo3p_evb is the only Apollo3 Blue
 # Plus target among the examples, and its GCC linker script once lacked the
 # heap symbols every newlib build links against (nsx-ambiq-sdk #85).
-_EXTRA_BOARDS = [("ble_webble", "apollo3p_evb")]
+# CoreMark also exercises RTT placement on cacheless Cortex-M4 SRAM.
+_EXTRA_BOARDS = [("ble_webble", "apollo3p_evb"), ("coremark", "apollo4p_blue_kxr_evb")]
+
+
+def _assert_coremark_rtt_layout(elf: Path, board: str) -> None:
+    """Check linked storage against the two CI boards' physical memory maps.
+
+    These ranges deliberately do not come from the RTT module's placement
+    macros: using those as the oracle would accept a misplaced cached ring.
+    pyelftools works on all CI hosts and compiler ELF variants without an
+    extra host-specific binutils dependency.
+    """
+    regions = {
+        "apollo510_evb": (0x20000000, 0x2007C000),  # non-cached TCM, SBL layout
+        "apollo4p_blue_kxr_evb": (0x10060000, 0x10160000),  # shared SRAM, no D-cache
+    }
+    start, end = regions[board]
+    with elf.open("rb") as stream:
+        image = ELFFile(stream)
+        symbols = image.get_section_by_name(".symtab")
+        assert isinstance(symbols, SymbolTableSection), f"Missing symbols in {elf}"
+        for name, expected_size in (
+            ("_SEGGER_RTT", None),
+            ("_acUpBuffer", 32768),
+            ("_acDownBuffer", 16),
+        ):
+            matches = symbols.get_symbol_by_name(name)
+            assert matches is not None and len(matches) == 1, f"Missing/ambiguous {name} in {elf}"
+            symbol = matches[0]
+            address, size = symbol["st_value"], symbol["st_size"]
+            assert size > 0 and start <= address < address + size <= end, (
+                f"{name} at {address:#x} size {size} is outside RTT-safe memory "
+                f"[{start:#x}, {end:#x}) on {board}"
+            )
+            if expected_size is not None:
+                assert size == expected_size, f"{name}: expected {expected_size} bytes, got {size}"
 
 
 @pytest.fixture()
@@ -129,6 +166,9 @@ def test_example_configures_and_builds(example_app: Path) -> None:
         f"searched board dirs: {[d.name for d in build_dirs]}"
     )
 
+    if app_name == "coremark":
+        _assert_coremark_rtt_layout(elf, elf.parent.name)
+
     if app_name == "ble_webble":
         # This example carries a deliberately tiny EXCLUDE_FROM_ALL image so
         # hardware smoke tests can exercise named-target flashing without
@@ -180,9 +220,17 @@ def test_example_builds_for_extra_board(example_app: Path, board: str) -> None:
 
     build_dir = example_app / "build" / board
     app_name = example_app.name
-    assert any(
-        (build_dir / name).exists() for name in (f"{app_name}.axf", f"{app_name}.elf", app_name)
-    ), f"Expected an ELF for {app_name} under {build_dir}"
+    elf = next(
+        (
+            build_dir / name
+            for name in (f"{app_name}.axf", f"{app_name}.elf", app_name)
+            if (build_dir / name).is_file()
+        ),
+        None,
+    )
+    assert elf is not None, f"Expected an ELF for {app_name} under {build_dir}"
+    if app_name == "coremark":
+        _assert_coremark_rtt_layout(elf, board)
 
 
 @pytest.mark.timeout(2 * 300 + _BUILD_TIMEOUT_S)
