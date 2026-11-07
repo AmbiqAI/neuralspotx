@@ -210,14 +210,19 @@ def _load_materialized_module_metadata(
     entry = registry_entry_for_module(registry, module_name)
     project = _registry_project_entry(registry, entry.project)
     metadata_rel = _metadata_path_relative_to_project(Path(entry.metadata), project.path)
-    if module_name.startswith("nsx-board-") and "boards" in metadata_rel.parts:
+    if module_name == "nsx-tooling":
+        # App templates include this bootstrap tree directly, even when the
+        # registry also mirrors a local neuralspotx development checkout.
+        source = app_dir / "cmake" / "nsx"
+    elif module_name.startswith("nsx-board-") and "boards" in metadata_rel.parts:
         # nsx_bootstrap_app includes boards/<board>/board.cmake directly.
         # Local project overrides keep this separate overlay in sync via
         # _sync_local_board_overlay; its metadata can differ on cached builds.
         source = _board_overlay_dir(app_dir, metadata_rel)
     else:
         source = app_dir / _module_source_dir_relative_to_app(module_name, registry, nsx_cfg)
-    path = source / Path(entry.metadata).name
+    filename = "nsx-module.yaml" if module_name == "nsx-tooling" else Path(entry.metadata).name
+    path = source / filename
     if not path.is_file():
         raise NSXConfigError(
             f"Build-local metadata for '{module_name}' is missing at {path}. "

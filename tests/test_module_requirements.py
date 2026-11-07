@@ -457,3 +457,52 @@ def test_cached_build_reads_board_overlay_not_project_mirror(
     else:
         _build.build_app_impl(app)
         assert len(calls) == 1
+
+
+@pytest.mark.parametrize(
+    ("bootstrap_version", "mirror_version", "accepted"),
+    [("0.1.0", "99.0", False), ("99.0", "0.1.0", True)],
+)
+def test_cached_build_validates_active_tooling_bootstrap(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    bootstrap_version: str,
+    mirror_version: str,
+    accepted: bool,
+) -> None:
+    from neuralspotx.operations import _build
+    from neuralspotx.operations._lock import lock_app_impl
+    from neuralspotx.operations._sync import sync_app_impl
+
+    registry, cfg = project(
+        tmp_path, [manifest("nsx-tooling", "99.0"), manifest("parent", required=["nsx-tooling"])]
+    )
+    cfg.update({
+        "schema_version": 2,
+        "project": {"name": "testapp"},
+        "baseline": "none",
+        "modules": ["parent"],
+        "module_registry": registry,
+    })
+    (tmp_path / "nsx.yml").write_text(yaml.safe_dump(cfg))
+    lock_app_impl(tmp_path)
+    sync_app_impl(tmp_path)
+    (tmp_path / "modules/parent/nsx-module.yaml").write_text(
+        yaml.safe_dump(manifest("parent", required=[{"name": "nsx-tooling", "version": ">=99"}]))
+    )
+    (tmp_path / "modules/nsx-tooling/nsx-module.yaml").write_text(
+        yaml.safe_dump(manifest("nsx-tooling", mirror_version))
+    )
+    (tmp_path / "cmake/nsx/nsx-module.yaml").write_text(
+        yaml.safe_dump(manifest("nsx-tooling", bootstrap_version))
+    )
+    (tmp_path / "build/apollo510_evb/build.ninja").write_text("# configured")
+    calls: list[object] = []
+    monkeypatch.setattr(_build, "run", lambda *a, **k: calls.append(a))
+    if accepted:
+        _build.build_app_impl(tmp_path)
+        assert len(calls) == 1
+    else:
+        with pytest.raises(NSXModuleError, match="parent.*nsx-tooling.*0.1.0"):
+            _build.build_app_impl(tmp_path)
+        assert calls == []
