@@ -1057,7 +1057,7 @@ def _diff_locks(previous: NsxLock | None, fresh: NsxLock) -> list[str]:
     """Return a human-readable list of differences relevant to drift detection.
 
     Compares only the resolution-affecting fields (manifest hash, kind,
-    constraint, commit, content_hash) — not timestamps or the tool
+    source identity, constraint, commit, content_hash) — not timestamps or the tool
     version, which legitimately move on every regenerate.
     """
 
@@ -1079,6 +1079,16 @@ def _diff_locks(previous: NsxLock | None, fresh: NsxLock) -> list[str]:
     for name in sorted(prev_names & fresh_names):
         a = previous.modules[name]
         b = fresh.modules[name]
+        # Registry inputs can change independently of nsx.yml. Identical
+        # commits/content do not imply identical source or materialization.
+        for label, old, new in (
+            ("project", a.project, b.project),
+            ("source URL", a.url, b.url),
+            ("vendored path", Path(a.vendored_at), Path(b.vendored_at)),
+        ):
+            if old != new:
+                # URL values may contain credentials; report only the field.
+                diffs.append(f"~ {name}: {label} differs")
         if a.kind != b.kind:
             diffs.append(f"~ {name}: kind {a.kind} -> {b.kind}")
         if a.constraint != b.constraint:

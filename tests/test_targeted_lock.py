@@ -366,3 +366,86 @@ def test_unresolved_only_conflicting_hashes_are_rejected(tmp_path: Path) -> None
     )
     with pytest.raises(NSXConfigError, match="resolved artifacts differ"):
         validate_materialization(tmp_path, lock)
+
+
+@pytest.mark.parametrize("field", ["url", "path"])
+def test_targeted_check_detects_registry_identity_drift_with_same_artifact(
+    app: App, monkeypatch: pytest.MonkeyPatch, field: str, capsys: pytest.CaptureFixture[str]
+) -> None:
+    import shutil
+
+    app.add("one")
+    lock_app_impl(app.root)
+    before = (app.root / "nsx.lock").read_bytes()
+    api.lock_app(app.root, update=True, modules=["one"], check=True)
+    registry = operations._lock._effective_registry(
+        operations._lock._load_registry(), app.config, app_dir=app.root
+    )
+    if field == "url":
+        url = "https://secret-user:secret-token@example.invalid/changed.git"
+        registry["projects"]["one"]["url"] = url
+        app.remote[url, "main"] = ("a" * 40, "branch")
+    else:
+        shutil.copytree(app.root / "modules/one", app.root / "modules/moved")
+        registry["projects"]["one"]["path"] = "modules/moved"
+    # Simulate an external registry change: manifest bytes and artifact hash
+    # stay unchanged. Check must still report the altered lock identity.
+    monkeypatch.setattr(operations._lock, "_effective_registry", lambda *_a, **_k: registry)
+    events: list[Any] = []
+    with pytest.raises(NSXError) as raised:
+        api.lock_app(app.root, update=True, modules=["one"], check=True, emit=events.append)
+    assert (app.root / "nsx.lock").read_bytes() == before
+    output = str(events) + str(capsys.readouterr())
+    assert events, str(raised.value)
+    assert ("source URL" if field == "url" else "vendored path") in output
+    assert "secret-token" not in output
+
+
+@pytest.mark.parametrize("kind", [LockKind.LOCAL, LockKind.PACKAGED])
+def test_check_compares_non_git_materialization_paths(kind: LockKind) -> None:
+    import copy
+
+    from neuralspotx.nsx_lock import NsxLock, ResolvedModule
+    from neuralspotx.operations._lock import _diff_locks
+
+    old = NsxLock(
+        modules={
+            "one": ResolvedModule(
+                project="one",
+                kind=kind,
+                constraint="local",
+                vendored_at="modules/old",
+                content_hash="sha256:" + "a" * 64,
+                acquired_at="",
+            )
+        }
+    )
+    new = copy.deepcopy(old)
+    assert not _diff_locks(old, new)
+    new.modules["one"].vendored_at = "modules/new"
+    assert _diff_locks(old, new) == ["~ one: vendored path differs"]
+
+
+def test_check_compares_project_identity_with_identical_artifact() -> None:
+    import copy
+
+    from neuralspotx.nsx_lock import NsxLock, ResolvedModule
+    from neuralspotx.operations._lock import _diff_locks
+
+    old = NsxLock(
+        modules={
+            "one": ResolvedModule(
+                project="old",
+                kind=LockKind.GIT,
+                constraint="main",
+                vendored_at="modules/shared",
+                content_hash="sha256:" + "a" * 64,
+                acquired_at="",
+                commit="a" * 40,
+                url="https://example.invalid/same.git",
+            )
+        }
+    )
+    new = copy.deepcopy(old)
+    new.modules["one"].project = "new"
+    assert _diff_locks(old, new) == ["~ one: project differs"]
