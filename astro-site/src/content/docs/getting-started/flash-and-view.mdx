@@ -51,7 +51,12 @@ Flash your existing app, or reproduce this capture by creating a separate SWO ap
 
 ```bash
 nsx create-app hello_swo --board apollo4p_blue_kxr_evb --template default
+nsx build --app-dir hello_swo
 ```
+
+The first build creates `nsx.lock` and prepares the firmware. The captured flash
+command uses `--frozen`, which requires that lock; it cannot follow `create-app`
+alone.
 
 <AsciiTerminal
   title="Flash · captured excerpts"
@@ -86,7 +91,7 @@ output, so a viewer is not needed for this first check.
 The `default` template used above prints a heartbeat through SWO. If you started
 with blinky, create and flash the separate `hello_swo` app shown above first.
 `nsx view` opens `JLinkSWOViewerCL` against the board's SEGGER device and streams ITM
-port 0. This eight-second capture received seven heartbeat lines; three are shown:
+port 0. This eight-second capture received eight heartbeat lines; three are shown:
 
 <AsciiTerminal
   title="SWO viewer · captured excerpts"
