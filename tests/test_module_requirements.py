@@ -38,6 +38,10 @@ def project(
         source = tmp_path / "sources" / name
         source.mkdir(parents=True, exist_ok=True)
         (source / "nsx-module.yaml").write_text(yaml.safe_dump(data))
+        # Core fixtures provide separate, initially matching source and build copies.
+        mirror = tmp_path / "modules" / name
+        mirror.mkdir(parents=True, exist_ok=True)
+        (mirror / "nsx-module.yaml").write_text(yaml.safe_dump(data))
         registry["projects"][name] = {
             "local_path": str(source),
             "path": f"modules/{name}",
@@ -314,6 +318,7 @@ def test_malformed_dependency_yaml_keeps_incoming_context(tmp_path: Path, raw: s
         [manifest("parent", required=[{"name": "dep", "version": ">=1"}]), manifest("dep")],
     )
     (tmp_path / "sources/dep/nsx-module.yaml").write_text(raw)
+    (tmp_path / "modules/dep/nsx-module.yaml").write_text(raw)
     with pytest.raises(NSXModuleError, match="parent.*dep.*>=1.*invalid"):
         resolve(registry, cfg)
     with pytest.raises(NSXModuleError, match="parent.*dep.*>=1.*invalid"):
@@ -355,3 +360,48 @@ def test_cached_build_refuses_new_cycle_without_rewriting_lock(
     with pytest.raises(NSXModuleError, match="dependency cycle"):
         _build.build_app_impl(app)
     assert (app / "nsx.lock").read_bytes() == original_lock
+
+
+@pytest.mark.parametrize(
+    ("source_version", "copy_version", "accepted"), [("2.0", "1.0", False), ("1.0", "2.0", True)]
+)
+def test_cached_build_validates_compiled_copy_not_external_override(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    source_version: str,
+    copy_version: str,
+    accepted: bool,
+) -> None:
+    from neuralspotx.operations import _build
+
+    app = locked_app(tmp_path)
+    (app / "modules/parent/nsx-module.yaml").write_text(
+        yaml.safe_dump(manifest("parent", required=[{"name": "dep", "version": ">=2"}]))
+    )
+    (app / "sources/dep/nsx-module.yaml").write_text(
+        yaml.safe_dump(manifest("dep", source_version))
+    )
+    (app / "modules/dep/nsx-module.yaml").write_text(yaml.safe_dump(manifest("dep", copy_version)))
+    (app / "build/apollo510_evb/build.ninja").write_text("# configured")
+    calls: list[object] = []
+    monkeypatch.setattr(_build, "run", lambda *a, **k: calls.append(a))
+    if accepted:
+        _build.build_app_impl(app)
+        assert len(calls) == 1
+    else:
+        with pytest.raises(NSXModuleError, match="parent.*dep.*1.0"):
+            _build.build_app_impl(app)
+        assert calls == []
+
+
+def test_materialized_missing_copy_never_falls_back_to_external_metadata(tmp_path: Path) -> None:
+    registry, cfg = project(
+        tmp_path,
+        [manifest("parent", required=[{"name": "dep", "version": ">=1"}]), manifest("dep")],
+    )
+    (tmp_path / "modules/dep/nsx-module.yaml").unlink()
+    assert resolve(registry, cfg) == ["dep", "parent"]
+    with pytest.raises(NSXModuleError, match="parent.*dep.*Build-local metadata"):
+        validate_materialized_requirements(
+            ["dep", "parent"], app_dir=tmp_path, nsx_cfg=cfg, registry=registry
+        )

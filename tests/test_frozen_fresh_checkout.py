@@ -653,11 +653,16 @@ def test_frozen_sync_keeps_a_verified_cmake_tree_when_another_tool_is_installed(
 
     reference = tmp_path / "locked-tooling"
     _write_tree(reference, "tooling the lock recorded")
+    metadata = (
+        Path(__file__).resolve().parents[1] / "src/neuralspotx/cmake/nsx-module.yaml"
+    ).read_bytes()
+    (reference / "nsx-module.yaml").write_bytes(metadata)
     app_dir = _write_offline_app(
         tmp_path, tooling_hash=hash_tree(reference, exclude_names=NSX_TOOLING_AUTOGEN_FILES)
     )
     cmake_nsx = app_dir / "cmake" / "nsx"
     _write_tree(cmake_nsx, "tooling the lock recorded")
+    (cmake_nsx / "nsx-module.yaml").write_bytes(metadata)
 
     def _other_tool(package: str, resource: str, dest: Path) -> None:  # noqa: ARG001
         _write_tree(dest, "tooling from another neuralspotx")

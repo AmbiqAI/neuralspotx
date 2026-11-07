@@ -8,7 +8,7 @@ from collections.abc import Iterator
 from pathlib import Path
 from typing import Any
 
-from .._errors import NSXResolutionError
+from .._errors import NSXConfigError, NSXResolutionError
 from ..metadata import (
     RegistryModuleEntry,
     registry_entry_for_module,
@@ -18,6 +18,7 @@ from ..models import ModuleMetadata
 from ..project_config import (
     _metadata_path_relative_to_project,
     _module_clone_dir,
+    _module_source_dir_relative_to_app,
     _packaged_metadata_path,
     _read_yaml,
     _registry_project_entry,
@@ -52,17 +53,16 @@ _metadata_scope: contextvars.ContextVar[dict[tuple[str, str], ModuleMetadata] | 
 
 
 @contextlib.contextmanager
-def metadata_cache_scope(*, fresh: bool = False) -> Iterator[None]:
+def metadata_cache_scope() -> Iterator[None]:
     """Enable per-operation memoization of ``_load_module_metadata``.
 
     Within this with-block, repeated calls to load a given
     ``(module_name, app_dir)`` pair return the cached parse without
     re-reading or re-validating ``nsx-module.yaml``. Nested scopes are
-    no-ops (the outermost scope owns the cache), unless fresh=True is used
-    after materialization to avoid reusing earlier file contents.
+    no-ops (the outermost scope owns the cache).
     """
 
-    if not fresh and _metadata_scope.get() is not None:
+    if _metadata_scope.get() is not None:
         yield
         return
     token = _metadata_scope.set({})
@@ -180,14 +180,41 @@ def _load_module_metadata(
 
     entry = registry_entry_for_module(registry, module_name)
     metadata_path = _module_metadata_path(module_name, entry, registry, app_dir=app_dir)
-    data = _read_yaml(metadata_path)
-    data = _normalize_legacy_registry_metadata(data, module_name)
-    validate_nsx_module_metadata(data, str(metadata_path))
-    meta = ModuleMetadata.from_raw(data)
+    meta = _read_module_metadata(metadata_path, module_name)
 
     if cache is not None and cache_key is not None:
         cache[cache_key] = meta
     return meta
+
+
+def _read_module_metadata(path: Path, module_name: str) -> ModuleMetadata:
+    data = _normalize_legacy_registry_metadata(_read_yaml(path), module_name)
+    validate_nsx_module_metadata(data, str(path))
+    return ModuleMetadata.from_raw(data)
+
+
+def _load_materialized_module_metadata(
+    module_name: str,
+    registry: dict[str, Any],
+    *,
+    app_dir: Path,
+    nsx_cfg: dict[str, Any],
+) -> ModuleMetadata:
+    """Read only the manifest beside the sources selected by generated CMake.
+
+    Resolution may prefer an external local override or packaged metadata.
+    Compilation uses the app-local mirror, which may differ on cached builds.
+    Do not fall back to another copy or reuse the resolution cache here.
+    """
+    entry = registry_entry_for_module(registry, module_name)
+    source = app_dir / _module_source_dir_relative_to_app(module_name, registry, nsx_cfg)
+    path = source / Path(entry.metadata).name
+    if not path.is_file():
+        raise NSXConfigError(
+            f"Build-local metadata for '{module_name}' is missing at {path}. "
+            "Run `nsx sync` to materialize the locked modules before building."
+        )
+    return _read_module_metadata(path, module_name)
 
 
 def packaged_module_metadata_path(

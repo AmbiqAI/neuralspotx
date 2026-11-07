@@ -165,7 +165,11 @@ Stable bounds exclude prerelease/dev versions unless an admitting prerelease
 bound opts in; an exclusion alone does not opt in. Local versions use PEP 440
 semantics. Unconstrained modules may retain arbitrary version strings.
 
-Explicit project development overrides with metadata participate normally.
+Explicit project development overrides with metadata participate in resolution.
+Sync and build validate the app-local copies CMake actually uses, even when an
+external development checkout has since changed; run `nsx sync` to refresh those
+copies. Missing build-local metadata never falls back to an external or packaged
+copy.
 Opaque `source: path` or `source: vendored` modules cannot satisfy a constrained
 edge; provide registry-backed metadata for them. Optional dependencies remain
 names only.
