@@ -407,10 +407,15 @@ def test_materialized_missing_copy_never_falls_back_to_external_metadata(tmp_pat
         )
 
 
+@pytest.mark.parametrize("shared_project", [True, False])
 @pytest.mark.parametrize("overlay_invalid", [True, False])
 @pytest.mark.parametrize("monorepo", [True, False])
 def test_cached_build_reads_board_overlay_not_project_mirror(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, overlay_invalid: bool, monorepo: bool
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    overlay_invalid: bool,
+    monorepo: bool,
+    shared_project: bool,
 ) -> None:
     from neuralspotx.operations import _build
     from neuralspotx.operations._lock import lock_app_impl
@@ -438,9 +443,20 @@ def test_cached_build_reads_board_overlay_not_project_mirror(
         "revision": "v1",
         "metadata": ("modules/board-project/" if monorepo else "") + relative,
     }
+    if shared_project:
+        companion = source / "companion/nsx-module.yaml"
+        companion.parent.mkdir(parents=True)
+        companion.write_text(yaml.safe_dump(manifest("companion")))
+        source_metadata.write_text(yaml.safe_dump(manifest(board, required=["companion", "dep"])))
+        cfg["module_registry"]["modules"]["companion"] = {
+            "project": "board-project",
+            "revision": "v1",
+            "metadata": "modules/board-project/companion/nsx-module.yaml",
+        }
     (app / "nsx.yml").write_text(yaml.safe_dump(cfg))
     lock_app_impl(app)
     sync_app_impl(app)
+    sync_app_impl(app)  # A second sync must also preserve the separate overlay.
     overlay = app / "boards/apollo510_evb/nsx-module.yaml"
     mirror = app / "modules/board-project" / relative
     invalid = manifest(board, required=[{"name": "dep", "version": ">=2"}])

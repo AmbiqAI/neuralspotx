@@ -655,6 +655,17 @@ def _sync_app_impl_unlocked(
         # what's already on disk matches their own expected hash.
         if vendored_dir in vendored_paths:
             _verify_duplicate_path(ctx, name, entry, vendored_dir)
+            # Project mirrors are shared, but each board has its own bootstrap
+            # overlay. A preceding sibling module must not skip that overlay.
+            if entry.kind == LockKind.LOCAL and name.startswith("nsx-board-"):
+                try:
+                    project = _registry_project_entry(ctx.registry, entry.project)
+                except (ValueError, KeyError, TypeError):
+                    project = None
+                if project is not None and project.local_path:
+                    changed += _sync_local_board_overlay(
+                        ctx, name, Path(project.local_path).expanduser().resolve(), project.path
+                    )
             continue
 
         if entry.kind == LockKind.LOCAL:
