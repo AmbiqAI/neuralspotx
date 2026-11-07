@@ -82,8 +82,17 @@ projects:
     url: https://github.com/AmbiqAI/nsx-sensors.git
     revision: v1.0.0
     path: modules/nsx-sensors
+  nsx-segger-rtt:
+    name: nsx-segger-rtt
+    url: https://github.com/AmbiqAI/nsx-segger-rtt.git
+    revision: v0.1.3
+    path: modules/nsx-segger-rtt
 
 modules:
+  nsx-segger-rtt:
+    project: nsx-segger-rtt
+    revision: v0.1.3
+    metadata: modules/nsx-segger-rtt/nsx-module.yaml
   nsx-ambiqsuite:
     project: nsx-ambiq-sdk
     revision: v5.2.29

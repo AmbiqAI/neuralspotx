@@ -71,7 +71,8 @@ pytestmark = pytest.mark.skipif(
 # Non-default boards also built in CI. apollo3p_evb is the only Apollo3 Blue
 # Plus target among the examples, and its GCC linker script once lacked the
 # heap symbols every newlib build links against (nsx-ambiq-sdk #85).
-_EXTRA_BOARDS = [("ble_webble", "apollo3p_evb")]
+# CoreMark also exercises RTT placement on cacheless Cortex-M4 SRAM.
+_EXTRA_BOARDS = [("ble_webble", "apollo3p_evb"), ("coremark", "apollo4p_blue_kxr_evb")]
 
 
 @pytest.fixture()

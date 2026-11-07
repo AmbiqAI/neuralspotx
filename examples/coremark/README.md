@@ -49,8 +49,20 @@ nsx build     --app-dir . --board apollo4p_blue_kxr_evb
 The score is printed over **SEGGER RTT** channel 0, not SWO/ITM. RTT writes
 to an in-SRAM ring buffer that the J-Link drains over SWD via background
 memory reads — no peripheral pins and no sensitivity to clock/baud setup.
-On Cortex-M55 targets the port cleans the D-cache after each write so the
-host sees fresh bytes; Cortex-M4 targets have no core D-cache and skip it.
+The registered `nsx-segger-rtt` module owns buffer placement: non-cached
+TCM on Cortex-M55, shared SRAM on cacheless Cortex-M4 parts that provide
+it. The port needs no D-cache clean after writes.
+
+CoreMark links `nsx::segger_rtt` and defaults channel 0's up buffer to 32 KiB
+through `NSX_SEGGER_RTT_BUFFER_SIZE_UP`, set before module bootstrap. An
+explicit CMake cache value overrides this default. The module also exposes
+`NSX_SEGGER_RTT_BUFFER_SIZE_DOWN` (16 bytes by default). These settings apply
+to the library itself; application-only `BUFFER_SIZE_UP` defines do not.
+
+Other apps can use `nsx module add nsx-segger-rtt`, link `nsx::segger_rtt`,
+and include `SEGGER_RTT.h`. The module ships SEGGER RTT V8.58.0 with its
+upstream license and provenance; `SEGGER_RTT_printf` and the assembly fast
+path are not included.
 
 Use any RTT viewer (e.g. `JLinkRTTViewer`) to read the output, which looks
 like:
@@ -116,3 +128,5 @@ coremark/
 
 - Platform port (`src/core_portme.c`, `src/core_portme.h`): Apache-2.0
 - EEMBC CoreMark (`src/coremark/`): Apache-2.0
+- SEGGER RTT (`modules/nsx-segger-rtt/`): upstream license in `LICENSE.md`;
+  source version and checksums in `SOURCE.md`
