@@ -1,42 +1,114 @@
 {
-  "probesExample": [
+  "probesCapture": [
     {
       "kind": "command",
       "text": "nsx probes"
     },
     {
       "kind": "output",
-      "text": "SERIAL     PRODUCT   NICKNAME"
+      "text": "SERIAL      PRODUCT                    NICKNAME"
     },
     {
       "kind": "output",
-      "text": "123456789  J-Link    -"
+      "text": "1160002954  J-Link-OB-Apollo4-CortexM  -"
     },
     {
       "kind": "output",
-      "text": "987654321  J-Link    -"
+      "text": "1160003058  J-Link-OB-Apollo4-CortexM  -"
+    },
+    {
+      "kind": "output",
+      "text": "1160000172  J-Link-OB-Apollo4-CortexM  -"
+    },
+    {
+      "kind": "output",
+      "text": "1160001491  J-Link-OB-Apollo4-CortexM  -"
+    },
+    {
+      "kind": "output",
+      "text": "1160002255  J-Link-OB-Apollo4-CortexM  -"
     }
   ],
-  "flashExample": [
+  "flashCapture": [
     {
       "kind": "command",
-      "text": "nsx flash --probe-serial 123456789"
+      "text": "nsx flash --app-dir hello_swo --probe-serial 1160001491 --frozen --timeout 120"
     },
     {
       "kind": "output",
-      "text": "[Configure the app and build the firmware]"
+      "text": "SEGGER J-Link Commander V9.50 (Compiled Jun 10 2026 12:27:02)"
     },
     {
       "kind": "output",
-      "text": "[Connect to the selected J-Link probe over SWD]"
+      "text": "S/N: 1160001491"
     },
     {
       "kind": "output",
-      "text": "[Program and verify the firmware image]"
+      "text": "J-Link: Flash download: Program & Verify speed: 124 KB/s"
     },
     {
-      "kind": "success",
-      "text": "[Reset the target and start the application]"
+      "kind": "output",
+      "text": "O.K."
+    },
+    {
+      "kind": "output",
+      "text": "J-Link>Reset"
+    },
+    {
+      "kind": "output",
+      "text": "Device specific reset executed."
+    },
+    {
+      "kind": "output",
+      "text": "J-Link>Go"
+    },
+    {
+      "kind": "output",
+      "text": "Script processing completed."
+    }
+  ],
+  "viewCapture": [
+    {
+      "kind": "command",
+      "text": "nsx view --app-dir hello_swo --probe-serial 1160001491 --frozen --duration 8 --capture swo.txt --timeout 60"
+    },
+    {
+      "kind": "output",
+      "text": "Starting SWO viewer for hello_swo on apollo4p_blue_kxr_evb"
+    },
+    {
+      "kind": "output",
+      "text": "Using attach-only SWO view for this secure-reset SoC; flash first or pass --reset-on-open to force a reset."
+    },
+    {
+      "kind": "output",
+      "text": "Target CPU (AMA4B2KP-KXR) is running @ 96000 kHz."
+    },
+    {
+      "kind": "output",
+      "text": "Receiving SWO data @ 1000 kHz."
+    },
+    {
+      "kind": "output",
+      "text": "Showing data from stimulus port(s): 0"
+    },
+    {
+      "kind": "output",
+      "text": "nsx hello from generated app"
+    },
+    {
+      "kind": "output",
+      "text": "nsx hello from generated app"
+    },
+    {
+      "kind": "output",
+      "text": "nsx hello from generated app"
+    }
+  ],
+  "resetCapture": [
+    {
+      "kind": "command",
+      "text": "nsx reset --app-dir hello_swo --probe-serial 1160001491 --verify-reconnect --timeout 60"
     }
   ]
 }

@@ -144,6 +144,10 @@ for (const module of snapshot.modules) {
 }
 
 let rewritten = 0;
+/* Imported AsciiTerminal data is supported upstream (helia-ui#167), but
+ * Home's custom JourneyWalkthrough wraps terminals absent from the MDX source.
+ * The upstream sidecar count guard therefore leaves them out; keep this
+ * model-based export and the walkthrough completeness checks in check-output. */
 const homePath = path.join(dist, 'index.md');
 const journey = readJson(path.join(siteRoot, 'src/data/transcripts/index.json'));
 const journeyMarkdown = journey.stages.map((stage) =>

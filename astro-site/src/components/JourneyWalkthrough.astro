@@ -3,9 +3,10 @@
 // Copyright (c) 2026, Ambiq
 /**
  * A staged walkthrough: a rail of stages over one terminal frame, played one
- * stage at a time. Every stage is rendered server-side so a reader without
- * JavaScript, and the Markdown rendition, see all of them; the behavior layer
- * only decides which one is showing.
+ * stage at a time. Every stage is rendered server-side for readers without JavaScript. The
+ * agent bundle exports the same stage data because the discoverability pass
+ * cannot map terminals inside a custom wrapper back to MDX source positions.
+ * The behavior layer only decides which stage is showing.
  *
  * Composed from helia-ui parts (Surface, the chip recipe, AsciiTerminal). The
  * package has no walkthrough part yet; the shape here is the proposal for one

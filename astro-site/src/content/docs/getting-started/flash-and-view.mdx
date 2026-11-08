@@ -12,17 +12,25 @@ J-Link Software and Documentation Pack, so if
 [`nsx doctor`](/neuralspotx/getting-started/doctor/) still reports the SEGGER checks as
 failures, fix that first.
 
-The terminals below are illustrative examples, not captured hardware runs. Probe
-serial numbers are fictional; the flash example summarizes the sequence in brackets.
-Actual J-Link messages vary with the software version, board and build state.
+The terminal excerpts below were captured on 2026-11-07 using an **Apollo4 Blue Plus
+EVB** (`apollo4p_blue_kxr_evb`), probe **1160001491**, and the `default` hello-world
+template. The Linux host ran NSX 0.9.4 from PR #320's documentation branch
+(`3c050c9`, unchanged CLI from release `86d92dd`), SDK 5.2.29, Arm GNU Toolchain
+15.2.Rel1, and SEGGER J-Link 9.50.
+
+Flash and viewer output is shortened; omitted lines include build paths, progress
+updates, banners and repeated heartbeats. Commands show `nsx` in place of the
+checkout's `uv run nsx`, with local paths shortened to `hello_swo` and `swo.txt`.
+Use your own probe serial and app directory. These are debugger-connected smoke
+checks, not cold-boot, power or comprehensive board qualification.
 
 ## 1. Find the probe
 
-`nsx probes` enumerates connected J-Link probes and prints their USB serial numbers. Here is an example with two probes connected:
+`nsx probes` enumerates connected J-Link probes and prints their USB serial numbers. This capture had five probes connected:
 
 <AsciiTerminal
-  title="Probe discovery · example"
-  lines={transcripts.probesExample}
+  title="Probe discovery · captured output"
+  lines={transcripts.probesCapture}
   animated
 />
 
@@ -31,13 +39,28 @@ machine-readable form. If exactly one probe is connected you never need to name 
 more than one, pass `--probe-serial <serial>` to every command that touches hardware. The
 serial is printed here and on the probe label.
 
+The `J-Link-OB-Apollo4-CortexM` product name identifies the onboard probe, not the
+target MCU; different EVB families can report the same name. Select the serial
+that belongs to your board.
+
 See [`nsx probes`](/neuralspotx/reference/cli/probes/).
 
 ## 2. Flash
 
+Flash your existing app, or reproduce this capture by creating a separate SWO app:
+
+```bash
+nsx create-app hello_swo --board apollo4p_blue_kxr_evb --template default
+nsx build --app-dir hello_swo
+```
+
+The first build creates `nsx.lock` and prepares the firmware. The captured flash
+command uses `--frozen`, which requires that lock; it cannot follow `create-app`
+alone.
+
 <AsciiTerminal
-  title="Flash sequence · illustrative summary"
-  lines={transcripts.flashExample}
+  title="Flash · captured excerpts"
+  lines={transcripts.flashCapture}
   animated
 />
 
@@ -65,29 +88,19 @@ output, so a viewer is not needed for this first check.
 
 ## 3. Optional: try SWO with the default template
 
-To try text output next, create a separate hello-world app:
-
-```bash
-nsx create-app hello_swo --board apollo510_evb --template default
-nsx flash --app-dir hello_swo
-nsx view --app-dir hello_swo
-```
-
-Select your own board and add `--probe-serial <serial>` to flash/view when
-multiple probes are connected. `nsx flash` configures and builds the new app.
-The commands below assume you are inside `hello_swo`.
-
+The `default` template used above prints a heartbeat through SWO. If you started
+with blinky, create and flash the separate `hello_swo` app shown above first.
 `nsx view` opens `JLinkSWOViewerCL` against the board's SEGGER device and streams ITM
-port 0. The `default` template prints one line per second from its main
-loop, so the viewer should settle into a repeating heartbeat:
+port 0. This eight-second capture received eight heartbeat lines; three are shown:
 
-```text
-nsx hello from generated app
-nsx hello from generated app
-nsx hello from generated app
-```
+<AsciiTerminal
+  title="SWO viewer · captured excerpts"
+  lines={transcripts.viewCapture}
+  animated
+/>
 
-Press Ctrl-C to stop.
+Without `--duration`, press Ctrl-C to stop. This capture used the board's default
+attach-only policy and did not reset the running application when opening the viewer.
 
 ### The reset policy
 
@@ -119,10 +132,15 @@ See [`nsx view`](/neuralspotx/reference/cli/view/).
 
 From a configured app, reset uses the selected board's J-Link device and speed:
 
-```bash
-nsx reset
-nsx reset --app-dir ./my_app --board apollo510b_evb --probe-serial 123456789
-```
+<AsciiTerminal
+  title="Reset · captured command"
+  lines={transcripts.resetCapture}
+/>
+
+This command returned exit status **0** with no console output. A subsequent
+five-second `nsx view` capture received five heartbeat lines, confirming that the
+application resumed after reset. `--verify-reconnect` alone confirms the debug
+connection, not application behavior.
 
 Use `--build-dir` when the app was configured into a custom build directory.
 Reset reads the existing CMake configuration; it does not build or fetch modules.
@@ -151,7 +169,8 @@ See [`nsx reset`](/neuralspotx/reference/cli/reset/).
 - Nothing listed by `nsx probes`: check the USB cable and that the board is powered, then
   re-run `nsx doctor` to confirm the SEGGER runtime starts.
 - Flash succeeds but the viewer shows nothing: on a secure-reset SoC the app may not have
-  been started. Flash again, or pass `--reset-on-open`.
+  been started. Flash again, then attach without resetting. Use `--reset-on-open`
+  only when your board supports that reset sequence.
 - More than one board on the desk: pass `--probe-serial` explicitly rather than letting
   NSX pick.
 

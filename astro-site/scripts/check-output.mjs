@@ -225,6 +225,16 @@ for (const output of ['getting-started/install/index.md', 'llms-full.txt']) {
   }
 }
 
+const hardwareTranscripts = JSON.parse(fs.readFileSync(path.join(site, 'src/data/transcripts/flash-and-view.json'), 'utf8'));
+for (const output of ['getting-started/flash-and-view/index.md', 'llms-full.txt']) {
+  const markdown = fs.readFileSync(path.join(dist, output), 'utf8');
+  for (const [name, lines] of Object.entries(hardwareTranscripts)) {
+    for (const line of lines) {
+      if (!markdown.includes(line.text)) errors.push(`${output} omits ${name} line: ${line.text}`);
+    }
+  }
+}
+
 if (errors.length > 0) throw new Error([...new Set(errors)].sort().join('\n'));
 
 const bytes = files.reduce((total, file) => total + fs.statSync(file).size, 0);
