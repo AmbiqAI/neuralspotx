@@ -45,7 +45,7 @@ revision in `nsx.yml`, use the registry override (this applies to its modules):
 module_registry:
   projects:
     nsx-ambiq-sdk:
-      revision: v5.2.29
+      revision: v5.2.30
 ```
 
 For a module-specific override, use `module_registry.modules.<module>.revision`.
