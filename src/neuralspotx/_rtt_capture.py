@@ -175,4 +175,13 @@ def capture_rtt(
             if child.proc is not None and child.proc.stdout is not None:
                 child.proc.stdout.close()
             if sink is not None:
-                sink.close()
+                pending = sys.exception()
+                try:
+                    sink.close()
+                except OSError as exc:
+                    # Buffered close can retry a flush that already failed.
+                    # Preserve capture/callback exceptions, including interrupts.
+                    if pending is None:
+                        raise NSXError(
+                            f"RTT file close failed: {exc}. Partial output is retained."
+                        ) from exc

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import errno
 import io
 import json
 import shutil
@@ -324,3 +325,70 @@ def test_cli_unencodable_stdout_preserves_raw_capture(
     terminal.flush()
     assert raw.getvalue() == b"abc??"
     assert capture.read_bytes() == b"abc\xff\xe2"
+
+
+def test_disk_full_flush_does_not_mask_capture_error(
+    settings: RttSettings,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class FullDisk(io.RawIOBase):
+        def writable(self) -> bool:
+            return True
+
+        def write(self, data) -> int:
+            raise OSError(errno.ENOSPC, "No space left on device")
+
+    # The standard buffer really retries its failed flush during close.
+    sink = io.BufferedWriter(FullDisk())
+    destination = settings.app_dir / "full.bin"
+    original_open = Path.open
+
+    def open_capture(path: Path, *args, **kwargs):
+        return sink if path == destination else original_open(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", open_capture)
+    worker(monkeypatch, "print('ready\\t1234'); print('data\\tYQ=='); import time; time.sleep(30)")
+    with pytest.raises(NSXError, match="RTT file write failed"):
+        _rtt.rtt_app_impl(settings, duration_s=0.1, startup_timeout_s=2, capture=destination)
+    assert sink.closed
+
+
+@pytest.mark.parametrize(
+    "callback_failure", [None, RuntimeError("callback failed"), KeyboardInterrupt()]
+)
+def test_close_failure_preserves_pending_exception(
+    settings: RttSettings,
+    monkeypatch: pytest.MonkeyPatch,
+    callback_failure: BaseException | None,
+) -> None:
+    class BadClose(io.BytesIO):
+        def close(self) -> None:
+            super().close()
+            raise OSError("close failed")
+
+    sink = BadClose()
+    destination = settings.app_dir / "close.bin"
+    original_open = Path.open
+
+    def open_capture(path: Path, *args, **kwargs):
+        return sink if path == destination else original_open(path, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", open_capture)
+    worker(monkeypatch, "print('ready\\t1234'); print('data\\tYQ=='); print('done\\t')")
+
+    def callback(_: bytes) -> None:
+        if callback_failure is not None:
+            raise callback_failure
+
+    if callback_failure is not None:
+        with pytest.raises(type(callback_failure)) as caught:
+            _rtt.rtt_app_impl(
+                settings, duration_s=0.1, startup_timeout_s=2, capture=destination, on_data=callback
+            )
+        assert caught.value is callback_failure
+    else:
+        with pytest.raises(NSXError, match="RTT file close failed"):
+            _rtt.rtt_app_impl(
+                settings, duration_s=0.1, startup_timeout_s=2, capture=destination, on_data=callback
+            )
+    assert sink.closed
