@@ -392,3 +392,19 @@ def test_close_failure_preserves_pending_exception(
                 settings, duration_s=0.1, startup_timeout_s=2, capture=destination, on_data=callback
             )
     assert sink.closed
+    if callback_failure is None:
+        # An exception handled by the caller is not a capture failure. It must
+        # not suppress a new close error from an otherwise successful capture.
+        sink = BadClose()
+        try:
+            raise ValueError("handled by caller")
+        except ValueError:
+            with pytest.raises(NSXError, match="RTT file close failed"):
+                _rtt.rtt_app_impl(
+                    settings,
+                    duration_s=0.1,
+                    startup_timeout_s=2,
+                    capture=destination,
+                    on_data=callback,
+                )
+        assert sink.closed

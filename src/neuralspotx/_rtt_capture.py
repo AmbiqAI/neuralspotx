@@ -91,6 +91,7 @@ def capture_rtt(
     stop = threading.Event()
     reader: threading.Thread | None = None
     ready = False
+    failed = False
     count = 0
     deadline = time.monotonic() + startup_timeout_s
     try:
@@ -164,24 +165,31 @@ def capture_rtt(
                 return RttResult(settings, count, capture)
             else:
                 raise NSXError("Unexpected RTT worker response.")
+    except BaseException:
+        failed = True
+        raise
     finally:
         stop.set()
         try:
-            child.stop()
+            try:
+                child.stop()
+            finally:
+                child.release()
+                if reader is not None:
+                    reader.join(timeout=1)
+                if child.proc is not None and child.proc.stdout is not None:
+                    child.proc.stdout.close()
+        except BaseException:
+            failed = True
+            raise
         finally:
-            child.release()
-            if reader is not None:
-                reader.join(timeout=1)
-            if child.proc is not None and child.proc.stdout is not None:
-                child.proc.stdout.close()
             if sink is not None:
-                pending = sys.exception()
                 try:
                     sink.close()
                 except OSError as exc:
                     # Buffered close can retry a flush that already failed.
-                    # Preserve capture/callback exceptions, including interrupts.
-                    if pending is None:
+                    # Track this call's failures, not a caller's handled exception.
+                    if not failed:
                         raise NSXError(
                             f"RTT file close failed: {exc}. Partial output is retained."
                         ) from exc
