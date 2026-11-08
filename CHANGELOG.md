@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.9.5](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.9.4...neuralspotx-v0.9.5) (2026-11-08)
+
+
+### Bug Fixes
+
+* pin Ambiq SDK modules to 5.2.30 ([db708c0](https://github.com/AmbiqAI/neuralspotx/commit/db708c0f7bd707f80bdab61a35150b538c286822))
+
+
+### Documentation
+
+* complete documentation acceptance follow-up ([#320](https://github.com/AmbiqAI/neuralspotx/issues/320)) ([1ce8e4b](https://github.com/AmbiqAI/neuralspotx/commit/1ce8e4b1d48e38a31e6c506e4a1411a01b7470f6))
+
 ## [0.9.4](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.9.3...neuralspotx-v0.9.4) (2026-11-07)
 
 
