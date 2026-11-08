@@ -55,6 +55,7 @@ from ._cmd_module import (
     cmd_module_update,
     cmd_module_validate,
 )
+from ._cmd_rtt import cmd_rtt
 from ._hints import _COMMAND_GRAPH_HINTS, _register_group_hint, command_hint
 from ._render import _command_graph, _render_outdated_report
 
@@ -825,6 +826,39 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     _add_timeout(p_view)
     p_view.set_defaults(func=cmd_view)
+
+    p_rtt = sub.add_parser("rtt", help="Capture RTT channel 0 from a running app (no flash/reset)")
+    _add_app_selector(p_rtt)
+    p_rtt.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
+    p_rtt.add_argument("--board", default=None, help="Override board from nsx.yml")
+    p_rtt.add_argument("--build-dir", default=None, help="Configured build directory")
+    p_rtt.add_argument("--target", default=None, help="Executable CMake target (default: app name)")
+    p_rtt.add_argument("--probe-serial", default=None, help="SEGGER J-Link USB serial number")
+    p_rtt.add_argument(
+        "--duration",
+        type=float,
+        default=10.0,
+        help="Capture seconds after channel readiness (default: 10)",
+    )
+    p_rtt.add_argument(
+        "--startup-timeout",
+        type=float,
+        default=10.0,
+        help="Seconds to connect and discover channel 0 (default: 10)",
+    )
+    p_rtt.add_argument(
+        "--file",
+        "--capture",
+        dest="capture",
+        default=None,
+        help="Create a new binary capture file; existing files are refused",
+    )
+    p_rtt.add_argument(
+        "--print-settings",
+        action="store_true",
+        help="Print resolved settings as JSON without accessing probes",
+    )
+    p_rtt.set_defaults(func=cmd_rtt)
 
     p_clean = sub.add_parser("clean", help="Clean a generated NSX app build directory")
     _add_app_selector(p_clean)

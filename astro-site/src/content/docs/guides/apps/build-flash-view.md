@@ -112,6 +112,60 @@ with status 128 plus the signal number. On Linux the viewer also exits if `nsx` 
 outright, and on Windows it is tied to `nsx` by a job object. A viewer left running would
 hold the J-Link SWO port and block the next `nsx view` on any board.
 
+## RTT capture
+
+For firmware using `nsx-segger-rtt` (such as CoreMark), install the optional host
+adapter and SEGGER J-Link Software, then capture channel 0:
+
+```bash
+pipx inject neuralspotx pylink-square
+nsx configure --app-dir coremark
+nsx build --app-dir coremark
+nsx flash --app-dir coremark --probe-serial 123456789
+nsx rtt --app-dir coremark --probe-serial 123456789 --duration 25 --file coremark.bin
+```
+
+A Python environment can instead install `neuralspotx[rtt]`. RTT requires an
+already configured and built executable. `nsx rtt` never builds, flashes, or
+explicitly resets the target. The ELF on disk must match the flashed firmware;
+NSX cannot verify that identity from host artifacts. Reconfigure builds made by
+older NSX versions to generate their target artifact pointers.
+
+`--target` selects another executable; `--board` and `--build-dir` select its
+configuration. CMake records the actual executable path, including GCC `.axf`
+and ATFE/Arm Compiler `.elf` output. NSX reads `_SEGGER_RTT` from its ELF symbols.
+A stripped binary or one without RTT produces an actionable error.
+
+The serial precedence is explicit `--probe-serial`, configured serial, then the
+only connected USB probe. Multiple probes require an explicit selection. Use
+`nsx probes` to list them. NSX does not terminate another process holding a probe.
+
+`--startup-timeout` defaults to 10 seconds and covers connection and channel
+readiness. `--duration` defaults to 10 seconds and starts at readiness. Both
+must be positive and finite. A private process contains native SEGGER calls;
+shutdown gets three additional seconds before forced termination and an error.
+Process termination may need a further short grace period. A ready but silent
+channel returns zero bytes and a warning; it does not verify firmware output.
+
+The terminal displays UTF-8 with replacement for invalid bytes. `--file` (also
+`--capture`) writes exact bytes to a **new** file; existing files are refused.
+Partial captures remain on errors or interruption. API callers use
+`AppRttRequest`, `resolve_rtt_app`, and `rtt_app`; a streaming callback receives
+bytes synchronously and must return promptly. Slow callbacks or output sinks
+can delay parent-side timeout enforcement.
+
+Inspect resolved settings without enumerating probes or loading SEGGER:
+
+```bash
+nsx rtt --app-dir coremark --print-settings
+```
+
+The JSON includes executable, control-block address, device, interface, speed,
+channel, and configured serial (or `null` if selection will happen at capture).
+These values can also be entered into a standalone RTT viewer. Transport
+selection in `nsx.yml` and automatic SWO/RTT cross-warnings are follow-up work in
+[issue #148](https://github.com/AmbiqAI/neuralspotx/issues/148).
+
 ## Reset
 
 `nsx reset --device <device>` resets a target without touching an app. The device name is

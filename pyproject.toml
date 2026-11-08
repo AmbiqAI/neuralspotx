@@ -24,7 +24,11 @@ dependencies = [
     "Jinja2>=3.1",
     "PyYAML>=6.0",
     "packaging>=26.0",
+    "pyelftools>=0.33",
 ]
+
+[project.optional-dependencies]
+rtt = ["pylink-square>=2.1.0"]
 
 [project.scripts]
 nsx = "neuralspotx.cli:main"
@@ -51,7 +55,6 @@ lint = [
 ]
 test = [
     "hypothesis>=6.0",
-    "pyelftools>=0.33",
     "pytest>=8.0",
     "pytest-timeout>=2.3",
 ]

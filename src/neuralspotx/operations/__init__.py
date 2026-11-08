@@ -74,10 +74,13 @@ from ._modules import (
     update_modules_impl,
 )
 from ._reset import reset_impl
+from ._rtt import resolve_rtt_app_impl, rtt_app_impl
 from ._sbom import coerce_sbom_format, generate_sbom_impl
 from ._sync import sync_app_impl, update_app_impl
 
 __all__ = [
+    "resolve_rtt_app_impl",
+    "rtt_app_impl",
     # Enums
     "OutdatedStatus",
     "ProfileStatus",

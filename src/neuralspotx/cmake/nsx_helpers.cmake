@@ -38,6 +38,25 @@ function(nsx_add_segger_targets app_target)
     set(NSX_RESET_DEVICE "${NSX_SEGGER_DEVICE}" CACHE INTERNAL "Resolved reset device" FORCE)
     set(NSX_RESET_SPEED_KHZ "${NSX_SEGGER_IF_SPEED}" CACHE INTERNAL "Resolved reset speed" FORCE)
 
+    # CMake resolves the actual executable, including toolchain suffix and
+    # app-specific output name/directory. Build-root location also covers
+    # executable targets declared in subdirectories.
+    get_property(nsx_artifacts_initialized GLOBAL PROPERTY NSX_ARTIFACTS_INITIALIZED)
+    if(NOT nsx_artifacts_initialized)
+        # Drop pointers to targets removed since the preceding configuration.
+        file(GLOB nsx_old_artifacts "${CMAKE_BINARY_DIR}/nsx-artifacts/*.path")
+        if(nsx_old_artifacts)
+            file(REMOVE ${nsx_old_artifacts})
+        endif()
+        set_property(GLOBAL PROPERTY NSX_ARTIFACTS_INITIALIZED TRUE)
+    endif()
+    get_target_property(nsx_target_type ${app_target} TYPE)
+    if(nsx_target_type STREQUAL "EXECUTABLE")
+        file(GENERATE
+            OUTPUT "${CMAKE_BINARY_DIR}/nsx-artifacts/${app_target}.path"
+            CONTENT "$<TARGET_FILE:${app_target}>\n")
+    endif()
+
     find_program(NSX_JLINK_EXE NAMES JLinkExe JLink JLink.exe)
     find_program(NSX_JLINK_SWO_EXE NAMES JLinkSWOViewerCL JLinkSWOViewer_CL JLinkSWOViewerCL.exe JLinkSWOViewer_CL.exe)
 

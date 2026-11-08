@@ -49,6 +49,7 @@ from ._requests import (
     AppFlashRequest,
     AppLockRequest,
     AppOutdatedRequest,
+    AppRttRequest,
     AppSyncRequest,
     AppUpdateRequest,
     AppViewRequest,
@@ -59,9 +60,13 @@ from ._requests import (
     ModuleUpdateRequest,
     PathLike,
 )
+from ._rtt import resolve_rtt_app, rtt_app
 from ._sbom import generate_sbom
 
 __all__ = [
+    "AppRttRequest",
+    "resolve_rtt_app",
+    "rtt_app",
     "AppActionRequest",
     "AppBuildRequest",
     "AppCleanRequest",

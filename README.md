@@ -106,3 +106,8 @@ Built-in firmware modules are described by the packaged registry and fetched
 from their default upstream repos as needed. Normal app users create standalone
 app directories and let NSX manage module resolution, vendoring, configuration,
 build, flash, and view flows.
+
+For RTT-enabled firmware, `nsx rtt --duration 10 --file capture.bin` captures
+channel 0 using the ELF control-block address. Install `neuralspotx[rtt]` and
+SEGGER J-Link Software; pipx users can run `pipx inject neuralspotx pylink-square`.
+See the [RTT capture guide](https://ambiqai.github.io/neuralspotx/guides/apps/build-flash-view/#rtt-capture).

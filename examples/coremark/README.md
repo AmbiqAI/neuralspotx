@@ -75,14 +75,21 @@ CoreMark 1.0 : <score> / GCC ... / STACK
 --- CoreMark complete. ---
 ```
 
-A minimal scripted capture helper is included:
+Capture using NSX's shared RTT host command (after configuring, building, and
+flashing this executable):
 
 ```bash
-python tools/rtt_capture.py --rtt-addr 0x<addr> --duration 25 --out cm.log
+pipx inject neuralspotx pylink-square
+nsx rtt --probe-serial <serial> --duration 25 --file cm.log
 ```
 
-(`--rtt-addr` is the address of the `_SEGGER_RTT` control block, available
-from the linked `coremark` ELF via `nm`/`readelf`.)
+NSX resolves `_SEGGER_RTT` from the exact CMake executable, including GCC's
+`.axf` suffix. `--print-settings` shows the resolved address and connection
+settings without accessing a probe. The command attaches without explicitly
+resetting the target. It creates a new byte-exact capture file and preserves
+partial data on failure. The installed SEGGER J-Link Software is also required.
+Use `neuralspotx[rtt]` for non-pipx Python installations.
+
 
 ## How It Works
 
@@ -121,7 +128,7 @@ coremark/
 │   ├── core_portme.h       Port configuration (types, seeds, timer)
 │   └── coremark/           Upstream EEMBC CoreMark (Apache-2.0)
 └── tools/
-    └── rtt_capture.py      Optional scripted RTT score capture (pylink)
+    └── rtt_capture.py      Legacy manual-address RTT helper (prefer nsx rtt)
 ```
 
 ## License

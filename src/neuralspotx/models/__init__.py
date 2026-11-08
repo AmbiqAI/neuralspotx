@@ -33,8 +33,11 @@ from ._project import (
     ResolvedTarget,
 )
 from ._requests import ModuleInitRequest
+from ._rtt import RttResult, RttSettings
 
 __all__ = [
+    "RttResult",
+    "RttSettings",
     "AppConfig",
     "AppModule",
     "ResolvedTarget",

@@ -33,6 +33,7 @@ from .api import (
     AppFlashRequest,
     AppLockRequest,
     AppOutdatedRequest,
+    AppRttRequest,
     AppSyncRequest,
     AppUpdateRequest,
     AppViewRequest,
@@ -64,6 +65,8 @@ from .api import (
     remove_module,
     reset_target,
     resolve_app_dir,
+    resolve_rtt_app,
+    rtt_app,
     search_modules,
     starter_profile,
     sync_app,
@@ -88,6 +91,8 @@ from .models import (
     OutdatedReport,
     OutdatedSkip,
     ResetResult,
+    RttResult,
+    RttSettings,
     SearchMatch,
     SearchResult,
 )
@@ -95,6 +100,11 @@ from .nsx_lock import LockKind, NsxLock, ResolvedModule
 from .operations import OutdatedStatus, ProfileStatus
 
 __all__ = [
+    "AppRttRequest",
+    "resolve_rtt_app",
+    "rtt_app",
+    "RttResult",
+    "RttSettings",
     # Request dataclasses
     "AppActionRequest",
     "AppBuildRequest",
