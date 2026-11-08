@@ -16,23 +16,26 @@ One repo, [`nsx-ambiq-sdk`](https://github.com/AmbiqAI/nsx-ambiq-sdk), vendors
 the AmbiqSuite drop, the HAL/BSP wrappers, and the shared NSX module set for
 every supported SoC (Apollo2 through Apollo5, plus the experimental atomiq110).
 Stable resolution pins every SDK module and SoC family to the published
-[`v5.2.29` release](https://github.com/AmbiqAI/nsx-ambiq-sdk/releases/tag/v5.2.29).
-The immutable tag resolves to `5585350def5fdced39d42bba150042f92f23cf18`.
+[`v5.2.30` release](https://github.com/AmbiqAI/nsx-ambiq-sdk/releases/tag/v5.2.30).
+The immutable tag resolves to `acc97030b7158f81dc11f8df68fc43b8346f6dfe`.
 The `nsx-ambiqsuite`, `nsx-ambiq-hal` and `nsx-ambiq-bsp` modules are thin
 metadata views onto that same project and revision.
 
-The [5.2.29 release record](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/v5.2.29/release/nsx-ambiq-sdk-5.2.29.yaml)
-records the `stable-2026.11.05` intake: all 73 HAL/BSP archives were rebuilt
-from a prepared upstream snapshot with reviewed XSPI storage patches. It also
-includes the staged C++ compatibility and EM9305 fixes. Cordio retains its
-separately recorded base and selected NSX changes.
+The [5.2.30 release record](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/v5.2.30/release/nsx-ambiq-sdk-5.2.30.yaml)
+records the cumulative `stable-2026.11.05-sbrk42` archive refresh: all 73
+HAL/BSP archives were rebuilt with the invalid weak vendor `_sbrk` removed.
+The reviewed 5.2.29 provider headers/sources remain unchanged; the artifact
+manifest records the new archive provenance. XSPI, C++ compatibility and
+EM9305 fixes remain intact, as do NSX's bounded allocator and force-link
+protection. Cordio retains its separately recorded base and NSX changes.
 
-The SDK passed five-board GCC integration comparisons plus bounded AP510 USB
-and AP510B BLE traffic checks. That evidence is debugger-reset testing, not
-cold-power-on or full peripheral qualification. AP3 microphone work remains
+The corrected provider passed GCC startup/runtime checks on AP330, AP510B
+and AP4 Blue Plus KXR (21 Unity cases). These are debugger-controlled starts,
+not cold-power-on or full peripheral qualification. No new USB/BLE traffic or
+ATfE/ACfE physical qualification is claimed. AP3 microphone work remains
 deferred, AP510L was not physically exercised, and AT110 remains experimental.
 Exact revisions and exclusions are recorded in the
-[SDK qualification report](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/v5.2.29/release/qualification-5.2.29.md).
+[SDK qualification report](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/v5.2.30/release/qualification-5.2.30.md).
 
 Board profiles depend on the provider module for their SoC family, and NSX
 vendors the resolved SDK content into the generated app. See
