@@ -38,8 +38,8 @@ def app(tmp_path: Path) -> tuple[Path, Path]:
 @pytest.fixture
 def elf(tmp_path: Path) -> Path:
     cc = shutil.which("cc")
-    if not cc or sys.platform == "darwin":
-        pytest.skip("ELF host C compiler needed for this fixture")
+    if not cc or sys.platform != "linux":
+        pytest.skip("Linux ELF host C compiler needed for this fixture")
     source = tmp_path / "fixture.c"
     source.write_text("unsigned char _SEGGER_RTT[1024]; int main(void) {return _SEGGER_RTT[0];}\n")
     output = tmp_path / "actual output.axf"
@@ -220,8 +220,8 @@ def test_real_cmake_resolves_nested_renamed_executable(tmp_path: Path) -> None:
     for tool in ("cmake", "ninja", "cc"):
         if not shutil.which(tool):
             pytest.skip(f"{tool} needed for host-only CMake fixture")
-    if sys.platform == "darwin":
-        pytest.skip("fixture requires an ELF host compiler")
+    if sys.platform != "linux":
+        pytest.skip("fixture requires a Linux ELF host compiler")
     root = tmp_path / "cmake app"
     nested = root / "nested"
     nested.mkdir(parents=True)
