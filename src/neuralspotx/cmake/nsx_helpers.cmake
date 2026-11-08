@@ -1,5 +1,17 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright (c) 2026, Ambiq
+# Initialize on include, even if this configuration registers no SEGGER targets.
+# Otherwise a removed final target could retain a usable pointer and old ELF.
+get_property(nsx_artifacts_initialized GLOBAL PROPERTY NSX_ARTIFACTS_INITIALIZED)
+if(NOT nsx_artifacts_initialized)
+    # Drop pointers to targets removed since the preceding configuration.
+    file(GLOB nsx_old_artifacts "${CMAKE_BINARY_DIR}/nsx-artifacts/*.path")
+    if(nsx_old_artifacts)
+        file(REMOVE ${nsx_old_artifacts})
+    endif()
+    set_property(GLOBAL PROPERTY NSX_ARTIFACTS_INITIALIZED TRUE)
+endif()
+
 function(nsx_assert_file_exists path)
     if(NOT EXISTS "${path}")
         message(FATAL_ERROR "Required file does not exist: ${path}")
@@ -41,15 +53,6 @@ function(nsx_add_segger_targets app_target)
     # CMake resolves the actual executable, including toolchain suffix and
     # app-specific output name/directory. Build-root location also covers
     # executable targets declared in subdirectories.
-    get_property(nsx_artifacts_initialized GLOBAL PROPERTY NSX_ARTIFACTS_INITIALIZED)
-    if(NOT nsx_artifacts_initialized)
-        # Drop pointers to targets removed since the preceding configuration.
-        file(GLOB nsx_old_artifacts "${CMAKE_BINARY_DIR}/nsx-artifacts/*.path")
-        if(nsx_old_artifacts)
-            file(REMOVE ${nsx_old_artifacts})
-        endif()
-        set_property(GLOBAL PROPERTY NSX_ARTIFACTS_INITIALIZED TRUE)
-    endif()
     get_target_property(nsx_target_type ${app_target} TYPE)
     if(nsx_target_type STREQUAL "EXECUTABLE")
         file(GENERATE

@@ -147,7 +147,8 @@ shutdown gets three additional seconds before forced termination and an error.
 Process termination may need a further short grace period. A ready but silent
 channel returns zero bytes and a warning; it does not verify firmware output.
 
-The terminal displays UTF-8 with replacement for invalid bytes. `--file` (also
+The terminal decodes UTF-8 with replacement for invalid bytes and characters
+unavailable in its output encoding. `--file` (also
 `--capture`) writes exact bytes to a **new** file; existing files are refused.
 Partial captures remain on errors or interruption. API callers use
 `AppRttRequest`, `resolve_rtt_app`, and `rtt_app`; a streaming callback receives

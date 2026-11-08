@@ -31,15 +31,20 @@ def cmd_rtt(args: argparse.Namespace) -> None:
         return
     decoder = codecs.getincrementaldecoder("utf-8")(errors="replace")
 
-    def output(data: bytes) -> None:
-        sys.stdout.write(decoder.decode(data))
+    def write_text(text: str) -> None:
+        # UTF-8 decoding replacement alone is insufficient for redirected
+        # cp1252/ASCII stdout: even U+FFFD may be unencodable there.
+        encoding = sys.stdout.encoding or "utf-8"
+        sys.stdout.write(text.encode(encoding, errors="replace").decode(encoding))
         sys.stdout.flush()
+
+    def output(data: bytes) -> None:
+        write_text(decoder.decode(data))
 
     try:
         result = api.rtt_app(request, on_data=output)
     finally:
-        sys.stdout.write(decoder.decode(b"", final=True))
-        sys.stdout.flush()
+        write_text(decoder.decode(b"", final=True))
     print(
         f"RTT: {result.bytes_received} bytes from probe {result.settings.probe_serial}.",
         file=sys.stderr,

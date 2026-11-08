@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 import json
 import shutil
 import subprocess
@@ -253,6 +254,12 @@ def test_real_cmake_resolves_nested_renamed_executable(tmp_path: Path) -> None:
     stale.write_text(str(result.elf) + "\n")
     subprocess.run(["cmake", "-S", str(root), "-B", str(build)], check=True, capture_output=True)
     assert not stale.exists()
+    # Keep the old ELF on disk, but remove the last registered target.
+    (nested / "CMakeLists.txt").write_text("# no executable targets\n")
+    subprocess.run(["cmake", "-S", str(root), "-B", str(build)], check=True, capture_output=True)
+    assert result.elf.exists()
+    with pytest.raises(NSXConfigError, match="nsx configure"):
+        api.resolve_rtt_app(AppRttRequest(root, build_dir=build))
 
 
 @pytest.fixture(autouse=True)
@@ -293,3 +300,27 @@ def test_protocol_accepts_crlf(settings: RttSettings, monkeypatch: pytest.Monkey
     )
     result = _rtt.rtt_app_impl(settings, duration_s=0.1, startup_timeout_s=2)
     assert result.bytes_received == 2
+
+
+@pytest.mark.parametrize("encoding", ["ascii", "cp1252"])
+def test_cli_unencodable_stdout_preserves_raw_capture(
+    settings: RttSettings,
+    monkeypatch: pytest.MonkeyPatch,
+    encoding: str,
+) -> None:
+    from neuralspotx import operations
+    from neuralspotx.cli import _cmd_rtt
+
+    monkeypatch.setattr(_cmd_rtt, "resolve_app_dir", lambda _: settings.app_dir)
+    monkeypatch.setattr(operations, "resolve_rtt_app_impl", lambda *_, **__: settings)
+    # Invalid UTF-8 plus an incomplete trailing sequence exercises both writes
+    # and decoder finalization. The binary file must retain all original bytes.
+    worker(monkeypatch, "print('ready\\t1234'); print('data\\tYWJj/+I='); print('done\\t')")
+    raw = io.BytesIO()
+    terminal = io.TextIOWrapper(raw, encoding=encoding, errors="strict")
+    monkeypatch.setattr(sys, "stdout", terminal)
+    capture = settings.app_dir / "raw.bin"
+    assert cli.main(["rtt", "--file", str(capture), "--duration", ".1"]) == 0
+    terminal.flush()
+    assert raw.getvalue() == b"abc??"
+    assert capture.read_bytes() == b"abc\xff\xe2"
