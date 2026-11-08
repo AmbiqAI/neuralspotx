@@ -54,6 +54,13 @@ def _pump(stream: BinaryIO, messages: queue.Queue[bytes], stop: threading.Event)
             return
 
 
+def _decode_payload(payload: bytes) -> bytes:
+    try:
+        return base64.b64decode(payload, validate=True)
+    except binascii.Error as exc:
+        raise NSXError("Invalid RTT worker payload.") from exc
+
+
 def capture_rtt(
     settings: RttSettings,
     *,
@@ -118,26 +125,34 @@ def capture_rtt(
                 )
             if len(line) > 8192 or not line.endswith(b"\n"):
                 raise NSXError("Invalid RTT worker response.")
-            kind, sep, payload = line[:-1].partition(b"\t")
+            kind, sep, payload = line.removesuffix(b"\n").removesuffix(b"\r").partition(b"\t")
             if not sep:
                 raise NSXError("Invalid RTT worker response.")
             if kind == b"ready" and not ready:
-                serial = payload.decode("ascii")
+                try:
+                    serial = payload.decode("ascii")
+                except UnicodeError as exc:
+                    raise NSXError("Invalid RTT worker probe serial.") from exc
                 if not serial.isdecimal() or int(serial) <= 0:
                     raise NSXError("Invalid RTT worker probe serial.")
                 settings = replace(settings, probe_serial=serial)
                 ready = True
                 deadline = time.monotonic() + duration_s + _SHUTDOWN_GRACE_S
             elif kind == b"data" and ready:
-                data = base64.b64decode(payload, validate=True)
+                data = _decode_payload(payload)
                 if sink is not None:
-                    sink.write(data)
-                    sink.flush()
+                    try:
+                        sink.write(data)
+                        sink.flush()
+                    except OSError as exc:
+                        raise NSXError(
+                            f"RTT file write failed: {exc}. Partial output is retained."
+                        ) from exc
                 if on_data is not None:
                     on_data(data)
                 count += len(data)
             elif kind == b"error":
-                message = base64.b64decode(payload, validate=True).decode("utf-8", "replace")
+                message = _decode_payload(payload).decode("utf-8", "replace")
                 raise NSXError(f"RTT capture failed: {message}")
             elif kind == b"done" and ready:
                 try:
@@ -149,8 +164,6 @@ def capture_rtt(
                 return RttResult(settings, count, capture)
             else:
                 raise NSXError("Unexpected RTT worker response.")
-    except (OSError, UnicodeError, binascii.Error) as exc:
-        raise NSXError(f"RTT output failed: {exc}. Partial output is retained.") from exc
     finally:
         stop.set()
         try:

@@ -29,7 +29,7 @@ def _select_serial(serial: str | None) -> str:
 
 def _capture(args: argparse.Namespace, send: Callable[[str, str], None]) -> None:
     try:
-        import pylink  # ty: ignore[unresolved-import]  # Optional rtt extra; diagnosed below at runtime.
+        import pylink
     except ImportError as exc:
         raise RuntimeError(
             "RTT needs pylink-square. Install `neuralspotx[rtt]`, or run "
@@ -82,7 +82,9 @@ def main() -> int:
     parser.add_argument("--serial")
     args = parser.parse_args()
     # Preserve the protocol pipe while diverting Python and native SDK output.
-    with os.fdopen(os.dup(sys.stdout.fileno()), "w", encoding="ascii", buffering=1) as protocol:
+    with os.fdopen(
+        os.dup(sys.stdout.fileno()), "w", encoding="ascii", buffering=1, newline="\n"
+    ) as protocol:
         os.dup2(sys.stderr.fileno(), sys.stdout.fileno())
 
         def send(kind: str, payload: str = "") -> None:

@@ -270,3 +270,26 @@ def assert_workers_reaped(monkeypatch: pytest.MonkeyPatch):
     for proc in children:
         assert proc.poll() is not None, "RTT worker leaked after operation"
         assert proc.stdout is not None and proc.stdout.closed
+
+
+@pytest.mark.parametrize("failure", [OSError("disk"), UnicodeError("encoding")])
+def test_callback_exception_identity(
+    settings: RttSettings, monkeypatch: pytest.MonkeyPatch, failure: Exception
+) -> None:
+    worker(monkeypatch, "print('ready\\t1234'); print('data\\tYQ=='); import time; time.sleep(30)")
+
+    def fail(_: bytes) -> None:
+        raise failure
+
+    with pytest.raises(type(failure)) as caught:
+        _rtt.rtt_app_impl(settings, duration_s=0.1, startup_timeout_s=2, on_data=fail)
+    assert caught.value is failure
+
+
+def test_protocol_accepts_crlf(settings: RttSettings, monkeypatch: pytest.MonkeyPatch) -> None:
+    worker(
+        monkeypatch,
+        "import sys; sys.stdout.buffer.write(b'ready\\t1234\\r\\ndata\\tAP8=\\r\\ndone\\t\\r\\n')",
+    )
+    result = _rtt.rtt_app_impl(settings, duration_s=0.1, startup_timeout_s=2)
+    assert result.bytes_received == 2

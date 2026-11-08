@@ -53,10 +53,10 @@ request = AppBuildRequest(app_dir=app_dir, board="apollo510_evb", frozen=True)
 build_app(request)
 ```
 
-There is a request type per operation. Fifteen are exported: `AppActionRequest`,
+There is a request type per operation. The exported requests include: `AppActionRequest`,
 `AppBuildRequest`, `AppCleanRequest`, `AppCreateRequest`, `AppFlashRequest`,
 `AppLockRequest`, `AppOutdatedRequest`, `AppSyncRequest`, `AppUpdateRequest`,
-`AppViewRequest`, `BoardCreateRequest`, `ModuleChangeRequest`, `ModuleInitRequest`,
+`AppViewRequest`, `AppRttRequest`, `BoardCreateRequest`, `ModuleChangeRequest`, `ModuleInitRequest`,
 `ModuleRegisterRequest` and `ModuleUpdateRequest`.
 
 ## What comes back
@@ -70,6 +70,8 @@ a typed object rather than parsed text:
 | `doctor` | A `DoctorReport` |
 | `flash_app` | A `FlashResult` |
 | `reset_target` | A `ResetResult` |
+| `resolve_rtt_app` | Offline `RttSettings` without accessing probes |
+| `rtt_app` | A `RttResult` with selected probe and byte count |
 | `add_module`, `remove_module`, `update_modules` | A list of `ModuleChange` |
 | `register_module` | One `ModuleChange` |
 
@@ -82,6 +84,22 @@ if not report.ok:
         if not check.ok:
             print(check.label, check.hint)
 ```
+
+For bounded RTT channel 0 capture, use a typed request:
+
+```python
+from neuralspotx import AppRttRequest, resolve_rtt_app, rtt_app
+
+request = AppRttRequest(app_dir=app_dir, probe_serial="123456789", duration_s=10)
+settings = resolve_rtt_app(request)  # ELF address and configured device; no probe access
+result = rtt_app(request, on_data=lambda data: print(repr(data)))
+```
+
+The callback receives bytes and must return promptly; its exceptions propagate
+after worker cleanup. `request.capture` creates a new byte-exact file and retains
+partial data on failure. The target must already run the firmware matching the
+resolved executable. See [RTT capture](/neuralspotx/guides/apps/build-flash-view/#rtt-capture)
+for installation and timing contracts.
 
 ## Errors
 

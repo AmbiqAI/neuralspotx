@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import subprocess
 import sys
 from types import ModuleType, SimpleNamespace
 
@@ -103,3 +104,24 @@ def test_native_order_readiness_and_cleanup(
         assert calls == ["open", "interface", "connect", "start", "read", "stop", "close"]
     assert calls[-1] == "close"
     assert ("stop" in calls) == (failure != "open")
+
+
+def test_worker_wire_format_is_binary_safe() -> None:
+    code = r"""
+import os
+import sys
+from neuralspotx import _rtt_worker
+sys.argv = ['worker', '--device', 'unused', '--speed', '4000', '--address', '1', '--duration', '.1']
+def fake_capture(args, send):
+    os.write(1, b'native SDK output\n')
+    print('Python SDK output', flush=True)
+    send('ready', '1234')
+    send('data', 'AP8=')
+_rtt_worker._capture = fake_capture
+raise SystemExit(_rtt_worker.main())
+"""
+    result = subprocess.run([sys.executable, "-c", code], capture_output=True, timeout=5)
+    assert result.returncode == 0
+    assert result.stdout == b"ready\t1234\ndata\tAP8=\ndone\t\n"
+    assert b"native SDK output" in result.stderr
+    assert b"Python SDK output" in result.stderr
