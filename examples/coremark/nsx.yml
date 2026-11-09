@@ -16,3 +16,8 @@ modules:
   - nsx-timer
   - nsx-segger-rtt
 features: {}
+
+# core_portme.c writes ee_printf output to SEGGER RTT channel 0.
+console:
+  transport: rtt
+  rtt_channel: 0

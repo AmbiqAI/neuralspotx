@@ -507,6 +507,9 @@ def view_app_impl(
         board=board,
         build_dir=build_dir,
     )
+    from ._console import warn_console_mismatch
+
+    warn_console_mismatch(resolved_app_dir, resolved_board, "swo")
     warn_if_lock_stale(resolved_app_dir, resolved_board)
     regenerate_active_board_glue(resolved_app_dir, resolved_board, build_dir=resolved_build_dir)
     if (

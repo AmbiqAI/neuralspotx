@@ -162,3 +162,12 @@ inputs and current metadata still determine closure; this is not a metadata-at-c
 resolver or a multi-target transaction. Targeted results reject incompatible artifacts
 sharing a source directory before writing that target section. The locking guide
 documents CLI/API selection, cache, check and metadata limits.
+
+## Advisory console metadata exception
+
+Optional `console` declarations (app defaults and per-board overrides) extend
+manifest schema 2 without changing existing build or dependency semantics. Older
+readers preserve but ignore these declarations, losing only transport warnings.
+This narrow exception does not permit unversioned changes to dependency resolution,
+build semantics, locks, or other schemas. Exact schema checks and the no-migration
+policy remain in force.

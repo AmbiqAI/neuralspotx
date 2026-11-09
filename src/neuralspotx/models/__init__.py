@@ -17,6 +17,7 @@ from ._command import (
     DoctorCheck,
     DoctorReport,
 )
+from ._console import ConsoleConfig
 from ._discovery import DiscoveryRecord, SearchMatch, SearchResult
 from ._hardware import FlashResult, ResetResult
 from ._loader import NsxProject
@@ -36,6 +37,7 @@ from ._requests import ModuleInitRequest
 from ._rtt import RttResult, RttSettings
 
 __all__ = [
+    "ConsoleConfig",
     "RttResult",
     "RttSettings",
     "AppConfig",

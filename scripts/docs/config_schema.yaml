@@ -41,8 +41,12 @@ schemas:
       - {path: schema_version, type: int, required: true, values: "2", description: "Manifest schema version. NSX refuses a manifest it does not recognize."}
       - {path: project.name, type: string, required: true, description: "App name. Used for the CMake project and the default build directory."}
       - {path: targets.default, type: string, required: false, description: "Board built when --board is not given."}
-      - {path: targets.supported, type: "list of string, or map of board to overrides", required: false, description: "Boards this app may be built for. The map form accepts per-board soc, profile and toolchain overrides."}
+      - {path: targets.supported, type: "list of string, or map of board to overrides", required: false, description: "Boards this app may be built for. The map form accepts per-board soc, profile, toolchain and console overrides."}
       - {path: target.board, type: string, required: false, description: "Single-board shorthand, superseded by targets."}
+      - {path: console, type: "map or null", required: false, description: "Advisory primary console; null means unknown. Board console overrides replace this entire declaration."}
+      - {path: console.transport, type: string, required: true, required_when: "console is a mapping", values: "swo, rtt", description: "Declared transport; does not configure firmware or switch commands."}
+      - {path: console.rtt_channel, type: int, required: false, default: 0, description: "RTT only; integer 0 is the only supported channel. Invalid for SWO."}
+      - {path: "targets.supported.<board>.console", type: "map or null", required: false, description: "Replacement declaration; omitted inherits, null clears the app default."}
       - {path: toolchain, type: string, required: false, default: arm-none-eabi-gcc, description: "Default toolchain for every board unless a board overrides it."}
       - {path: channel, type: string, required: false, description: "Registry channel the app tracks."}
       - {path: modules, type: list of module entries, required: false, description: "Direct dependencies. A string is shorthand for a map with only name set."}
@@ -75,6 +79,9 @@ schemas:
       schema_version: 2
       project:
         name: coverage_app
+      console:
+        transport: rtt
+        rtt_channel: 0
       target:
         board: apollo510_evb
       targets:

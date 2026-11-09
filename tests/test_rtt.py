@@ -56,6 +56,8 @@ def test_resolve_exact_artifact_and_offline_cli(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     root, build = app
+    with (root / "nsx.yml").open("a") as stream:
+        stream.write("console:\n  transport: swo\n")
     (build / "nsx-artifacts").mkdir()
     (build / "nsx-artifacts/demo.path").write_text(str(elf) + "\n")
     monkeypatch.setattr(runtime, "_worker_command", lambda *_: pytest.fail("offline opened worker"))
@@ -65,7 +67,9 @@ def test_resolve_exact_artifact_and_offline_cli(
     assert settings.device == "TestDevice"
     assert settings.probe_serial == "1234"
     assert cli.main(["rtt", str(root), "--print-settings", "--probe-serial", "5678"]) == 0
-    output = json.loads(capsys.readouterr().out)
+    captured = capsys.readouterr()
+    assert "Primary console" in captured.err
+    output = json.loads(captured.out)
     assert output["probe_serial"] == "5678"
     assert output["elf"] == str(elf)
     assert output["address"] == settings.address
