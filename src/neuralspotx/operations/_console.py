@@ -17,11 +17,10 @@ def warn_console_mismatch(
     if declared is None or declared.transport == requested:
         return
     command = "nsx rtt" if declared.transport == "rtt" else "nsx view"
-    reset_note = " SWO view retains its documented reset policy." if command == "nsx view" else ""
     warn(
         f"Primary console for {board} is declared {declared.transport.upper()}, but "
         f"{requested.upper()} was requested. Consider {command} for this app and board; "
-        f"continuing with the requested transport.{reset_note}",
+        "continuing with the requested transport. SWO view retains its documented reset policy.",
         code="console_transport_mismatch",
         declared_transport=declared.transport,
         requested_transport=requested,

@@ -99,6 +99,7 @@ def test_rtt_emitter_forwarded_once_before_capture(
     def capture(resolved: RttSettings, **kwargs: Any) -> RttResult:
         assert len(events) == 1
         assert events[0].data["code"] == "console_transport_mismatch"
+        assert "reset policy" in events[0].message
         kwargs["on_data"](b"raw\xff")
         return RttResult(resolved, 4, None)
 
@@ -135,6 +136,8 @@ def test_view_warns_before_glue_and_preserves_execution(
 
     def glue(*args: Any, **kwargs: Any) -> None:
         assert len(events) == expected
+        if expected:
+            assert "reset policy" in events[0].message
         raise StopAtGlue
 
     monkeypatch.setattr(_build, "warn_if_lock_stale", lambda *a: None)
