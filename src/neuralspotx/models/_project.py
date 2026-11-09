@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from .._errors import NSXConfigError
+from ._console import ConsoleConfig, validate_console_metadata
 
 
 @dataclass(frozen=True)
@@ -385,6 +386,7 @@ class ResolvedTarget:
     soc: str | None = None
     profile: str | None = None
     toolchain: str | None = None
+    console: ConsoleConfig | None = None
 
 
 @dataclass(frozen=True)
@@ -397,6 +399,7 @@ class AppConfig:
 
     @classmethod
     def from_mapping(cls, data: dict[str, Any]) -> AppConfig:
+        validate_console_metadata(data)
         modules_data = data.get("modules", [])
         if not isinstance(modules_data, list):
             raise NSXConfigError("nsx.yml: 'modules' must be a list")
@@ -432,6 +435,28 @@ class AppConfig:
         targets = self.raw.get("targets")
         return targets if isinstance(targets, dict) else None
 
+    def console_for_board(self, board: str | None) -> ConsoleConfig | None:
+        """Resolve an advisory declaration without restricting board selection."""
+        from ..constants import normalize_board
+
+        block = self._explicit_targets_block()
+        supported = block.get("supported") if block else None
+        if isinstance(supported, dict) and board is not None:
+            name = (
+                board
+                if board in supported
+                else next(
+                    (key for key in supported if normalize_board(key) == normalize_board(board)),
+                    None,
+                )
+            )
+            config = supported.get(name)
+            if isinstance(config, dict) and "console" in config:
+                return ConsoleConfig.from_value(
+                    config["console"], field=f"targets.supported.{name}.console"
+                )
+        return ConsoleConfig.from_value(self.raw.get("console"))
+
     def _targets_from_singular(self) -> dict[str, ResolvedTarget]:
         target = self.target
         board = target.get("board")
@@ -449,6 +474,7 @@ class AppConfig:
                     else _starter_profile_default(board)
                 ),
                 toolchain=self.toolchain,
+                console=self.console_for_board(board),
             )
         }
 
@@ -495,6 +521,7 @@ class AppConfig:
                     if isinstance(profile, str) and profile
                     else _starter_profile_default(board)
                 ),
+                console=self.console_for_board(board),
                 toolchain=(
                     toolchain if isinstance(toolchain, str) and toolchain else self.toolchain
                 ),

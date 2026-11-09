@@ -163,9 +163,39 @@ nsx rtt --app-dir coremark --print-settings
 
 The JSON includes executable, control-block address, device, interface, speed,
 channel, and configured serial (or `null` if selection will happen at capture).
-These values can also be entered into a standalone RTT viewer. Transport
-selection in `nsx.yml` and automatic SWO/RTT cross-warnings are follow-up work in
-[issue #148](https://github.com/AmbiqAI/neuralspotx/issues/148).
+These values can also be entered into a standalone RTT viewer.
+
+## Declare the primary console
+
+An optional declaration in `nsx.yml` lets NSX warn when your selected command
+uses a different transport:
+
+```yaml
+console:
+  transport: rtt
+  rtt_channel: 0
+```
+
+Keep `schema_version: 2`. This describes firmware intent; it does not configure
+firmware, identify the flashed image, or automatically switch transports.
+`nsx view` still uses SWO with its documented reset policy; `nsx rtt` remains
+attach-only. Mismatches warn and continue. Missing metadata produces no warning.
+
+Set `targets.supported.<board>.console` to replace the app declaration for a board.
+Omission inherits; `console: null` clears it to unknown. A null board entry inherits.
+Legacy single-board manifests use the app declaration. Explicit boards without an
+override also use the app default. `transport` accepts `swo` or `rtt`; RTT accepts
+only integer channel `0` (the default). SWO must omit `rtt_channel`. Empty mappings,
+unknown fields, and unsupported values fail validation.
+
+Declarations describe the primary executable named by `project.name`. RTT
+`--target` selecting another executable does not use this declaration for warnings.
+Warnings go to stderr; `--print-settings` remains JSON and capture files contain
+only RTT bytes. Python callers can collect structured warnings with the optional
+`emit` callback on `resolve_rtt_app` and `rtt_app`.
+
+Older NSX versions may preserve but ignore console declarations. The declaration
+is advisory, so older versions simply omit these warnings.
 
 ## Reset
 

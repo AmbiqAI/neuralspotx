@@ -13,6 +13,7 @@ from elftools.elf.sections import SymbolTableSection
 from .._errors import NSXConfigError
 from ..models._rtt import RttResult, RttSettings
 from ._common import _resolve_build_context
+from ._console import warn_console_mismatch
 from ._debug_settings import app_debug_settings
 
 
@@ -69,6 +70,7 @@ def resolve_rtt_app_impl(
 ) -> RttSettings:
     """Resolve the exact CMake target artifact and its RTT symbol offline."""
     app, name, selected, build = _resolve_build_context(app_dir, board=board, build_dir=build_dir)
+    warn_console_mismatch(app, selected, "rtt", target=target or name)
     build = build.expanduser().resolve()
     debug = app_debug_settings(app, board=selected, build_dir=build)
     target = name if target is None else target

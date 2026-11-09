@@ -6,30 +6,34 @@ from collections.abc import Callable
 from pathlib import Path
 
 from .. import operations
+from .._io import Emitter, using_emitter
 from ..models._rtt import RttResult, RttSettings
 from ._requests import AppRttRequest
 
 
-def resolve_rtt_app(request: AppRttRequest) -> RttSettings:
+def resolve_rtt_app(request: AppRttRequest, *, emit: Emitter | None = None) -> RttSettings:
     """Resolve exact executable, RTT address and debug settings without hardware.
 
     Requires configuration with this NSX version and a built executable. An
     unset serial remains None; capture requires exactly one connected probe
-    unless a serial is supplied explicitly or recorded by CMake.
+    unless a serial is supplied explicitly or recorded by CMake. ``emit`` receives
+    advisory console mismatch warnings; resolution remains offline.
     """
-    return operations.resolve_rtt_app_impl(
-        Path(request.app_dir).expanduser().resolve(),
-        board=request.board,
-        build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
-        target=request.target,
-        probe_serial=request.probe_serial,
-    )
+    with using_emitter(emit):
+        return operations.resolve_rtt_app_impl(
+            Path(request.app_dir).expanduser().resolve(),
+            board=request.board,
+            build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
+            target=request.target,
+            probe_serial=request.probe_serial,
+        )
 
 
 def rtt_app(
     request: AppRttRequest,
     *,
     on_data: Callable[[bytes], None] | None = None,
+    emit: Emitter | None = None,
 ) -> RttResult:
     """Capture channel 0 without resetting or flashing the running target.
 
@@ -39,8 +43,9 @@ def rtt_app(
     output is retained on failure. Without a callback or file, data is drained
     and counted. The ELF must match the flashed firmware; NSX cannot verify
     this from host artifacts. See :class:`AppRttRequest` for timing bounds.
+    ``emit`` receives advisory warnings separately from raw ``on_data`` bytes.
     """
-    settings = resolve_rtt_app(request)
+    settings = resolve_rtt_app(request, emit=emit)
     return operations.rtt_app_impl(
         settings,
         duration_s=request.duration_s,

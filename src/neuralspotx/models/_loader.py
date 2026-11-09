@@ -11,6 +11,7 @@ from typing import Any
 import yaml
 
 from .._errors import NSXConfigError
+from ._console import validate_console_metadata
 from ._project import AppConfig, AppModule, ModuleRegistryOverride
 
 # ------------------------------------------------------------------
@@ -32,6 +33,7 @@ _NSX_YML_KNOWN_TOP_LEVEL: tuple[str, ...] = (
     "profile_status",
     "targets",
     "baseline",
+    "console",
 )
 
 # The single nsx.yml schema version this build understands. Bumped to 2 for
@@ -440,6 +442,7 @@ class NsxProject:
             )
 
         _validate_targets(data.get("targets"), origin=origin)
+        validate_console_metadata(data, origin=origin)
 
         _validate_baseline(data.get("baseline"), origin=origin)
 

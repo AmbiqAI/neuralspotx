@@ -366,3 +366,12 @@ When changing a major architectural choice:
 3. update this file
 4. keep the PR description explicit about the design change and why it is worth
    it
+
+## Advisory console metadata exception
+
+Optional `console` declarations (app defaults and per-board overrides) extend
+manifest schema 2 without changing existing build or dependency semantics. Older
+readers preserve but ignore these declarations, losing only transport warnings.
+This narrow exception does not permit unversioned changes to dependency resolution,
+build semantics, locks, or other schemas. Exact schema checks and the no-migration
+policy remain in force.

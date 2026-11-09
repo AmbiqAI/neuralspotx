@@ -8,7 +8,7 @@ targets:
       version: 0.9.5
     manifest:
       path: nsx.yml
-      hash: sha256:7d83d0868d4305ad989e8f579a2c45b91ccbc99d8948be2d946c2400fc5a77d6
+      hash: sha256:1588d74bfe7af290f63f71828bc7537f34cf43ff15ec8f78b301d7cf3955da56
     target:
       board: apollo510_evb
       soc: apollo510
@@ -159,7 +159,7 @@ targets:
       version: 0.9.5
     manifest:
       path: nsx.yml
-      hash: sha256:7d83d0868d4305ad989e8f579a2c45b91ccbc99d8948be2d946c2400fc5a77d6
+      hash: sha256:1588d74bfe7af290f63f71828bc7537f34cf43ff15ec8f78b301d7cf3955da56
     target:
       board: apollo510b_evb
       soc: apollo510b
@@ -310,7 +310,7 @@ targets:
       version: 0.9.5
     manifest:
       path: nsx.yml
-      hash: sha256:7d83d0868d4305ad989e8f579a2c45b91ccbc99d8948be2d946c2400fc5a77d6
+      hash: sha256:1588d74bfe7af290f63f71828bc7537f34cf43ff15ec8f78b301d7cf3955da56
     target:
       board: apollo330mP_evb
       soc: apollo330P
@@ -461,7 +461,7 @@ targets:
       version: 0.9.5
     manifest:
       path: nsx.yml
-      hash: sha256:7d83d0868d4305ad989e8f579a2c45b91ccbc99d8948be2d946c2400fc5a77d6
+      hash: sha256:1588d74bfe7af290f63f71828bc7537f34cf43ff15ec8f78b301d7cf3955da56
     target:
       board: apollo510dL_evb
       soc: apollo510L
@@ -612,7 +612,7 @@ targets:
       version: 0.9.5
     manifest:
       path: nsx.yml
-      hash: sha256:7d83d0868d4305ad989e8f579a2c45b91ccbc99d8948be2d946c2400fc5a77d6
+      hash: sha256:1588d74bfe7af290f63f71828bc7537f34cf43ff15ec8f78b301d7cf3955da56
     target:
       board: apollo4p_blue_kxr_evb
       soc: apollo4p
