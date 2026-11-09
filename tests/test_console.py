@@ -159,3 +159,28 @@ def test_invalid_metadata_prevents_side_effects(
     ):
         with pytest.raises(NSXConfigError):
             operation()
+
+
+def test_console_override_prefers_exact_board_key() -> None:
+    config = AppConfig.from_mapping(
+        manifest(
+            targets={
+                "supported": {
+                    "APOLLO510_EVB": {"console": {"transport": "rtt"}},
+                    "apollo510_evb": {"console": {"transport": "swo"}},
+                }
+            }
+        )
+    )
+    assert config.resolve_target("apollo510_evb").console == ConsoleConfig("swo")
+    assert config.resolve_target("APOLLO510_EVB").console == ConsoleConfig("rtt", 0)
+    assert config.console_for_board("Apollo510_Evb") == ConsoleConfig("rtt", 0)
+
+
+def test_console_error_names_manifest(tmp_path: Path) -> None:
+    path = tmp_path / "nsx.yml"
+    path.write_text(yaml.safe_dump(manifest(console={"transport": "uart"})))
+    with pytest.raises(NSXConfigError) as exc:
+        NsxProject.from_yaml(path)
+    assert str(path) in str(exc.value)
+    assert exc.value.field == "console.transport"

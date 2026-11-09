@@ -442,13 +442,19 @@ class AppConfig:
         block = self._explicit_targets_block()
         supported = block.get("supported") if block else None
         if isinstance(supported, dict) and board is not None:
-            for name, config in supported.items():
-                if normalize_board(name) == normalize_board(board):
-                    if isinstance(config, dict) and "console" in config:
-                        return ConsoleConfig.from_value(
-                            config["console"], field=f"targets.supported.{name}.console"
-                        )
-                    break
+            name = (
+                board
+                if board in supported
+                else next(
+                    (key for key in supported if normalize_board(key) == normalize_board(board)),
+                    None,
+                )
+            )
+            config = supported.get(name)
+            if isinstance(config, dict) and "console" in config:
+                return ConsoleConfig.from_value(
+                    config["console"], field=f"targets.supported.{name}.console"
+                )
         return ConsoleConfig.from_value(self.raw.get("console"))
 
     def _targets_from_singular(self) -> dict[str, ResolvedTarget]:

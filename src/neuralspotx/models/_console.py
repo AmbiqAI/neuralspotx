@@ -43,14 +43,17 @@ class ConsoleConfig:
         return cls("rtt", 0)
 
 
-def validate_console_metadata(data: Mapping[str, object]) -> None:
+def validate_console_metadata(data: Mapping[str, object], *, origin: str = "nsx.yml") -> None:
     """Validate all declarations, including overrides for unselected boards."""
-    ConsoleConfig.from_value(data.get("console"))
-    targets = data.get("targets")
-    supported = targets.get("supported") if isinstance(targets, dict) else None
-    if isinstance(supported, dict):
-        for board, config in supported.items():
-            if isinstance(config, dict) and "console" in config:
-                ConsoleConfig.from_value(
-                    config["console"], field=f"targets.supported.{board}.console"
-                )
+    try:
+        ConsoleConfig.from_value(data.get("console"))
+        targets = data.get("targets")
+        supported = targets.get("supported") if isinstance(targets, dict) else None
+        if isinstance(supported, dict):
+            for board, config in supported.items():
+                if isinstance(config, dict) and "console" in config:
+                    ConsoleConfig.from_value(
+                        config["console"], field=f"targets.supported.{board}.console"
+                    )
+    except NSXConfigError as exc:
+        raise NSXConfigError(f"{origin}: {exc}", field=exc.field) from None

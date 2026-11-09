@@ -442,7 +442,7 @@ class NsxProject:
             )
 
         _validate_targets(data.get("targets"), origin=origin)
-        validate_console_metadata(data)
+        validate_console_metadata(data, origin=origin)
 
         _validate_baseline(data.get("baseline"), origin=origin)
 
