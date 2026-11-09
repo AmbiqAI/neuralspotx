@@ -24,7 +24,11 @@ dependencies = [
     "Jinja2>=3.1",
     "PyYAML>=6.0",
     "packaging>=26.0",
+    "pyelftools>=0.33",
 ]
+
+[project.optional-dependencies]
+rtt = ["pylink-square>=2.1.0"]
 
 [project.scripts]
 nsx = "neuralspotx.cli:main"
@@ -44,6 +48,8 @@ docs = [
     "griffe==1.7.3",
 ]
 lint = [
+    # Type-check the optional RTT backend without suppressing missing imports.
+    "pylink-square>=2.1.0",
     "ruff>=0.11.0",
     # Pinned exactly: ty is pre-1.0 and its rule behavior moves between
     # releases -- upgrades are deliberate, with a re-triage of diagnostics.
@@ -51,7 +57,6 @@ lint = [
 ]
 test = [
     "hypothesis>=6.0",
-    "pyelftools>=0.33",
     "pytest>=8.0",
     "pytest-timeout>=2.3",
 ]

@@ -146,10 +146,10 @@ def _walk(nodes: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 def test_dump_covers_the_whole_parser(cli_tree: dict[str, Any]) -> None:
     nodes = _walk(cli_tree["commands"])
-    assert len(cli_tree["commands"]) == 21, "the top-level parser count changed"
+    assert len(cli_tree["commands"]) == 22, "the top-level parser count changed"
     assert len(cli_tree["aliases"]) == 3
     distinct = [node for node in cli_tree["commands"] if not node["alias_of"]]
-    assert len(distinct) == 18, f"expected 18 distinct commands, got {len(distinct)}"
+    assert len(distinct) == 19, f"expected 19 distinct commands, got {len(distinct)}"
     for node in nodes:
         assert node["usage"], f"nsx {node['name']} has no usage line"
         assert node["slug"], f"nsx {node['name']} has no slug"

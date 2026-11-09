@@ -265,3 +265,23 @@ class ModuleRegisterRequest:
     project_local_path: PathLike | None = None
     override: bool = False
     dry_run: bool = False
+
+
+@dataclass(slots=True)
+class AppRttRequest:
+    """Bounded, attach-only RTT channel 0 capture from a configured app.
+
+    Timing values must be positive and finite. Duration starts when channel 0
+    is ready. Startup includes dependency loading and probe selection. The
+    runtime allows an additional three seconds for worker shutdown, followed
+    by process termination if needed. No build, flash or reset is implicit.
+    """
+
+    app_dir: PathLike = "."
+    board: str | None = None
+    build_dir: PathLike | None = None
+    target: str | None = None
+    probe_serial: str | None = None
+    duration_s: float = 10.0
+    startup_timeout_s: float = 10.0
+    capture: PathLike | None = None
