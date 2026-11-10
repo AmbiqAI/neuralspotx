@@ -262,7 +262,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           repository: AmbiqAI/nsx-ambiq-sdk
-          ref: 705e6110936bc802a0aef79f08dceb4c1ddad19d
+          ref: 1f38e98c66d703e045116caf92bb4825103ea178
           path: .ci-sdk-bsp
 
       - name: Link custom BSP apps against SDK candidate
