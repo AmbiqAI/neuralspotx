@@ -146,3 +146,20 @@ def test_provider_local_dependencies_supply_real_version_metadata(tmp_path: Path
     names = resolve(tmp_path, registry, cfg)
     assert names == ["hal", "custom-bsp", "consumer"]
     validate_materialized_requirements(names, app_dir=tmp_path, nsx_cfg=cfg, registry=registry)
+
+
+def test_vendored_provider_wins_over_registry_source(tmp_path: Path) -> None:
+    registry, cfg = setup_graph(tmp_path)
+    cfg["modules"] = [{"name": "custom-bsp", "source": {"vendored": True}}]
+    external = tmp_path / "external"
+    external.mkdir()
+    data = yaml.safe_load(
+        (tmp_path / "modules/custom-bsp/nsx-module.yaml").read_text(encoding="utf-8")
+    )
+    data["contracts"]["provides"]["bsp"]["versions"] = [1]
+    (external / "nsx-module.yaml").write_text(yaml.safe_dump(data), encoding="utf-8")
+    registry["projects"]["custom-bsp"]["local_path"] = str(external)
+    names = resolve(tmp_path, registry, cfg)
+    assert names == ["hal", "custom-bsp", "consumer"]
+    record = board_composition(tmp_path, cfg, registry, names)
+    verify_board_composition(record, tmp_path, cfg, registry, names)

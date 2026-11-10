@@ -14,6 +14,7 @@ from ..metadata import registry_entry_for_module, validate_nsx_module_metadata
 from ..models import ModuleDependency, ModuleMetadata
 from ..project_config import _registry_project_entry
 from ._metadata import _materialized_module_metadata_path, _module_metadata_path
+from ._nsx_cfg import _vendored_module_names
 
 
 def participant_metadata_path(
@@ -25,6 +26,8 @@ def participant_metadata_path(
     materialized: bool = False,
 ) -> Path:
     """The actual compiled snapshot for checks; explicit source for writable resolution."""
+    if name in _vendored_module_names(config):
+        return app_dir / "modules" / name / "nsx-module.yaml"
     try:
         entry = registry_entry_for_module(registry, name)
     except ValueError:
