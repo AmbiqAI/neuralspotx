@@ -47,8 +47,11 @@ def read_participant(name: str, path: Path) -> ModuleMetadata:
         raise NSXModuleError(f"{path}: invalid YAML: {exc}") from exc
     if not isinstance(raw, dict):
         raise NSXModuleError(f"{path}: expected a module metadata mapping")
-    validate_nsx_module_metadata(raw, str(path))
-    meta = ModuleMetadata.from_raw(raw)
+    try:
+        validate_nsx_module_metadata(raw, str(path))
+        meta = ModuleMetadata.from_raw(raw)
+    except ValueError as exc:
+        raise NSXModuleError(f"{path}: invalid module metadata: {exc}") from exc
     if meta.name != name:
         raise NSXModuleError(f"{path}: module.name must be '{name}', got '{meta.name}'")
     return meta

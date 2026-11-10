@@ -387,3 +387,13 @@ def test_malformed_parent_board_yaml_is_typed(tmp_path: Path) -> None:
     with pytest.raises(NSXConfigError, match="board.yaml: invalid YAML"):
         create_board_impl("child", from_board="parent", app_dir=tmp_path)
     assert not (tmp_path / "boards/child").exists()
+
+
+def test_invalid_local_bsp_contract_is_typed(tmp_path: Path) -> None:
+    registry, cfg = setup_graph(tmp_path, local=True)
+    path = tmp_path / "modules/custom-bsp/nsx-module.yaml"
+    data = yaml.safe_load(path.read_text())
+    data["contracts"]["provides"]["bsp"]["versions"] = [True]
+    path.write_text(yaml.safe_dump(data))
+    with pytest.raises(NSXModuleError, match="invalid module metadata"):
+        resolve(tmp_path, registry, cfg)
