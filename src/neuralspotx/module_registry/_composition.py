@@ -10,7 +10,7 @@ from .._errors import NSXLockError
 from ..board_plan import resolve_board_plan
 from ..bsp_contracts import BspRequirement
 from ..nsx_lock._composition import BoardComposition, CompositionInput
-from ._bsp import participant_metadata_path, read_participant
+from ._bsp import load_bsp_local_dependencies, participant_metadata_path, read_participant
 from ._metadata import _load_materialized_module_metadata, _load_module_metadata
 from ._nsx_cfg import _local_module_names, _vendored_module_names
 
@@ -31,6 +31,7 @@ def board_composition(
         return None
     opaque = _local_module_names(config) | _vendored_module_names(config)
     contract_inputs = []
+    metadata = {}
     for name in sorted(modules):
         if name in opaque and name != descriptor.bsp.module:
             continue
@@ -43,6 +44,12 @@ def board_composition(
             )
         else:
             meta = _load_module_metadata(name, registry, app_dir=app_dir)
+        metadata[name] = meta
+    load_bsp_local_dependencies(
+        metadata, plan, opaque, registry, app_dir, config, materialized=materialized
+    )
+    for name, meta in sorted(metadata.items()):
+        path = participant_metadata_path(name, registry, app_dir, config, materialized=materialized)
         if (
             name == descriptor.bsp.module
             or meta.bsp_offer is not None

@@ -99,3 +99,34 @@ def bind_requirements(
                 )
             bound.append(dep)
     return bound
+
+
+def load_bsp_local_dependencies(
+    metadata: dict[str, ModuleMetadata],
+    plan: ResolvedBoardPlan | None,
+    opaque: set[str],
+    registry: dict[str, Any],
+    app_dir: Path,
+    config: dict[str, Any],
+    *,
+    materialized: bool,
+) -> None:
+    """Inspect local nodes reachable from the selected provider, leaving other locals opaque."""
+    if plan is None:
+        return
+    pending = [plan.descriptor.bsp.module]
+    seen: set[str] = set()
+    while pending:
+        name = pending.pop()
+        if name in seen:
+            continue
+        seen.add(name)
+        if name not in metadata and name in opaque:
+            metadata[name] = read_participant(
+                name,
+                participant_metadata_path(
+                    name, registry, app_dir, config, materialized=materialized
+                ),
+            )
+        if name in metadata:
+            pending.extend(dep.name for dep in bind_requirements(metadata[name], plan))

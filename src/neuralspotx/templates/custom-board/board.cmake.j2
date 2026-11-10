@@ -1,4 +1,5 @@
 # Custom board: silicon wiring comes from the SDK; board wiring is local.
+include("${NSX_CMAKE_DIR}/nsx_toolchain_flags.cmake")
 nsx_module_dir_for_name(_core_dir "nsx-core")
 get_filename_component(_sdk_root "${NSX_ROOT}/${_core_dir}/../.." ABSOLUTE)
 set(_app_root "${NSX_ROOT}")
@@ -17,10 +18,15 @@ add_library(nsx::board ALIAS ${NSX_BOARD_TARGET})
 add_library(nsx::board_{{ name }} ALIAS ${NSX_BOARD_TARGET})
 add_library(nsx::board_flags ALIAS ${NSX_BOARD_FLAGS_TARGET})
 target_link_libraries(${NSX_BOARD_FLAGS_TARGET} INTERFACE nsx::soc_flags)
+# SDK startup stack size is expressed in uint32_t words.
+target_compile_definitions(${NSX_BOARD_FLAGS_TARGET} INTERFACE STACK_SIZE=4096)
 target_link_libraries(${NSX_BOARD_TARGET} INTERFACE ${NSX_BOARD_FLAGS_TARGET})
 # Add package/pin definitions only after checking your board's hardware.
 include("${CMAKE_CURRENT_LIST_DIR}/flags.cmake" OPTIONAL)
 include("${CMAKE_CURRENT_LIST_DIR}/memory.cmake" OPTIONAL)
+# NSX owns final image link flags; the SDK SoC target supplies silicon flags.
+include("${NSX_CMAKE_DIR}/nsx_toolchain_flags.cmake")
+nsx_apply_toolchain_flags(${NSX_BOARD_FLAGS_TARGET})
 # No inherited EVB probe identity. Author debug.cmake before flashing.
 set(NSX_SEGGER_DEVICE "")
 include("${CMAKE_CURRENT_LIST_DIR}/debug.cmake" OPTIONAL)

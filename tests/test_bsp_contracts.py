@@ -132,3 +132,17 @@ def test_cannot_inherit_binding_or_cycle(tmp_path: Path) -> None:
     path.write_text(yaml.safe_dump(data))
     with pytest.raises(BoardDescriptorError, match="cycle"):
         load_board_for_app("custom_ap330", tmp_path)
+
+
+def test_provider_local_dependencies_supply_real_version_metadata(tmp_path: Path) -> None:
+    from neuralspotx.module_registry._requirements import validate_materialized_requirements
+
+    registry, cfg = setup_graph(tmp_path, local=True)
+    cfg["modules"].append({"name": "hal", "local": True})
+    path = tmp_path / "modules/custom-bsp/nsx-module.yaml"
+    data = yaml.safe_load(path.read_text())
+    data["depends"]["required"] = [{"name": "hal", "version": ">=1.0"}]
+    path.write_text(yaml.safe_dump(data))
+    names = resolve(tmp_path, registry, cfg)
+    assert names == ["hal", "custom-bsp", "consumer"]
+    validate_materialized_requirements(names, app_dir=tmp_path, nsx_cfg=cfg, registry=registry)

@@ -257,6 +257,20 @@ jobs:
           -q
           --timeout=600
 
+      - name: Checkout qualified BSP SDK candidate
+        if: runner.os == 'Linux'
+        uses: actions/checkout@v4
+        with:
+          repository: AmbiqAI/nsx-ambiq-sdk
+          ref: 705e6110936bc802a0aef79f08dceb4c1ddad19d
+          path: .ci-sdk-bsp
+
+      - name: Link custom BSP apps against SDK candidate
+        if: runner.os == 'Linux'
+        env:
+          NSX_TEST_CUSTOM_BSP_SDK: ${{ github.workspace }}/.ci-sdk-bsp
+        run: uv run --group test pytest tests/test_custom_bsp_build.py -q --timeout=600
+
   # ---------------------------------------------------------------
   # Example builds (armclang) — optional, Linux only.
   # Skipped unless the ARMCLANG_URL secret is configured on the repo

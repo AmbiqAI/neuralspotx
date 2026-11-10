@@ -83,18 +83,27 @@ def _resolve_module_closure_inner(
     visiting: set[str] = set()
     resolved: list[str] = []
     metadata_cache: dict[str, ModuleMetadata] = {}
+    bsp_inspected: set[str] = set()
 
-    def dfs(module_name: str) -> None:
+    def dfs(module_name: str, *, inspect_local: bool = False) -> None:
+        inspect_local = inspect_local or module_name == selected_bsp
         if module_name in visited:
-            return
+            if not inspect_local or module_name in bsp_inspected:
+                return
+            # A previous unrelated seed treated this source as opaque. It now
+            # participates in the BSP graph and must be inspected normally.
+            visited.remove(module_name)
+            resolved.remove(module_name)
         # Local / vendored modules are opaque — skip registry metadata lookup.
-        if module_name in opaque_names and module_name != selected_bsp:
+        if module_name in opaque_names and not inspect_local:
             visited.add(module_name)
             resolved.append(module_name)
             return
         if module_name in visiting:
             raise NSXModuleError(f"Dependency cycle detected at module '{module_name}'")
         visiting.add(module_name)
+        if inspect_local:
+            bsp_inspected.add(module_name)
 
         # Acquisition is interleaved with traversal by necessity: a module's
         # dependencies live inside its own nsx-module.yaml, so the graph is
@@ -111,7 +120,7 @@ def _resolve_module_closure_inner(
                 vendored_modules=vendored_names,
             )
 
-        if module_name == selected_bsp and module_name in opaque_names:
+        if module_name in opaque_names:
             if app_dir is None:
                 raise NSXModuleError("An app-local BSP requires an app directory")
             module_meta = read_participant(
@@ -145,7 +154,7 @@ def _resolve_module_closure_inner(
 
         for dep in bind_requirements(module_meta, plan):
             try:
-                dfs(dep.name)
+                dfs(dep.name, inspect_local=inspect_local)
             except (ValueError, NSXConfigError) as exc:
                 if dep.version is not None:
                     raise requirement_metadata_error(module_name, dep, exc) from exc
