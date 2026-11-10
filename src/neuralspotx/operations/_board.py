@@ -43,7 +43,10 @@ def create_board_impl(
     if name == from_board:
         raise NSXConfigError("Custom board identity must differ from its inherited board")
     root = resolve_app_dir(app_dir)
-    parent = bd.load_board_for_app(from_board, root)
+    try:
+        parent = bd.load_board_for_app(from_board, root)
+    except bd.BoardDescriptorError as exc:
+        raise NSXConfigError(str(exc)) from exc
     if parent is None:
         raise NSXConfigError(
             f"unknown parent board '{from_board}' (run `nsx board list` to see available boards)"

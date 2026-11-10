@@ -255,9 +255,10 @@ def test_custom_provider_can_be_registered_only_in_layer(tmp_path: Path) -> None
     assert "custom-bsp" not in expanded["_profile_registry"]["modules"]
 
 
+@pytest.mark.parametrize("metadata_style", ["relative", "absolute", "external"])
 @pytest.mark.parametrize("change_dependencies", [False, True])
 def test_locked_composition_uses_resolved_git_revision(
-    tmp_path: Path, change_dependencies: bool, monkeypatch: pytest.MonkeyPatch
+    tmp_path: Path, change_dependencies: bool, monkeypatch: pytest.MonkeyPatch, metadata_style: str
 ) -> None:
     import shutil
     import subprocess
@@ -300,6 +301,13 @@ def test_locked_composition_uses_resolved_git_revision(
     project = registry["projects"]["custom-bsp"]
     project.pop("local_path")
     project["url"] = str(source)
+    if metadata_style != "relative":
+        metadata = tmp_path / "modules/custom-bsp/nsx-module.yaml"
+        if metadata_style == "external":
+            external = tmp_path / "external.yaml"
+            shutil.copyfile(metadata, external)
+            metadata = external
+        registry["modules"]["custom-bsp"]["metadata"] = str(metadata)
     names = resolve(tmp_path, registry, cfg)
     assert names == ["hal", "custom-bsp", "consumer"]  # old checkout
     lock = NsxLock()
@@ -314,7 +322,10 @@ def test_locked_composition_uses_resolved_git_revision(
             url=str(source) if name == "custom-bsp" else None,
             commit=commit if name == "custom-bsp" else None,
         )
-    if change_dependencies:
+    if metadata_style == "external":
+        with pytest.raises(NSXLockError, match="inside its project checkout"):
+            resolved_board_composition(tmp_path, cfg, registry, lock)
+    elif change_dependencies:
         with pytest.raises(NSXLockError, match="Dependency graph changed"):
             resolved_board_composition(tmp_path, cfg, registry, lock)
     else:
@@ -350,3 +361,29 @@ def test_unchanged_bsp_lock_preserves_timestamp(tmp_path: Path, writable: bool) 
     )
     assert second.board_composition == first.board_composition
     assert second.generated_at == first.generated_at
+
+
+def test_local_bsp_malformed_yaml_is_typed(tmp_path: Path) -> None:
+    registry, cfg = setup_graph(tmp_path, local=True)
+    (tmp_path / "modules/custom-bsp/nsx-module.yaml").write_text("module: [invalid")
+    with pytest.raises(NSXModuleError, match="nsx-module.yaml: invalid YAML"):
+        resolve(tmp_path, registry, cfg)
+
+
+def test_invalid_parent_board_identifier_is_typed(tmp_path: Path) -> None:
+    from neuralspotx._errors import NSXConfigError
+
+    with pytest.raises(NSXConfigError):
+        create_board_impl("valid", from_board="../invalid", app_dir=tmp_path)
+    assert not (tmp_path / "boards").exists()
+
+
+def test_malformed_parent_board_yaml_is_typed(tmp_path: Path) -> None:
+    from neuralspotx._errors import NSXConfigError
+
+    parent = tmp_path / "boards/parent/board.yaml"
+    parent.parent.mkdir(parents=True)
+    parent.write_text("board: [invalid")
+    with pytest.raises(NSXConfigError, match="board.yaml: invalid YAML"):
+        create_board_impl("child", from_board="parent", app_dir=tmp_path)
+    assert not (tmp_path / "boards/child").exists()

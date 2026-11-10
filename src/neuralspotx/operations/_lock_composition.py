@@ -11,13 +11,18 @@ from .. import module_cache
 from .._errors import NSXLockError
 from ..board_plan import resolve_board_plan
 from ..constants import DEFAULT_TOOLCHAIN
+from ..metadata import registry_entry_for_module
 from ..module_registry import _module_names_from_nsx, _resolve_module_closure
 from ..module_registry._composition import board_composition
 from ..module_registry._metadata import metadata_cache_scope
 from ..module_registry._vendoring import _strip_git_metadata
 from ..nsx_lock import LockKind, NsxLock, hash_tree
 from ..nsx_lock._composition import BoardComposition
-from ..project_config import _module_clone_dir
+from ..project_config import (
+    _metadata_path_relative_to_project,
+    _module_clone_dir,
+    _registry_project_entry,
+)
 from ..subprocess_utils import git_clone_at_commit
 
 
@@ -56,6 +61,29 @@ def resolved_board_composition(
                             f"Locked artifact integrity mismatch for '{module.project}'"
                         )
             snapshot_registry["projects"][module.project]["local_path"] = str(source)
+
+        for name, module in lock.modules.items():
+            if module.kind != LockKind.GIT:
+                continue
+            entry = registry_entry_for_module(registry, name)
+            original = _registry_project_entry(registry, entry.project)
+            source = Path(snapshot_registry["projects"][entry.project]["local_path"])
+            metadata = Path(entry.metadata)
+            if metadata.is_absolute():
+                existing = _module_clone_dir(app_dir, entry.project, registry)
+                try:
+                    relative = metadata.resolve().relative_to(existing.resolve())
+                except ValueError as exc:
+                    raise NSXLockError(
+                        f"Git module '{name}' metadata must be inside its project checkout; "
+                        "use a project-relative metadata path or an explicit local source override."
+                    ) from exc
+            else:
+                relative = _metadata_path_relative_to_project(metadata, original.path)
+            candidate = source / relative
+            if not candidate.resolve().is_relative_to(source.resolve()):
+                raise NSXLockError(f"Git module '{name}' metadata escapes its verified artifact")
+            snapshot_registry["modules"][name]["metadata"] = str(candidate)
 
         # Initial graph discovery may have read an older vendored checkout.
         # Never publish new metadata fingerprints beside that older graph.

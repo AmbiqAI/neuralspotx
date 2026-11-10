@@ -41,7 +41,10 @@ def read_participant(name: str, path: Path) -> ModuleMetadata:
         raise NSXModuleError(
             f"BSP participant '{name}' requires metadata at {path}; add nsx-module.yaml"
         )
-    raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+    try:
+        raw = yaml.safe_load(path.read_text(encoding="utf-8"))
+    except yaml.YAMLError as exc:
+        raise NSXModuleError(f"{path}: invalid YAML: {exc}") from exc
     if not isinstance(raw, dict):
         raise NSXModuleError(f"{path}: expected a module metadata mapping")
     validate_nsx_module_metadata(raw, str(path))

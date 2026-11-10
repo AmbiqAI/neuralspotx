@@ -209,7 +209,10 @@ def _parse_descriptor(
     parent_lookup: "dict[str, BoardDescriptor] | None" = None,
     parent_resolver: Callable[[str], BoardDescriptor | None] | None = None,
 ) -> BoardDescriptor:
-    raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    try:
+        raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    except yaml.YAMLError as exc:
+        raise BoardDescriptorError(f"{path}: invalid YAML: {exc}") from exc
     if not isinstance(raw, dict):
         raise BoardDescriptorError(f"{path}: top-level YAML must be a mapping")
 
