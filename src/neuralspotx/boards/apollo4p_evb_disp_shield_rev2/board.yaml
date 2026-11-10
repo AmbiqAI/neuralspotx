@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright (c) 2026, Ambiq
-# NSX board descriptor (schema_version 1).
+# NSX board descriptor (schema_version 2).
 #
 # Source of truth for board -> SoC / SDK-provider derivation consumed by
 # neuralspotx.constants via neuralspotx/board_descriptors.py. Keep in sync
@@ -11,7 +11,7 @@
 # and package as `apollo4p_evb`; the shield adds populated PSRAM
 # (APS25616N) and a display interface. Hardware-validated: PSRAM XIP
 # read/write via nsx-psram, zero mismatches.
-schema_version: 1
+schema_version: 2
 board:
   name: apollo4p_evb_disp_shield_rev2
   tier: evb
@@ -24,3 +24,7 @@ cpu:
   abi: thumbv7em-fpv4sp-hard
 toolchains:
   - arm-none-eabi-gcc
+roles:
+  bsp:
+    module: nsx-ambiq-bsp
+    contract: 1

@@ -1070,7 +1070,7 @@ def test_view_auto_skips_reset_for_custom_board_inheriting_apollo4(
     board_dir = app_dir / "boards" / "my_apollo4"
     board_dir.mkdir(parents=True)
     board_dir.joinpath("board.yaml").write_text(
-        "schema_version: 1\n"
+        "schema_version: 2\nroles: {bsp: {module: custom-bsp, contract: 2}}\n"
         "inherits: apollo4p_blue_kxr_evb\n"
         "board:\n"
         "  name: my_apollo4\n"

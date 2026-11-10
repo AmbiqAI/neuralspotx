@@ -326,7 +326,7 @@ version mismatch fails loudly with an actionable hint instead of silently
 upgrading data. There are two artifact classes with two behaviors:
 
 - **Generated / disposable artifacts** — `nsx.lock`
-  (`LOCK_SCHEMA_VERSION`, currently `4`) and the on-disk caches. A mismatch is
+  (`LOCK_SCHEMA_VERSION`, currently `5`) and the on-disk caches. A mismatch is
   rejected with a typed error that tells the user how to recreate it:
   `nsx lock` regenerates the lock; `nsx cache clean` clears caches. `nsx lock`
   itself catches the lock mismatch and rewrites the file in place. The
@@ -375,3 +375,17 @@ readers preserve but ignore these declarations, losing only transport warnings.
 This narrow exception does not permit unversioned changes to dependency resolution,
 build semantics, locks, or other schemas. Exact schema checks and the no-migration
 policy remain in force.
+
+### Custom Board and BSP Ownership
+
+Board descriptors use schema 2 and author an explicit `roles.bsp` module/contract
+binding. Inheritance shares silicon/display facts, not the parent's binding or
+EVB CMake. Family seeds substitute the selected BSP only at the seed boundary;
+concrete dependencies must not be silently rewritten. Selected local BSPs have
+validated metadata and dependencies, unlike unrelated opaque local modules.
+
+The SDK owns contract qualification and target capability validation. NSX owns
+selection, dependency ordering, vendoring, and per-target lock composition.
+The lock records exact descriptor and participating contract-manifest bytes;
+recompute against materialized sources before builds. Keep the board identity
+stable when its BSP provider changes.

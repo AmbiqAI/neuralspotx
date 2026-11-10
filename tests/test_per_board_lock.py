@@ -295,7 +295,7 @@ def test_regenerate_active_board_glue_uses_active_board_module_set(
         lambda _app: type("_FakeLockFile", (), {"targets": locks})(),
     )
     monkeypatch.setattr(sync_mod, "_load_registry", lambda: {})
-    monkeypatch.setattr(sync_mod, "expand_profile_seeds", lambda cfg, _reg: cfg)
+    monkeypatch.setattr(sync_mod, "expand_profile_seeds", lambda cfg, _reg, **_kwargs: cfg)
 
     captured: dict[str, list[str]] = {}
     monkeypatch.setattr(

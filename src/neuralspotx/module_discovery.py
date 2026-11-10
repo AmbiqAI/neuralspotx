@@ -184,7 +184,7 @@ def _search_haystacks(record: DiscoveryRecord) -> list[tuple[str, str]]:
         for dep in depends["required"]:
             haystacks.append(("depends.required", dep))
         for requirement in depends.get("required_dependencies", []):
-            if requirement["version"]:
+            if requirement.get("version"):
                 haystacks.append(("depends.required.version", requirement["version"]))
         for dep in depends["optional"]:
             haystacks.append(("depends.optional", dep))

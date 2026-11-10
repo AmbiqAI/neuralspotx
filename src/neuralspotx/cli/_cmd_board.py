@@ -28,6 +28,8 @@ def _descriptor_to_dict(desc: bd.BoardDescriptor) -> dict[str, object]:
         "soc": desc.soc,
         "sdk_provider": desc.sdk_provider,
         "registered": desc.registered,
+        "revision": desc.revision,
+        "roles": {"bsp": desc.bsp.to_dict()},
         "cpu": {
             "core": desc.cpu.core,
             "float_abi": desc.cpu.float_abi,
@@ -103,6 +105,7 @@ def cmd_board_create(args: argparse.Namespace) -> None:
             from_board=args.from_board,
             app_dir=args.app_dir,
             force=args.force,
+            bsp_module=getattr(args, "bsp_module", None),
             emit=lambda _event: None,
         )
         print(json.dumps(_descriptor_to_dict(resolved), indent=2))
@@ -112,4 +115,5 @@ def cmd_board_create(args: argparse.Namespace) -> None:
         from_board=args.from_board,
         app_dir=args.app_dir,
         force=args.force,
+        bsp_module=getattr(args, "bsp_module", None),
     )

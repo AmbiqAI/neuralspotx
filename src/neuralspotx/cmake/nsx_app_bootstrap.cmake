@@ -36,11 +36,29 @@ function(nsx_add_module_subdirectory nsx_app_root module_name)
         return()
     endif()
 
+    set(_had_bsp FALSE)
+    if(TARGET nsx::bsp)
+        set(_had_bsp TRUE)
+    endif()
     string(REPLACE "-" "_" module_build_dir "${module_name}")
     add_subdirectory(
         "${nsx_app_root}/${module_dir}"
         "${CMAKE_CURRENT_BINARY_DIR}/_nsx/${module_build_dir}"
     )
+    if(DEFINED NSX_EXPECTED_BSP_MODULE)
+        if(TARGET nsx::bsp AND NOT _had_bsp)
+            if(NOT module_name STREQUAL NSX_EXPECTED_BSP_MODULE)
+                message(FATAL_ERROR "Module '${module_name}' created nsx::bsp; expected '${NSX_EXPECTED_BSP_MODULE}'")
+            endif()
+            set_property(GLOBAL PROPERTY NSX_BSP_CREATOR "${module_name}")
+        endif()
+        if(module_name STREQUAL NSX_EXPECTED_BSP_MODULE AND NSX_BSP_CONTRACT_REQUIRED EQUAL 2)
+            if(_had_bsp OR NOT TARGET nsx::bsp)
+                message(FATAL_ERROR "Selected BSP must create its own nsx::bsp target")
+            endif()
+            nsx_validate_bsp(_validated_bsp)
+        endif()
+    endif()
 endfunction()
 
 
@@ -81,6 +99,9 @@ function(nsx_bootstrap_app)
     endforeach()
     include("${NSX_CMAKE_DIR}/nsx_sdk_providers.cmake")
 
+    if(NSX_BSP_CONTRACT_REQUIRED EQUAL 2 AND NOT COMMAND nsx_validate_bsp)
+        message(FATAL_ERROR "Custom BSP contract 2 requires a qualified SDK with nsx_bsp_contract.cmake")
+    endif()
     nsx_select_sdk_provider("${NSX_BOARD}")
     include("${NSX_ROOT}/boards/${NSX_BOARD}/board.cmake")
 
@@ -120,18 +141,19 @@ function(nsx_bootstrap_app)
     # snapshots predate the seam; there the board still gets BSP support
     # transitively through nsx_soc_hal, so we degrade gracefully rather than
     # forcing every pinned example to re-lock in lock step.
-    set(NSX_BSP_CONTRACT_VERSION_REQUIRED 1)
     set(_nsx_bsp_link "")
-    if(TARGET nsx::bsp)
-        if(NOT DEFINED NSX_BSP_CONTRACT_VERSION)
-            message(FATAL_ERROR
-                "nsx::bsp exists but NSX_BSP_CONTRACT_VERSION was not published.")
+    if(NSX_BSP_CONTRACT_REQUIRED EQUAL 2)
+        get_property(_creator GLOBAL PROPERTY NSX_BSP_CREATOR)
+        if(NOT _creator STREQUAL NSX_EXPECTED_BSP_MODULE)
+            message(FATAL_ERROR "Selected BSP '${NSX_EXPECTED_BSP_MODULE}' did not create nsx::bsp")
         endif()
-        if(NOT NSX_BSP_CONTRACT_VERSION EQUAL NSX_BSP_CONTRACT_VERSION_REQUIRED)
-            message(FATAL_ERROR
-                "nsx::bsp contract version mismatch: board requires "
-                "${NSX_BSP_CONTRACT_VERSION_REQUIRED}, provider supplies "
-                "${NSX_BSP_CONTRACT_VERSION}.")
+        nsx_validate_bsp(_validated_bsp)
+        set(_nsx_bsp_link nsx::bsp)
+    elseif(TARGET nsx::bsp)
+        if(COMMAND nsx_validate_bsp)
+            nsx_validate_bsp(_validated_bsp)
+        elseif(NOT DEFINED NSX_BSP_CONTRACT_VERSION OR NOT NSX_BSP_CONTRACT_VERSION EQUAL 1)
+            message(FATAL_ERROR "nsx::bsp contract version mismatch: built-in board requires version 1")
         endif()
         set(_nsx_bsp_link nsx::bsp)
     endif()

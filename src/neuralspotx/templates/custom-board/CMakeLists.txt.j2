@@ -1,0 +1,4 @@
+# board.cmake creates board targets before dependency modules are loaded.
+if(NOT TARGET nsx::board_{{ name }})
+    message(FATAL_ERROR "Custom board {{ name }} was not bootstrapped")
+endif()

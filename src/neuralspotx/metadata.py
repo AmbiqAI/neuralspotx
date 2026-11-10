@@ -5,7 +5,10 @@ from __future__ import annotations
 import enum
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from .board_descriptors import BoardDescriptor
 
 import yaml
 
@@ -81,6 +84,62 @@ def load_yaml(path: Path) -> dict[str, Any]:
     return data
 
 
+def derive_board_profile(
+    data: dict[str, Any], descriptor: "BoardDescriptor", entry: dict[str, Any] | None = None
+) -> dict[str, Any]:
+    """Derive family seeds and catalog independently of EVB identity."""
+    entry = entry or {}
+    board = descriptor.name
+    defaults = data["profile_defaults"]
+    default_toolchain = defaults.get("toolchain", "arm-none-eabi-gcc")
+    default_channel = defaults.get("channel", "stable")
+    default_core_modules = list(defaults.get("core_modules", []))
+    families = data["soc_families"]
+    # ``soc_families`` is keyed by the board's SoC (the descriptor's
+    # ``soc``); each SoC maps to its SDK provisioning baseline.
+    family_key = descriptor.soc
+    family = families.get(family_key)
+    if family is None:
+        raise ValueError(
+            f"registry.lock: board '{board}' references unknown soc family "
+            f"'{family_key}' (known: {sorted(families)})"
+        )
+    provider = family["provider"]
+    revision = family["revision"]
+    # ``project`` is the (consolidated SDK monorepo) repository that hosts
+    # the provider module; it defaults to the provider module name for the
+    # legacy one-repo-per-module layout.
+    project = family.get("project", provider)
+    # ``sdk_modules`` lists every module vendored by the SDK monorepo for
+    # this family. Each is repointed at the monorepo project so that any
+    # app pulling it resolves to the tier-correct source. Defaults to just
+    # the provider for back-compat with split-repo families.
+    sdk_modules = family.get("sdk_modules", [provider])
+    # ``core_modules`` are appended after the board module for every
+    # profile. A family may override the shared default (e.g. the
+    # Apollo5 family whose runtime helpers add nsx-pmu-armv8m).
+    core_modules = list(family.get("core_modules", default_core_modules))
+    board_module = "nsx-board-" + board.replace("_", "-").lower()
+    module_overrides = {
+        name: {
+            "project": project,
+            "revision": revision,
+            "metadata": f"modules/{name}/nsx-module.yaml",
+        }
+        for name in sdk_modules
+    }
+    return {
+        "board": board,
+        "soc": descriptor.soc,
+        "toolchain": entry.get("toolchain", default_toolchain),
+        "channel": entry.get("channel", default_channel),
+        "project_overrides": {project: {"revision": revision}},
+        "module_overrides": module_overrides,
+        "modules": [*family["modules"], board_module, *core_modules],
+        "features": {},
+    }
+
+
 def _derive_starter_profiles(data: dict[str, Any]) -> dict[str, Any]:
     """Expand ``soc_families`` + ``board_profiles`` into full starter profiles.
 
@@ -93,12 +152,8 @@ def _derive_starter_profiles(data: dict[str, Any]) -> dict[str, Any]:
 
     from .board_descriptors import load_board
 
-    defaults = _expect_type(data, "profile_defaults", dict, "registry.lock")
-    default_toolchain = defaults.get("toolchain", "arm-none-eabi-gcc")
-    default_channel = defaults.get("channel", "stable")
-    default_core_modules = list(defaults.get("core_modules", []))
-
-    families = _expect_type(data, "soc_families", dict, "registry.lock")
+    _expect_type(data, "profile_defaults", dict, "registry.lock")
+    _expect_type(data, "soc_families", dict, "registry.lock")
     board_profiles = _expect_type(data, "board_profiles", dict, "registry.lock")
 
     profiles: dict[str, Any] = {}
@@ -112,49 +167,7 @@ def _derive_starter_profiles(data: dict[str, Any]) -> dict[str, Any]:
                 f"registry.lock: board_profiles['{board}'] has no board descriptor "
                 f"(expected src/neuralspotx/boards/{board}/board.yaml)"
             )
-        # ``soc_families`` is keyed by the board's SoC (the descriptor's
-        # ``soc``); each SoC maps to its SDK provisioning baseline.
-        family_key = descriptor.soc
-        family = families.get(family_key)
-        if family is None:
-            raise ValueError(
-                f"registry.lock: board '{board}' references unknown soc family "
-                f"'{family_key}' (known: {sorted(families)})"
-            )
-        provider = family["provider"]
-        revision = family["revision"]
-        # ``project`` is the (consolidated SDK monorepo) repository that hosts
-        # the provider module; it defaults to the provider module name for the
-        # legacy one-repo-per-module layout.
-        project = family.get("project", provider)
-        # ``sdk_modules`` lists every module vendored by the SDK monorepo for
-        # this family. Each is repointed at the monorepo project so that any
-        # app pulling it resolves to the tier-correct source. Defaults to just
-        # the provider for back-compat with split-repo families.
-        sdk_modules = family.get("sdk_modules", [provider])
-        # ``core_modules`` are appended after the board module for every
-        # profile. A family may override the shared default (e.g. the
-        # Apollo5 family whose runtime helpers add nsx-pmu-armv8m).
-        core_modules = list(family.get("core_modules", default_core_modules))
-        board_module = "nsx-board-" + board.replace("_", "-").lower()
-        module_overrides = {
-            name: {
-                "project": project,
-                "revision": revision,
-                "metadata": f"modules/{name}/nsx-module.yaml",
-            }
-            for name in sdk_modules
-        }
-        profiles[f"{board}_minimal"] = {
-            "board": board,
-            "soc": descriptor.soc,
-            "toolchain": entry.get("toolchain", default_toolchain),
-            "channel": entry.get("channel", default_channel),
-            "project_overrides": {project: {"revision": revision}},
-            "module_overrides": module_overrides,
-            "modules": [*family["modules"], board_module, *core_modules],
-            "features": {},
-        }
+        profiles[f"{board}_minimal"] = derive_board_profile(data, descriptor, entry)
     return profiles
 
 
@@ -213,6 +226,9 @@ def validate_nsx_module_metadata(data: dict[str, Any], module_path: str) -> None
     from .models._module_dependency import parse_required_dependencies
 
     parse_required_dependencies(required, module_path)
+    from .bsp_contracts import parse_bsp_offer
+
+    parse_bsp_offer(data.get("contracts"), module_path)
 
     compatibility = _expect_type(data, "compatibility", dict, module_path)
     boards = _expect_type(compatibility, "boards", list, f"{module_path}.compatibility")

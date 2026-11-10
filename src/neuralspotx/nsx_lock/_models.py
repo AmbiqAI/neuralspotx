@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from .._errors import NSXLockError
+from ._composition import BoardComposition
 from ._constants import LOCK_SCHEMA_VERSION
 from ._kinds import LockKind
 
@@ -82,6 +83,7 @@ class NsxLock:
     manifest_hash: str = ""
     target: dict[str, str] = field(default_factory=dict)
     modules: dict[str, ResolvedModule] = field(default_factory=dict)
+    board_composition: BoardComposition | None = None
     # Filesystem path to ``nsx.lock`` on disk. Populated by ``read_lock``
     # and ``write_lock``; ``None`` for in-memory documents that have not
     # yet been persisted. Excluded from equality, repr and YAML
@@ -95,6 +97,9 @@ class NsxLock:
             "nsx_tool": {"version": self.nsx_tool_version},
             "manifest": {"path": self.manifest_path, "hash": self.manifest_hash},
             "target": self.target,
+            "board_composition": self.board_composition.to_dict()
+            if self.board_composition
+            else None,
             "modules": {name: entry.to_yaml_dict() for name, entry in self.modules.items()},
         }
 
@@ -111,6 +116,9 @@ class NsxLock:
             "nsx_tool": {"version": self.nsx_tool_version},
             "manifest": {"path": self.manifest_path, "hash": self.manifest_hash},
             "target": self.target,
+            "board_composition": self.board_composition.to_dict()
+            if self.board_composition
+            else None,
             "modules": {name: entry.to_yaml_dict() for name, entry in self.modules.items()},
         }
 
@@ -138,6 +146,7 @@ class NsxLock:
             manifest_hash=str(manifest.get("hash", "")),
             target=dict(data.get("target") or {}),
             modules=modules,
+            board_composition=BoardComposition.parse(data.get("board_composition")),
         )
 
     @classmethod
@@ -165,6 +174,7 @@ class NsxLock:
             manifest_hash=str(manifest.get("hash", "")),
             target=dict(data.get("target") or {}),
             modules=modules,
+            board_composition=BoardComposition.parse(data.get("board_composition")),
         )
 
 

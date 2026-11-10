@@ -1323,6 +1323,9 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Emit machine-readable JSON instead of human-readable text",
     )
+    p_board_create.add_argument(
+        "--bsp-module", help="Custom BSP provider module (defaults to nsx-bsp-<name>)"
+    )
     p_board_create.set_defaults(func=cmd_board_create)
 
     p_cache = sub.add_parser(

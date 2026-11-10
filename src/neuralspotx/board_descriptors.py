@@ -14,18 +14,21 @@ risking an import cycle.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
 import yaml
 
+from .bsp_contracts import BspBinding, identifier
+
 # Directory holding the packaged board descriptors. Resolved relative to
 # this module so it works for both editable and installed (non-zip) wheels.
 BOARDS_DIR: Path = Path(__file__).resolve().parent / "boards"
 
 # Current descriptor schema version. Bump when the on-disk shape changes.
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 
 
 @dataclass(frozen=True)
@@ -61,6 +64,9 @@ class BoardDescriptor:
     cpu: BoardCpu
     toolchains: tuple[str, ...]
     path: Path
+    bsp: BspBinding = BspBinding("nsx-ambiq-bsp", 1)
+    revision: str | None = None
+    descriptor_inputs: tuple[Path, ...] = ()
 
 
 class BoardDescriptorError(ValueError):
@@ -122,6 +128,7 @@ def _merge_inherited(
     merged: dict = {
         "schema_version": raw.get("schema_version", SCHEMA_VERSION),
         "sdk_provider": raw.get("sdk_provider", parent.sdk_provider),
+        "roles": raw.get("roles"),
         "cpu": raw.get("cpu")
         or {
             "core": parent.cpu.core,
@@ -130,6 +137,7 @@ def _merge_inherited(
         },
         "board": {
             "name": board.get("name"),
+            "revision": board.get("revision"),
             "tier": board.get("tier", "custom"),
             "soc": board.get("soc", parent.soc),
             "registered": board.get("registered", False),
@@ -163,7 +171,23 @@ def _build_descriptor(raw: dict, *, path: Path) -> BoardDescriptor:
     if not isinstance(toolchains, list) or not all(isinstance(t, str) for t in toolchains):
         raise BoardDescriptorError(f"{path}: 'toolchains' must be a list of strings")
 
+    roles = raw.get("roles")
+    if not isinstance(roles, dict) or set(roles) != {"bsp"}:
+        raise BoardDescriptorError(
+            f"{path}: roles must declare exactly bsp; author an explicit provider binding"
+        )
+    try:
+        binding = BspBinding.parse(roles["bsp"], f"{path}: roles.bsp")
+        identifier(board.get("name"), f"{path}: board.name")
+    except ValueError as exc:
+        raise BoardDescriptorError(str(exc)) from exc
+    revision = board.get("revision")
+    if revision is not None and (not isinstance(revision, str) or not revision.strip()):
+        raise BoardDescriptorError(f"{path}: board.revision must be a nonempty string")
     return BoardDescriptor(
+        bsp=binding,
+        revision=revision,
+        descriptor_inputs=(path,),
         name=str(_require(board, "name", where=path)),
         tier=str(board.get("tier", "evb")),
         soc=str(_require(board, "soc", where=path)),
@@ -183,27 +207,32 @@ def _parse_descriptor(
     path: Path,
     *,
     parent_lookup: "dict[str, BoardDescriptor] | None" = None,
+    parent_resolver: Callable[[str], BoardDescriptor | None] | None = None,
 ) -> BoardDescriptor:
     raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     if not isinstance(raw, dict):
         raise BoardDescriptorError(f"{path}: top-level YAML must be a mapping")
 
     version = raw.get("schema_version")
-    if version != SCHEMA_VERSION:
+    if type(version) is not int or version != SCHEMA_VERSION:
         raise BoardDescriptorError(
-            f"{path}: unsupported schema_version {version!r} (expected {SCHEMA_VERSION})"
+            f"{path}: unsupported schema_version {version!r} (expected {SCHEMA_VERSION}); "
+            "update board.yaml to schema 2 with an explicit roles.bsp binding"
         )
 
     inherits = raw.get("inherits")
     if inherits is not None:
         lookup = parent_lookup if parent_lookup is not None else load_board_descriptors()
-        parent = lookup.get(str(inherits))
+        parent = parent_resolver(str(inherits)) if parent_resolver else lookup.get(str(inherits))
         if parent is None:
             raise BoardDescriptorError(
                 f"{path}: inherits unknown board '{inherits}' (known: {sorted(lookup)})"
             )
         resolved = _merge_inherited(raw, parent, where=path)
-        return _build_descriptor(resolved, path=path)
+        from dataclasses import replace
+
+        descriptor = _build_descriptor(resolved, path=path)
+        return replace(descriptor, descriptor_inputs=(*parent.descriptor_inputs, path))
 
     return _build_descriptor(raw, path=path)
 
@@ -267,51 +296,59 @@ def load_board_descriptor_file(
     return _parse_descriptor(path, parent_lookup=parent_lookup)
 
 
-def render_custom_board_yaml(
-    *,
-    name: str,
-    parent: str,
-    tier: str = "custom",
-) -> str:
-    """Render a minimal custom ``board.yaml`` that inherits from *parent*.
+def load_board_for_app(name: str, app_dir: Path | None = None) -> BoardDescriptor | None:
+    """Read the app-local board snapshot, including its inherited inputs, first."""
+    active: set[str] = set()
 
-    The result declares only the board identity and the inheritance link;
-    all SoC/provider/CPU/toolchain facts are inherited from *parent* at
-    load time. Callers may hand-edit the file to add an ``overrides`` block.
-    """
+    def resolve(board: str) -> BoardDescriptor | None:
+        try:
+            identifier(board, "board identity")
+        except ValueError as exc:
+            raise BoardDescriptorError(str(exc)) from exc
+        if board in active or len(active) >= 32:
+            raise BoardDescriptorError(f"Board inheritance cycle or excessive depth at '{board}'")
+        path = app_dir / "boards" / board / "board.yaml" if app_dir else None
+        if path is None or not path.is_file():
+            path = BOARDS_DIR / board / "board.yaml"
+        if not path.is_file():
+            return None
+        active.add(board)
+        try:
+            result = _parse_descriptor(path, parent_lookup={}, parent_resolver=resolve)
+            if result.name != board:
+                raise BoardDescriptorError(f"{path}: descriptor identity must equal '{board}'")
+            return result
+        finally:
+            active.remove(board)
 
-    return (
-        "# NSX custom board descriptor (schema_version 1).\n"
-        f"# Inherits all SoC/provider/CPU/toolchain facts from '{parent}'.\n"
-        "# Add an 'overrides:' block to tweak inherited lists, e.g.\n"
-        "#   overrides:\n"
-        "#     toolchains: [-armclang]   # drop a toolchain\n"
-        "schema_version: 1\n"
-        f"inherits: {parent}\n"
-        "board:\n"
-        f"  name: {name}\n"
-        f"  tier: {tier}\n"
-        "  registered: false\n"
+    return resolve(name)
+
+
+def _render_board_fragment(fragment: str, **context: str) -> str:
+    from jinja2 import Environment, FileSystemLoader, StrictUndefined
+
+    env = Environment(
+        loader=FileSystemLoader(str(Path(__file__).parent / "templates" / "custom-board")),
+        undefined=StrictUndefined,
+        keep_trailing_newline=True,
+        autoescape=False,
+    )
+    return env.get_template(fragment + ".j2").render(**context)
+
+
+def render_custom_board_yaml(*, name: str, parent: str, tier: str = "custom") -> str:
+    """Render the board descriptor with an explicit custom BSP binding."""
+    identifier(name, "board name")
+    identifier(parent, "parent board")
+    return _render_board_fragment(
+        "board.yaml",
+        name=name,
+        parent=parent,
+        bsp_module="nsx-bsp-" + name.replace("_", "-").lower(),
     )
 
 
 def render_custom_board_cmake(*, name: str, parent: str) -> str:
-    """Render a thin ``board.cmake`` that delegates to the *parent* EVB.
-
-    The custom board reuses the parent's startup/linker/flag wiring and
-    only re-aliases the board target under its own name, so a custom board
-    on an existing SoC needs no hand-written CMake by default.
-    """
-
-    return (
-        "# Auto-generated thin board.cmake for a custom board.\n"
-        f"# Delegates all SoC/startup/linker wiring to parent EVB '{parent}'.\n"
-        f'set(NSX_PARENT_BOARD "{parent}")\n'
-        'include("${NSX_ROOT}/boards/${NSX_PARENT_BOARD}/board.cmake")\n'
-        "\n"
-        "# Re-export the parent board target under this custom board's name so\n"
-        "# top-level CMakeLists can link nsx::board_<custom> if desired.\n"
-        f"if(NOT TARGET nsx::board_{name})\n"
-        f"    add_library(nsx::board_{name} ALIAS ${{NSX_BOARD_TARGET}})\n"
-        "endif()\n"
-    )
+    """Render independent silicon bootstrap, without parent EVB wiring."""
+    identifier(name, "board name")
+    return _render_board_fragment("board.cmake", name=name)

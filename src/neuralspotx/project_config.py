@@ -693,6 +693,17 @@ def _write_app_module_file(
         f'set(NSX_GENERATED_MODULE_BOARD "{board}")',
         "set(NSX_APP_MODULES",
     ]
+    from .board_plan import resolve_board_plan
+
+    plan = resolve_board_plan(app_dir, nsx_cfg)
+    if plan:
+        descriptor = plan.descriptor
+        lines[2:2] = [
+            f'set(NSX_EXPECTED_BSP_MODULE "{descriptor.bsp.module}")',
+            f"set(NSX_BSP_CONTRACT_REQUIRED {descriptor.bsp.contract})",
+            f'set(NSX_RESOLVED_BOARD_SOC "{descriptor.soc}")',
+            f'set(NSX_RESOLVED_SDK_PROVIDER "{descriptor.sdk_provider}")',
+        ]
     for name in ordered_module_names:
         lines.append(f"    {name}")
     lines.append(")")

@@ -216,7 +216,7 @@ SCHEMA_IDS = ["nsx-yml", "nsx-module-yaml", "board-yaml", "nsx-lock"]
 
 # Dataclass attributes that describe where a document came from rather than
 # anything inside it, so no documented field maps to them.
-NON_FILE_FIELDS = {"path"}
+NON_FILE_FIELDS = {"descriptor_inputs", "path"}
 
 
 def _resolve(dotted: str) -> Any:

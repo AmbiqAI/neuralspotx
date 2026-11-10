@@ -41,17 +41,10 @@ another provider, not because there is a second one to pick from.
 
 ## You do not choose it, the board does
 
-Provider selection is derived, not configured. Each packaged board's `board.yaml` declares
-`sdk_provider: ambiqsuite`, and CMake infers the provider from the board being a
-registered one. For a custom board, NSX follows the board's parent link before giving up:
-
-```text
-Unable to infer SDK provider for board 'my_board'. Set -DNSX_SDK_PROVIDER=ambiqsuite.
-```
-
-There is no `nsx.yml` key and no CLI flag for picking a provider. If you are seeing that
-message, the fix is normally in the board definition rather than on the command line. See
-[Add a board](/neuralspotx/guides/contribute/adding-a-board/).
+Provider selection comes from the resolved board descriptor's `sdk_provider`.
+NSX emits this choice alongside the BSP binding in target-specific CMake inputs.
+Custom boards can inherit SDK and silicon facts while explicitly selecting their
+own BSP module; see [Add a board](/neuralspotx/guides/contribute/adding-a-board/).
 
 ## What resolution produces
 

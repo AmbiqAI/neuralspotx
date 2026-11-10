@@ -9,7 +9,9 @@ from packaging.specifiers import SpecifierSet
 from packaging.version import InvalidVersion, Version
 
 from .._errors import NSXConfigError, NSXModuleError
+from ..board_plan import resolve_board_plan
 from ..models import ModuleDependency, ModuleMetadata
+from ._bsp import bind_requirements, participant_metadata_path, read_participant, validate_bsp_offer
 from ._metadata import _load_materialized_module_metadata
 from ._nsx_cfg import _local_module_names, _vendored_module_names
 
@@ -56,21 +58,33 @@ def validate_materialized_requirements(
     module_names: list[str], *, app_dir: Path, nsx_cfg: dict[str, Any], registry: dict[str, Any]
 ) -> None:
     """Validate locked members without fetching or expanding the recorded graph."""
+    plan = resolve_board_plan(app_dir, nsx_cfg)
+    selected_bsp = plan.descriptor.bsp.module if plan else None
     opaque = _local_module_names(nsx_cfg) | _vendored_module_names(nsx_cfg)
     metadata: dict[str, ModuleMetadata] = {}
     errors: dict[str, ValueError | NSXConfigError] = {}
     positions = {name: index for index, name in enumerate(module_names)}
     for name in module_names:
-        if name in opaque:
+        if name in opaque and name != selected_bsp:
             continue
         try:
-            metadata[name] = _load_materialized_module_metadata(
-                name, registry, app_dir=app_dir, nsx_cfg=nsx_cfg
-            )
+            if name == selected_bsp and name in opaque:
+                metadata[name] = read_participant(
+                    name,
+                    participant_metadata_path(name, registry, app_dir, nsx_cfg, materialized=True),
+                )
+            else:
+                metadata[name] = _load_materialized_module_metadata(
+                    name, registry, app_dir=app_dir, nsx_cfg=nsx_cfg
+                )
+            if plan and name == selected_bsp:
+                validate_bsp_offer(plan, metadata[name])
+            elif metadata[name].bsp_offer is not None:
+                raise NSXModuleError(f"Unselected BSP provider '{name}' entered the closure")
         except (ValueError, NSXConfigError) as exc:
             errors[name] = exc
     for name, meta in metadata.items():
-        for dep in meta.required_dependencies:
+        for dep in bind_requirements(meta, plan):
             if dep.name not in positions:
                 raise NSXModuleError(
                     f"Module '{name}' requires '{dep.name}', which is absent from nsx.lock. "

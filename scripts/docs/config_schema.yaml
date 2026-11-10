@@ -232,13 +232,16 @@ schemas:
     loader: neuralspotx.board_descriptors.load_board_descriptor_file
     model: neuralspotx.board_descriptors.BoardDescriptor
     error: BoardDescriptorError
-    schema_version: 1
+    schema_version: 2
     schema_version_constant: neuralspotx.board_descriptors.SCHEMA_VERSION
     unknown_keys: >-
       Kept. Unrecognized keys are ignored by the parser.
     fields:
-      - {path: schema_version, type: int, required: true, values: "1", description: "Board descriptor schema version."}
+      - {path: schema_version, type: int, required: true, values: "2", description: "Board descriptor schema version."}
       - {path: board.name, model_field: name, type: string, required: true, required_when: "inherits is not set", description: "Board name as used by --board and by targets.supported."}
+      - {path: board.revision, model_field: revision, type: string, required: false, description: "Optional hardware revision identity."}
+      - {path: roles.bsp.module, model_field: bsp.module, type: string, required: true, description: "Explicit BSP provider module; never inherited."}
+      - {path: roles.bsp.contract, model_field: bsp.contract, type: int, required: true, values: "1, 2", description: "Selected contract. Version 1 is reserved for nsx-ambiq-bsp."}
       - {path: board.soc, model_field: soc, type: string, required: true, required_when: "inherits is not set", description: "SoC this board carries."}
       - {path: board.tier, model_field: tier, type: string, required: false, default: evb, description: "Board tier. Custom boards created from an EVB baseline record their own tier."}
       - {path: board.registered, model_field: registered, type: bool, required: false, default: "true", description: "Whether the board appears in nsx board list."}
@@ -250,7 +253,11 @@ schemas:
       - {path: inherits, type: string, required: false, description: "Board this descriptor inherits from. Only custom boards set it."}
       - {path: overrides.toolchains, type: list of string, required: false, description: "Delta applied to the inherited toolchain list, using +name to add and -name to remove. Only valid with inherits."}
     example: |
-      schema_version: 1
+      schema_version: 2
+      roles:
+        bsp:
+          module: nsx-ambiq-bsp
+          contract: 1
       board:
         name: apollo510_evb
         tier: evb
@@ -265,9 +272,14 @@ schemas:
         - arm-none-eabi-gcc
         - armclang
     coverage_example: |
-      schema_version: 1
+      schema_version: 2
+      roles:
+        bsp:
+          module: nsx-ambiq-bsp
+          contract: 1
       inherits: apollo510_evb
       board:
+        revision: RevA
         name: coverage_evb
         tier: custom
         soc: apollo510
@@ -283,7 +295,11 @@ schemas:
         toolchains:
           - -armclang
       ---
-      schema_version: 1
+      schema_version: 2
+      roles:
+        bsp:
+          module: nsx-ambiq-bsp
+          contract: 1
       board:
         name: standalone_evb
         tier: evb
@@ -307,7 +323,7 @@ schemas:
     loader: neuralspotx.nsx_lock.read_lock_file
     model: neuralspotx.nsx_lock.ResolvedModule
     error: NSXLockError
-    schema_version: 4
+    schema_version: 5
     schema_version_constant: neuralspotx.nsx_lock._constants.LOCK_SCHEMA_VERSION
     unknown_keys: >-
       Rejected in effect. The lock is read into frozen dataclasses, so only
@@ -317,7 +333,7 @@ schemas:
     # regenerated, instead of failing the command that needed it.
     missing_required_behavior: regenerate
     fields:
-      - {path: schema_version, type: int, required: false, default: "4", values: "4", description: "Lock schema version. NSX writes it on every lock; a lock that declares an older one is regenerated, and a lock missing it is read as the current version."}
+      - {path: schema_version, type: int, required: false, default: "5", values: "5", description: "Lock schema version. NSX writes it on every lock; a lock that declares an older one is regenerated, and a lock missing it is read as the current version."}
       - {path: targets, type: map of board to lock section, required: true, description: "One resolution per board, so an app can be locked for several boards at once."}
       - {path: "targets.<board>.generated_at", type: "string (ISO 8601)", required: true, description: "When this section was resolved."}
       - {path: "targets.<board>.nsx_tool.version", type: string, required: false, description: "neuralspotx version that produced the section."}
@@ -326,6 +342,7 @@ schemas:
       - {path: "targets.<board>.target.board", type: string, required: true, description: "Board this section resolves."}
       - {path: "targets.<board>.target.soc", type: string, required: true, description: "SoC of that board."}
       - {path: "targets.<board>.target.toolchain", type: string, required: true, description: "Toolchain the section was resolved for."}
+      - {path: "targets.<board>.board_composition", type: "map or null", required: false, description: "Board identity, BSP binding, and exact descriptor/contract input hashes; null when the closure has no BSP."}
       - {path: "targets.<board>.modules", type: map of module name to entry, required: true, description: "The full resolved closure, not just the direct dependencies."}
       - {path: "modules.<name>.project", model_field: project, type: string, required: true, description: "Registry project that provides the module."}
       - {path: "modules.<name>.kind", model_field: kind, type: string, required: true, default: git, values: "git, packaged, local, vendored, unresolved", description: "How the module was resolved, which decides what the resolved block carries."}
@@ -338,7 +355,7 @@ schemas:
       - {path: "modules.<name>.resolved.content_hash", model_field: content_hash, type: string, required: true, description: "SHA-256 of the vendored tree. The SBOM reports this and sync verifies it."}
       - {path: "modules.<name>.resolved.acquired_at", model_field: acquired_at, type: "string (ISO 8601)", required: true, description: "When the module was fetched."}
     example: |
-      schema_version: 4
+      schema_version: 5
       targets:
         apollo510_evb:
           generated_at: '2026-09-03T23:02:17+00:00'
@@ -347,6 +364,7 @@ schemas:
           manifest:
             path: nsx.yml
             hash: sha256:1c975664f58e7a6ee643a0bc37c90d8535543812703c6d3502595cc5f9992cef
+          board_composition: null
           target:
             board: apollo510_evb
             soc: apollo510
@@ -364,7 +382,7 @@ schemas:
                 content_hash: sha256:da17c45a3cf02797d1703f3c55beea770078cb2cb8829c7211413877089a559e
                 acquired_at: '2026-08-04T04:01:24+00:00'
     coverage_example: |
-      schema_version: 4
+      schema_version: 5
       targets:
         apollo510_evb:
           generated_at: '2026-09-03T23:02:17+00:00'
@@ -373,6 +391,7 @@ schemas:
           manifest:
             path: nsx.yml
             hash: sha256:1c975664f58e7a6ee643a0bc37c90d8535543812703c6d3502595cc5f9992cef
+          board_composition: null
           target:
             board: apollo510_evb
             soc: apollo510

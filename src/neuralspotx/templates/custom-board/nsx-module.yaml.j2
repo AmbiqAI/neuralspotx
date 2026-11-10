@@ -1,0 +1,21 @@
+schema_version: 1
+module:
+  name: {{ board_module }}
+  version: 0.1.0
+  type: board
+  description: Custom board {{ name }}
+support:
+  ambiqsuite: true
+  zephyr: false
+depends:
+  required:
+    - nsx-soc-hal
+  optional: []
+build:
+  cmake:
+    package: nsx_board_{{ name }}
+    targets: ["nsx::board_{{ name }}"]
+compatibility:
+  boards: [{{ name }}]
+  socs: [{{ soc }}]
+  toolchains: {{ toolchains }}
