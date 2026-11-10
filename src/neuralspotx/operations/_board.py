@@ -33,8 +33,13 @@ def create_board_impl(
     directory already exists without ``force``.
     """
 
-    identifier(name, "board name")
-    bsp_module = identifier(bsp_module or "nsx-bsp-" + name.replace("_", "-").lower(), "BSP module")
+    try:
+        identifier(name, "board name")
+        bsp_module = identifier(
+            bsp_module or "nsx-bsp-" + name.replace("_", "-").lower(), "BSP module"
+        )
+    except ValueError as exc:
+        raise NSXConfigError(str(exc)) from exc
     if name == from_board:
         raise NSXConfigError("Custom board identity must differ from its inherited board")
     root = resolve_app_dir(app_dir)

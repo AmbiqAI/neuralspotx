@@ -321,3 +321,32 @@ def test_locked_composition_uses_resolved_git_revision(
         record = resolved_board_composition(tmp_path, cfg, registry, lock)
         shutil.copyfile(path, tmp_path / "modules/custom-bsp/nsx-module.yaml")
         verify_board_composition(record, tmp_path, cfg, registry, names)
+
+
+@pytest.mark.parametrize("name,bsp", [("../invalid", None), ("valid", "invalid bsp")])
+def test_board_identifier_errors_are_typed(tmp_path: Path, name: str, bsp: str | None) -> None:
+    from neuralspotx._errors import NSXConfigError
+
+    with pytest.raises(NSXConfigError):
+        create_board_impl(name, from_board="apollo330mP_evb", app_dir=tmp_path, bsp_module=bsp)
+    assert not (tmp_path / "boards").exists()
+
+
+@pytest.mark.parametrize("writable", [False, True])
+def test_unchanged_bsp_lock_preserves_timestamp(tmp_path: Path, writable: bool) -> None:
+    from neuralspotx.operations._lock import _build_lock_for_app
+    from neuralspotx.operations._lock_selection import LockInputs
+
+    registry, cfg = setup_graph(tmp_path)
+    cfg["project"] = {"name": "test"}
+    cfg["module_registry"] = registry
+    cfg["modules"] = [{"name": "consumer"}]
+    (tmp_path / "nsx.yml").write_text(yaml.safe_dump(cfg))
+    inputs = LockInputs(cfg, registry, resolve(tmp_path, registry, cfg), set(), set())
+    first = _build_lock_for_app(tmp_path, prepared=inputs, write_side_effects=writable)
+    first.generated_at = "2020-01-01T00:00:00Z"
+    second = _build_lock_for_app(
+        tmp_path, prepared=inputs, write_side_effects=writable, previous=first
+    )
+    assert second.board_composition == first.board_composition
+    assert second.generated_at == first.generated_at

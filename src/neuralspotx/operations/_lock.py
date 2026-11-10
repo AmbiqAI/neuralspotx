@@ -769,7 +769,6 @@ def _build_lock_for_app(
 
     if selected is not None:
         validate_materialization(app_dir, lock)
-    _preserve_unchanged_timestamps(previous, lock)
     warn_unpinned_git_constraints(lock)
     from ..module_registry._composition import board_composition
 
@@ -787,6 +786,7 @@ def _build_lock_for_app(
             if previous and inputs.used_locked_closure
             else None,
         )
+    _preserve_unchanged_timestamps(previous, lock)
     return lock
 
 
