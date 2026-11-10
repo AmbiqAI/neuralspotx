@@ -82,9 +82,19 @@ local `flags.cmake`, `memory.cmake`, and `debug.cmake` fragments supply reviewed
 board-specific choices. No EVB probe identity is inherited.
 
 Run `nsx lock`, `nsx sync`, `nsx configure`, and `nsx build`. Each target's lock
-records the board binding and exact descriptor/contract-manifest fingerprints.
+records the board binding and descriptor/contract-manifest fingerprints (CRLF
+line endings normalize to LF; all other bytes remain significant).
 Changing these inputs requires a new lock; frozen builds reject drift. Board
 schema 1 must be updated explicitly to schema 2, and old locks regenerated.
+
+On a clean checkout, read-only `nsx lock --check` can reuse the recorded closure
+and unavailable contract fingerprints. It warns that missing metadata cannot be
+certified, and still checks every available contract input and board descriptor.
+Run `nsx sync` first for a complete check. Writable lock generation and frozen
+sync/build verification require the actual metadata. Writable locks verify Git
+contract inputs against the exact resolved artifacts. If those artifacts change
+the dependency graph compared with the app-local sources, locking stops before
+writing; refresh those sources to the selected revisions and lock again.
 
 Configure the correct probe device before flashing. A successful host build does
 not qualify pins, peripheral power sequencing, or hardware behavior. Narrow the

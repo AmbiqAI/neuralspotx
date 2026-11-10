@@ -254,9 +254,18 @@ def expand_profile_seeds(
             **registry.get("starter_profiles", {}),
             _starter_profile_name(board): profile,
         }
-        # Provider overrides authored by the app participate in seed lookup.
-        profile_registry["modules"].update(app_module_overrides)
-        seed_modules, module_registry, profile = _profile_seed_blocks(profile_registry, board)
+        # Resolve seeds through the same precedence stack used by the graph.
+        # Preserve only synthetic defaults in the returned _profile_registry.
+        from ..project_config import _effective_registry
+
+        module_registry = {
+            "projects": copy.deepcopy(profile["project_overrides"]),
+            "modules": copy.deepcopy(profile["module_overrides"]),
+        }
+        seed_registry = _effective_registry(
+            profile_registry, {**nsx_cfg, "_profile_registry": module_registry}, app_dir=app_dir
+        )
+        seed_modules = [_module_record(name, seed_registry) for name in profile["modules"]]
     else:
         seed_modules, module_registry, profile = _profile_seed_blocks(registry, board)
     seeded_names = {record["name"] for record in seed_modules}

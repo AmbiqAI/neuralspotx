@@ -54,7 +54,7 @@ _metadata_scope: contextvars.ContextVar[dict[tuple[str, str], ModuleMetadata] | 
 
 
 @contextlib.contextmanager
-def metadata_cache_scope() -> Iterator[None]:
+def metadata_cache_scope(*, fresh: bool = False) -> Iterator[None]:
     """Enable per-operation memoization of ``_load_module_metadata``.
 
     Within this with-block, repeated calls to load a given
@@ -63,7 +63,7 @@ def metadata_cache_scope() -> Iterator[None]:
     no-ops (the outermost scope owns the cache).
     """
 
-    if _metadata_scope.get() is not None:
+    if _metadata_scope.get() is not None and not fresh:
         yield
         return
     token = _metadata_scope.set({})

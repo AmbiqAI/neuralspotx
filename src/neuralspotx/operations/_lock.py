@@ -263,6 +263,7 @@ def _prepare_lock_inputs(
     seed_module_names = _module_names_from_nsx(nsx_cfg)
     local_names = _local_module_names(nsx_cfg)
     vendored_names = _vendored_module_names(nsx_cfg)
+    used_locked_closure = False
 
     try:
         module_names = _resolve_module_closure(
@@ -278,10 +279,11 @@ def _prepare_lock_inputs(
             _log.warning(
                 "could not resolve dependency metadata for all modules (%s); "
                 "using the module closure recorded in nsx.lock for read-only check; "
-                "dependency version constraints cannot be certified without metadata.",
+                "dependency version constraints and unavailable BSP contract inputs cannot be certified without metadata.",
                 exc,
             )
             module_names = list(previous.modules)
+            used_locked_closure = True
         else:
             seed_summary = ", ".join(seed_module_names) or "<none>"
             raise NSXResolutionError(
@@ -291,7 +293,9 @@ def _prepare_lock_inputs(
                 "dependency closure."
             ) from exc
 
-    return LockInputs(nsx_cfg, registry, module_names, local_names, vendored_names)
+    return LockInputs(
+        nsx_cfg, registry, module_names, local_names, vendored_names, used_locked_closure
+    )
 
 
 def _build_lock_for_app(
@@ -769,7 +773,20 @@ def _build_lock_for_app(
     warn_unpinned_git_constraints(lock)
     from ..module_registry._composition import board_composition
 
-    lock.board_composition = board_composition(app_dir, nsx_cfg, registry, module_names)
+    if write_side_effects:
+        from ._lock_composition import resolved_board_composition
+
+        lock.board_composition = resolved_board_composition(app_dir, nsx_cfg, registry, lock)
+    else:
+        lock.board_composition = board_composition(
+            app_dir,
+            nsx_cfg,
+            registry,
+            module_names,
+            read_only_record=previous.board_composition
+            if previous and inputs.used_locked_closure
+            else None,
+        )
     return lock
 
 

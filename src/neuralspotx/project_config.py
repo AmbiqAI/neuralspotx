@@ -1405,7 +1405,7 @@ def _normalize_module_source(cfg: dict[str, Any]) -> None:
                 # `nsx module register` step.
                 entry.setdefault("project", module.name)
                 entry.setdefault("revision", "local")
-                metadata_default = str(Path(path).expanduser() / "nsx-module.yaml")
+                metadata_default = "nsx-module.yaml"
                 entry.setdefault("metadata", metadata_default)
             proj_overrides.setdefault(module.name, {"local_path": path})
 

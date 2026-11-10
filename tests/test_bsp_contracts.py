@@ -163,3 +163,161 @@ def test_vendored_provider_wins_over_registry_source(tmp_path: Path) -> None:
     assert names == ["hal", "custom-bsp", "consumer"]
     record = board_composition(tmp_path, cfg, registry, names)
     verify_board_composition(record, tmp_path, cfg, registry, names)
+
+
+def test_read_only_fallback_retains_only_unavailable_contract_inputs(tmp_path: Path) -> None:
+    from neuralspotx._errors import NSXResolutionError
+
+    registry, cfg = setup_graph(tmp_path)
+    names = resolve(tmp_path, registry, cfg)
+    record = board_composition(tmp_path, cfg, registry, names)
+    (tmp_path / "modules/hal/nsx-module.yaml").unlink()
+    with pytest.raises(NSXResolutionError):
+        board_composition(tmp_path, cfg, registry, names)
+    assert board_composition(tmp_path, cfg, registry, names, read_only_record=record) == record
+    (tmp_path / "modules/consumer/nsx-module.yaml").unlink()
+    assert board_composition(tmp_path, cfg, registry, names, read_only_record=record) == record
+    provider = tmp_path / "modules/custom-bsp/nsx-module.yaml"
+    provider.write_text(provider.read_text() + "\n# changed available input\n")
+    assert board_composition(tmp_path, cfg, registry, names, read_only_record=record) != record
+    provider.unlink()
+    assert board_composition(tmp_path, cfg, registry, names, read_only_record=record) == record
+    with pytest.raises(NSXResolutionError):
+        verify_board_composition(record, tmp_path, cfg, registry, names)
+
+
+def test_board_plan_normalizes_builtin_input_case(tmp_path: Path) -> None:
+    from neuralspotx.board_plan import resolve_board_plan
+
+    plan = resolve_board_plan(
+        tmp_path,
+        {"baseline": "none", "target": {"board": "APOLLO330MP_EVB", "soc": "APOLLO330P"}},
+    )
+    assert plan is not None
+    assert plan.descriptor.name == "apollo330mP_evb"
+    assert plan.descriptor.soc == "apollo330P"
+
+
+def test_composition_ignores_checkout_line_endings(tmp_path: Path) -> None:
+    registry, cfg = setup_graph(tmp_path)
+    names = resolve(tmp_path, registry, cfg)
+    paths = list(tmp_path.rglob("*.yaml"))
+    for path in paths:
+        path.write_bytes(path.read_bytes().replace(b"\r\n", b"\n"))
+    record = board_composition(tmp_path, cfg, registry, names)
+    for path in paths:
+        path.write_bytes(path.read_bytes().replace(b"\n", b"\r\n"))
+    verify_board_composition(record, tmp_path, cfg, registry, names)
+
+
+@pytest.mark.parametrize("role_first", [False, True])
+def test_local_bsp_dependency_versions_are_order_independent(
+    tmp_path: Path, role_first: bool
+) -> None:
+    registry, cfg = setup_graph(tmp_path, local=True)
+    cfg["modules"].append({"name": "hal", "local": True})
+    path = tmp_path / "modules/consumer/nsx-module.yaml"
+    data = yaml.safe_load(path.read_text())
+    deps = [{"name": "hal", "version": ">=1"}, {"role": "bsp", "contracts": [2]}]
+    data["depends"]["required"] = list(reversed(deps)) if role_first else deps
+    path.write_text(yaml.safe_dump(data))
+    assert resolve(tmp_path, registry, cfg) == ["hal", "custom-bsp", "consumer"]
+    hal = tmp_path / "modules/hal/nsx-module.yaml"
+    data = yaml.safe_load(hal.read_text())
+    data["module"]["version"] = "0.9.0"
+    hal.write_text(yaml.safe_dump(data))
+    with pytest.raises(NSXModuleError, match="version"):
+        resolve(tmp_path, registry, cfg)
+
+
+def test_registered_local_bsp_preserves_nested_metadata(tmp_path: Path) -> None:
+    registry, cfg = setup_graph(tmp_path, local=True)
+    root = tmp_path / "external"
+    (root / "nsx").mkdir(parents=True)
+    (tmp_path / "modules/custom-bsp/nsx-module.yaml").rename(root / "nsx/nsx-module.yaml")
+    registry["projects"]["custom-bsp"]["local_path"] = str(root)
+    registry["modules"]["custom-bsp"]["metadata"] = "modules/custom-bsp/nsx/nsx-module.yaml"
+    assert resolve(tmp_path, registry, cfg) == ["hal", "custom-bsp", "consumer"]
+
+
+def test_custom_provider_can_be_registered_only_in_layer(tmp_path: Path) -> None:
+    from neuralspotx.module_registry._profile import expand_profile_seeds
+    from neuralspotx.project_config import _effective_registry, _load_registry
+
+    local_registry, cfg = setup_graph(tmp_path)
+    cfg["registry"] = {"layers": [{"inline": local_registry}]}
+    registry = _load_registry()
+    expanded = expand_profile_seeds(cfg, registry, app_dir=tmp_path)
+    seeds = {entry["name"]: entry for entry in expanded["modules"]}
+    assert seeds["custom-bsp"]["project"] == "custom-bsp"
+    effective = _effective_registry(registry, expanded, app_dir=tmp_path)
+    assert effective["projects"]["custom-bsp"]["local_path"] == str(tmp_path / "modules/custom-bsp")
+    assert "custom-bsp" not in expanded["_profile_registry"]["modules"]
+
+
+@pytest.mark.parametrize("change_dependencies", [False, True])
+def test_locked_composition_uses_resolved_git_revision(
+    tmp_path: Path, change_dependencies: bool, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import shutil
+    import subprocess
+
+    from neuralspotx.nsx_lock import LockKind, NsxLock, ResolvedModule, hash_tree
+    from neuralspotx.operations._lock_composition import resolved_board_composition
+
+    registry, cfg = setup_graph(tmp_path)
+    cfg["modules"] = [{"name": "consumer"}]
+    source = tmp_path / "upstream"
+    shutil.copytree(tmp_path / "modules/custom-bsp", source)
+
+    def git(*args: str) -> str:
+        return subprocess.check_output(["git", "-C", str(source), *args], text=True).strip()
+
+    git("init", "-q")
+    git("config", "user.email", "test@example.invalid")
+    git("config", "user.name", "Test")
+    git("add", ".")
+    git("commit", "-qm", "old metadata")
+    path = source / "nsx-module.yaml"
+    if change_dependencies:
+        data = yaml.safe_load(path.read_text())
+        data["depends"]["required"] = []
+        path.write_text(yaml.safe_dump(data))
+    else:
+        path.write_text(path.read_text() + "\n# new revision\n")
+    git("add", ".")
+    git("commit", "-qm", "new metadata")
+    commit = git("rev-parse", "HEAD")
+
+    # Production rejects file URLs; this test substitutes only transport,
+    # retaining real Git checkout and artifact verification without a network.
+    def clone_local(url: str, destination: Path, revision: str) -> None:
+        assert url == str(source)
+        subprocess.run(["git", "clone", "-q", "--no-checkout", url, str(destination)], check=True)
+        subprocess.run(["git", "-C", str(destination), "checkout", "-q", revision], check=True)
+
+    monkeypatch.setattr("neuralspotx.operations._lock_composition.git_clone_at_commit", clone_local)
+    project = registry["projects"]["custom-bsp"]
+    project.pop("local_path")
+    project["url"] = str(source)
+    names = resolve(tmp_path, registry, cfg)
+    assert names == ["hal", "custom-bsp", "consumer"]  # old checkout
+    lock = NsxLock()
+    for name in names:
+        lock.modules[name] = ResolvedModule(
+            project=name,
+            kind=LockKind.GIT if name == "custom-bsp" else LockKind.LOCAL,
+            constraint="main",
+            vendored_at=f"modules/{name}",
+            content_hash=hash_tree(source) if name == "custom-bsp" else "",
+            acquired_at="",
+            url=str(source) if name == "custom-bsp" else None,
+            commit=commit if name == "custom-bsp" else None,
+        )
+    if change_dependencies:
+        with pytest.raises(NSXLockError, match="Dependency graph changed"):
+            resolved_board_composition(tmp_path, cfg, registry, lock)
+    else:
+        record = resolved_board_composition(tmp_path, cfg, registry, lock)
+        shutil.copyfile(path, tmp_path / "modules/custom-bsp/nsx-module.yaml")
+        verify_board_composition(record, tmp_path, cfg, registry, names)

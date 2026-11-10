@@ -349,7 +349,7 @@ schemas:
       - {path: "targets.<board>.target.board", type: string, required: true, description: "Board this section resolves."}
       - {path: "targets.<board>.target.soc", type: string, required: true, description: "SoC of that board."}
       - {path: "targets.<board>.target.toolchain", type: string, required: true, description: "Toolchain the section was resolved for."}
-      - {path: "targets.<board>.board_composition", type: "map or null", required: false, description: "Board identity, BSP binding, and exact descriptor/contract input hashes; null when the closure has no BSP."}
+      - {path: "targets.<board>.board_composition", type: "map or null", required: false, description: "Board identity, BSP binding, and descriptor/contract input hashes (CRLF normalized to LF); null when the closure has no BSP."}
       - {path: "targets.<board>.modules", type: map of module name to entry, required: true, description: "The full resolved closure, not just the direct dependencies."}
       - {path: "modules.<name>.project", model_field: project, type: string, required: true, description: "Registry project that provides the module."}
       - {path: "modules.<name>.kind", model_field: kind, type: string, required: true, default: git, values: "git, packaged, local, vendored, unresolved", description: "How the module was resolved, which decides what the resolved block carries."}

@@ -22,6 +22,7 @@ class LockInputs:
     module_names: list[str]
     local_names: set[str]
     vendored_names: set[str]
+    used_locked_closure: bool = False
 
 
 def selected_git_modules(inputs: LockInputs, selected: frozenset[str]) -> frozenset[str]:

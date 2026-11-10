@@ -12,7 +12,6 @@ from ..board_plan import ResolvedBoardPlan
 from ..bsp_contracts import BspRequirement
 from ..metadata import registry_entry_for_module, validate_nsx_module_metadata
 from ..models import ModuleDependency, ModuleMetadata
-from ..project_config import _registry_project_entry
 from ._metadata import _materialized_module_metadata_path, _module_metadata_path
 from ._nsx_cfg import _vendored_module_names
 
@@ -34,13 +33,6 @@ def participant_metadata_path(
         return app_dir / "modules" / name / "nsx-module.yaml"
     if materialized:
         return _materialized_module_metadata_path(name, registry, app_dir=app_dir, nsx_cfg=config)
-    project = _registry_project_entry(registry, entry.project)
-    # Source:path normalization may contain an absolute metadata path. A BSP
-    # local module always authors its contract at the selected module root.
-    if project.local_path and name in {
-        m.get("name") for m in config.get("modules", []) if m.get("local")
-    }:
-        return Path(project.local_path) / "nsx-module.yaml"
     return _module_metadata_path(name, entry, registry, app_dir=app_dir)
 
 

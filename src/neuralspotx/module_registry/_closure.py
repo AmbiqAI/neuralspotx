@@ -9,7 +9,7 @@ from typing import Any
 from .._errors import NSXConfigError, NSXModuleError
 from ..board_plan import resolve_board_plan
 from ..metadata import is_compatible
-from ..models import ModuleMetadata
+from ..models import ModuleDependency, ModuleMetadata
 from ._bsp import bind_requirements, participant_metadata_path, read_participant, validate_bsp_offer
 from ._metadata import _load_module_metadata, metadata_cache_scope
 from ._nsx_cfg import _local_module_names, _vendored_module_names
@@ -84,6 +84,7 @@ def _resolve_module_closure_inner(
     resolved: list[str] = []
     metadata_cache: dict[str, ModuleMetadata] = {}
     bsp_inspected: set[str] = set()
+    required_edges: list[tuple[str, ModuleDependency]] = []
 
     def dfs(module_name: str, *, inspect_local: bool = False) -> None:
         inspect_local = inspect_local or module_name == selected_bsp
@@ -159,7 +160,7 @@ def _resolve_module_closure_inner(
                 if dep.version is not None:
                     raise requirement_metadata_error(module_name, dep, exc) from exc
                 raise
-            validate_requirement(module_name, dep, metadata_cache.get(dep.name))
+            required_edges.append((module_name, dep))
 
         visiting.remove(module_name)
         visited.add(module_name)
@@ -167,6 +168,9 @@ def _resolve_module_closure_inner(
 
     for seed in seed_modules:
         dfs(seed)
+
+    for parent, dep in required_edges:
+        validate_requirement(parent, dep, metadata_cache.get(dep.name))
 
     resolved = _order_with_present_optional_deps(
         resolved,

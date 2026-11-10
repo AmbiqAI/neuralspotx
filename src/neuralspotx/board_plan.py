@@ -8,6 +8,7 @@ from typing import Any
 
 from ._errors import NSXConfigError
 from .board_descriptors import BoardDescriptor, BoardDescriptorError, load_board_for_app
+from .constants import normalize_board, normalize_soc
 
 
 @dataclass(frozen=True)
@@ -25,7 +26,7 @@ def resolve_board_plan(app_dir: Path | None, config: dict[str, Any]) -> Resolved
     if not isinstance(board, str) or not board:
         return None
     try:
-        descriptor = load_board_for_app(board, app_dir)
+        descriptor = load_board_for_app(normalize_board(board), app_dir)
     except BoardDescriptorError as exc:
         raise NSXConfigError(str(exc)) from exc
     if descriptor is None:
@@ -34,7 +35,7 @@ def resolve_board_plan(app_dir: Path | None, config: dict[str, Any]) -> Resolved
         raise NSXConfigError(
             f"Board '{board}' has no board.yaml; create/register the board before resolving modules"
         )
-    soc = target.get("soc")
+    soc = normalize_soc(target.get("soc"))
     if soc and soc != descriptor.soc:
         raise NSXConfigError(
             f"Target SoC '{soc}' disagrees with board '{board}' ({descriptor.soc})"
