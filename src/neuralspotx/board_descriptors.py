@@ -347,6 +347,7 @@ def render_custom_board_yaml(*, name: str, parent: str, tier: str = "custom") ->
         "board.yaml",
         name=name,
         parent=parent,
+        tier=tier,
         bsp_module="nsx-bsp-" + name.replace("_", "-").lower(),
     )
 

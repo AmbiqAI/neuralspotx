@@ -3,7 +3,7 @@ schema_version: 2
 inherits: {{ parent }}
 board:
   name: {{ name }}
-  tier: custom
+  tier: {{ tier | default("custom") | tojson }}
   registered: false
 roles:
   bsp:

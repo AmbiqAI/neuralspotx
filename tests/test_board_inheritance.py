@@ -144,14 +144,15 @@ def test_child_scalar_overrides_parent(tmp_path: Path) -> None:
     assert desc.soc == "apollo510_custom"
 
 
-def test_render_custom_board_yaml_roundtrips(tmp_path: Path) -> None:
-    text = bd.render_custom_board_yaml(name="my_board", parent="apollo510_evb")
+@pytest.mark.parametrize("tier", ["custom", "reference"])
+def test_render_custom_board_yaml_roundtrips(tmp_path: Path, tier: str) -> None:
+    text = bd.render_custom_board_yaml(name="my_board", parent="apollo510_evb", tier=tier)
     board_yaml = _write(tmp_path / "boards" / "my_board" / "board.yaml", text)
     desc = bd.load_board_descriptor_file(board_yaml)
     parent = bd.load_board("apollo510_evb")
     assert parent is not None
     assert desc.name == "my_board"
-    assert desc.tier == "custom"
+    assert desc.tier == tier
     assert desc.registered is False
     assert desc.soc == parent.soc
     assert desc.toolchains == parent.toolchains
