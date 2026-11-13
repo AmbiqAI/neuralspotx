@@ -171,3 +171,16 @@ readers preserve but ignore these declarations, losing only transport warnings.
 This narrow exception does not permit unversioned changes to dependency resolution,
 build semantics, locks, or other schemas. Exact schema checks and the no-migration
 policy remain in force.
+
+## Custom board composition
+
+A board descriptor selects one BSP provider and contract version. The SDK defines
+and qualifies the interface; NSX binds required role edges, orders the provider
+before consumers, vendors sources locally, and records the composition per target
+in lock schema 5. Contract 1 is reserved for the built-in adapter. Contract 2
+requires explicit provider metadata and target-owned SDK validation.
+
+Inherited descriptors are app-local snapshots. A custom board includes SDK silicon
+support and its own optional flags/memory/debug fragments; it never includes its
+parent EVB's aggregate CMake. SDK adoption of a board can change the BSP binding
+without changing board identity. See the published Add a board guide for authoring.

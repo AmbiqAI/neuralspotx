@@ -54,7 +54,7 @@ _metadata_scope: contextvars.ContextVar[dict[tuple[str, str], ModuleMetadata] | 
 
 
 @contextlib.contextmanager
-def metadata_cache_scope() -> Iterator[None]:
+def metadata_cache_scope(*, fresh: bool = False) -> Iterator[None]:
     """Enable per-operation memoization of ``_load_module_metadata``.
 
     Within this with-block, repeated calls to load a given
@@ -63,7 +63,7 @@ def metadata_cache_scope() -> Iterator[None]:
     no-ops (the outermost scope owns the cache).
     """
 
-    if _metadata_scope.get() is not None:
+    if _metadata_scope.get() is not None and not fresh:
         yield
         return
     token = _metadata_scope.set({})
@@ -207,6 +207,21 @@ def _load_materialized_module_metadata(
     Compilation uses the app-local mirror, which may differ on cached builds.
     Do not fall back to another copy or reuse the resolution cache here.
     """
+    path = _materialized_module_metadata_path(
+        module_name, registry, app_dir=app_dir, nsx_cfg=nsx_cfg
+    )
+    if not path.is_file():
+        raise NSXConfigError(
+            f"Build-local metadata for '{module_name}' is missing at {path}. "
+            "Run `nsx sync` to materialize the locked modules before building."
+        )
+    return _read_module_metadata(path, module_name)
+
+
+def _materialized_module_metadata_path(
+    module_name: str, registry: dict[str, Any], *, app_dir: Path, nsx_cfg: dict[str, Any]
+) -> Path:
+    """Locate the manifest beside the sources selected by generated CMake."""
     entry = registry_entry_for_module(registry, module_name)
     project = _registry_project_entry(registry, entry.project)
     metadata_rel = _metadata_path_relative_to_project(Path(entry.metadata), project.path)
@@ -222,13 +237,7 @@ def _load_materialized_module_metadata(
     else:
         source = app_dir / _module_source_dir_relative_to_app(module_name, registry, nsx_cfg)
     filename = "nsx-module.yaml" if module_name == "nsx-tooling" else Path(entry.metadata).name
-    path = source / filename
-    if not path.is_file():
-        raise NSXConfigError(
-            f"Build-local metadata for '{module_name}' is missing at {path}. "
-            "Run `nsx sync` to materialize the locked modules before building."
-        )
-    return _read_module_metadata(path, module_name)
+    return source / filename
 
 
 def packaged_module_metadata_path(

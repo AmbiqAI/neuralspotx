@@ -106,7 +106,7 @@ def regenerate_active_board_glue(
     app_cfg = AppConfig.from_mapping(nsx_cfg)
     if app_cfg.is_multi_target():
         nsx_cfg = _apply_active_target(nsx_cfg, app_cfg.resolve_target(board))
-    nsx_cfg = expand_profile_seeds(nsx_cfg, _load_registry())
+    nsx_cfg = expand_profile_seeds(nsx_cfg, _load_registry(), app_dir=app_dir)
     ordered_modules = list(lock.modules)
     if build_dir is None:
         _write_app_module_file(app_dir, nsx_cfg, module_names=ordered_modules)
@@ -607,7 +607,7 @@ def _sync_app_impl_unlocked(
     # and ``module_registry`` overrides (mirroring ``_build_lock_for_app``) so
     # module resolution and the regenerated CMake glue below can find direct
     # deps whose metadata lives in the board family catalog.
-    nsx_cfg = expand_profile_seeds(nsx_cfg, base_registry)
+    nsx_cfg = expand_profile_seeds(nsx_cfg, base_registry, app_dir=app_dir)
     registry = _effective_registry(base_registry, nsx_cfg, app_dir=app_dir)
     validate_app_module_alignment(nsx_cfg, registry)
 
@@ -686,6 +686,11 @@ def _sync_app_impl_unlocked(
             _copy_packaged_tree("neuralspotx", "cmake", cmake_nsx)
         _write_cmake_nsx_gitignore(app_dir)
         ordered_modules = list(lock.modules)
+        from ..module_registry._composition import verify_board_composition
+
+        verify_board_composition(
+            lock.board_composition, app_dir, nsx_cfg, registry, list(lock.modules)
+        )
         validate_materialized_requirements(
             ordered_modules, app_dir=app_dir, nsx_cfg=nsx_cfg, registry=registry
         )

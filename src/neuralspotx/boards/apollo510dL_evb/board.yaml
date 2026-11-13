@@ -1,13 +1,13 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright (c) 2026, Ambiq
-# NSX board descriptor (schema_version 1).
+# NSX board descriptor (schema_version 2).
 #
 # Source of truth for board -> SoC / SDK-provider derivation consumed by
 # neuralspotx.constants via neuralspotx/board_descriptors.py. Keep in sync
 # with board.cmake (NSX_CPU / NSX_ABI_FLAGS).
 #
 # This Apollo510L variant is registered in the built-in board catalog.
-schema_version: 1
+schema_version: 2
 board:
   name: apollo510dL_evb
   tier: evb
@@ -22,3 +22,7 @@ toolchains:
   - arm-none-eabi-gcc
   - armclang
   - atfe
+roles:
+  bsp:
+    module: nsx-ambiq-bsp
+    contract: 1

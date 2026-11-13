@@ -16,6 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
+from ..bsp_contracts import BspOffer, BspRequirement, parse_bsp_offer
 from ._module_dependency import ModuleDependency, parse_required_dependencies
 
 
@@ -47,11 +48,15 @@ class ModuleMetadata:
 
     @property
     def required_deps(self) -> list[str]:
-        return [dep.name for dep in self.required_dependencies]
+        return [dep.name for dep in self.required_dependencies if isinstance(dep, ModuleDependency)]
 
     @property
-    def required_dependencies(self) -> list[ModuleDependency]:
+    def required_dependencies(self) -> list[ModuleDependency | BspRequirement]:
         return parse_required_dependencies(self.raw["depends"]["required"], self.name)
+
+    @property
+    def bsp_offer(self) -> BspOffer | None:
+        return parse_bsp_offer(self.raw.get("contracts"), self.name)
 
     @property
     def optional_deps(self) -> list[str]:

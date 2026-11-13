@@ -26,7 +26,7 @@ def test_inherits_pulls_parent_facts(tmp_path: Path) -> None:
     assert parent is not None
     board_yaml = _write(
         tmp_path / "boards" / "my_apollo510" / "board.yaml",
-        "schema_version: 1\n"
+        "schema_version: 2\nroles: {bsp: {module: custom-bsp, contract: 2}}\n"
         "inherits: apollo510_evb\n"
         "board:\n"
         "  name: my_apollo510\n"
@@ -50,7 +50,7 @@ def test_overrides_toolchains_delta_removes(tmp_path: Path) -> None:
     assert "armclang" in parent.toolchains
     board_yaml = _write(
         tmp_path / "boards" / "custom" / "board.yaml",
-        "schema_version: 1\n"
+        "schema_version: 2\nroles: {bsp: {module: custom-bsp, contract: 2}}\n"
         "inherits: apollo510_evb\n"
         "board:\n"
         "  name: custom\n"
@@ -70,7 +70,7 @@ def test_overrides_toolchains_delta_adds(tmp_path: Path) -> None:
     assert "armclang" not in parent.toolchains
     board_yaml = _write(
         tmp_path / "boards" / "custom" / "board.yaml",
-        "schema_version: 1\n"
+        "schema_version: 2\nroles: {bsp: {module: custom-bsp, contract: 2}}\n"
         "inherits: apollo3_evb\n"
         "board:\n"
         "  name: custom\n"
@@ -85,7 +85,7 @@ def test_overrides_toolchains_delta_adds(tmp_path: Path) -> None:
 def test_overrides_toolchains_full_replacement(tmp_path: Path) -> None:
     board_yaml = _write(
         tmp_path / "boards" / "custom" / "board.yaml",
-        "schema_version: 1\n"
+        "schema_version: 2\nroles: {bsp: {module: custom-bsp, contract: 2}}\n"
         "inherits: apollo510_evb\n"
         "board:\n"
         "  name: custom\n"
@@ -99,7 +99,7 @@ def test_overrides_toolchains_full_replacement(tmp_path: Path) -> None:
 def test_overrides_mixing_plain_and_prefixed_raises(tmp_path: Path) -> None:
     board_yaml = _write(
         tmp_path / "boards" / "custom" / "board.yaml",
-        "schema_version: 1\n"
+        "schema_version: 2\nroles: {bsp: {module: custom-bsp, contract: 2}}\n"
         "inherits: apollo510_evb\n"
         "board:\n"
         "  name: custom\n"
@@ -113,7 +113,7 @@ def test_overrides_mixing_plain_and_prefixed_raises(tmp_path: Path) -> None:
 def test_inherits_unknown_board_raises(tmp_path: Path) -> None:
     board_yaml = _write(
         tmp_path / "boards" / "custom" / "board.yaml",
-        "schema_version: 1\ninherits: not_a_real_board\nboard:\n  name: custom\n",
+        "schema_version: 2\nroles: {bsp: {module: custom-bsp, contract: 2}}\ninherits: not_a_real_board\nboard:\n  name: custom\n",
     )
     with pytest.raises(BoardDescriptorError, match="inherits unknown board"):
         bd.load_board_descriptor_file(board_yaml)
@@ -124,7 +124,7 @@ def test_inherits_with_explicit_parent_lookup(tmp_path: Path) -> None:
     assert parent is not None
     board_yaml = _write(
         tmp_path / "boards" / "custom" / "board.yaml",
-        "schema_version: 1\ninherits: my_base\nboard:\n  name: custom\n",
+        "schema_version: 2\nroles: {bsp: {module: custom-bsp, contract: 2}}\ninherits: my_base\nboard:\n  name: custom\n",
     )
     desc = bd.load_board_descriptor_file(board_yaml, parent_lookup={"my_base": parent})
     assert desc.soc == parent.soc
@@ -134,7 +134,7 @@ def test_inherits_with_explicit_parent_lookup(tmp_path: Path) -> None:
 def test_child_scalar_overrides_parent(tmp_path: Path) -> None:
     board_yaml = _write(
         tmp_path / "boards" / "custom" / "board.yaml",
-        "schema_version: 1\n"
+        "schema_version: 2\nroles: {bsp: {module: custom-bsp, contract: 2}}\n"
         "inherits: apollo510_evb\n"
         "board:\n"
         "  name: custom\n"
@@ -144,21 +144,23 @@ def test_child_scalar_overrides_parent(tmp_path: Path) -> None:
     assert desc.soc == "apollo510_custom"
 
 
-def test_render_custom_board_yaml_roundtrips(tmp_path: Path) -> None:
-    text = bd.render_custom_board_yaml(name="my_board", parent="apollo510_evb")
+@pytest.mark.parametrize("tier", ["custom", "reference"])
+def test_render_custom_board_yaml_roundtrips(tmp_path: Path, tier: str) -> None:
+    text = bd.render_custom_board_yaml(name="my_board", parent="apollo510_evb", tier=tier)
     board_yaml = _write(tmp_path / "boards" / "my_board" / "board.yaml", text)
     desc = bd.load_board_descriptor_file(board_yaml)
     parent = bd.load_board("apollo510_evb")
     assert parent is not None
     assert desc.name == "my_board"
-    assert desc.tier == "custom"
+    assert desc.tier == tier
     assert desc.registered is False
     assert desc.soc == parent.soc
     assert desc.toolchains == parent.toolchains
 
 
-def test_render_custom_board_cmake_delegates_to_parent() -> None:
+def test_render_custom_board_cmake_uses_sdk_silicon_without_parent_board() -> None:
     text = bd.render_custom_board_cmake(name="my_board", parent="apollo510_evb")
-    assert "apollo510_evb" in text
+    assert "apollo510_evb" not in text
     assert "nsx::board_my_board" in text
-    assert "${NSX_ROOT}/boards/${NSX_PARENT_BOARD}/board.cmake" in text
+    assert "${NSX_ROOT}/boards/${NSX_PARENT_BOARD}/board.cmake" not in text
+    assert "socs/${NSX_RESOLVED_BOARD_SOC}.cmake" in text

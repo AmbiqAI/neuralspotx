@@ -21,8 +21,11 @@ def validate_app_requirements(app_dir: Path, board: str) -> None:
     if app.is_multi_target():
         cfg = _apply_active_target(cfg, app.resolve_target(board))
     base = _load_registry()
-    cfg = expand_profile_seeds(cfg, base)
+    cfg = expand_profile_seeds(cfg, base, app_dir=app_dir)
     registry = _effective_registry(base, cfg, app_dir=app_dir)
     validate_materialized_requirements(
         list(lock.modules), app_dir=app_dir, nsx_cfg=cfg, registry=registry
     )
+    from ..module_registry._composition import verify_board_composition
+
+    verify_board_composition(lock.board_composition, app_dir, cfg, registry, list(lock.modules))

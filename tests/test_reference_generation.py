@@ -116,7 +116,7 @@ def test_every_symbol_has_a_category(report: dict[str, Any]) -> None:
 # this file would notice them going missing. Spelled out rather than derived:
 # recomputing them from the annotations would restate prune_griffe.py's own
 # resolution, and a fourth one appearing is a decision, not an accident.
-SUPPORTING_TYPES = {"BoardDescriptor", "EventKind", "PathLike"}
+SUPPORTING_TYPES = {"BoardComposition", "BoardDescriptor", "EventKind", "PathLike"}
 
 
 def test_supporting_types_are_documented(report: dict[str, Any]) -> None:
@@ -216,7 +216,7 @@ SCHEMA_IDS = ["nsx-yml", "nsx-module-yaml", "board-yaml", "nsx-lock"]
 
 # Dataclass attributes that describe where a document came from rather than
 # anything inside it, so no documented field maps to them.
-NON_FILE_FIELDS = {"path"}
+NON_FILE_FIELDS = {"descriptor_inputs", "path"}
 
 
 def _resolve(dotted: str) -> Any:

@@ -1,85 +1,101 @@
 ---
 title: Add a board
-description: Scaffold a board definition, fill in its five CMake fragments and its descriptor, and get an app building against hardware NSX does not package.
+description: Select a custom BSP provider while sharing SDK silicon support.
 ---
 
-NSX packages a board definition for every board in the
-[board matrix](/neuralspotx/modules/boards/). Adding one of your own means writing a board
-module: a descriptor that says what the board is, and the CMake fragments that wire it up.
+A custom board owns its identity, package and pin choices, peripherals, and debug
+configuration. The SDK owns silicon support and the BSP interface. NSX resolves and
+vendors the selected modules into the app.
 
-Do this for a custom board or a variant of a packaged one. For a board that only differs
-from a packaged one in a pin or two, starting from that board's definition and changing
-the BSP fragment is far less work than starting from scratch.
+## Scaffold the board
 
-## Scaffold it
+From an existing app, run:
 
 ```bash
-nsx board create my_board --soc apollo510
+nsx board create my_board --from apollo330mP_evb --bsp-module my-bsp
 ```
 
-See [`nsx board create`](/neuralspotx/reference/cli/board-create/) for the options. The
-result is a directory with the same shape as a packaged board.
+This creates `boards/my_board/` with a descriptor, module manifest, CMake bootstrap,
+and a module entry point. It snapshots the parent's descriptor into the app.
+Inheritance shares SoC, CPU, SDK-provider, and toolchain facts. It does not include
+the parent's EVB CMake, pins, package definitions, or BSP binding.
 
-## What a board module contains
+The new descriptor explicitly selects a BSP:
 
-| File | What it does |
-| --- | --- |
-| `board.yaml` | The descriptor: name, tier, SoC, whether it is registered, the SDK provider, the CPU core, float ABI and ABI string, and the toolchains it declares. |
-| `nsx-module.yaml` | The board as a module, so it resolves like any other. Type `board`. |
-| `board.cmake` | Board-level flags and definitions, including the stack and heap sizes handed to the startup code. |
-| `bsp.cmake` | Board support: pins, peripherals, the BSP sources from the SDK. |
-| `soc.cmake` | SoC-level wiring shared by every board on that part. |
-| `memory.cmake` | Startup source, CMSIS system source, and the linker script selection. |
-| `debug.cmake` | Flash and SWO settings, which is what the generated SEGGER command files are built from. |
-
-The descriptor and the manifest are both validated, and every field of each is documented
-in the generated reference:
-[`board.yaml`](/neuralspotx/reference/config/board-yaml/) and
-[`nsx-module.yaml`](/neuralspotx/reference/config/nsx-module-yaml/).
-
-## The order that works
-
-1. **Get the descriptor right first.** The SoC, the CPU core, the float ABI and the ABI
-   string decide every compiler flag that follows. A wrong ABI produces link errors that
-   look like missing symbols.
-2. **Make `memory.cmake` point at real files.** Copy the structure from the packaged board
-   for the same SoC: the startup source and linker script live in the `nsx-core` module,
-   per SoC and per toolchain family, and both a default and an ITCM variant are named. See
-   [Startup and linker](/neuralspotx/guides/system/startup-and-linker/).
-3. **Then `bsp.cmake`.** This is where a custom board actually differs. Everything above
-   it is determined by the part.
-4. **Generate an app against it and build.** `nsx create-app probe --board my_board
-   --soc apollo510`, then `nsx configure` and `nsx build`. Configure is where a bad
-   descriptor surfaces; build is where a bad fragment does.
-5. **Then flash and view.** `debug.cmake` is the last thing to get right, and it is the
-   only part you cannot check without hardware.
-
-## The SDK provider has to resolve
-
-A board that NSX does not recognize as registered cannot infer its SDK provider:
-
-```text
-Unable to infer SDK provider for board 'my_board'. Set -DNSX_SDK_PROVIDER=ambiqsuite.
+```yaml
+schema_version: 2
+inherits: apollo330mP_evb
+board:
+  name: my_board
+  tier: custom
+  registered: false
+roles:
+  bsp:
+    module: my-bsp
+    contract: 2
 ```
 
-NSX follows a custom board's parent link before giving up, so declaring the packaged board
-you derived from is the clean fix. See
-[SDK foundation and overrides](/neuralspotx/guides/modules/sdk-providers/).
+You can add `board.revision` to distinguish hardware revisions. Keep the board
+identity stable if its BSP later moves into the SDK; change the explicit binding.
 
-## Declaring compatibility honestly
+## Supply a BSP module
 
-`toolchains` in `board.yaml` and `compatibility` in `nsx-module.yaml` are how the rest of
-the system reasons about your board, and they are enforced: a module whose compatibility
-excludes your board will be rejected rather than built.
+The scaffold does not implement hardware support. Register your BSP as a module,
+or add an app-owned `modules/my-bsp/` with `source: {vendored: true}` in `nsx.yml`.
+The selected BSP needs a complete `nsx-module.yaml`, including its dependencies.
+Its additional contract declaration is:
 
-List what you have actually built, not what you expect to work. A board that declares all
-three toolchains and has only been built with GCC produces failures for whoever tries the
-other two, in a place that gives them no clue where the claim came from.
+```yaml
+contracts:
+  provides:
+    bsp:
+      versions: [2]
+      socs: [apollo330P]
+```
 
-## Adding it to NSX itself
+A consumer declares `depends.required` with `{role: bsp, contracts: [2]}` or
+`[1, 2]` if it implements both versions. Versions are explicit alternatives;
+version 2 does not implicitly satisfy version 1. A concrete `nsx-ambiq-bsp`
+dependency conflicts with a custom binding.
 
-Everything above works in your own tree. Getting a board packaged with NSX, so that
-`nsx board list` shows it for everyone, is a change to the NSX repository: the board
-definition, the registry entry and the tests that cover both. That work starts with an
-issue on [AmbiqAI/neuralspotx](https://github.com/AmbiqAI/neuralspotx/issues), and the
-repository's `CONTRIBUTING.md` covers the development setup and review process.
+The BSP's CMake registers its concrete target using the SDK helper:
+
+```cmake
+add_library(my_bsp STATIC bsp.c)
+target_link_libraries(my_bsp PUBLIC nsx_ambiq_hal nsx::board_flags)
+nsx_register_bsp(TARGET my_bsp CONTRACT 2 DEBUG_ITM 0 DEBUG_UART 0)
+```
+
+Implement the SDK's required BSP functions and headers. Debug capability values
+belong to the CMake target, not duplicated YAML. Contract 2 currently requires an
+SDK revision with that contract implementation and is qualified only for
+Apollo330P and Apollo510. The packaged stable SDK pin is not automatically changed
+by scaffolding a custom board; select a compatible immutable SDK revision through
+an explicit app registry override.
+
+## Configure and qualify
+
+Set the app's target board to `my_board`. NSX derives the baseline from the SoC
+family, substitutes the selected BSP seed, and adds the custom board module.
+The SDK supplies silicon flags, startup, and the default linker layout. Optional
+local `flags.cmake`, `memory.cmake`, and `debug.cmake` fragments supply reviewed
+board-specific choices. No EVB probe identity is inherited.
+
+Run `nsx lock`, `nsx sync`, `nsx configure`, and `nsx build`. Each target's lock
+records the board binding and descriptor/contract-manifest fingerprints (CRLF
+line endings normalize to LF; all other bytes remain significant).
+Changing these inputs requires a new lock; frozen builds reject drift. Board
+schema 1 must be updated explicitly to schema 2, and old locks regenerated.
+
+On a clean checkout, read-only `nsx lock --check` can reuse the recorded closure
+and unavailable contract fingerprints. It warns that missing metadata cannot be
+certified, and still checks every available contract input and board descriptor.
+Run `nsx sync` first for a complete check. Writable lock generation and frozen
+sync/build verification require the actual metadata. Writable locks verify Git
+contract inputs against the exact resolved artifacts. If those artifacts change
+the dependency graph compared with the app-local sources, locking stops before
+writing; refresh those sources to the selected revisions and lock again.
+
+Configure the correct probe device before flashing. A successful host build does
+not qualify pins, peripheral power sequencing, or hardware behavior. Narrow the
+descriptor and module compatibility declarations to the combinations you support.

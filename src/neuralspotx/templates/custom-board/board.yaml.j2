@@ -1,0 +1,11 @@
+# Inherit silicon and toolchain facts only; own the board's BSP binding.
+schema_version: 2
+inherits: {{ parent }}
+board:
+  name: {{ name }}
+  tier: {{ tier | default("custom") | tojson }}
+  registered: false
+roles:
+  bsp:
+    module: {{ bsp_module }}
+    contract: 2

@@ -7,7 +7,7 @@ the constants they need without pulling in the rest of the package.
 from __future__ import annotations
 
 LOCK_FILENAME = "nsx.lock"
-LOCK_SCHEMA_VERSION = 4
+LOCK_SCHEMA_VERSION = 5
 
 # Schema version of the on-disk ``git-artifact-hashes-vN.json`` user cache.
 # This versions both the layout and the hashing semantics: v2 includes

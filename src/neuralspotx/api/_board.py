@@ -19,6 +19,7 @@ def create_board(
     from_board: str | None = None,
     app_dir: PathLike = ".",
     force: bool = False,
+    bsp_module: str | None = None,
     emit: Emitter | None = None,
 ) -> BoardDescriptor:
     """Scaffold a custom board that inherits a registered EVB baseline.
@@ -29,6 +30,7 @@ def create_board(
             :class:`BoardCreateRequest`).
         app_dir: App root under which ``boards/<name>/`` is written.
         force: Overwrite an existing ``boards/<name>/`` directory.
+        bsp_module: BSP provider module; defaults to nsx-bsp-<name>.
         emit: Optional event sink for progress/next-step messages.
 
     Returns:
@@ -43,6 +45,7 @@ def create_board(
             from_board=from_board or "",
             app_dir=app_dir,
             force=force,
+            bsp_module=bsp_module,
         )
     )
     if not request.from_board:
@@ -53,4 +56,5 @@ def create_board(
             from_board=request.from_board,
             app_dir=request.app_dir,
             force=request.force,
+            bsp_module=request.bsp_module,
         )

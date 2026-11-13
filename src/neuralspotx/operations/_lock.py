@@ -257,12 +257,13 @@ def _prepare_lock_inputs(
     # Lean manifests omit the resolved closure; expand it from the app's
     # starter profile in-memory so the resolver below sees an equivalent
     # fully-seeded config. Inlined manifests pass through unchanged.
-    nsx_cfg = expand_profile_seeds(nsx_cfg, base_registry)
+    nsx_cfg = expand_profile_seeds(nsx_cfg, base_registry, app_dir=app_dir)
     registry = _effective_registry(base_registry, nsx_cfg, app_dir=app_dir)
     validate_app_module_alignment(nsx_cfg, registry)
     seed_module_names = _module_names_from_nsx(nsx_cfg)
     local_names = _local_module_names(nsx_cfg)
     vendored_names = _vendored_module_names(nsx_cfg)
+    used_locked_closure = False
 
     try:
         module_names = _resolve_module_closure(
@@ -278,10 +279,11 @@ def _prepare_lock_inputs(
             _log.warning(
                 "could not resolve dependency metadata for all modules (%s); "
                 "using the module closure recorded in nsx.lock for read-only check; "
-                "dependency version constraints cannot be certified without metadata.",
+                "dependency version constraints and unavailable BSP contract inputs cannot be certified without metadata.",
                 exc,
             )
             module_names = list(previous.modules)
+            used_locked_closure = True
         else:
             seed_summary = ", ".join(seed_module_names) or "<none>"
             raise NSXResolutionError(
@@ -291,7 +293,9 @@ def _prepare_lock_inputs(
                 "dependency closure."
             ) from exc
 
-    return LockInputs(nsx_cfg, registry, module_names, local_names, vendored_names)
+    return LockInputs(
+        nsx_cfg, registry, module_names, local_names, vendored_names, used_locked_closure
+    )
 
 
 def _build_lock_for_app(
@@ -765,8 +769,24 @@ def _build_lock_for_app(
 
     if selected is not None:
         validate_materialization(app_dir, lock)
-    _preserve_unchanged_timestamps(previous, lock)
     warn_unpinned_git_constraints(lock)
+    from ..module_registry._composition import board_composition
+
+    if write_side_effects:
+        from ._lock_composition import resolved_board_composition
+
+        lock.board_composition = resolved_board_composition(app_dir, nsx_cfg, registry, lock)
+    else:
+        lock.board_composition = board_composition(
+            app_dir,
+            nsx_cfg,
+            registry,
+            module_names,
+            read_only_record=previous.board_composition
+            if previous and inputs.used_locked_closure
+            else None,
+        )
+    _preserve_unchanged_timestamps(previous, lock)
     return lock
 
 
@@ -799,7 +819,10 @@ def _preserve_unchanged_timestamps(previous: NsxLock | None, fresh: NsxLock) -> 
 
     if previous is None:
         return
-    all_unchanged = set(previous.modules) == set(fresh.modules)
+    all_unchanged = (
+        set(previous.modules) == set(fresh.modules)
+        and previous.board_composition == fresh.board_composition
+    )
     for name, entry in fresh.modules.items():
         prev = previous.modules.get(name)
         if prev is not None and _same_resolution(prev, entry):
@@ -1028,7 +1051,7 @@ def _lock_app_impl_unlocked(
     # and ``module_registry`` overrides (mirroring ``_build_lock_for_app``) so
     # the CMake glue below resolves direct deps whose metadata lives in the
     # board family catalog rather than the top-level registry map.
-    nsx_cfg = expand_profile_seeds(nsx_cfg, _load_registry())
+    nsx_cfg = expand_profile_seeds(nsx_cfg, _load_registry(), app_dir=app_dir)
     ordered_modules = list(lock.modules)
     # Each board writes its own default build-directory module input.
     # The shared source-tree loader contains no board-specific state.
@@ -1066,6 +1089,8 @@ def _diff_locks(previous: NsxLock | None, fresh: NsxLock) -> list[str]:
         return [f"no nsx.lock present (would create {len(fresh.modules)} entries)"]
 
     diffs: list[str] = []
+    if previous.board_composition != fresh.board_composition:
+        diffs.append("board/BSP composition changed")
     if previous.manifest_hash != fresh.manifest_hash:
         diffs.append(
             f"manifest hash: {previous.manifest_hash[:14]}\u2026 -> {fresh.manifest_hash[:14]}\u2026"

@@ -7,8 +7,10 @@ from pathlib import Path
 from typing import Any
 
 from .._errors import NSXConfigError, NSXModuleError
+from ..board_plan import resolve_board_plan
 from ..metadata import is_compatible
-from ..models import ModuleMetadata
+from ..models import ModuleDependency, ModuleMetadata
+from ._bsp import bind_requirements, participant_metadata_path, read_participant, validate_bsp_offer
 from ._metadata import _load_module_metadata, metadata_cache_scope
 from ._nsx_cfg import _local_module_names, _vendored_module_names
 from ._policy import _validate_board_module_dep_policy, _validate_sdk_provider_policy
@@ -71,6 +73,8 @@ def _resolve_module_closure_inner(
     if not isinstance(toolchain, str):
         raise NSXConfigError("nsx.yml toolchain must be a string")
 
+    plan = resolve_board_plan(app_dir, nsx_cfg)
+    selected_bsp = plan.descriptor.bsp.module if plan else None
     local_names = _local_module_names(nsx_cfg)
     vendored_names = _vendored_module_names(nsx_cfg)
     opaque_names = local_names | vendored_names
@@ -79,18 +83,28 @@ def _resolve_module_closure_inner(
     visiting: set[str] = set()
     resolved: list[str] = []
     metadata_cache: dict[str, ModuleMetadata] = {}
+    bsp_inspected: set[str] = set()
+    required_edges: list[tuple[str, ModuleDependency]] = []
 
-    def dfs(module_name: str) -> None:
+    def dfs(module_name: str, *, inspect_local: bool = False) -> None:
+        inspect_local = inspect_local or module_name == selected_bsp
         if module_name in visited:
-            return
+            if not inspect_local or module_name in bsp_inspected:
+                return
+            # A previous unrelated seed treated this source as opaque. It now
+            # participates in the BSP graph and must be inspected normally.
+            visited.remove(module_name)
+            resolved.remove(module_name)
         # Local / vendored modules are opaque — skip registry metadata lookup.
-        if module_name in opaque_names:
+        if module_name in opaque_names and not inspect_local:
             visited.add(module_name)
             resolved.append(module_name)
             return
         if module_name in visiting:
             raise NSXModuleError(f"Dependency cycle detected at module '{module_name}'")
         visiting.add(module_name)
+        if inspect_local:
+            bsp_inspected.add(module_name)
 
         # Acquisition is interleaved with traversal by necessity: a module's
         # dependencies live inside its own nsx-module.yaml, so the graph is
@@ -107,7 +121,18 @@ def _resolve_module_closure_inner(
                 vendored_modules=vendored_names,
             )
 
-        module_meta = _load_module_metadata(module_name, registry, app_dir=app_dir)
+        if module_name in opaque_names:
+            if app_dir is None:
+                raise NSXModuleError("An app-local BSP requires an app directory")
+            module_meta = read_participant(
+                module_name, participant_metadata_path(module_name, registry, app_dir, nsx_cfg)
+            )
+        else:
+            module_meta = _load_module_metadata(module_name, registry, app_dir=app_dir)
+        if plan and module_name == selected_bsp:
+            validate_bsp_offer(plan, module_meta)
+        elif module_meta.bsp_offer is not None:
+            raise NSXModuleError(f"Unselected BSP provider '{module_name}' entered the closure")
         metadata_cache[module_name] = module_meta
 
         if not module_meta.supports_ambiqsuite:
@@ -128,14 +153,14 @@ def _resolve_module_closure_inner(
                 "to bypass."
             )
 
-        for dep in module_meta.required_dependencies:
+        for dep in bind_requirements(module_meta, plan):
             try:
-                dfs(dep.name)
+                dfs(dep.name, inspect_local=inspect_local)
             except (ValueError, NSXConfigError) as exc:
                 if dep.version is not None:
                     raise requirement_metadata_error(module_name, dep, exc) from exc
                 raise
-            validate_requirement(module_name, dep, metadata_cache.get(dep.name))
+            required_edges.append((module_name, dep))
 
         visiting.remove(module_name)
         visited.add(module_name)
@@ -144,7 +169,17 @@ def _resolve_module_closure_inner(
     for seed in seed_modules:
         dfs(seed)
 
-    resolved = _order_with_present_optional_deps(resolved, metadata_cache)
+    for parent, dep in required_edges:
+        validate_requirement(parent, dep, metadata_cache.get(dep.name))
+
+    resolved = _order_with_present_optional_deps(
+        resolved,
+        metadata_cache,
+        {
+            name: [dep.name for dep in bind_requirements(meta, plan)]
+            for name, meta in metadata_cache.items()
+        },
+    )
 
     for module_name, module_meta in metadata_cache.items():
         _validate_board_module_dep_policy(module_name, module_meta, metadata_cache)
@@ -164,6 +199,7 @@ def _resolve_module_closure_inner(
 def _order_with_present_optional_deps(
     resolved: list[str],
     metadata_cache: dict[str, ModuleMetadata],
+    required_edges: dict[str, list[str]] | None = None,
 ) -> list[str]:
     """Reorder *resolved* so a present optional dependency precedes its dependent.
 
@@ -182,7 +218,15 @@ def _order_with_present_optional_deps(
     for module_name in resolved:
         module_meta = metadata_cache.get(module_name)
         edges[module_name] = (
-            [dep for dep in module_meta.required_deps if dep in present]
+            [
+                dep
+                for dep in (
+                    required_edges.get(module_name, [])
+                    if required_edges is not None
+                    else module_meta.required_deps
+                )
+                if dep in present
+            ]
             if module_meta is not None
             else []
         )

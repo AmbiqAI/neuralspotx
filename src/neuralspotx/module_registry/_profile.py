@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 import copy
+from pathlib import Path
 from typing import Any
 
 from .._errors import NSXConfigError
-from ..metadata import registry_entry_for_module
+from ..board_plan import resolve_board_plan
+from ..metadata import derive_board_profile, registry_entry_for_module
 
 
 def _starter_profile_name(board: str) -> str:
@@ -165,6 +167,8 @@ def _opaque_record(module: Any) -> dict[str, Any]:
 def expand_profile_seeds(
     nsx_cfg: dict[str, Any],
     registry: dict[str, Any],
+    *,
+    app_dir: Path | None = None,
 ) -> dict[str, Any]:
     """Resolve the app's closure from its board profile + direct ``modules:``.
 
@@ -221,7 +225,49 @@ def expand_profile_seeds(
         # No board to seed from (edge/legacy manifest); leave untouched.
         return nsx_cfg
 
-    seed_modules, module_registry, profile = _profile_seed_blocks(registry, board)
+    plan = resolve_board_plan(app_dir, nsx_cfg)
+    if plan and (not plan.descriptor.registered or plan.descriptor.bsp.module != "nsx-ambiq-bsp"):
+        if app_dir is None:
+            raise NSXConfigError("Custom board resolution requires an app directory")
+        profile = derive_board_profile(registry, plan.descriptor)
+        # Substitute the family BSP seed only. Concrete dependencies elsewhere
+        # remain concrete and are rejected if they conflict with this binding.
+        profile["modules"] = [n for n in profile["modules"] if n != "nsx-ambiq-bsp"]
+        bsp_name = plan.descriptor.bsp.module
+        direct_by_name = {m.name: m for m in direct}
+        bsp_direct = direct_by_name.get(bsp_name)
+        if bsp_direct is None or bsp_direct.source_kind not in ("path", "vendored"):
+            profile["modules"].insert(0, bsp_name)
+        board_module = plan.board_module
+        profile["project_overrides"][board_module] = {
+            "local_path": str(plan.descriptor.path),
+            "revision": "local",
+            "path": f"modules/{board_module}",
+        }
+        profile["module_overrides"][board_module] = {
+            "project": board_module,
+            "revision": "local",
+            "metadata": "nsx-module.yaml",
+        }
+        profile_registry = copy.deepcopy(registry)
+        profile_registry["starter_profiles"] = {
+            **registry.get("starter_profiles", {}),
+            _starter_profile_name(board): profile,
+        }
+        # Resolve seeds through the same precedence stack used by the graph.
+        # Preserve only synthetic defaults in the returned _profile_registry.
+        from ..project_config import _effective_registry
+
+        module_registry = {
+            "projects": copy.deepcopy(profile["project_overrides"]),
+            "modules": copy.deepcopy(profile["module_overrides"]),
+        }
+        seed_registry = _effective_registry(
+            profile_registry, {**nsx_cfg, "_profile_registry": module_registry}, app_dir=app_dir
+        )
+        seed_modules = [_module_record(name, seed_registry) for name in profile["modules"]]
+    else:
+        seed_modules, module_registry, profile = _profile_seed_blocks(registry, board)
     seeded_names = {record["name"] for record in seed_modules}
     module_overrides = profile.get("module_overrides", {})
     if not isinstance(module_overrides, dict):
@@ -239,6 +285,8 @@ def expand_profile_seeds(
     expanded = dict(nsx_cfg)
     expanded["modules"] = modules
     expanded["_profile_registry"] = module_registry
+    if plan:
+        expanded["target"] = {**nsx_cfg["target"], "soc": plan.descriptor.soc}
     return expanded
 
 

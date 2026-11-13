@@ -44,6 +44,7 @@ class BoardCreateRequest:
         name: New custom board identifier (becomes ``boards/<name>/``).
         from_board: Parent EVB whose SoC/provider/CPU facts are inherited.
         app_dir: App root under which ``boards/<name>/`` is written.
+        bsp_module: Explicit BSP provider module (defaults to nsx-bsp-<name>).
         force: Overwrite an existing ``boards/<name>/`` directory.
     """
 
@@ -51,6 +52,7 @@ class BoardCreateRequest:
     from_board: str
     app_dir: PathLike = "."
     force: bool = False
+    bsp_module: str | None = None
 
 
 @dataclass(slots=True)

@@ -293,7 +293,11 @@ def _print_module_detail(record: DiscoveryRecord) -> None:
         requirements = depends.get("required_dependencies")
         required = (
             [
-                f"{dep['name']} ({dep['version']})" if dep["version"] else dep["name"]
+                f"role:{dep['role']} (contracts {dep['contracts']})"
+                if "role" in dep
+                else f"{dep['name']} ({dep['version']})"
+                if dep["version"]
+                else dep["name"]
                 for dep in requirements
             ]
             if requirements is not None

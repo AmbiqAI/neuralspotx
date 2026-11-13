@@ -6,6 +6,8 @@ from dataclasses import dataclass
 
 from packaging.specifiers import InvalidSpecifier, SpecifierSet
 
+from ..bsp_contracts import BspRequirement, contract_versions
+
 
 @dataclass(frozen=True, slots=True)
 class ModuleDependency:
@@ -21,11 +23,20 @@ class ModuleDependency:
         return f"{self.name} ({self.version})" if self.version else self.name
 
 
-def parse_required_dependencies(entries: list[object], context: str) -> list[ModuleDependency]:
+def parse_required_dependencies(
+    entries: list[object], context: str
+) -> list[ModuleDependency | BspRequirement]:
     """Validate authoring syntax; preserve dependency order and bare names."""
-    result: list[ModuleDependency] = []
+    result: list[ModuleDependency | BspRequirement] = []
     for index, entry in enumerate(entries):
         where = f"{context}.depends.required[{index}]"
+        if isinstance(entry, dict) and "role" in entry:
+            if set(entry) != {"role", "contracts"} or entry["role"] != "bsp":
+                raise ValueError(f"{where}: role requirements must contain role: bsp and contracts")
+            result.append(
+                BspRequirement(contract_versions(entry["contracts"], f"{where}.contracts"))
+            )
+            continue
         version = None
         if isinstance(entry, str):
             name = entry

@@ -430,7 +430,8 @@ def _view_board_soc(app_dir: Path, board: str) -> str | None:
 
     board_yaml = app_dir / "boards" / board / "board.yaml"
     if board_yaml.exists():
-        return bd.load_board_descriptor_file(board_yaml).soc
+        descriptor = bd.load_board_for_app(board, app_dir)
+        return descriptor.soc if descriptor else None
 
     return None
 

@@ -88,6 +88,9 @@ function(nsx_select_sdk_provider board_name)
     # to point at an out-of-tree SDK payload.
     set(NSX_AMBIQSUITE_ROOT_OVERRIDE "" CACHE PATH "Path to an out-of-tree AmbiqSuite root")
 
+    if(DEFINED NSX_RESOLVED_SDK_PROVIDER)
+        set(NSX_SDK_PROVIDER "${NSX_RESOLVED_SDK_PROVIDER}")
+    endif()
     if(NSX_SDK_PROVIDER STREQUAL "")
         # Follow the parent link for custom boards before giving up.
         _nsx_resolve_provider_board("${board_name}" _provider_board)
