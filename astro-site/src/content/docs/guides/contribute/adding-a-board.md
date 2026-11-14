@@ -79,7 +79,10 @@ Set the app's target board to `my_board`. NSX derives the baseline from the SoC
 family, substitutes the selected BSP seed, and adds the custom board module.
 The SDK supplies silicon flags, startup, and the default linker layout. Optional
 local `flags.cmake`, `memory.cmake`, and `debug.cmake` fragments supply reviewed
-board-specific choices. No EVB probe identity is inherited.
+board-specific choices. No EVB probe identity is inherited. Until the board supplies
+nonempty, verified SEGGER settings, generated flash/reset/SWO-view targets fail
+without invoking a probe tool. Set the settings in `debug.cmake` and rerun
+`nsx configure`; reconfiguration also removes stale flash/reset command files.
 
 Run `nsx lock`, `nsx sync`, `nsx configure`, and `nsx build`. Each target's lock
 records the board binding and descriptor/contract-manifest fingerprints (CRLF

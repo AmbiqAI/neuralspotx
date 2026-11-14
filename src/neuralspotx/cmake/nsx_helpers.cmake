@@ -35,14 +35,17 @@ function(nsx_add_segger_targets app_target)
         message(FATAL_ERROR "nsx_add_segger_targets: target does not exist: ${app_target}")
     endif()
 
-    if(NOT DEFINED NSX_SEGGER_DEVICE OR NOT DEFINED NSX_SEGGER_IF_SPEED OR
-       NOT DEFINED NSX_SEGGER_PF_ADDR OR NOT DEFINED NSX_SEGGER_CPUFREQ OR
-       NOT DEFINED NSX_SEGGER_SWOFREQ)
-        message(WARNING "SEGGER configuration missing; flash/reset/view targets for ${app_target} will be stubs.")
-        set(NSX_SEGGER_CONFIG_OK OFF)
-    else()
-        set(NSX_SEGGER_CONFIG_OK ON)
-    endif()
+    # Custom boards deliberately clear inherited probe settings until verified.
+    # DEFINED alone accepts empty values (including cached values).
+    set(NSX_SEGGER_CONFIG_OK ON)
+    foreach(setting NSX_SEGGER_DEVICE NSX_SEGGER_IF_SPEED NSX_SEGGER_PF_ADDR
+                    NSX_SEGGER_CPUFREQ NSX_SEGGER_SWOFREQ)
+        string(STRIP "${${setting}}" setting_value)
+        if(setting_value STREQUAL "")
+            message(WARNING "${setting} is missing or empty; set verified board debug settings and rerun nsx configure. flash/reset/view targets for ${app_target} will be stubs.")
+            set(NSX_SEGGER_CONFIG_OK OFF)
+        endif()
+    endforeach()
 
     # Resolved board facts for app-aware reset. FORCE also clears a previous
     # board's values when the current configuration omits a setting.
@@ -83,6 +86,8 @@ function(nsx_add_segger_targets app_target)
     endif()
 
     set(NSX_JLINK_BIN_FILE "${CMAKE_CURRENT_BINARY_DIR}/${app_target}.bin")
+    # Do not leave scripts from a previously configured board available.
+    file(REMOVE "${jlink_dir}/flash_cmds.jlink" "${jlink_dir}/reset_cmds.jlink")
     if(NSX_SEGGER_CONFIG_OK)
         configure_file(
             "${NSX_CMAKE_DIR}/segger/templates/flash_cmds.jlink.in"
@@ -107,11 +112,11 @@ function(nsx_add_segger_targets app_target)
             COMMENT "Resetting target with SEGGER J-Link")
     else()
         add_custom_target(${app_target}_flash
-            COMMAND ${CMAKE_COMMAND} -E echo "SEGGER config/JLink missing; cannot flash ${app_target}."
+            COMMAND ${CMAKE_COMMAND} -E echo "SEGGER settings or JLink missing. Set verified board debug settings, install JLink, and rerun nsx configure. Cannot flash ${app_target}."
             COMMAND ${CMAKE_COMMAND} -E false)
 
         add_custom_target(${app_target}_reset
-            COMMAND ${CMAKE_COMMAND} -E echo "SEGGER config/JLink missing; cannot reset ${app_target}."
+            COMMAND ${CMAKE_COMMAND} -E echo "SEGGER settings or JLink missing. Set verified board debug settings, install JLink, and rerun nsx configure. Cannot reset ${app_target}."
             COMMAND ${CMAKE_COMMAND} -E false)
     endif()
 
@@ -121,7 +126,7 @@ function(nsx_add_segger_targets app_target)
             COMMENT "Opening SEGGER SWO viewer for ${app_target}")
     else()
         add_custom_target(${app_target}_view
-            COMMAND ${CMAKE_COMMAND} -E echo "SEGGER config/SWO viewer missing; cannot view SWO for ${app_target}."
+            COMMAND ${CMAKE_COMMAND} -E echo "SEGGER settings or SWO viewer missing. Set verified board debug settings, install the SWO viewer, and rerun nsx configure. Cannot view SWO for ${app_target}."
             COMMAND ${CMAKE_COMMAND} -E false)
     endif()
 endfunction()
