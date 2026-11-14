@@ -940,7 +940,8 @@ def test_flash_and_view_reconfigure_when_probe_serial_is_supplied(
         def poll(self) -> int:
             return 0
 
-        def wait(self) -> int:
+        def wait(self, timeout: float | None = None) -> int:
+            del timeout
             return 0
 
     monkeypatch.setattr(operations._build.subprocess, "Popen", lambda *args, **kwargs: _DoneProc())
@@ -1379,3 +1380,26 @@ def test_view_teardown_finishes_and_closes_handles_when_a_signal_lands_mid_teard
     assert container.started == len(container.terminated) >= 1
     assert container.terminated[-1] == 5150
     assert container.closed
+
+
+@pytest.mark.parametrize("capture", [False, True])
+@pytest.mark.parametrize("duration", [None, 2.0])
+def test_view_propagates_natural_nonzero_exit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capture: bool, duration: float | None
+) -> None:
+    app_dir = _view_ready_app(tmp_path, monkeypatch, "failed_viewer")
+    # Real child process, no probe: cover capture and timed/untimed wait paths.
+    monkeypatch.setattr(
+        operations._build,
+        "extract_view_command",
+        lambda *_a, **_k: [sys.executable, "-c", "import sys; sys.exit(7)"],
+    )
+    with pytest.raises(NSXError, match="7"):
+        view_app(
+            AppViewRequest(
+                app_dir=app_dir,
+                reset_on_open=False,
+                duration_s=duration,
+                capture=tmp_path / "capture.txt" if capture else None,
+            )
+        )

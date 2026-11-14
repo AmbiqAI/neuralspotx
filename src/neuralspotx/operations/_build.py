@@ -649,14 +649,16 @@ def view_app_impl(
         if stream_proc is not None:
             assert capture_file is not None  # noqa: S101 — opened above when streaming
             _stream_viewer(stream_proc, capture_file, deadline)
-            _stop_viewer(container, stream_proc)
-        elif deadline is not None:
-            try:
-                viewer_proc.wait(timeout=duration_s)
-            except subprocess.TimeoutExpired:
-                _stop_viewer(container, viewer_proc)
+        # A natural nonzero exit must fail the operation, including unavailable
+        # generated viewers. Reaching the requested duration is normal teardown.
+        timeout = None if deadline is None else max(0.0, deadline - time.monotonic())
+        try:
+            returncode = viewer_proc.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            _stop_viewer(container, viewer_proc)
         else:
-            viewer_proc.wait()
+            if returncode != 0:
+                raise subprocess.CalledProcessError(returncode, run_cmd)
     except subprocess.CalledProcessError as exc:
         raise NSXError(format_subprocess_error(exc, context="View")) from None
     finally:
