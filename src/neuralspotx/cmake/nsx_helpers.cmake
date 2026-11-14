@@ -79,6 +79,10 @@ function(nsx_add_segger_targets app_target)
 
     set(jlink_dir "${CMAKE_CURRENT_BINARY_DIR}/jlink/${app_target}")
     file(MAKE_DIRECTORY "${jlink_dir}")
+    # A single failing command also works when nsx view extracts it from Ninja.
+    # An echo followed by a separate false command can lose its failure status.
+    file(WRITE "${jlink_dir}/unavailable.cmake"
+        "message(FATAL_ERROR \"SEGGER settings or tool missing. Set verified board debug settings, install the required SEGGER tool, and rerun nsx configure.\")\n")
 
     set(NSX_JLINK_USB_ARGS "")
     if(DEFINED NSX_JLINK_SERIAL AND NOT NSX_JLINK_SERIAL STREQUAL "")
@@ -112,12 +116,10 @@ function(nsx_add_segger_targets app_target)
             COMMENT "Resetting target with SEGGER J-Link")
     else()
         add_custom_target(${app_target}_flash
-            COMMAND ${CMAKE_COMMAND} -E echo "SEGGER settings or JLink missing. Set verified board debug settings, install JLink, and rerun nsx configure. Cannot flash ${app_target}."
-            COMMAND ${CMAKE_COMMAND} -E false)
+            COMMAND ${CMAKE_COMMAND} -P "${jlink_dir}/unavailable.cmake")
 
         add_custom_target(${app_target}_reset
-            COMMAND ${CMAKE_COMMAND} -E echo "SEGGER settings or JLink missing. Set verified board debug settings, install JLink, and rerun nsx configure. Cannot reset ${app_target}."
-            COMMAND ${CMAKE_COMMAND} -E false)
+            COMMAND ${CMAKE_COMMAND} -P "${jlink_dir}/unavailable.cmake")
     endif()
 
     if(NSX_SEGGER_CONFIG_OK AND NSX_JLINK_SWO_EXE)
@@ -126,7 +128,6 @@ function(nsx_add_segger_targets app_target)
             COMMENT "Opening SEGGER SWO viewer for ${app_target}")
     else()
         add_custom_target(${app_target}_view
-            COMMAND ${CMAKE_COMMAND} -E echo "SEGGER settings or SWO viewer missing. Set verified board debug settings, install the SWO viewer, and rerun nsx configure. Cannot view SWO for ${app_target}."
-            COMMAND ${CMAKE_COMMAND} -E false)
+            COMMAND ${CMAKE_COMMAND} -P "${jlink_dir}/unavailable.cmake")
     endif()
 endfunction()

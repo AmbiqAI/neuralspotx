@@ -7,6 +7,8 @@ from pathlib import Path
 
 import pytest
 
+from neuralspotx.subprocess_utils import extract_view_command
+
 
 @pytest.mark.parametrize("device", [None, "", "   "])
 def test_invalid_device_disables_reconfigured_probe_targets(tmp_path: Path, device: str | None):
@@ -72,6 +74,13 @@ def test_invalid_device_disables_reconfigured_probe_targets(tmp_path: Path, devi
         )
         assert result.returncode != 0
         assert "rerun nsx configure" in result.stdout + result.stderr
+    if sys.platform != "win32":
+        # The CLI runs the extracted viewer argv directly, without a shell.
+        result = subprocess.run(
+            extract_view_command(build, "demo_view"), capture_output=True, text=True
+        )
+        assert result.returncode != 0
+        assert "rerun nsx configure" in result.stderr
     assert not marker.exists()
     assert not (build / "jlink/demo/flash_cmds.jlink").exists()
     assert not (build / "jlink/demo/reset_cmds.jlink").exists()
