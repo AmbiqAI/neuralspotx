@@ -649,14 +649,16 @@ def view_app_impl(
         if stream_proc is not None:
             assert capture_file is not None  # noqa: S101 — opened above when streaming
             _stream_viewer(stream_proc, capture_file, deadline)
-            _stop_viewer(container, stream_proc)
-        elif deadline is not None:
-            try:
-                viewer_proc.wait(timeout=duration_s)
-            except subprocess.TimeoutExpired:
-                _stop_viewer(container, viewer_proc)
+        # A natural nonzero exit must fail the operation, including unavailable
+        # generated viewers. Reaching the requested duration is normal teardown.
+        timeout = None if deadline is None else max(0.0, deadline - time.monotonic())
+        try:
+            returncode = viewer_proc.wait(timeout=timeout)
+        except subprocess.TimeoutExpired:
+            _stop_viewer(container, viewer_proc)
         else:
-            viewer_proc.wait()
+            if returncode != 0:
+                raise subprocess.CalledProcessError(returncode, run_cmd)
     except subprocess.CalledProcessError as exc:
         raise NSXError(format_subprocess_error(exc, context="View")) from None
     finally:
@@ -696,12 +698,16 @@ def _stream_viewer(
     if stream is None:
         return
 
-    lines: "queue.Queue[str | None]" = queue.Queue()
+    lines: "queue.Queue[str | Exception | None]" = queue.Queue()
 
     def _reader() -> None:
         try:
             for raw in iter(stream.readline, ""):
                 lines.put(raw)
+        except Exception as exc:
+            # Carry reader failures to the owner so its finally tears down the
+            # viewer; a decoding/I/O error is not a normal end of the stream.
+            lines.put(exc)
         finally:
             lines.put(None)  # EOF sentinel
 
@@ -723,6 +729,8 @@ def _stream_viewer(
         if item is None:
             # reader hit EOF (viewer exited)
             break
+        if isinstance(item, Exception):
+            raise NSXError(f"Cannot read SWO viewer output: {item}") from item
         sys.stdout.write(item)
         sys.stdout.flush()
         sink.write(item)
