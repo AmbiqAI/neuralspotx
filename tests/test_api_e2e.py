@@ -1403,3 +1403,34 @@ def test_view_propagates_natural_nonzero_exit(
                 capture=tmp_path / "capture.txt" if capture else None,
             )
         )
+
+
+@pytest.mark.parametrize("duration", [None, 1.0])
+def test_view_capture_reader_error_stops_viewer(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, duration: float | None
+) -> None:
+    app_dir = _view_ready_app(tmp_path, monkeypatch, "reader_failure")
+
+    class BrokenOutput(io.StringIO):
+        def readline(self, size: int | None = -1) -> str:
+            raise UnicodeError("invalid output encoding")
+
+    class BrokenViewer(_FinishedViewer):
+        def __init__(self) -> None:
+            super().__init__("")
+            self.stdout = BrokenOutput()
+
+    viewer = BrokenViewer()
+    stopped = []
+    monkeypatch.setattr(operations._build.subprocess, "Popen", lambda *a, **k: viewer)
+    monkeypatch.setattr(operations._build, "_stop_viewer", lambda *a: stopped.append(True))
+    with pytest.raises(NSXError, match="Cannot read SWO viewer output"):
+        view_app(
+            AppViewRequest(
+                app_dir=app_dir,
+                capture=tmp_path / "capture.txt",
+                duration_s=duration,
+                reset_on_open=False,
+            )
+        )
+    assert stopped

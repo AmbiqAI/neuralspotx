@@ -698,12 +698,16 @@ def _stream_viewer(
     if stream is None:
         return
 
-    lines: "queue.Queue[str | None]" = queue.Queue()
+    lines: "queue.Queue[str | Exception | None]" = queue.Queue()
 
     def _reader() -> None:
         try:
             for raw in iter(stream.readline, ""):
                 lines.put(raw)
+        except Exception as exc:
+            # Carry reader failures to the owner so its finally tears down the
+            # viewer; a decoding/I/O error is not a normal end of the stream.
+            lines.put(exc)
         finally:
             lines.put(None)  # EOF sentinel
 
@@ -725,6 +729,8 @@ def _stream_viewer(
         if item is None:
             # reader hit EOF (viewer exited)
             break
+        if isinstance(item, Exception):
+            raise NSXError(f"Cannot read SWO viewer output: {item}") from item
         sys.stdout.write(item)
         sys.stdout.flush()
         sink.write(item)
