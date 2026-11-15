@@ -7,10 +7,12 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
+from ._errors import NSXToolchainError
 from ._io import line
 
 
@@ -150,32 +152,65 @@ _EMU_LINE_RE = re.compile(
 
 
 def list_jlink_probes() -> list[JLinkProbe]:
-    """Enumerate connected SEGGER J-Link probes via ``JLinkExe ShowEmuList``."""
+    """Enumerate J-Link probes, raising on failed or unrecognized enumeration."""
 
     exe = find_segger_tool(JLINK_NAMES)
     if exe is None:
-        from ._errors import NSXToolchainError
-
         raise NSXToolchainError(
             f"JLink executable not found in PATH (looked for: {', '.join(JLINK_NAMES)})."
         )
 
-    try:
-        result = subprocess.run(  # noqa: S603 - resolved executable, fixed args
-            [exe, "-nogui", "1"],
-            input="ShowEmuList\nexit\n",
-            capture_output=True,
-            text=True,
-            timeout=15,
+    def failed(reason: str) -> NSXToolchainError:
+        return NSXToolchainError(
+            f"J-Link probe discovery failed: {reason}. "
+            "Check the SEGGER installation and USB permissions, then retry `nsx probes`."
         )
-    except (OSError, subprocess.TimeoutExpired):
-        return []
+
+    try:
+        # Command files echo boundaries even when an empty ShowEmuList emits no
+        # text. Disable automatic connection: discovery must not open a probe.
+        with tempfile.TemporaryDirectory(prefix="nsx-probes-") as directory:
+            script = Path(directory) / "probes.jlink"
+            script.write_text("ShowEmuList\nexit\n", encoding="ascii")
+            result = subprocess.run(  # noqa: S603 - resolved executable, fixed script
+                [exe, "-nogui", "1", "-AutoConnect", "0", "-CommandFile", str(script)],
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                text=True,
+                errors="replace",
+                timeout=15,
+            )
+    except subprocess.TimeoutExpired:
+        raise failed("enumeration timed out after 15 seconds") from None
+    except OSError as exc:
+        raise failed(f"could not run Commander ({exc})") from None
+
+    if result.returncode != 0:
+        detail = " ".join((result.stderr or result.stdout).split())[-500:]
+        raise failed(f"Commander exited with status {result.returncode}: {detail}")
+
+    # Only inspect the command's response. Startup connection diagnostics are
+    # not ShowEmuList failures, and probe nicknames may contain words like error.
+    lines = [raw.strip() for raw in result.stdout.splitlines()]
+    try:
+        start = lines.index("J-Link>ShowEmuList")
+        end = lines.index("J-Link>exit", start + 1)
+    except ValueError:
+        raise failed("unrecognized or incomplete ShowEmuList response") from None
+    if "Script processing completed." not in lines[end + 1 :]:
+        raise failed("Commander did not finish the enumeration script")
 
     probes: list[JLinkProbe] = []
-    for raw in result.stdout.splitlines():
-        match = _EMU_LINE_RE.search(raw.strip())
-        if match is None:
+    empty = False
+    for raw in lines[start + 1 : end]:
+        if not raw:
             continue
+        if raw == "No emulators connected.":
+            empty = True
+            continue
+        match = _EMU_LINE_RE.fullmatch(raw)
+        if match is None:
+            raise failed(f"unrecognized ShowEmuList response: {raw[:500]}")
         nickname = match.group("nickname")
         if nickname is not None and nickname.strip().lower() in {"<not set>", ""}:
             nickname = None
@@ -187,6 +222,8 @@ def list_jlink_probes() -> list[JLinkProbe]:
                 nickname=nickname,
             )
         )
+    if empty and probes:
+        raise failed("contradictory empty and populated probe inventory")
     return probes
 
 

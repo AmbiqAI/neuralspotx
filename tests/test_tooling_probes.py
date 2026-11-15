@@ -18,8 +18,16 @@ J-Link[2]: Connection: USB, Serial number: 9000001234, ProductName: J-Link-Pro, 
 """
 
 
-def _fake_run(stdout: str):
+def _fake_run(response: str):
     def _run(*_args, **_kwargs):
+        script = Path(_args[0][-1])
+        assert script.read_text(encoding="ascii") == "ShowEmuList\nexit\n"
+        assert _args[0][1:-2] == ["-nogui", "1", "-AutoConnect", "0"]
+        stdout = (
+            "SEGGER J-Link Commander V9.50\n"
+            "J-Link>ShowEmuList\n" + response + "\nJ-Link>exit\n"
+            "Script processing completed.\n"
+        )
         return subprocess.CompletedProcess(args=[], returncode=0, stdout=stdout, stderr="")
 
     return _run
@@ -49,14 +57,15 @@ def test_list_jlink_probes_empty_when_no_probes(monkeypatch: pytest.MonkeyPatch)
     assert list_jlink_probes() == []
 
 
-def test_list_jlink_probes_returns_empty_on_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_list_jlink_probes_reports_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
     def _raise(*_args, **_kwargs):
         raise subprocess.TimeoutExpired(cmd="JLinkExe", timeout=15)
 
     monkeypatch.setattr(tooling, "find_segger_tool", lambda _names: "/usr/bin/JLinkExe")
     monkeypatch.setattr(tooling.subprocess, "run", _raise)
 
-    assert list_jlink_probes() == []
+    with pytest.raises(NSXToolchainError, match="timed out"):
+        list_jlink_probes()
 
 
 def test_list_jlink_probes_raises_without_executable(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -123,3 +132,77 @@ def test_find_processes_holding_probe_excludes_self(monkeypatch: pytest.MonkeyPa
 
 def test_find_processes_holding_probe_empty_serial() -> None:
     assert find_processes_holding_probe("") == []
+
+
+@pytest.mark.parametrize("name,count", [("empty", 0), ("populated", 5)])
+def test_recorded_commander_inventory(
+    monkeypatch: pytest.MonkeyPatch, name: str, count: int
+) -> None:
+    output = (Path(__file__).parent / "fixtures/jlink" / f"showemulist-{name}.txt").read_text()
+    monkeypatch.setattr(tooling, "find_segger_tool", lambda _: "/fake/JLinkExe")
+    monkeypatch.setattr(
+        tooling.subprocess, "run", lambda *a, **kw: subprocess.CompletedProcess(a, 0, output, "")
+    )
+    assert len(list_jlink_probes()) == count
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        "ERROR: Could not enumerate probes.",
+        "J-Link[0]: Connection: USB, Serial number: 1234",
+        "No emulators connected.\n" + _SAMPLE_EMU_LIST,
+        _SAMPLE_EMU_LIST + "J-Link[3]: broken row",
+    ],
+)
+def test_failed_or_partial_inventory_is_not_success(
+    monkeypatch: pytest.MonkeyPatch, response: str
+) -> None:
+    monkeypatch.setattr(tooling, "find_segger_tool", lambda _: "/fake/JLinkExe")
+    monkeypatch.setattr(tooling.subprocess, "run", _fake_run(response))
+    with pytest.raises(NSXToolchainError, match="discovery failed"):
+        list_jlink_probes()
+
+
+@pytest.mark.parametrize(
+    "output", ["", "Command not recognized", "J-Link>ShowEmuList\nJ-Link>exit\n", _SAMPLE_EMU_LIST]
+)
+def test_incomplete_script_is_not_empty_inventory(
+    monkeypatch: pytest.MonkeyPatch, output: str
+) -> None:
+    monkeypatch.setattr(tooling, "find_segger_tool", lambda _: "/fake/JLinkExe")
+    monkeypatch.setattr(
+        tooling.subprocess, "run", lambda *a, **kw: subprocess.CompletedProcess(a, 0, output, "")
+    )
+    with pytest.raises(NSXToolchainError, match="discovery failed"):
+        list_jlink_probes()
+
+
+def test_launch_failure_is_actionable(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(tooling, "find_segger_tool", lambda _: "/fake/JLinkExe")
+
+    def fail(*args, **kwargs):
+        raise PermissionError("not executable")
+
+    monkeypatch.setattr(tooling.subprocess, "run", fail)
+    with pytest.raises(NSXToolchainError, match="could not run Commander.*not executable"):
+        list_jlink_probes()
+
+
+def test_nonzero_exit_rejects_even_valid_inventory(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(tooling, "find_segger_tool", lambda _: "/fake/JLinkExe")
+    monkeypatch.setattr(
+        tooling.subprocess,
+        "run",
+        lambda *a, **kw: subprocess.CompletedProcess(a, 1, _SAMPLE_EMU_LIST, "USB failure"),
+    )
+    with pytest.raises(NSXToolchainError, match="status 1: USB failure"):
+        list_jlink_probes()
+
+
+def test_nickname_error_word_is_not_a_failure(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(tooling, "find_segger_tool", lambda _: "/fake/JLinkExe")
+    monkeypatch.setattr(
+        tooling.subprocess, "run", _fake_run(_SAMPLE_EMU_LIST.replace("bench-rig", "error-test"))
+    )
+    assert list_jlink_probes()[-1].nickname == "error-test"

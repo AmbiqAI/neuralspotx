@@ -1,0 +1,15 @@
+SEGGER J-Link Commander V9.50 (Compiled Jun 10 2026 12:27:02)
+DLL version V9.50, compiled Jun 10 2026 12:26:20
+
+
+J-Link Command File read successfully.
+Processing script file...
+J-Link>ShowEmuList
+J-Link[0]: Connection: USB, Serial number: 1160003058, ProductName: J-Link-OB-Apollo4-CortexM, Nickname: <not set>
+J-Link[1]: Connection: USB, Serial number: 1160000172, ProductName: J-Link-OB-Apollo4-CortexM, Nickname: <not set>
+J-Link[2]: Connection: USB, Serial number: 1160001491, ProductName: J-Link-OB-Apollo4-CortexM, Nickname: <not set>
+J-Link[3]: Connection: USB, Serial number: 1160002698, ProductName: J-Link-OB-Apollo4-CortexM, Nickname: <not set>
+J-Link[4]: Connection: USB, Serial number: 1160002954, ProductName: J-Link-OB-Apollo4-CortexM, Nickname: <not set>
+J-Link>exit
+
+Script processing completed.
