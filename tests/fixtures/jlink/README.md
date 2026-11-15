@@ -1,0 +1,1 @@
+J-Link Commander 9.50 ShowEmuList captures from Linux. USB device nodes were hidden; the empty capture also hid sysfs. AutoConnect was disabled. These captures exercise real command framing without opening a probe or target. Test fault variants are synthetic and are labeled in the tests.

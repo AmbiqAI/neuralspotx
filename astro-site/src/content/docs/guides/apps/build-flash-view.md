@@ -127,7 +127,11 @@ device was most likely programmed; the echoed J-Link output above the message is
 read.
 
 `--probe-serial` selects one probe when several are attached. Run `nsx probes` to list
-them.
+them. Discovery failures (including a timeout, failed Commander process, or an
+unrecognized response) produce an error, not an empty inventory. An empty result
+means Commander completed a recognized enumeration with no probes. The same
+diagnostic is preserved when RTT discovers a probe; an explicitly selected RTT
+serial still connects directly without enumeration.
 
 ### External Apollo ICD
 

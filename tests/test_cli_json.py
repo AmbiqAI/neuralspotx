@@ -16,7 +16,7 @@ def _invoke(*args: str) -> tuple[str, str, int]:
     code = 0
     with redirect_stdout(out), redirect_stderr(err):
         try:
-            cli.main(list(args))
+            code = cli.main(list(args))
         except SystemExit as exc:
             code = int(exc.code) if exc.code is not None else 0
         except NSXToolchainError as exc:
@@ -88,3 +88,22 @@ def test_module_list_json_is_parsable() -> None:
         assert isinstance(payload["modules"], list)
     else:
         assert isinstance(payload, list)
+
+
+def test_probe_discovery_failure_is_not_empty_json(monkeypatch) -> None:
+    import subprocess
+
+    from neuralspotx import tooling
+
+    monkeypatch.setattr(tooling, "find_segger_tool", lambda _: "/fake/JLinkExe")
+
+    def fail(*args, **kwargs):
+        raise subprocess.TimeoutExpired("JLinkExe", 15)
+
+    monkeypatch.setattr(tooling.subprocess, "run", fail)
+    for args in [("probes",), ("probes", "--json")]:
+        stdout, stderr, code = _invoke(*args)
+        assert code != 0
+        assert "timed out" in stderr
+        assert not stdout
+        assert "Traceback" not in stderr

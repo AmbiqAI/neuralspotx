@@ -1,0 +1,11 @@
+SEGGER J-Link Commander V9.50 (Compiled Jun 10 2026 12:27:02)
+DLL version V9.50, compiled Jun 10 2026 12:26:20
+
+
+J-Link Command File read successfully.
+Processing script file...
+J-Link>ShowEmuList
+J-Link>exit
+
+Script processing completed.
+

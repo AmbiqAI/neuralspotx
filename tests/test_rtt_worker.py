@@ -125,3 +125,26 @@ raise SystemExit(_rtt_worker.main())
     assert result.stdout == b"ready\t1234\ndata\tAP8=\ndone\t\n"
     assert b"native SDK output" in result.stderr
     assert b"Python SDK output" in result.stderr
+
+
+def test_discovery_failure_crosses_worker_protocol() -> None:
+    import base64
+
+    code = r"""
+import sys, types, subprocess
+from neuralspotx import _rtt_worker, tooling
+sys.modules['pylink'] = types.ModuleType('pylink')
+sys.argv = ['worker', '--device', 'unused', '--speed', '4000', '--address', '1', '--duration', '.1']
+tooling.find_segger_tool = lambda _: '/fake/JLinkExe'
+def fail(*args, **kwargs):
+    raise subprocess.TimeoutExpired('JLinkExe', 15)
+tooling.subprocess.run = fail
+raise SystemExit(_rtt_worker.main())
+"""
+    result = subprocess.run([sys.executable, "-c", code], capture_output=True, timeout=5)
+    assert result.returncode == 1
+    kind, payload = result.stdout.strip().split(b"\t", 1)
+    assert kind == b"error"
+    message = base64.b64decode(payload).decode()
+    assert "timed out" in message
+    assert "Found 0" not in message
