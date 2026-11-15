@@ -13,4 +13,3 @@ J-Link[4]: Connection: USB, Serial number: 1160002954, ProductName: J-Link-OB-Ap
 J-Link>exit
 
 Script processing completed.
-
