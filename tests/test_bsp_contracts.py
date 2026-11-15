@@ -399,17 +399,23 @@ def test_invalid_local_bsp_contract_is_typed(tmp_path: Path) -> None:
         resolve(tmp_path, registry, cfg)
 
 
-def test_standalone_preserves_bsp_local_dependency_compiler_constraints(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize("legacy", [False, True])
+def test_standalone_preserves_dependency_compiler_constraints(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, legacy: bool
 ) -> None:
     from neuralspotx import project_config
     from neuralspotx.standalone_cmake import publish_snapshot, snapshot_path
 
-    registry, cfg = setup_graph(tmp_path, local=True)
-    cfg["modules"].append({"name": "hal", "local": True})
+    registry, cfg = setup_graph(tmp_path, local=not legacy)
+    if not legacy:
+        cfg["modules"].append({"name": "hal", "local": True})
     path = tmp_path / "modules/hal/nsx-module.yaml"
     data = yaml.safe_load(path.read_text())
-    data["compatibility"]["toolchains"] = ["arm-none-eabi-gcc"]
+    if legacy:
+        del data["compatibility"]
+        data["toolchains"] = ["arm-none-eabi-gcc"]
+    else:
+        data["compatibility"]["toolchains"] = ["arm-none-eabi-gcc"]
     path.write_text(yaml.safe_dump(data))
     names = resolve(tmp_path, registry, cfg)
     monkeypatch.setattr(project_config, "_load_registry", lambda: registry)

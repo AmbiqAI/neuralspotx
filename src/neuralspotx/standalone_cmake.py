@@ -6,7 +6,6 @@ import hashlib
 from pathlib import Path
 from typing import Any
 
-import yaml
 
 from .constants import normalize_board
 from .models import AppConfig, ModuleMetadata
@@ -45,6 +44,7 @@ def publish_snapshot(app_dir: Path, config: dict[str, Any], modules: list[str]) 
     from .board_plan import resolve_board_plan
     from .module_registry._bsp import load_bsp_local_dependencies, participant_metadata_path
     from .module_registry._closure import _compat_check_skipped
+    from .module_registry._metadata import _read_module_metadata
     from .project_config import (
         _effective_registry,
         _load_registry,
@@ -77,9 +77,7 @@ def publish_snapshot(app_dir: Path, config: dict[str, Any], modules: list[str]) 
         if path.is_relative_to(app_dir):
             metadata.add(path.relative_to(app_dir))
         if path.is_file() and name not in opaque:
-            raw = yaml.safe_load(path.read_text(encoding="utf-8"))
-            if isinstance(raw, dict) and "compatibility" in raw:
-                constraints[name] = ModuleMetadata.from_raw(raw)
+            constraints[name] = _read_module_metadata(path, name)
 
     if plan and plan.descriptor.bsp.module in modules:
         # Match closure resolution: BSP-reachable local dependencies participate
