@@ -287,6 +287,9 @@ def _create_app_body(
     _acquire_modules_for_app(app_dir, starter_modules, registry)
     _write_modules_gitignore(app_dir, nsx_cfg)
     _save_lean_app_manifest(app_dir, nsx_cfg, keep_modules=template_modules)
+    from ..standalone_cmake import publish_snapshot
+
+    publish_snapshot(app_dir, nsx_cfg, starter_modules)
     if nsx_cfg.get("profile_status") == ProfileStatus.SCAFFOLD:
         warn(
             f"NOTE: profile '{nsx_cfg.get('profile')}' is scaffold-only. "

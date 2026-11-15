@@ -397,3 +397,33 @@ def test_invalid_local_bsp_contract_is_typed(tmp_path: Path) -> None:
     path.write_text(yaml.safe_dump(data))
     with pytest.raises(NSXModuleError, match="invalid module metadata"):
         resolve(tmp_path, registry, cfg)
+
+
+@pytest.mark.parametrize("legacy", [False, True])
+def test_standalone_preserves_dependency_compiler_constraints(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, legacy: bool
+) -> None:
+    from neuralspotx import project_config
+    from neuralspotx.standalone_cmake import publish_snapshot, snapshot_path
+
+    registry, cfg = setup_graph(tmp_path, local=not legacy)
+    if not legacy:
+        cfg["modules"].append({"name": "hal", "local": True})
+    path = tmp_path / "modules/hal/nsx-module.yaml"
+    data = yaml.safe_load(path.read_text())
+    if legacy:
+        del data["compatibility"]
+        data["toolchains"] = ["arm-none-eabi-gcc"]
+    else:
+        data["compatibility"]["toolchains"] = ["arm-none-eabi-gcc"]
+    path.write_text(yaml.safe_dump(data))
+    names = resolve(tmp_path, registry, cfg)
+    monkeypatch.setattr(project_config, "_load_registry", lambda: registry)
+    (tmp_path / "nsx.yml").write_text(yaml.safe_dump(cfg))
+    project_config._write_app_module_file(tmp_path, cfg, module_names=names)
+    publish_snapshot(tmp_path, cfg, names)
+    content = snapshot_path(tmp_path, "custom_ap330").read_text()
+    assert "_nsx_check_compiler(GNU)" in content
+    cfg["toolchain"] = "atfe"
+    with pytest.raises(NSXModuleError, match="incompatible"):
+        resolve(tmp_path, registry, cfg)

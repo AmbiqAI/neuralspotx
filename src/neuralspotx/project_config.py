@@ -734,7 +734,11 @@ def _write_app_module_file(
     loader = (
         resources.files("neuralspotx").joinpath("cmake/modules.cmake").read_text(encoding="utf-8")
     )
-    _write_module_input(app_dir / "cmake" / "nsx" / "modules.cmake", loader)
+    # Preserve pinned tooling during frozen sync and ordinary build refreshes.
+    # Non-frozen preparation copies the current packaged loader explicitly.
+    loader_path = app_dir / "cmake" / "nsx" / "modules.cmake"
+    if not loader_path.exists():
+        _write_module_input(loader_path, loader)
 
 
 def _write_modules_gitignore(app_dir: Path, nsx_cfg: dict[str, Any]) -> None:

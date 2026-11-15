@@ -1042,6 +1042,10 @@ def _lock_app_impl_unlocked(
         info("Run `nsx lock` to refresh.")
         raise NSXError(1)
 
+    from ..standalone_cmake import invalidate_snapshot
+
+    if on_disk_lock is None or _diff_locks(on_disk_lock, lock):
+        invalidate_snapshot(app_dir, str(lock.target["board"]))
     path = write_lock(app_dir, lock, board_key)
     nsx_cfg = _load_app_cfg(app_dir)
     app_cfg = AppConfig.from_mapping(nsx_cfg)
