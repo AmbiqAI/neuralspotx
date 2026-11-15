@@ -6,7 +6,6 @@ import hashlib
 from pathlib import Path
 from typing import Any
 
-
 from .constants import normalize_board
 from .models import AppConfig, ModuleMetadata
 
