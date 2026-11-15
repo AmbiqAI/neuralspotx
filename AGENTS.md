@@ -226,7 +226,7 @@ safety check, so any new one must be added here and justified in its PR.
 
 | Variable | Effect | Enforcement site |
 | --- | --- | --- |
-| `NSX_SKIP_COMPAT_CHECK` | Truthy (`1`/`true`/`yes`/`on`) skips the per-target module↔board/SoC compatibility gate during closure resolution. | `module_registry/_closure.py` (single gate) |
+| `NSX_SKIP_COMPAT_CHECK` | Truthy (`1`/`true`/`yes`/`on`) skips the per-target module↔board/SoC compatibility gate during closure resolution. | `module_registry/_closure.py`; preparation emits the same bypass policy into standalone CMake constraints |
 | `NSX_ALLOW_VERSION_MISMATCH` | Truthy bypasses the `nsx.lock` ↔ tool major-version compatibility check. | `project_config._check_nsx_version_compatibility` |
 | `--sdk-root` / `AppActionRequest.sdk_root` (CMake `NSX_AMBIQSUITE_ROOT_OVERRIDE`) | Builds against an out-of-tree AmbiqSuite instead of the vendored `nsx-ambiqsuite` recorded in `nsx.lock`; lock/SBOM/`--frozen` no longer describe the binary. Not an env var, but the same class of bypass. | `project_config._run_cmake_configure` (single emit site; always emitted, empty clears a cached override) + `operations._build._check_sdk_root` (must be a directory, warns, refused with `--frozen`) |
 

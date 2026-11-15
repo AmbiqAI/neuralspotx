@@ -9,7 +9,7 @@ from typing import Any
 import yaml
 
 from .constants import normalize_board
-from .models import AppConfig
+from .models import AppConfig, ModuleMetadata
 
 
 def snapshot_path(app_dir: Path, board: str) -> Path:
@@ -43,7 +43,7 @@ def publish_snapshot(app_dir: Path, config: dict[str, Any], modules: list[str]) 
     drift check, not a replacement for frozen sync's complete content hashes.
     """
     from .board_plan import resolve_board_plan
-    from .module_registry._bsp import participant_metadata_path
+    from .module_registry._bsp import load_bsp_local_dependencies, participant_metadata_path
     from .module_registry._closure import _compat_check_skipped
     from .project_config import (
         _effective_registry,
@@ -57,12 +57,12 @@ def publish_snapshot(app_dir: Path, config: dict[str, Any], modules: list[str]) 
     registry = _effective_registry(_load_registry(), config, app_dir=app_dir)
 
     compiler_ids = {"GNU", "ARMClang", "ArmClang", "Clang"}
+    constraints: dict[str, ModuleMetadata] = {}
     opaque = app.local_module_names() | app.vendored_module_names()
     metadata = {Path("nsx.yml")}
     required = set()
     plan = resolve_board_plan(app_dir, config)
     if plan and plan.descriptor.bsp.module in modules:
-        opaque.discard(plan.descriptor.bsp.module)
         for path in plan.descriptor.descriptor_inputs:
             # Board descriptors selected from packaged defaults must also be
             # copied locally by preparation before claiming portability.
@@ -76,19 +76,30 @@ def publish_snapshot(app_dir: Path, config: dict[str, Any], modules: list[str]) 
         path = participant_metadata_path(name, registry, app_dir, config, materialized=True)
         if path.is_relative_to(app_dir):
             metadata.add(path.relative_to(app_dir))
-        if path.is_file() and name not in opaque and not _compat_check_skipped():
+        if path.is_file() and name not in opaque:
             raw = yaml.safe_load(path.read_text(encoding="utf-8"))
-            if isinstance(raw, dict):
-                supported = raw.get("compatibility", {}).get("toolchains", ["*"])
-                if "*" not in supported:
-                    accepted = set()
-                    if "gcc" in supported or "arm-none-eabi-gcc" in supported:
-                        accepted.add("GNU")
-                    if "armclang" in supported:
-                        accepted.update({"ARMClang", "ArmClang"})
-                    if "atfe" in supported:
-                        accepted.add("Clang")
-                    compiler_ids.intersection_update(accepted)
+            if isinstance(raw, dict) and "compatibility" in raw:
+                constraints[name] = ModuleMetadata.from_raw(raw)
+
+    if plan and plan.descriptor.bsp.module in modules:
+        # Match closure resolution: BSP-reachable local dependencies participate
+        # in compatibility checks even though unrelated local modules are opaque.
+        load_bsp_local_dependencies(
+            constraints, plan, opaque, registry, app_dir, config, materialized=True
+        )
+    if not _compat_check_skipped():
+        for module in constraints.values():
+            supported = module.compatibility["toolchains"]
+            if "*" in supported:
+                continue
+            accepted = set()
+            if "gcc" in supported or "arm-none-eabi-gcc" in supported:
+                accepted.add("GNU")
+            if "armclang" in supported:
+                accepted.update({"ARMClang", "ArmClang"})
+            if "atfe" in supported:
+                accepted.add("Clang")
+            compiler_ids.intersection_update(accepted)
 
     lines = ["# Prepared NSX closure. Regenerate with nsx sync; do not edit."]
     lines.append("_nsx_check_compiler(" + " ".join(sorted(compiler_ids)) + ")")

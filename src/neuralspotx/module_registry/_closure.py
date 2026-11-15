@@ -21,10 +21,9 @@ from ._vendoring import _acquire_modules_for_app
 def _compat_check_skipped() -> bool:
     """Whether ``NSX_SKIP_COMPAT_CHECK`` requests bypassing compat enforcement.
 
-    Per-target compatibility is enforced here, in the closure resolver, so the
-    documented emergency bypass must be honored at this point (the
-    ``is_compatible`` gate below is the single enforcement site; nothing
-    downstream re-checks).
+    Resolution enforces per-target compatibility here. Standalone preparation
+    also consults this policy when emitting compiler constraints, so direct
+    CMake builds retain the policy used to prepare their snapshot.
     """
 
     return os.environ.get("NSX_SKIP_COMPAT_CHECK", "").strip().lower() in {
