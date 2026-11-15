@@ -129,6 +129,45 @@ read.
 `--probe-serial` selects one probe when several are attached. Run `nsx probes` to list
 them.
 
+### External Apollo ICD
+
+The standalone Apollo ICD uses the same SEGGER path as an EVB's onboard probe.
+No NSX plugin or special board variant is needed: keep the target board selection
+and pass the ICD's serial from `nsx probes` to both `flash` and `view`.
+
+For the Apollo510 EVB, power the board through J16 USB with SW4 on, and connect
+the ICD to **J2 DEBUG HDR**, matching the ribbon cable's pin-1 orientation.
+The ICD needs its own USB connection and does not power the target. The EVB
+requires no jumper changes for the external debugger; see
+[SEGGER's Apollo510 EVB connection guide](https://kb.segger.com/AmbiqMicro_Apollo510_EVB).
+For other boards or adapters, check their debug-header pinout before connecting.
+
+For an SWO hello-world smoke test:
+
+```sh
+nsx probes
+nsx create-app icd-smoke --board apollo510_evb
+# Replace 123456789 with the external ICD's serial, not the onboard probe's.
+nsx flash icd-smoke --probe-serial 123456789
+nsx view icd-smoke --probe-serial 123456789 --no-reset-on-open \
+  --duration 8 --capture icd-swo.txt
+```
+
+The default app prints repeatedly over SWO. `--no-reset-on-open` attaches to the
+app that flash already started. A blinky app (`--template blinky`) instead toggles
+the first BSP LED; on this EVB it is physical LED2, nearest the board's interior.
+The stock blinky template does not print SWO messages.
+
+This path was hardware-verified with NSX 0.9.6 and SEGGER J-Link 9.50 on an
+Apollo510 EVB: application programming and verification succeeded, and a blinky
+app with added SWO counter output produced consecutive counter values through
+the external ICD. This does not qualify other boards or header adapters.
+
+If the ICD enumerates but SWD cannot connect, check target power and cable seating
+and orientation. A detected reference voltage alone does not establish a working
+SWD connection. J-Link's probe product name describes the debugger, not the
+connected target SoC.
+
 ## View
 
 `nsx view` opens the SEGGER SWO viewer against the running firmware.
