@@ -197,3 +197,9 @@ it never calls Python or performs NSX dependency resolution. This is declaration
 drift detection, not full frozen-source verification. Keep legacy build-local
 inputs for old loaders and preserve pinned loaders during frozen sync. Sharing
 requires ignored vendored/generated content as well as authored files.
+
+Compiler compatibility is advisory in CMake, preserving the existing explicit
+CLI toolchain override behavior. Resolution continues to enforce the manifest's
+toolchain. Do not turn standalone support into a new qualification gate: pinned
+SDK metadata can intentionally describe fewer toolchains than existing example
+build coverage (FreeRTOS in SDK 5.2.30 declares GCC while CI builds ATFE).

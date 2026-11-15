@@ -184,3 +184,32 @@ def test_lock_change_invalidates_preparation(app: Path) -> None:
     prepare(app)
     result = cmake("-S", str(app), "-B", str(app / "standalone"), f"-DNSX_BOARD={BOARDS[0]}")
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_explicit_compiler_override_warns_without_breaking_existing_builds(app: Path) -> None:
+    compiler = shutil.which("cc") or shutil.which("clang")
+    if compiler is None:
+        pytest.skip("A native C compiler is required for the override smoke build")
+    prepare(app)
+    # Use a real compiler outside a deliberately narrow declared set. Existing
+    # ATFE examples likewise override GCC-only metadata in the pinned SDK.
+    source = app / "CMakeLists.txt"
+    source.write_text(
+        source.read_text().replace("project(isolated NONE)", "project(isolated C)")
+        + "\n_nsx_check_compiler(UndeclaredCompiler)\n"
+        + "add_executable(override_smoke smoke.c)\n"
+    )
+    (app / "smoke.c").write_text("int main(void) { return 0; }\n")
+    build = app / "override"
+    result = cmake(
+        "-S",
+        str(app),
+        "-B",
+        str(build),
+        f"-DNSX_BOARD={BOARDS[0]}",
+        f"-DCMAKE_C_COMPILER={compiler}",
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert "not declared compatible" in result.stderr
+    result = cmake("--build", str(build))
+    assert result.returncode == 0, result.stdout + result.stderr

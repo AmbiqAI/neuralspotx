@@ -59,8 +59,11 @@ cmake -S . -B build/standalone -G Ninja \
 cmake --build build/standalone
 ```
 
-Replace the board with your app's prepared target. Supported modules constrain
-the compiler family. Custom CMake options remain normal per-build cache settings.
+Replace the board with your app's prepared target. CMake warns if the compiler
+family is outside the modules' declared compatibility. This preserves existing
+explicit `nsx --toolchain` override behavior; a successful build does not qualify
+an undeclared compiler. NSX dependency resolution still enforces the toolchain
+specified in the manifest. Custom CMake options remain per-build cache settings.
 The NSX Python package and virtual environment are not needed. NSX C/CMake
 libraries and helper files remain local dependencies; no eject operation is needed.
 Existing app CMake files and user presets are not rewritten.

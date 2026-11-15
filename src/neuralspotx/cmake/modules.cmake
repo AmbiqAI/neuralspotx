@@ -3,9 +3,13 @@
 # Prepared inputs live in the source tree, independently of build directories.
 function(_nsx_check_compiler)
     if(CMAKE_C_COMPILER_LOADED AND NOT CMAKE_C_COMPILER_ID IN_LIST ARGN)
-        message(FATAL_ERROR
-            "Compiler '${CMAKE_C_COMPILER_ID}' is not supported by the prepared NSX modules. "
-            "Select a compatible toolchain and run nsx lock then nsx sync.")
+        # Preserve existing explicit --toolchain override behavior. Metadata
+        # may describe a narrower qualified set than a module can build with;
+        # changing that policy is separate from enabling ordinary CMake builds.
+        message(WARNING
+            "Compiler '${CMAKE_C_COMPILER_ID}' is not declared compatible by all prepared NSX modules. "
+            "Use a declared toolchain or qualify this compiler override. "
+            "NSX dependency resolution still validates the manifest toolchain.")
     endif()
 endfunction()
 

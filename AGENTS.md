@@ -226,7 +226,7 @@ safety check, so any new one must be added here and justified in its PR.
 
 | Variable | Effect | Enforcement site |
 | --- | --- | --- |
-| `NSX_SKIP_COMPAT_CHECK` | Truthy (`1`/`true`/`yes`/`on`) skips the per-target module↔board/SoC compatibility gate during closure resolution. | `module_registry/_closure.py`; preparation emits the same bypass policy into standalone CMake constraints |
+| `NSX_SKIP_COMPAT_CHECK` | Truthy (`1`/`true`/`yes`/`on`) skips the per-target module↔board/SoC compatibility gate during closure resolution. | `module_registry/_closure.py`; preparation emits advisory CMake diagnostics with the same bypass policy |
 | `NSX_ALLOW_VERSION_MISMATCH` | Truthy bypasses the `nsx.lock` ↔ tool major-version compatibility check. | `project_config._check_nsx_version_compatibility` |
 | `--sdk-root` / `AppActionRequest.sdk_root` (CMake `NSX_AMBIQSUITE_ROOT_OVERRIDE`) | Builds against an out-of-tree AmbiqSuite instead of the vendored `nsx-ambiqsuite` recorded in `nsx.lock`; lock/SBOM/`--frozen` no longer describe the binary. Not an env var, but the same class of bypass. | `project_config._run_cmake_configure` (single emit site; always emitted, empty clears a cached override) + `operations._build._check_sdk_root` (must be a directory, warns, refused with `--frozen`) |
 
@@ -396,6 +396,8 @@ Prepared apps persist board-scoped inputs under `cmake/nsx-resolved/`, outside
 packaged `cmake/nsx/`. Publish only after final creation or successful sync;
 ordinary build glue regeneration must not rebaseline metadata fingerprints.
 Direct CMake must never invoke NSX or fetch dependencies. Preserve legacy
-build-local inputs and pinned loaders during frozen sync. Compiler constraints
-from module metadata are also emitted into prepared CMake inputs; the existing
-compatibility escape hatch is applied at preparation, not read by CMake.
+build-local inputs and pinned loaders during frozen sync. Compiler compatibility
+from module metadata is also emitted as an advisory CMake check, preserving
+existing explicit compiler override behavior. Dependency resolution remains
+strict; the existing compatibility escape hatch is applied at preparation,
+not read by CMake.
