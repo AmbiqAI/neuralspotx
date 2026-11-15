@@ -113,3 +113,74 @@ def test_manifest_board_case_uses_canonical_identity_and_path(app: Path) -> None
     assert "APOLLO510_EVB" not in {path.name for path in (app / "build").iterdir()}
     result = cmake("-S", str(app), "-B", str(build), f"-DNSX_BOARD={BOARDS[0]}")
     assert result.returncode == 0, result.stdout + result.stderr
+
+
+def prepare(app: Path, board: str = BOARDS[0]) -> None:
+    from neuralspotx.operations._sync import sync_app_impl
+
+    sync_app_impl(app, board=board)
+
+
+def test_prepared_app_builds_in_fresh_relocated_directory(app: Path, tmp_path: Path) -> None:
+    prepare(app)
+    prepare(app, BOARDS[1])
+    relocated = tmp_path.parent / "relocated standalone app"
+    shutil.copytree(app, relocated, ignore=shutil.ignore_patterns("build", ".git"))
+    # No NSX operation is allowed after copying. All inputs come from the copy.
+    for board in BOARDS:
+        build = relocated / "fresh" / board
+        result = cmake("-S", str(relocated), "-B", str(build), f"-DNSX_BOARD={board}")
+        assert result.returncode == 0, result.stdout + result.stderr
+        result = cmake("--build", str(build))
+        assert result.returncode == 0, result.stdout + result.stderr
+        assert str(app) not in (build / "CMakeCache.txt").read_text()
+
+
+@pytest.mark.parametrize("change", ["edit", "add", "remove", "manifest"])
+def test_declaration_drift_detected_by_build_without_nsx(app: Path, change: str) -> None:
+    metadata = app / "modules/alpha/nsx-module.yaml"
+    if change in {"edit", "remove"}:
+        metadata.write_text("# initial metadata\n")
+    prepare(app)
+    build = app / "standalone"
+    result = cmake("-S", str(app), "-B", str(build), f"-DNSX_BOARD={BOARDS[0]}")
+    assert result.returncode == 0, result.stdout + result.stderr
+    if change == "remove":
+        metadata.unlink()
+    elif change == "manifest":
+        with (app / "nsx.yml").open("a") as stream:
+            stream.write("# metadata edit\n")
+    else:
+        metadata.write_text("# changed metadata\n")
+    result = cmake("--build", str(build))
+    assert result.returncode != 0
+    assert "changed since preparation" in result.stdout + result.stderr
+
+
+def test_source_edit_does_not_invalidate_snapshot(app: Path) -> None:
+    prepare(app)
+    (app / "modules/alpha/source.c").write_text("/* editable source */\n")
+    result = cmake("-S", str(app), "-B", str(app / "standalone"), f"-DNSX_BOARD={BOARDS[0]}")
+    assert result.returncode == 0, result.stdout + result.stderr
+
+
+def test_missing_dependency_is_actionable(app: Path) -> None:
+    prepare(app)
+    shutil.rmtree(app / "modules/alpha")
+    result = cmake("-S", str(app), "-B", str(app / "standalone"), f"-DNSX_BOARD={BOARDS[0]}")
+    assert result.returncode != 0
+    assert "nsx sync" in result.stderr
+
+
+def test_lock_change_invalidates_preparation(app: Path) -> None:
+    prepare(app)
+    config = yaml.safe_load((app / "nsx.yml").read_text())
+    config["project"]["name"] = "changed"
+    (app / "nsx.yml").write_text(yaml.safe_dump(config))
+    lock_app_impl(app)
+    result = cmake("-S", str(app), "-B", str(app / "standalone"), f"-DNSX_BOARD={BOARDS[0]}")
+    assert result.returncode != 0
+    assert "need preparation" in result.stderr
+    prepare(app)
+    result = cmake("-S", str(app), "-B", str(app / "standalone"), f"-DNSX_BOARD={BOARDS[0]}")
+    assert result.returncode == 0, result.stdout + result.stderr

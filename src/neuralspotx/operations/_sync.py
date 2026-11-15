@@ -706,6 +706,15 @@ def _sync_app_impl_unlocked(
             app_dir, lock, cmake_nsx, frozen=frozen, created=cmake_nsx_was_missing
         )
 
+    # Publish only after materialized verification succeeds. Do not bless a
+    # new manifest against the previous lock's dependency closure.
+    from ..standalone_cmake import invalidate_snapshot, publish_snapshot
+
+    if lock.manifest_hash and lock.manifest_hash != current_manifest_hash:
+        invalidate_snapshot(app_dir, str(nsx_cfg["target"]["board"]))
+    else:
+        publish_snapshot(app_dir, nsx_cfg, ordered_modules)
+
     if changed:
         info(f"Synced {changed} module{'s' if changed != 1 else ''} from nsx.lock.")
     else:

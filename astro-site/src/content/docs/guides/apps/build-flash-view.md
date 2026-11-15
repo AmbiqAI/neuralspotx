@@ -39,16 +39,63 @@ is enough. It drives Ninja through CMake and leaves the linked image, the `.bin`
 `.map` in `build/<board>/`.
 
 Configure also enables `compile_commands.json` in the selected build directory
-for clangd and static-analysis tools. Each build keeps its own module inputs at
-`<build-dir>/nsx/modules.cmake`, including when you choose a custom `--build-dir`.
-After configuring board A and then board B, plain CMake reconfiguration of A
-continues to use A's module list. Shared vendored sources still require normal
-NSX lock/sync coordination; build-local inputs do not isolate dependency updates.
+for clangd and static-analysis tools. Prepared apps store each board's resolved
+module inputs at `cmake/nsx-resolved/<board>/modules.cmake`. Both NSX and direct
+CMake use that snapshot. Each build retains its own `NSX_BOARD` selection;
+preparing board B does not switch board A's module list. Vendored sources are
+shared, so separate build directories do not isolate dependency updates.
 
-For an existing app, run `nsx configure` once for each build directory after
-upgrading. If a build directory is missing its inputs, or its selected board does
-not match them, the loader reports how to regenerate them. The existing
-`cmake/nsx/modules.cmake` include remains the app entry point.
+### Build without installing NSX
+
+A bootstrapped app created with current NSX, or an existing app prepared with
+`nsx lock` followed by `nsx sync`, can be built with standard CMake commands.
+For multiple targets, prepare each board with `nsx sync --board <board>`.
+The recipient needs CMake 3.24 or newer, Ninja, and the selected compiler:
+
+```sh
+cmake -S . -B build/standalone -G Ninja \
+  -DCMAKE_TOOLCHAIN_FILE=cmake/nsx/toolchains/arm-none-eabi-gcc.cmake \
+  -DCMAKE_BUILD_TYPE=Release -DNSX_BOARD=apollo510_evb
+cmake --build build/standalone
+```
+
+Replace the board with your app's prepared target. Supported modules constrain
+the compiler family. Custom CMake options remain normal per-build cache settings.
+The NSX Python package and virtual environment are not needed. NSX C/CMake
+libraries and helper files remain local dependencies; no eject operation is needed.
+Existing app CMake files and user presets are not rewritten.
+
+Share the **complete prepared app directory**, including `modules/`, `boards/`,
+`cmake/nsx/`, and `cmake/nsx-resolved/`, plus application files, manifests,
+licenses and provenance. Exclude old build directories and virtual environments.
+Several required directories are Git-ignored: a Git archive or ordinary clone
+alone is not a complete offline bundle. `--no-bootstrap` apps must acquire and
+prepare their dependencies first.
+
+Changing dependency declarations requires `nsx lock` then `nsx sync`. Direct
+CMake checks declaration bytes (including comments), notices metadata additions
+and removals, and triggers reconfiguration on metadata changes during builds.
+Application and library sources remain editable. A changed lock invalidates that
+board's prepared snapshot until sync completes. Direct builds use the prepared
+snapshot; they do not parse the lock, verify every source against its content hash,
+or offer the integrity guarantees of `nsx sync --frozen`.
+
+Old apps retain build-local inputs until upgraded with the current tool using
+`nsx lock` and `nsx sync`. Frozen sync preserves pinned CMake tooling; it does not
+upgrade an old loader. On prepared apps, manifest drift cannot be silently blessed
+by a non-frozen sync: refresh the lock before building.
+
+Offline portability assumes dependencies and generated assets are actually local.
+External SDK overrides and symlinks pointing outside the app remain development
+inputs and must be removed or supplied separately before sharing. Third-party
+module CMake may require additional generators or downloads; this workflow does
+not certify arbitrary module code as offline-safe. There is no archive/export
+command yet.
+
+Configured SEGGER targets can also be called directly, for example
+`cmake --build build/standalone --target <app>_flash`. Set `NSX_JLINK_SERIAL`
+explicitly when selecting a probe. SEGGER installation, valid board debug settings
+and hardware qualification are still required.
 
 `--jobs`, `--target` and `--update` are accepted by both `build` and `flash`. `--jobs`
 sets the parallelism. `--target` selects a CMake target to build, or an executable to

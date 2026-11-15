@@ -184,3 +184,16 @@ Inherited descriptors are app-local snapshots. A custom board includes SDK silic
 support and its own optional flags/memory/debug fragments; it never includes its
 parent EVB's aggregate CMake. SDK adoption of a board can change the BSP binding
 without changing board identity. See the published Add a board guide for authoring.
+
+## Standalone CMake inputs
+
+Prepared apps have board-scoped generated inputs under `cmake/nsx-resolved/`,
+outside the pinned packaged tooling tree. Creation publishes after final manifest
+save and dependency acquisition; sync publishes after materialized verification.
+Ordinary build refreshes must never rebaseline declaration fingerprints. Changed
+locks invalidate their board's snapshot until preparation succeeds. Direct CMake
+consumes that snapshot, checks declarations and registers regeneration dependencies;
+it never calls Python or performs NSX dependency resolution. This is declaration
+drift detection, not full frozen-source verification. Keep legacy build-local
+inputs for old loaders and preserve pinned loaders during frozen sync. Sharing
+requires ignored vendored/generated content as well as authored files.

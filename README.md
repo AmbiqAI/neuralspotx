@@ -111,3 +111,7 @@ For RTT-enabled firmware, `nsx rtt --duration 10 --file capture.bin` captures
 channel 0 using the ELF control-block address. Install `neuralspotx[rtt]` and
 SEGGER J-Link Software; pipx users can run `pipx inject neuralspotx pylink-square`.
 See the [RTT capture guide](https://ambiqai.github.io/neuralspotx/guides/apps/build-flash-view/#rtt-capture).
+
+Fully prepared apps can also build with standard CMake commands without installing
+NSX. See [Build without installing NSX](https://ambiqai.github.io/neuralspotx/guides/apps/build-flash-view/#build-without-installing-nsx)
+for preparation, relocation, and offline-sharing requirements.

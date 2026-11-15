@@ -389,3 +389,13 @@ selection, dependency ordering, vendoring, and per-target lock composition.
 The lock records exact descriptor and participating contract-manifest bytes;
 recompute against materialized sources before builds. Keep the board identity
 stable when its BSP provider changes.
+
+### Standalone CMake publication
+
+Prepared apps persist board-scoped inputs under `cmake/nsx-resolved/`, outside
+packaged `cmake/nsx/`. Publish only after final creation or successful sync;
+ordinary build glue regeneration must not rebaseline metadata fingerprints.
+Direct CMake must never invoke NSX or fetch dependencies. Preserve legacy
+build-local inputs and pinned loaders during frozen sync. Compiler constraints
+from module metadata are also emitted into prepared CMake inputs; the existing
+compatibility escape hatch is applied at preparation, not read by CMake.
