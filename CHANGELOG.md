@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.9.6](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.9.5...neuralspotx-v0.9.6) (2026-11-15)
+
+
+### Features
+
+* **console:** declare primary transports and warn on mismatches ([#325](https://github.com/AmbiqAI/neuralspotx/issues/325)) ([e723def](https://github.com/AmbiqAI/neuralspotx/commit/e723def3e893a9ce729f5eb3458556df8f438ee7))
+* make vendored apps directly buildable with CMake ([#330](https://github.com/AmbiqAI/neuralspotx/issues/330)) ([7b9bad5](https://github.com/AmbiqAI/neuralspotx/commit/7b9bad5dfdfcf75f8046f438adcec24ff98687d6))
+* resolve and lock explicit custom board BSP providers ([#327](https://github.com/AmbiqAI/neuralspotx/issues/327)) ([b10c55c](https://github.com/AmbiqAI/neuralspotx/commit/b10c55c12cdc0c5b2ef6275b28a8517084543ad4))
+* **rtt:** add bounded app-aware host capture ([#323](https://github.com/AmbiqAI/neuralspotx/issues/323)) ([212063b](https://github.com/AmbiqAI/neuralspotx/commit/212063bee1aa91011d95eedb0023a874d2eeb5f0))
+
+
+### Bug Fixes
+
+* reject empty SEGGER settings before invoking probes ([#328](https://github.com/AmbiqAI/neuralspotx/issues/328)) ([675c294](https://github.com/AmbiqAI/neuralspotx/commit/675c2940aac08b8c434e7727b68cc74759423e30))
+
 ## [0.9.5](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.9.4...neuralspotx-v0.9.5) (2026-11-08)
 
 
