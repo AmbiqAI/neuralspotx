@@ -30,3 +30,6 @@ target_link_libraries({{ app_name }} PRIVATE
 )
 
 nsx_finalize_app({{ app_name }})
+if(NSX_DEBUG_CONTEXT)
+    nsx_debug_set_primary_target({{ app_name }})
+endif()

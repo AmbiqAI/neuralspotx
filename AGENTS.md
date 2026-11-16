@@ -401,3 +401,14 @@ from module metadata is also emitted as an advisory CMake check, preserving
 existing explicit compiler override behavior. Dependency resolution remains
 strict; the existing compatibility escape hatch is applied at preparation,
 not read by CMake.
+
+### Experimental configured debug handoff
+
+`NSX_DEBUG_CONTEXT` is an opt-in CMake feature; normal operations must not consume
+it until the separate #152 activation is reviewed. CMake owns preparation,
+evaluated defaults/paths, fingerprint/glob validation and recipe rendering. The
+internal `operations._debug_context` package owns strict typed reading and private
+snapshot lifetime. Keep dependency declarations explicit and document the
+stable-writer requirement; repeated hashes do not provide arbitrary concurrency
+safety. Never turn read-only inspection into implicit configure/build. Retain
+old cache/artifact exports and direct CMake targets while the handoff is opt-in.

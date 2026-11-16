@@ -323,3 +323,53 @@ changed and programs the result.
 
 If something in that loop fails, [Troubleshooting](/neuralspotx/guides/apps/troubleshooting/)
 is organized around the messages NSX actually prints.
+
+## Experimental debug-context preparation
+
+An opt-in CMake handoff is available for development and host validation. Normal
+`nsx flash`, `view`, `reset` and `rtt` commands still use their existing paths;
+enabling this experiment does **not** change probe-selection semantics.
+
+It requires CMake 3.31 or newer, single-configuration Ninja and updated app-local
+NSX helpers. Existing workflows retain their current requirements. In an app
+using those helpers, explicitly identify its primary debug target:
+
+```cmake
+nsx_debug_set_primary_target(my_app)
+```
+
+New app templates already do this when the experiment is enabled. Custom apps
+must name exactly one target registered by `nsx_add_segger_targets`. Audit reads
+that influence debug settings before accepting the input contract. External
+textual settings must use a registered read, for example:
+
+```cmake
+nsx_debug_read_text(PATH "${CMAKE_SOURCE_DIR}/device.txt" OUT NSX_SEGGER_DEVICE)
+```
+
+Use this before registering the target. The file's exact text becomes the
+value, so do not include a trailing newline in a device-name file. Arbitrary
+unregistered file/environment/network dependencies are not tracked. Recursive,
+relative and symlink-following configuration globs are not supported initially.
+
+After the app's normal standalone configuration, enable and explicitly prepare
+(the example assumes vendored helpers at `cmake/nsx`):
+
+```bash
+cmake -S . -B build -DNSX_DEBUG_CONTEXT=ON -DNSX_DEBUG_INPUT_CONTRACT=1
+cmake -DNSX_DEBUG_BUILD_DIR="$PWD/build" -P cmake/nsx/nsx_debug_prepare.cmake
+```
+
+Preparation configures three times and produces `build/nsx-debug/context.json`.
+No firmware build or probe connection occurs. Any ordinary reconfiguration
+invalidates it; failed preparation leaves no usable prior context. Repeat
+preparation after changing configuration inputs. Keep input files and the build
+directory unchanged while preparing or capturing an operation; simultaneous
+build/configure/clean is unsupported. Ordinary C source edits do not invalidate
+connection settings, but flashing still requires a successful build.
+
+Paths containing quotes, semicolons or control characters are unsupported by
+this experimental protocol; output artifacts must be inside the build tree.
+Context and private snapshots do not establish which firmware is running on a
+physical device. See [#152](https://github.com/AmbiqAI/neuralspotx/issues/152) for
+the separate activation plan and legacy compatibility decisions.
