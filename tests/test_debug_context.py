@@ -485,3 +485,51 @@ def test_glob_metacharacters_in_build_root_rejected(project: tuple[Path, Path, P
     )
     assert result.returncode
     assert "glob metacharacters" in result.stderr
+
+
+def test_whitespace_device_disables_attach(project: tuple[Path, Path, Path]) -> None:
+    source, build, _ = project
+    (source / "board.cmake").write_text('set(NSX_SEGGER_DEVICE "   ")\n', encoding="utf-8")
+    prepare(project)
+    target = load_debug_context(source, build, "fixture").target()
+    assert target.reset_unavailable and target.rtt_unavailable
+    with pytest.raises(NSXConfigError, match="unavailable"):
+        with capture_debug_context(source, build, "fixture", operation="reset"):
+            pytest.fail("must not capture an invalid device")
+
+
+@pytest.mark.parametrize("name", ["off", "no", "0"])
+def test_boolean_like_primary_names(project: tuple[Path, Path, Path], name: str) -> None:
+    import re
+
+    source, build, _ = project
+    sub = source / "sub/CMakeLists.txt"
+    sub.write_text(re.sub(r"\bapp\b", name, sub.read_text(encoding="utf-8")), encoding="utf-8")
+    app = source / "CMakeLists.txt"
+    app.write_text(
+        app.read_text(encoding="utf-8").replace(
+            "nsx_debug_set_primary_target(app)", f"nsx_debug_set_primary_target({name})"
+        ),
+        encoding="utf-8",
+    )
+    prepare(project)
+    assert load_debug_context(source, build, "fixture").primary_target == name
+    with app.open("a", encoding="utf-8") as stream:
+        stream.write("\nnsx_debug_set_primary_target(other)\n")
+    result = prepare(project, ok=False)
+    assert result.returncode and "conflicting primary targets" in result.stderr
+    assert not (build / "nsx-debug/context.json").exists()
+
+
+def test_registered_read_regenerates_direct_settings(project: tuple[Path, Path, Path]) -> None:
+    source, build, _ = project
+    (source / "use_external").touch()
+    prepare(project)
+    (source / "external.txt").write_text("device-B", encoding="utf-8")
+    run("cmake", "--build", build)
+    assert "NSX_RESET_DEVICE:INTERNAL=device-B" in (build / "CMakeCache.txt").read_text(
+        encoding="utf-8"
+    )
+    assert not (build / "nsx-debug/context.json").exists()
+    prepare(project)
+    assert load_debug_context(source, build, "fixture").target().device == "device-B"
