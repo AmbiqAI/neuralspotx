@@ -91,7 +91,12 @@ function(nsx_add_segger_targets app_target)
         set(NSX_JLINK_USB_ARGS -USB ${NSX_JLINK_SERIAL})
     endif()
 
-    set(NSX_JLINK_BIN_FILE "$<TARGET_FILE_DIR:${app_target}>/${app_target}.bin")
+    if(nsx_target_type STREQUAL "EXECUTABLE")
+        set(NSX_JLINK_BIN_FILE "$<TARGET_FILE_DIR:${app_target}>/${app_target}.bin")
+    else()
+        # Legacy callers can register custom targets producing a named binary.
+        set(NSX_JLINK_BIN_FILE "${CMAKE_CURRENT_BINARY_DIR}/${app_target}.bin")
+    endif()
     # Do not leave scripts from a previously configured board available.
     file(REMOVE "${jlink_dir}/flash_cmds.jlink" "${jlink_dir}/reset_cmds.jlink")
     if(NSX_SEGGER_CONFIG_OK)

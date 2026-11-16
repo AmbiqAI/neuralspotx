@@ -407,3 +407,21 @@ def test_attach_capabilities_do_not_require_trace_or_load_address(
     with pytest.raises(NSXConfigError, match="unavailable"):
         with capture_debug_context(source, build, "fixture", operation="swo"):
             pytest.fail("SWO must not capture without trace settings")
+
+
+def test_capture_refuses_unexported_template_settings(project: tuple[Path, Path, Path]) -> None:
+    source, build, helpers = project
+    app = source / "CMakeLists.txt"
+    app.write_text(
+        app.read_text(encoding="utf-8").replace(
+            "add_subdirectory(sub)", "set(PRIVATE_TEMPLATE_SETTING value)\nadd_subdirectory(sub)"
+        ),
+        encoding="utf-8",
+    )
+    with (helpers / "segger/templates/flash_cmds.jlink.in").open("a", encoding="utf-8") as stream:
+        stream.write("// @PRIVATE_TEMPLATE_SETTING@\n")
+    prepare(project)
+    run("cmake", "--build", build)
+    with pytest.raises(NSXConfigError, match="flash template requires settings"):
+        with capture_debug_context(source, build, "fixture", operation="flash"):
+            pytest.fail("must not silently render a different recipe")
