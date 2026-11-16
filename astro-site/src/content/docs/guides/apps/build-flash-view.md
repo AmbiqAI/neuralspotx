@@ -371,6 +371,13 @@ connection settings, but flashing still requires a successful build.
 Literal paths containing glob characters (`*?[]`), quotes, semicolons or control
 characters are unsupported by
 this experimental protocol; output artifacts must be inside the build tree.
+Captured flash recipes support the existing single-image command sequence only:
+`ExitOnError 1`, `Reset`, `LoadFile`, `Reset`, `Go`, `Exit` (full-line comments
+and blank lines are allowed). The load command must reference the private binary copy and
+the recorded address. Other commands or file references are rejected; direct
+CMake recipes are unchanged. Captured SWO reset recipes likewise require the
+standard `ExitOnError 1`, `Reset`, `Go`, `Exit` sequence, without file references.
+
 Context and private snapshots do not establish which firmware is running on a
 physical device. See [#152](https://github.com/AmbiqAI/neuralspotx/issues/152) for
 the separate activation plan and legacy compatibility decisions.

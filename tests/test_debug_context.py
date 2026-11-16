@@ -533,3 +533,44 @@ def test_registered_read_regenerates_direct_settings(project: tuple[Path, Path, 
     assert not (build / "nsx-debug/context.json").exists()
     prepare(project)
     assert load_debug_context(source, build, "fixture").target().device == "device-B"
+
+
+@pytest.mark.parametrize("change", ["literal_path", "wrong_address", "extra_file", "no_fail_fast"])
+def test_capture_rejects_unsafe_recipe_references(
+    project: tuple[Path, Path, Path], change: str
+) -> None:
+    source, build, helpers = project
+    path = helpers / "segger/templates/flash_cmds.jlink.in"
+    template = path.read_text(encoding="utf-8")
+    if change == "literal_path":
+        template = template.replace("@NSX_JLINK_BIN_FILE@", (build / "sub/app.bin").as_posix())
+    elif change == "wrong_address":
+        template = template.replace("@NSX_SEGGER_PF_ADDR@", "0x2000")
+    elif change == "extra_file":
+        template += 'LoadFile "another.bin", 0x1000\n'
+    else:
+        template = template.replace("ExitOnError 1\n", "")
+    path.write_text(template, encoding="utf-8")
+    prepare(project)
+    run("cmake", "--build", build)
+    with pytest.raises(NSXConfigError, match="unsupported captured flash recipe"):
+        with capture_debug_context(source, build, "fixture", operation="flash"):
+            pytest.fail("must not return unsafe execution inputs")
+
+
+@pytest.mark.parametrize("change", ["extra_file", "semicolon"])
+def test_capture_rejects_unsupported_swo_reset(
+    project: tuple[Path, Path, Path], change: str
+) -> None:
+    source, build, helpers = project
+    path = helpers / "segger/templates/reset_cmds.jlink.in"
+    template = path.read_text(encoding="utf-8")
+    if change == "extra_file":
+        template += 'LoadFile "live.bin", 0x1000\n'
+    else:
+        template = template.replace("Reset\nGo", "Reset;Go")
+    path.write_text(template, encoding="utf-8")
+    prepare(project)
+    with pytest.raises(NSXConfigError, match="unsupported captured"):
+        with capture_debug_context(source, build, "fixture", operation="swo"):
+            pytest.fail("must not return unsupported reset commands")
