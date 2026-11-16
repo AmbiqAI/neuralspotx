@@ -363,7 +363,7 @@ def test_opt_out_retains_direct_targets(project: tuple[Path, Path, Path]) -> Non
     run("cmake", "--build", build)
     recipe = (build / "sub/jlink/app/flash_cmds.jlink").read_text(encoding="utf-8")
     assert f'LoadFile "{build.as_posix()}/sub/app.bin", 0x1000' in recipe
-    assert (build / "nsx-artifacts/app.path").read_text(encoding="utf-8").strip() == str(
+    assert Path((build / "nsx-artifacts/app.path").read_text(encoding="utf-8").strip()) == (
         build / "sub/renamed.custom"
     )
 
