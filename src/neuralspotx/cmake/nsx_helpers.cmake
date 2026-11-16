@@ -1,5 +1,7 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright (c) 2026, Ambiq
+include("${CMAKE_CURRENT_LIST_DIR}/nsx_debug_context.cmake")
+
 # Initialize on include, even if this configuration registers no SEGGER targets.
 # Otherwise a removed final target could retain a usable pointer and old ELF.
 get_property(nsx_artifacts_initialized GLOBAL PROPERTY NSX_ARTIFACTS_INITIALIZED)
@@ -89,21 +91,25 @@ function(nsx_add_segger_targets app_target)
         set(NSX_JLINK_USB_ARGS -USB ${NSX_JLINK_SERIAL})
     endif()
 
-    set(NSX_JLINK_BIN_FILE "${CMAKE_CURRENT_BINARY_DIR}/${app_target}.bin")
+    if(nsx_target_type STREQUAL "EXECUTABLE")
+        set(NSX_JLINK_BIN_FILE "$<TARGET_FILE_DIR:${app_target}>/${app_target}.bin")
+    else()
+        # Legacy callers can register custom targets producing a named binary.
+        set(NSX_JLINK_BIN_FILE "${CMAKE_CURRENT_BINARY_DIR}/${app_target}.bin")
+    endif()
     # Do not leave scripts from a previously configured board available.
     file(REMOVE "${jlink_dir}/flash_cmds.jlink" "${jlink_dir}/reset_cmds.jlink")
     if(NSX_SEGGER_CONFIG_OK)
-        configure_file(
-            "${NSX_CMAKE_DIR}/segger/templates/flash_cmds.jlink.in"
-            "${jlink_dir}/flash_cmds.jlink"
-            @ONLY
-        )
-        configure_file(
-            "${NSX_CMAKE_DIR}/segger/templates/reset_cmds.jlink.in"
-            "${jlink_dir}/reset_cmds.jlink"
-            @ONLY
-        )
+        foreach(kind flash reset)
+            set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+                "${NSX_CMAKE_DIR}/segger/templates/${kind}_cmds.jlink.in")
+            file(READ "${NSX_CMAKE_DIR}/segger/templates/${kind}_cmds.jlink.in" template)
+            string(CONFIGURE "${template}" script @ONLY)
+            file(GENERATE OUTPUT "${jlink_dir}/${kind}_cmds.jlink" CONTENT "${script}")
+        endforeach()
     endif()
+
+    _nsx_debug_register("${app_target}")
 
     if(NSX_SEGGER_CONFIG_OK AND NSX_JLINK_EXE)
         add_custom_target(${app_target}_flash
