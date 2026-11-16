@@ -26,7 +26,7 @@ def run(*args: str | Path, ok: bool = True) -> subprocess.CompletedProcess[str]:
 @pytest.fixture
 def project(tmp_path: Path) -> tuple[Path, Path, Path]:
     cmake = shutil.which("cmake")
-    if not cmake or not shutil.which("ninja") or not shutil.which("cc"):
+    if not cmake or not shutil.which("ninja") or not (shutil.which("cc") or shutil.which("cl")):
         pytest.skip("native CMake/Ninja/C compiler required")
     version = run(cmake, "--version").stdout.split()[2]
     if tuple(map(int, version.split(".")[:2])) < (3, 31):
@@ -46,7 +46,7 @@ def project(tmp_path: Path) -> tuple[Path, Path, Path]:
 add_executable(app ../main.c)
 set_target_properties(app PROPERTIES OUTPUT_NAME renamed SUFFIX .custom)
 add_custom_command(TARGET app POST_BUILD
-  COMMAND ${CMAKE_OBJCOPY} -O binary $<TARGET_FILE:app> $<TARGET_FILE_DIR:app>/app.bin)
+  COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:app> $<TARGET_FILE_DIR:app>/app.bin)
 nsx_add_segger_targets(app)
 """,
         encoding="utf-8",
@@ -118,10 +118,12 @@ def test_prepare_readonly_and_private_capture(project: tuple[Path, Path, Path]) 
         private = snapshot.directory
         binary = (private / "firmware.bin").read_bytes()
         recipe = (private / "flash_cmds.jlink").read_text(encoding="utf-8")
-        assert f'LoadFile "{private}/firmware.bin", 0x1000' in recipe
+        assert f'LoadFile "{private.as_posix()}/firmware.bin", 0x1000' in recipe
         assert "ExitOnError 1" in recipe
         direct = target.flash_recipe.read_text(encoding="utf-8")
-        assert direct == recipe.replace(str(private / "firmware.bin"), str(target.binary))
+        assert direct == recipe.replace(
+            (private / "firmware.bin").as_posix(), target.binary.as_posix()
+        )
         target.binary.write_bytes(b"changed after capture")
         assert (private / "firmware.bin").read_bytes() == binary
     assert not private.exists()
@@ -360,7 +362,48 @@ def test_opt_out_retains_direct_targets(project: tuple[Path, Path, Path]) -> Non
     assert not (build / "nsx-debug/context.json").exists()
     run("cmake", "--build", build)
     recipe = (build / "sub/jlink/app/flash_cmds.jlink").read_text(encoding="utf-8")
-    assert f'LoadFile "{build}/sub/app.bin", 0x1000' in recipe
+    assert f'LoadFile "{build.as_posix()}/sub/app.bin", 0x1000' in recipe
     assert (build / "nsx-artifacts/app.path").read_text(encoding="utf-8").strip() == str(
         build / "sub/renamed.custom"
     )
+
+
+def test_opt_out_recipe_template_regenerates(project: tuple[Path, Path, Path]) -> None:
+    source, build, helpers = project
+    run("cmake", "-S", source, "-B", build, "-DNSX_DEBUG_CONTEXT=OFF")
+    run("cmake", "--build", build)
+    for kind in ("flash", "reset"):
+        template = helpers / f"segger/templates/{kind}_cmds.jlink.in"
+        with template.open("a", encoding="utf-8") as stream:
+            stream.write("// changed template dependency\n")
+        run("cmake", "--build", build)
+        assert "changed template dependency" in (
+            build / f"sub/jlink/app/{kind}_cmds.jlink"
+        ).read_text(encoding="utf-8")
+
+
+def test_attach_capabilities_do_not_require_trace_or_load_address(
+    project: tuple[Path, Path, Path],
+) -> None:
+    source, build, _ = project
+    app = source / "CMakeLists.txt"
+    text = app.read_text(encoding="utf-8")
+    for line in (
+        "set(NSX_SEGGER_PF_ADDR 0x1000)",
+        "set(NSX_SEGGER_CPUFREQ 96000000)",
+        "set(NSX_SEGGER_SWOFREQ 1000000)",
+    ):
+        text = text.replace(line, "")
+    app.write_text(text, encoding="utf-8")
+    prepare(project)
+    target = load_debug_context(source, build, "fixture").target()
+    assert target.reset_unavailable is None
+    assert target.rtt_unavailable is None
+    assert target.flash_unavailable
+    assert target.swo_unavailable
+    assert target.cpu_hz is None and target.load_address is None
+    with capture_debug_context(source, build, "fixture", operation="reset"):
+        pass
+    with pytest.raises(NSXConfigError, match="unavailable"):
+        with capture_debug_context(source, build, "fixture", operation="swo"):
+            pytest.fail("SWO must not capture without trace settings")

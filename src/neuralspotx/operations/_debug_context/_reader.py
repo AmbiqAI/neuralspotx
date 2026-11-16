@@ -8,6 +8,7 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Literal
 
 from ..._errors import NSXConfigError
 
@@ -27,7 +28,18 @@ class ConfiguredDebugTarget:
     binary: Path
     flash_recipe: Path
     reset_recipe: Path
-    unavailable_reason: str | None
+    flash_unavailable: str | None
+    reset_unavailable: str | None
+    swo_unavailable: str | None
+    rtt_unavailable: str | None
+
+    def unavailable(self, operation: Literal["flash", "reset", "swo", "rtt"]) -> str | None:
+        return {
+            "flash": self.flash_unavailable,
+            "reset": self.reset_unavailable,
+            "swo": self.swo_unavailable,
+            "rtt": self.rtt_unavailable,
+        }[operation]
 
 
 @dataclass(frozen=True, slots=True)
@@ -188,12 +200,14 @@ def _parse(data: bytes, source: Path, build: Path, board: str) -> ConfiguredDebu
                 "bin",
                 "flash_recipe",
                 "reset_recipe",
-                "unavailable_reason",
+                "capabilities",
             },
         )
         if record["backend"] != "jlink" or record["interface"] != "SWD":
             raise _invalid("unsupported backend/interface")
-        reason = _text(record["unavailable_reason"], blank=True) or None
+        capabilities = _object(record["capabilities"], {"flash", "reset", "swo", "rtt"})
+        reasons = {key: _text(value, blank=True) or None for key, value in capabilities.items()}
+        reason = reasons["reset"]
         serial = _text(record["configured_serial"], blank=True) or None
         if serial is not None:
             _number(serial)
@@ -203,14 +217,19 @@ def _parse(data: bytes, source: Path, build: Path, board: str) -> ConfiguredDebu
                 device=_text(record["device"], blank=bool(reason)),
                 speed_khz=_number(record["speed_khz"], optional=bool(reason)),
                 configured_serial=serial,
-                load_address=_number(record["load_address"], optional=bool(reason), address=True),
-                cpu_hz=_number(record["cpu_hz"], optional=bool(reason)),
-                trace_hz=_number(record["trace_hz"], optional=bool(reason)),
+                load_address=_number(
+                    record["load_address"], optional=bool(reasons["flash"]), address=True
+                ),
+                cpu_hz=_number(record["cpu_hz"], optional=bool(reasons["swo"])),
+                trace_hz=_number(record["trace_hz"], optional=bool(reasons["swo"])),
                 elf=_path(record["elf"], build=build),
                 binary=_path(record["bin"], build=build),
                 flash_recipe=_path(record["flash_recipe"], build=build),
                 reset_recipe=_path(record["reset_recipe"], build=build),
-                unavailable_reason=reason,
+                flash_unavailable=reasons["flash"],
+                reset_unavailable=reason,
+                swo_unavailable=reasons["swo"],
+                rtt_unavailable=reasons["rtt"],
             )
         )
     result = ConfiguredDebugContext(

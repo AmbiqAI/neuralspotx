@@ -96,6 +96,8 @@ function(nsx_add_segger_targets app_target)
     file(REMOVE "${jlink_dir}/flash_cmds.jlink" "${jlink_dir}/reset_cmds.jlink")
     if(NSX_SEGGER_CONFIG_OK)
         foreach(kind flash reset)
+            set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS
+                "${NSX_CMAKE_DIR}/segger/templates/${kind}_cmds.jlink.in")
             file(READ "${NSX_CMAKE_DIR}/segger/templates/${kind}_cmds.jlink.in" template)
             string(CONFIGURE "${template}" script @ONLY)
             file(GENERATE OUTPUT "${jlink_dir}/${kind}_cmds.jlink" CONTENT "${script}")

@@ -1,6 +1,12 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright (c) 2026, Ambiq
 include_guard(GLOBAL)
+# Normalize caller-supplied Windows separators before comparing CMake identities.
+foreach(var NSX_DEBUG_BUILD_DIR NSX_DEBUG_SOURCE_DIR NSX_DEBUG_CAPTURE_DIR)
+    if(DEFINED ${var})
+        cmake_path(CONVERT "${${var}}" TO_CMAKE_PATH_LIST ${var} NORMALIZE)
+    endif()
+endforeach()
 
 function(nsx_debug_fail reason)
     message(FATAL_ERROR "NSX debug context: ${reason}. Stop concurrent edits/builds and rerun explicit debug preparation; upgrade helpers/tool if unsupported.")

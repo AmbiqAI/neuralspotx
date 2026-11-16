@@ -38,8 +38,9 @@ def capture_debug_context(
     """
     context = load_debug_context(source, build, board, timeout_s=timeout_s)
     selected = context.target(target)
-    if selected.unavailable_reason:
-        raise NSXConfigError(f"Debug operation unavailable: {selected.unavailable_reason}")
+    reason = selected.unavailable(operation)
+    if reason:
+        raise NSXConfigError(f"Debug operation unavailable: {reason}")
     with TemporaryDirectory(prefix="nsx-debug-") as temporary:
         directory = Path(temporary)
         _run_script(

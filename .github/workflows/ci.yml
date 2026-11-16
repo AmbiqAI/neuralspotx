@@ -131,6 +131,26 @@ jobs:
           -q
           --ignore=tests/test_example_builds.py
 
+  # Qualify the opt-in protocol at its minimum CMake version on each host.
+  debug-context:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v5
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - uses: ilammy/msvc-dev-cmd@v1
+        if: runner.os == 'Windows'
+      - name: Qualify native debug-context fixtures
+        run: >-
+          uv run --python 3.11 --with cmake==3.31.10 --with ninja==1.13.0
+          --group test pytest -q tests/test_debug_context.py
+
   # ---------------------------------------------------------------
   # Unit tests under a non-UTF-8 locale (C/POSIX).
   #
