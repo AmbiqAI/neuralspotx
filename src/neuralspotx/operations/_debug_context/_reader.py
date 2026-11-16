@@ -28,6 +28,8 @@ class ConfiguredDebugTarget:
     binary: Path
     flash_recipe: Path
     reset_recipe: Path
+    flash_template: Path
+    reset_template: Path
     flash_unavailable: str | None
     reset_unavailable: str | None
     swo_unavailable: str | None
@@ -84,10 +86,12 @@ def _text(value: object, *, blank: bool = False) -> str:
     return value
 
 
-def _path(value: object, *, build: Path | None = None) -> Path:
+def _path(value: object, *, build: Path | None = None, pattern: bool = False) -> Path:
     text = _text(value)
     if any(c in text for c in ';"<>|'):
         raise _invalid("unsupported path characters")
+    if not pattern and any(c in text for c in "*?[]"):
+        raise _invalid("literal paths with glob metacharacters are unsupported")
     path = Path(text)
     if not path.is_absolute():
         raise _invalid("path must be absolute")
@@ -170,7 +174,7 @@ def _parse(data: bytes, source: Path, build: Path, board: str) -> ConfiguredDebu
             "listDirectories",
         }:
             raise _invalid("unsupported glob record")
-        _path(item["expression"])
+        _path(item["expression"], pattern=True)
         for flag in ("recurse", "followSymlinks", "listDirectories"):
             if flag in item and type(item[flag]) is not bool:
                 raise _invalid("invalid glob flag")
@@ -200,6 +204,8 @@ def _parse(data: bytes, source: Path, build: Path, board: str) -> ConfiguredDebu
                 "bin",
                 "flash_recipe",
                 "reset_recipe",
+                "flash_template",
+                "reset_template",
                 "capabilities",
             },
         )
@@ -209,8 +215,10 @@ def _parse(data: bytes, source: Path, build: Path, board: str) -> ConfiguredDebu
         reasons = {key: _text(value, blank=True) or None for key, value in capabilities.items()}
         reason = reasons["reset"]
         serial = _text(record["configured_serial"], blank=True) or None
-        if serial is not None:
-            _number(serial)
+        if serial is not None and (
+            not serial.isascii() or not serial.isdecimal() or int(serial) <= 0
+        ):
+            raise _invalid("invalid configured serial")
         targets.append(
             ConfiguredDebugTarget(
                 name=name,
@@ -226,6 +234,8 @@ def _parse(data: bytes, source: Path, build: Path, board: str) -> ConfiguredDebu
                 binary=_path(record["bin"], build=build),
                 flash_recipe=_path(record["flash_recipe"], build=build),
                 reset_recipe=_path(record["reset_recipe"], build=build),
+                flash_template=_path(record["flash_template"]),
+                reset_template=_path(record["reset_template"]),
                 flash_unavailable=reasons["flash"],
                 reset_unavailable=reason,
                 swo_unavailable=reasons["swo"],

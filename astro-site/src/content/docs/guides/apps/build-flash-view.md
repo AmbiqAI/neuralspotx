@@ -368,7 +368,8 @@ directory unchanged while preparing or capturing an operation; simultaneous
 build/configure/clean is unsupported. Ordinary C source edits do not invalidate
 connection settings, but flashing still requires a successful build.
 
-Paths containing quotes, semicolons or control characters are unsupported by
+Literal paths containing glob characters (`*?[]`), quotes, semicolons or control
+characters are unsupported by
 this experimental protocol; output artifacts must be inside the build tree.
 Context and private snapshots do not establish which firmware is running on a
 physical device. See [#152](https://github.com/AmbiqAI/neuralspotx/issues/152) for

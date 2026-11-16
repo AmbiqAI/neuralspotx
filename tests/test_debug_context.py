@@ -425,3 +425,63 @@ def test_capture_refuses_unexported_template_settings(project: tuple[Path, Path,
     with pytest.raises(NSXConfigError, match="flash template requires settings"):
         with capture_debug_context(source, build, "fixture", operation="flash"):
             pytest.fail("must not silently render a different recipe")
+
+
+@pytest.mark.parametrize("enabled", ["TRUE", "1", "YES"])
+def test_cmake_boolean_opt_in(project: tuple[Path, Path, Path], enabled: str) -> None:
+    source, build, _ = project
+    run("cmake", "-S", source, "-B", build, f"-DNSX_DEBUG_CONTEXT={enabled}")
+    prepare(project)
+    assert load_debug_context(source, build, "fixture").target().device == "device-A"
+
+
+def test_custom_template_root_is_captured(project: tuple[Path, Path, Path]) -> None:
+    source, build, helpers = project
+    custom = source / "custom/segger/templates"
+    shutil.copytree(helpers / "segger/templates", custom)
+    template = custom / "flash_cmds.jlink.in"
+    with template.open("a", encoding="utf-8") as stream:
+        stream.write("// custom template\n")
+    app = source / "CMakeLists.txt"
+    app.write_text(
+        app.read_text(encoding="utf-8").replace(
+            "add_subdirectory(sub)",
+            'set(NSX_CMAKE_DIR "${CMAKE_SOURCE_DIR}/custom")\nadd_subdirectory(sub)',
+        ),
+        encoding="utf-8",
+    )
+    prepare(project)
+    run("cmake", "--build", build)
+    with capture_debug_context(source, build, "fixture", operation="flash") as snapshot:
+        assert "custom template" in (snapshot.directory / "flash_cmds.jlink").read_text(
+            encoding="utf-8"
+        )
+    with template.open("a", encoding="utf-8") as stream:
+        stream.write("// changed\n")
+    with pytest.raises(NSXConfigError, match="stale input"):
+        load_debug_context(source, build, "fixture")
+
+
+def test_leading_zero_serial_preserved(project: tuple[Path, Path, Path]) -> None:
+    source, build, _ = project
+    run("cmake", "-S", source, "-B", build, "-DNSX_JLINK_SERIAL=001234")
+    prepare(project)
+    assert load_debug_context(source, build, "fixture").target().configured_serial == "001234"
+
+
+def test_glob_metacharacters_in_build_root_rejected(project: tuple[Path, Path, Path]) -> None:
+    source, build, _ = project
+    result = run(
+        "cmake",
+        "-S",
+        source,
+        "-B",
+        build.parent / "build[1]",
+        "-G",
+        "Ninja",
+        "-DNSX_DEBUG_CONTEXT=ON",
+        "-DNSX_DEBUG_INPUT_CONTRACT=1",
+        ok=False,
+    )
+    assert result.returncode
+    assert "glob metacharacters" in result.stderr
