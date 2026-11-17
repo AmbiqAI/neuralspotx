@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from neuralspotx._errors import NSXLockError
+from neuralspotx._errors import NSXIntegrityError
 from neuralspotx.api import build_app, configure_app, create_app, create_board, lock_app, sync_app
 
 
@@ -88,9 +88,16 @@ nsx_register_bsp(TARGET test_bsp CONTRACT 2 DEBUG_ITM 0 DEBUG_UART 0)
     ninja = (build / "build.ninja").read_text(encoding="utf-8")
     assert "libam_bsp" not in ninja
     assert f"boards/{parent}/bsp" not in ninja
+    guarded_outputs = [image, build / "CMakeCache.txt", build / "build.ninja"]
+    before = {path: (path.read_bytes(), path.stat().st_mtime_ns) for path in guarded_outputs}
     manifest = provider / "nsx-module.yaml"
     manifest.write_text(
         manifest.read_text(encoding="utf-8") + "\n# changed contract input\n", encoding="utf-8"
     )
-    with pytest.raises(NSXLockError, match="composition changed"):
+    # Frozen verification now precedes regeneration/composition validation.
+    with pytest.raises(NSXIntegrityError, match="content drifted from lock") as caught:
         build_app(root, frozen=True)
+    assert caught.value.module == "test-bsp"
+    assert {
+        path: (path.read_bytes(), path.stat().st_mtime_ns) for path in guarded_outputs
+    } == before
