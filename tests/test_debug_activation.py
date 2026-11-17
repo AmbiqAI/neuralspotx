@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from debug_fixtures import cmake, make_debug_app, prepare
+from debug_fixtures import cmake, make_debug_app, prepare, require_debug_tools
 
 from neuralspotx import AppRttRequest, NSXConfigError, NSXError, api, tooling
 from neuralspotx._probe_selection import ProbeSelection
@@ -16,6 +16,11 @@ from neuralspotx.models import FlashResult, ResetResult, RttResult
 from neuralspotx.operations import _build, _hardware, _rtt
 from neuralspotx.operations._debug_workflow import DebugState, inspect_build
 from neuralspotx.tooling import JLinkProbe, _JLinkInventoryEntry
+
+
+@pytest.fixture(autouse=True)
+def debug_tool_prerequisites():
+    require_debug_tools()
 
 
 @pytest.fixture

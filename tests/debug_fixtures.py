@@ -14,18 +14,20 @@ def cmake(*args: str | Path) -> None:
     assert result.returncode == 0, result.stdout + result.stderr
 
 
-def make_debug_app(
-    app: Path, board: str = "apollo510_evb", build: Path | None = None
-) -> tuple[Path, Path]:
-    if (
-        not shutil.which("cmake")
-        or not shutil.which("ninja")
-        or not (shutil.which("cc") or shutil.which("cl"))
-    ):
-        pytest.skip("native compiler, Ninja and CMake >=3.31 required")
+def require_debug_tools() -> None:
+    if not shutil.which("cmake") or not shutil.which("ninja"):
+        pytest.skip("Ninja and CMake >=3.31 required")
     version = subprocess.check_output(["cmake", "--version"], text=True).split()[2]
     if tuple(map(int, version.split(".")[:2])) < (3, 31):
         pytest.skip("CMake >=3.31 required")
+
+
+def make_debug_app(
+    app: Path, board: str = "apollo510_evb", build: Path | None = None
+) -> tuple[Path, Path]:
+    require_debug_tools()
+    if not (shutil.which("cc") or shutil.which("cl")):
+        pytest.skip("native compiler required")
     app.mkdir(parents=True, exist_ok=True)
     build = build or app / "build" / board
     shutil.copytree(ROOT, app / "cmake/nsx", dirs_exist_ok=True)
