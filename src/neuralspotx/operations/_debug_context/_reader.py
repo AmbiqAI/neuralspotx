@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Literal
 
 from ..._errors import NSXConfigError
-from ...subprocess_utils import _effective_timeout, run_capture
+from ...subprocess_utils import _effective_timeout, run_capture, timeout_budget
 
 
 class StaleDebugContextError(NSXConfigError):
@@ -266,21 +266,21 @@ def _run_script(script: str, *, timeout_s: float, **variables: str) -> None:
     if not cmake:
         raise _invalid("CMake >=3.31 is required for context validation")
     try:
-        run_capture(
-            [
-                cmake,
-                *(f"-D{key}={value}" for key, value in variables.items()),
-                "-P",
-                str(_CMAKE / script),
-            ],
-            timeout=min(timeout_s, _effective_timeout(None) or timeout_s),
-        )
+        with timeout_budget(min(timeout_s, _effective_timeout(None) or timeout_s)):
+            run_capture(
+                [
+                    cmake,
+                    *(f"-D{key}={value}" for key, value in variables.items()),
+                    "-P",
+                    str(_CMAKE / script),
+                ],
+            )
     except subprocess.CalledProcessError as exc:
         detail = (exc.stderr or exc.stdout or "CMake validation failed").strip()
         if "NSX_DEBUG_STALE:" in detail:
             raise StaleDebugContextError(detail) from exc
         raise _invalid(detail) from exc
-    except (OSError, subprocess.TimeoutExpired) as exc:
+    except OSError as exc:
         raise _invalid(f"CMake validation/capture failed: {exc}") from exc
 
 
