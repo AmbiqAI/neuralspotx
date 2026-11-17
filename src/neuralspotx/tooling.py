@@ -14,7 +14,7 @@ from pathlib import Path
 
 from ._errors import NSXToolchainError
 from ._io import line
-from .subprocess_utils import _effective_timeout
+from .subprocess_utils import _effective_timeout, timeout_budget
 
 
 def tool_path(name: str) -> str | None:
@@ -178,10 +178,15 @@ def _list_jlink_inventory() -> list[_JLinkInventoryEntry]:
             "Check the SEGGER installation and USB permissions, then retry `nsx probes`."
         )
 
+    ambient = _effective_timeout(None)
+    effective = 15 if ambient is None else min(15, ambient)
     try:
         # Command files echo boundaries even when an empty ShowEmuList emits no
         # text. Disable automatic connection: discovery must not open a probe.
-        with tempfile.TemporaryDirectory(prefix="nsx-probes-") as directory:
+        with (
+            timeout_budget(effective),
+            tempfile.TemporaryDirectory(prefix="nsx-probes-") as directory,
+        ):
             script = Path(directory) / "probes.jlink"
             script.write_text("ShowEmuList\nexit\n", encoding="ascii")
             result = subprocess.run(  # noqa: S603 - resolved executable, fixed script
@@ -190,10 +195,8 @@ def _list_jlink_inventory() -> list[_JLinkInventoryEntry]:
                 capture_output=True,
                 text=True,
                 errors="replace",
-                timeout=min(15, _effective_timeout(None) or 15),
+                timeout=effective,
             )
-    except subprocess.TimeoutExpired:
-        raise failed("enumeration timed out after 15 seconds") from None
     except OSError as exc:
         raise failed(f"could not run Commander ({exc})") from None
 

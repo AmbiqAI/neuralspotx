@@ -17,6 +17,8 @@ from neuralspotx.operations import _build, _hardware, _rtt
 from neuralspotx.operations._debug_workflow import DebugState, inspect_build
 from neuralspotx.tooling import JLinkProbe, _JLinkInventoryEntry
 
+_REAL_INVENTORY = tooling._list_jlink_inventory
+
 
 @pytest.fixture(autouse=True)
 def debug_tool_prerequisites():
@@ -538,3 +540,30 @@ def test_validation_preserves_public_timeout_error(app, monkeypatch, operation, 
     assert caught.value.timeout_s == expected
     assert caught.value.command and "nsx_debug_validate.cmake" in caught.value.command
     assert not calls
+
+
+@pytest.mark.parametrize("operation", ["flash", "view", "reset"])
+def test_discovery_timeout_is_typed_before_hardware(app, monkeypatch, operation):
+    from neuralspotx import NSXTimeoutError
+
+    root, _, calls = app
+    monkeypatch.setattr(tooling, "_list_jlink_inventory", _REAL_INVENTORY)
+    monkeypatch.setattr(tooling, "find_segger_tool", lambda _: "fake-commander")
+    original_run = subprocess.run
+    discoveries = []
+
+    def run(command, **kwargs):
+        if command[0] == "fake-commander":
+            discoveries.append(command)
+            assert kwargs["timeout"] == 10
+            raise subprocess.TimeoutExpired(command, kwargs["timeout"])
+        return original_run(command, **kwargs)
+
+    monkeypatch.setattr(tooling.subprocess, "run", run)
+    with pytest.raises(NSXTimeoutError) as caught:
+        {"flash": api.flash_app, "view": api.view_app, "reset": api.reset_target}[operation](
+            app_dir=root, discover_probe=True, timeout_s=10
+        )
+    assert caught.value.timeout_s == 10
+    assert len(discoveries) == 1
+    assert not any("serial" in call for call in calls)

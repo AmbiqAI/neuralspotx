@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from neuralspotx import tooling
-from neuralspotx._errors import NSXToolchainError
+from neuralspotx._errors import NSXTimeoutError, NSXToolchainError
 from neuralspotx.tooling import JLinkProbe, find_processes_holding_probe, list_jlink_probes
 
 _SAMPLE_EMU_LIST = """\
@@ -57,15 +57,27 @@ def test_list_jlink_probes_empty_when_no_probes(monkeypatch: pytest.MonkeyPatch)
     assert list_jlink_probes() == []
 
 
-def test_list_jlink_probes_reports_timeout(monkeypatch: pytest.MonkeyPatch) -> None:
-    def _raise(*_args, **_kwargs):
-        raise subprocess.TimeoutExpired(cmd="JLinkExe", timeout=15)
+@pytest.mark.parametrize("ambient,expected", [(None, 15), (0.0, 0.0), (0.2, 0.2), (30, 15)])
+def test_list_jlink_probes_reports_timeout(monkeypatch, ambient, expected):
+    from neuralspotx.subprocess_utils import _effective_timeout, timeout_budget
 
-    monkeypatch.setattr(tooling, "find_segger_tool", lambda _names: "/usr/bin/JLinkExe")
-    monkeypatch.setattr(tooling.subprocess, "run", _raise)
+    scripts = []
 
-    with pytest.raises(NSXToolchainError, match="timed out"):
-        list_jlink_probes()
+    def expire(command, **kwargs):
+        scripts.append(Path(command[-1]))
+        assert scripts[-1].is_file()
+        assert kwargs["timeout"] == expected
+        raise subprocess.TimeoutExpired(command, kwargs["timeout"])
+
+    monkeypatch.setattr(tooling, "find_segger_tool", lambda _: "fake-commander")
+    monkeypatch.setattr(tooling.subprocess, "run", expire)
+    with timeout_budget(ambient):
+        with pytest.raises(NSXTimeoutError) as caught:
+            list_jlink_probes()
+        assert _effective_timeout(None) == ambient
+    assert caught.value.timeout_s == expected
+    assert caught.value.command and "fake-commander" in caught.value.command
+    assert len(scripts) == 1 and not scripts[0].exists()
 
 
 def test_list_jlink_probes_raises_without_executable(monkeypatch: pytest.MonkeyPatch) -> None:
