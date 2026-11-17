@@ -78,6 +78,12 @@ def inspect_build(app: Path, build: Path, board: str, *, replace_board: bool = F
         raise NSXConfigError(
             "CMake board mismatch; explicitly run `nsx configure --board ...` to replace it."
         )
+    evaluated_board = _cmake_cache_value(build, "NSX_RESET_BOARD")
+    if evaluated_board and evaluated_board != cached_board and not replace_board:
+        raise NSXConfigError(
+            "Incomplete CMake board replacement; explicitly run `nsx configure --board ...` "
+            "to set or clear the probe preference before continuing."
+        )
     serial = _cmake_cache_value(build, "NSX_JLINK_SERIAL") or None
     validate_probe_request(serial)
     if context.exists():

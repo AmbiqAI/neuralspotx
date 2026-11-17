@@ -233,8 +233,10 @@ def preflight_build(
     *,
     board: str | None = None,
     build_dir: Path | None = None,
+    sdk_root: Path | None = None,
 ) -> None:
     """Guard CLI build/update composition with the same read-only ownership check."""
+    _check_sdk_root(sdk_root, frozen=False)
     app, _, selected, build = _resolve_build_context(app_dir, board=board, build_dir=build_dir)
     inspect_build(app, build, selected)
 
@@ -244,9 +246,11 @@ def preflight_flash(
     *,
     board: str | None = None,
     build_dir: Path | None = None,
+    sdk_root: Path | None = None,
     target: str | None = None,
 ) -> tuple[Path, str, str, Path]:
     """Validate ownership before flash, including a CLI-requested dependency update."""
+    _check_sdk_root(sdk_root, frozen=False)
     app, name, selected, build = _resolve_build_context(app_dir, board=board, build_dir=build_dir)
     resolved_target = name if target is None else target
     validate_flash_target_name(resolved_target)

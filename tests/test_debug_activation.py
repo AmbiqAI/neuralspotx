@@ -359,3 +359,44 @@ nsx_add_segger_targets(secondary)
     api.flash_app(root, target="secondary", probe_serial="42")
     assert "other.bin" not in calls[-1]["text"]
     assert "0x1000" in calls[-1]["text"]
+
+
+def test_failed_board_replacement_requires_explicit_repair(tmp_path):
+    root, build = make_debug_app(tmp_path / "app", board="apollo4p_evb")
+    source = root / "CMakeLists.txt"
+    original = source.read_text()
+    source.write_text(
+        original.replace("include(board.cmake)", 'message(FATAL_ERROR "interrupted board switch")')
+    )
+    failed = subprocess.run(
+        ["cmake", "-S", str(root), "-B", str(build), "-DNSX_BOARD=apollo510_evb"],
+        capture_output=True,
+        text=True,
+        timeout=45,
+    )
+    assert failed.returncode != 0
+    assert "interrupted board switch" in failed.stderr
+    source.write_text(original)
+    before = (build / "CMakeCache.txt").read_bytes()
+    with pytest.raises(NSXConfigError, match="Incomplete CMake board replacement"):
+        inspect_build(root, build, "apollo510_evb")
+    assert (build / "CMakeCache.txt").read_bytes() == before
+    assert (
+        inspect_build(root, build, "apollo510_evb", replace_board=True).state
+        is DebugState.UNPREPARED
+    )
+    # Explicit configure owns replacement and clears the old preference by default.
+    cmake("-S", root, "-B", build, "-DNSX_BOARD=apollo510_evb", "-DNSX_JLINK_SERIAL=")
+    prepare(root, build)
+    assert inspect_build(root, build, "apollo510_evb").preference is None
+
+
+@pytest.mark.parametrize("operation", ["build", "flash"])
+def test_update_validates_sdk_override_before_mutating(app, monkeypatch, operation):
+    from neuralspotx import cli
+
+    root, _, _ = app
+    monkeypatch.setattr(api, "update_app", lambda *a, **k: pytest.fail("updated invalid request"))
+    assert (
+        cli.main([operation, str(root), "--update", "--sdk-root", str(root / "missing-sdk")]) == 1
+    )

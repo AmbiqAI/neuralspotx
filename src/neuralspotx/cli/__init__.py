@@ -254,6 +254,9 @@ def cmd_build(args: argparse.Namespace) -> None:
             app_dir,
             board=args.board,
             build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
+            sdk_root=Path(args.sdk_root).expanduser().resolve()
+            if getattr(args, "sdk_root", None)
+            else None,
         )
         api.update_app(app_dir, timeout_s=getattr(args, "timeout", None))
     api.build_app(
@@ -286,6 +289,9 @@ def cmd_flash(args: argparse.Namespace) -> None:
             app_dir,
             board=args.board,
             build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
+            sdk_root=Path(args.sdk_root).expanduser().resolve()
+            if getattr(args, "sdk_root", None)
+            else None,
             target=getattr(args, "target", None),
         )
         api.update_app(app_dir, timeout_s=getattr(args, "timeout", None))
