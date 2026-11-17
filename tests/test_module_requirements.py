@@ -234,7 +234,9 @@ def test_existing_lock_rejects_incompatible_metadata_before_cmake(
     build.mkdir(parents=True, exist_ok=True)
     (build / "build.ninja").write_text("# existing build")
     monkeypatch.setattr(_build, "regenerate_active_board_glue", lambda *a, **k: None)
-    monkeypatch.setattr(_build, "_flash_cache_matches", lambda *a, **k: True)
+    from neuralspotx.operations._debug_workflow import DebugState, OwnedBuild
+
+    monkeypatch.setattr(_build, "inspect_build", lambda *a, **k: OwnedBuild(DebugState.VALID))
     # Leave real dependency validation and real metadata loading in place.
     monkeypatch.setattr(_build, "_ensure_app_modules", lambda *a, **k: None)
 

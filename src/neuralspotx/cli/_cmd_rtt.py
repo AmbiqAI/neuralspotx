@@ -22,6 +22,7 @@ def cmd_rtt(args: argparse.Namespace) -> None:
         build_dir=args.build_dir,
         target=args.target,
         probe_serial=args.probe_serial,
+        discover_probe=getattr(args, "discover_probe", False),
         duration_s=args.duration,
         startup_timeout_s=args.startup_timeout,
         capture=args.capture,

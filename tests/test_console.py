@@ -90,10 +90,24 @@ def test_rtt_emitter_forwarded_once_before_capture(
     (build / "nsx-artifacts/demo.path").write_text(str(build / "demo.elf") + "\n")
     events: list[Event] = []
     data: list[bytes] = []
-    settings = RttSettings(
-        console_app, "custom", build, "demo", build / "demo.elf", 123, "dev", 1000, "123"
+    from types import SimpleNamespace
+
+    from neuralspotx.operations._debug_workflow import DebugState, OwnedBuild
+
+    monkeypatch.setattr(_rtt, "inspect_build", lambda *a, **k: OwnedBuild(DebugState.VALID))
+    monkeypatch.setattr(
+        _rtt,
+        "load_debug_context",
+        lambda *a, **k: SimpleNamespace(
+            target=lambda name: SimpleNamespace(
+                elf=build / f"{name}.elf",
+                configured_serial="123",
+                device="dev",
+                speed_khz=1000,
+                rtt_unavailable=None,
+            )
+        ),
     )
-    monkeypatch.setattr(_rtt, "app_debug_settings", lambda *a, **kw: settings)
     monkeypatch.setattr(_rtt, "_rtt_address", lambda *_: 123)
 
     def capture(resolved: RttSettings, **kwargs: Any) -> RttResult:
@@ -155,7 +169,7 @@ def test_invalid_metadata_prevents_side_effects(
     monkeypatch.setattr(
         _build, "regenerate_active_board_glue", lambda *a, **kw: pytest.fail("glue mutated")
     )
-    monkeypatch.setattr(_rtt, "app_debug_settings", lambda *a, **kw: pytest.fail("debug accessed"))
+    monkeypatch.setattr(_rtt, "load_debug_context", lambda *a, **kw: pytest.fail("debug accessed"))
     for operation in (
         lambda: api.view_app(tmp_path, board="custom"),
         lambda: api.rtt_app(AppRttRequest(tmp_path, board="custom")),

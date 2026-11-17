@@ -19,18 +19,27 @@ working directory until they find an `nsx.yml`, so you can run them from anywher
 the tree. They all take `--app-dir` to point somewhere else, and all take a positional
 `app` argument that resolves under `./` and `./examples`.
 
-`reset` and `probes` are not app-aware. `probes` enumerates the J-Link probes attached to
-the machine. `reset` talks to a target directly and requires `--device`, so the
-app-directory framing does not apply to it.
+`reset` uses the app's prepared primary target unless you supply `--device`.
+With `--device`, reset ignores app selectors. `probes` lists the attached J-Link
+inventory without selecting a target.
 
 ## Configure
 
 `nsx configure` resolves the module graph, writes `nsx.lock` if there is not one, syncs
 `modules/` to match it, and runs CMake to generate `build/<board>/`.
 
-It is safe to re-run. NSX re-configures on its own when `build.ninja` is missing or when
-you pass `--probe-serial`, which always forces a reconfigure because the probe serial is
-baked into the generated SEGGER command files.
+An explicit `configure --probe-serial SERIAL` saves a preference for this build;
+`configure` without a serial deliberately clears it. Implicit reconfiguration
+preserves the validated preference. Successful configure prepares the debug context
+when the app has adopted the handoff below; legacy build-only apps remain supported.
+
+For flash, view, reset and RTT, `--probe-serial` is a temporary exact selection.
+Omitting it inherits the selected target's configured preference; with no preference,
+NSX requires exactly one eligible local USB probe. `--discover-probe` ignores the
+preference for this operation. These flags are mutually exclusive. Selection occurs
+once, including viewer/reset and reconnect, and never falls back to another probe.
+`--frozen` verifies locked inputs before configure, Ninja regeneration and preparation,
+even when a build directory already exists.
 
 ## Build
 
@@ -324,21 +333,27 @@ changed and programs the result.
 If something in that loop fails, [Troubleshooting](/neuralspotx/guides/apps/troubleshooting/)
 is organized around the messages NSX actually prints.
 
-## Experimental debug-context preparation
+## Configured debug handoff and existing apps
 
-An opt-in CMake handoff is available for development and host validation. Normal
-`nsx flash`, `view`, `reset` and `rtt` commands still use their existing paths;
-enabling this experiment does **not** change probe-selection semantics.
+NSX app flash, SWO, reset and RTT require this handoff. Legacy helpers or disabled
+handoffs fail with adoption instructions rather than executing older persistent
+serial semantics. Direct CMake flash/reset/view targets remain available with their
+configured defaults, including their existing custom-recipe behavior.
 
 It requires CMake 3.31 or newer, single-configuration Ninja and updated app-local
-NSX helpers. Existing workflows retain their current requirements. In an app
-using those helpers, explicitly identify its primary debug target:
+NSX helpers. Build-only and direct CMake workflows retain their existing requirements.
+New default/blinky apps enable it for Apollo510 EVB/GCC. Other boards, toolchains and
+module graphs require an author audit and explicit adoption; the contract marker is
+not automatic dependency certification. For an existing app, explicitly update the
+vendored helpers and lock first (never through a frozen debug operation), then declare
+`NSX_DEBUG_CONTEXT=ON` and `NSX_DEBUG_INPUT_CONTRACT=1` before including helpers.
+Identify its primary debug target after registration:
 
 ```cmake
 nsx_debug_set_primary_target(my_app)
 ```
 
-New app templates already do this when the experiment is enabled. Custom apps
+New app templates already do this when the handoff is enabled. Custom apps
 must name exactly one target registered by `nsx_add_segger_targets`. Audit reads
 that influence debug settings before accepting the input contract. External
 textual settings must use a registered read, for example:
@@ -370,7 +385,7 @@ connection settings, but flashing still requires a successful build.
 
 Literal paths containing glob characters (`*?[]`), quotes, semicolons or control
 characters are unsupported by
-this experimental protocol; output artifacts must be inside the build tree.
+this protocol; output artifacts must be inside the build tree.
 Captured flash recipes support the existing single-image command sequence only:
 `ExitOnError 1`, `Reset`, `LoadFile`, `Reset`, `Go`, `Exit` (full-line comments
 and blank lines are allowed). The load command must reference the private binary copy and
@@ -379,5 +394,8 @@ CMake recipes are unchanged. Captured SWO reset recipes likewise require the
 standard `ExitOnError 1`, `Reset`, `Go`, `Exit` sequence, without file references.
 
 Context and private snapshots do not establish which firmware is running on a
-physical device. See [#152](https://github.com/AmbiqAI/neuralspotx/issues/152) for
-the separate activation plan and legacy compatibility decisions.
+physical device. Flash builds before capturing; reset and RTT never configure or
+build. After direct CMake reconfiguration, run the preparation script before an
+NSX attach. Missing/stale contexts require preparation; malformed or wrong-identity
+contexts fail even when an explicit serial is supplied. Offline RTT inspection does
+not enumerate probes; execution revalidates and analyzes its own private ELF copy.

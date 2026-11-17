@@ -11,6 +11,12 @@ from pathlib import Path
 from typing import Literal
 
 from ..._errors import NSXConfigError
+from ...subprocess_utils import _effective_timeout, run_capture
+
+
+class StaleDebugContextError(NSXConfigError):
+    """Structurally valid, owned context whose declared inputs changed."""
+
 
 _CMAKE = Path(__file__).resolve().parents[2] / "cmake"
 
@@ -260,22 +266,22 @@ def _run_script(script: str, *, timeout_s: float, **variables: str) -> None:
     if not cmake:
         raise _invalid("CMake >=3.31 is required for context validation")
     try:
-        result = subprocess.run(
+        run_capture(
             [
                 cmake,
                 *(f"-D{key}={value}" for key, value in variables.items()),
                 "-P",
                 str(_CMAKE / script),
             ],
-            capture_output=True,
-            text=True,
-            timeout=timeout_s,
-            check=False,
+            timeout=min(timeout_s, _effective_timeout(None) or timeout_s),
         )
+    except subprocess.CalledProcessError as exc:
+        detail = (exc.stderr or exc.stdout or "CMake validation failed").strip()
+        if "NSX_DEBUG_STALE:" in detail:
+            raise StaleDebugContextError(detail) from exc
+        raise _invalid(detail) from exc
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise _invalid(f"CMake validation/capture failed: {exc}") from exc
-    if result.returncode:
-        raise _invalid(result.stderr.strip() or result.stdout.strip() or "CMake validation failed")
 
 
 def load_debug_context(

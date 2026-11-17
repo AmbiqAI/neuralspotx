@@ -13,18 +13,11 @@ import sys
 import time
 from collections.abc import Callable
 
-from .tooling import list_jlink_probes
+from ._probe_selection import ProbeSelection
 
 
 def _select_serial(serial: str | None) -> str:
-    if serial is not None:
-        return serial
-    probes = list_jlink_probes()
-    if len(probes) != 1:
-        raise RuntimeError(
-            f"Found {len(probes)} J-Link probes; use `nsx probes` and pass --probe-serial."
-        )
-    return probes[0].serial
+    return ProbeSelection.from_request(serial).resolve()
 
 
 def _capture(args: argparse.Namespace, send: Callable[[str, str], None]) -> None:

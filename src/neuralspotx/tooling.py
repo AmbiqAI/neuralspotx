@@ -14,6 +14,7 @@ from pathlib import Path
 
 from ._errors import NSXToolchainError
 from ._io import line
+from .subprocess_utils import _effective_timeout
 
 
 def tool_path(name: str) -> str | None:
@@ -151,7 +152,18 @@ _EMU_LINE_RE = re.compile(
 )
 
 
+@dataclass(frozen=True, slots=True)
+class _JLinkInventoryEntry:
+    probe: JLinkProbe
+    transport: str | None
+
+
 def list_jlink_probes() -> list[JLinkProbe]:
+    """Display all recognized probes without changing the public inventory shape."""
+    return [entry.probe for entry in _list_jlink_inventory()]
+
+
+def _list_jlink_inventory() -> list[_JLinkInventoryEntry]:
     """Enumerate J-Link probes, raising on failed or unrecognized enumeration."""
 
     exe = find_segger_tool(JLINK_NAMES)
@@ -178,7 +190,7 @@ def list_jlink_probes() -> list[JLinkProbe]:
                 capture_output=True,
                 text=True,
                 errors="replace",
-                timeout=15,
+                timeout=min(15, _effective_timeout(None) or 15),
             )
     except subprocess.TimeoutExpired:
         raise failed("enumeration timed out after 15 seconds") from None
@@ -200,7 +212,7 @@ def list_jlink_probes() -> list[JLinkProbe]:
     if "Script processing completed." not in lines[end + 1 :]:
         raise failed("Commander did not finish the enumeration script")
 
-    probes: list[JLinkProbe] = []
+    probes: list[_JLinkInventoryEntry] = []
     empty = False
     for raw in lines[start + 1 : end]:
         if not raw:
@@ -214,12 +226,16 @@ def list_jlink_probes() -> list[JLinkProbe]:
         nickname = match.group("nickname")
         if nickname is not None and nickname.strip().lower() in {"<not set>", ""}:
             nickname = None
+        connection = re.search(r"^J-Link\[\d+\]:\s*Connection:\s*([^,]+),", raw)
         probes.append(
-            JLinkProbe(
-                index=int(match.group("index")),
-                serial=match.group("serial"),
-                product=match.group("product").strip(),
-                nickname=nickname,
+            _JLinkInventoryEntry(
+                JLinkProbe(
+                    index=int(match.group("index")),
+                    serial=match.group("serial"),
+                    product=match.group("product").strip(),
+                    nickname=nickname,
+                ),
+                connection.group(1).strip().upper() if connection else None,
             )
         )
     if empty and probes:

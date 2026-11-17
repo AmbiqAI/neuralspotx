@@ -26,6 +26,7 @@ def resolve_rtt_app(request: AppRttRequest, *, emit: Emitter | None = None) -> R
             build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
             target=request.target,
             probe_serial=request.probe_serial,
+            discover_probe=request.discover_probe,
         )
 
 
@@ -48,6 +49,8 @@ def rtt_app(
     settings = resolve_rtt_app(request, emit=emit)
     return operations.rtt_app_impl(
         settings,
+        probe_serial=request.probe_serial,
+        discover_probe=request.discover_probe,
         duration_s=request.duration_s,
         startup_timeout_s=request.startup_timeout_s,
         capture=Path(request.capture) if request.capture is not None else None,

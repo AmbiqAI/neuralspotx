@@ -153,8 +153,8 @@ def build_app(
     on timeout.
 
     *frozen* verifies ``modules/`` against ``nsx.lock`` and raises on any
-    drift instead of silently re-vendoring, when a (re)configure is
-    triggered (no ``build.ninja`` yet) — see :class:`AppActionRequest`.
+    drift before configure, Ninja regeneration or debug preparation.
+    See :class:`AppActionRequest`.
     """
 
     request = (
@@ -194,6 +194,7 @@ def flash_app(
     toolchain: str | None = None,
     target: str | None = None,
     probe_serial: str | None = None,
+    discover_probe: bool = False,
     jobs: int = 8,
     sdk_root: PathLike | None = None,
     frozen: bool = False,
@@ -204,14 +205,13 @@ def flash_app(
     """Build and flash an NSX app.
 
     *timeout_s* sets a wall-clock budget for each underlying ``cmake``
-    invocation (including the J-Link flash target); the whole process
+    or Commander invocation (including debug preparation); the whole process
     group is killed on timeout so a hung ``JLinkExe`` cannot leak.
 
-    *frozen* verifies ``modules/`` against ``nsx.lock`` and raises on any
-    drift instead of silently re-vendoring, when a (re)configure is
-    triggered — see :class:`AppActionRequest` and
-    :func:`neuralspotx.operations.flash_app_impl` for why passing
-    *probe_serial* always forces a reconfigure regardless of *frozen*.
+    *frozen* verifies locked inputs before any configure/build/preparation.
+    Explicit *probe_serial* is temporary. Omission inherits the configured target
+    preference or discovers exactly one local USB probe. *discover_probe* ignores
+    the preference for this operation. Requires an adopted, prepared CMake handoff.
     """
 
     request = (
@@ -224,6 +224,7 @@ def flash_app(
             toolchain=toolchain,
             target=target,
             probe_serial=probe_serial,
+            discover_probe=discover_probe,
             jobs=jobs,
             sdk_root=sdk_root,
             frozen=frozen,
@@ -238,6 +239,7 @@ def flash_app(
             toolchain=request.toolchain,
             target=request.target,
             probe_serial=request.probe_serial,
+            discover_probe=request.discover_probe,
             jobs=request.jobs,
             sdk_root=Path(request.sdk_root).expanduser().resolve() if request.sdk_root else None,
             frozen=request.frozen,
@@ -252,6 +254,7 @@ def reset_target(
     board: str | None = None,
     build_dir: PathLike | None = None,
     probe_serial: str | None = None,
+    discover_probe: bool = False,
     kind: Literal["debug", "swpoi"] = "debug",
     interface: str = "SWD",
     speed_khz: int | None = None,
@@ -263,7 +266,7 @@ def reset_target(
 
     With ``device`` supplied, app selectors are ignored and no app is needed.
     Otherwise resolve device and default speed from the selected app/board's
-    CMake cache. Run :func:`configure_app` first; reset never configures, builds,
+    prepared CMake context. Run :func:`configure_app` first; reset never configures, builds,
     or synchronizes modules. An explicit probe serial overrides the configured
     serial. Standalone resets default to 4000 kHz.
 
@@ -280,6 +283,7 @@ def reset_target(
             build_dir=Path(build_dir) if build_dir is not None else None,
             device=device,
             probe_serial=probe_serial,
+            discover_probe=discover_probe,
             kind=kind,
             interface=interface,
             speed_khz=speed_khz,
@@ -294,6 +298,7 @@ def view_app(
     build_dir: PathLike | None = None,
     toolchain: str | None = None,
     probe_serial: str | None = None,
+    discover_probe: bool = False,
     sdk_root: PathLike | None = None,
     frozen: bool = False,
     reset_on_open: bool | None = None,
@@ -305,10 +310,9 @@ def view_app(
 ) -> None:
     """Launch the SEGGER SWO viewer for an app.
 
-    *frozen* verifies ``modules/`` against ``nsx.lock`` and raises on any
-    drift instead of silently re-vendoring, when a (re)configure is
-    triggered (same trigger rule as :func:`flash_app`) — see
-    :class:`AppActionRequest`.
+    *frozen* verifies locked inputs before reconfiguration/preparation. Probe
+    overrides and discovery are operation-local, as in :func:`flash_app`.
+    The captured settings and reset recipe remain alive until viewer teardown.
     """
 
     request = (
@@ -320,6 +324,7 @@ def view_app(
             build_dir=build_dir,
             toolchain=toolchain,
             probe_serial=probe_serial,
+            discover_probe=discover_probe,
             sdk_root=sdk_root,
             frozen=frozen,
             reset_on_open=reset_on_open,
@@ -336,6 +341,7 @@ def view_app(
             build_dir=Path(request.build_dir).expanduser().resolve() if request.build_dir else None,
             toolchain=request.toolchain,
             probe_serial=request.probe_serial,
+            discover_probe=request.discover_probe,
             sdk_root=Path(request.sdk_root).expanduser().resolve() if request.sdk_root else None,
             frozen=request.frozen,
             reset_on_open=request.reset_on_open,

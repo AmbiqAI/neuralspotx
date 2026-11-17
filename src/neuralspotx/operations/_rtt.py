@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Callable
+from dataclasses import replace
 from pathlib import Path
 
 from elftools.common.exceptions import ELFError
@@ -11,10 +12,13 @@ from elftools.elf.elffile import ELFFile
 from elftools.elf.sections import SymbolTableSection
 
 from .._errors import NSXConfigError
+from .._probe_selection import ProbeSelection, validate_probe_request
 from ..models._rtt import RttResult, RttSettings
 from ._common import _resolve_build_context
 from ._console import warn_console_mismatch
-from ._debug_settings import app_debug_settings
+from ._debug_context import capture_debug_context, load_debug_context
+from ._debug_workflow import inspect_build, require_adoption
+from ._hardware import validate_flash_target_name
 
 
 def _rtt_address(elf: Path) -> int:
@@ -55,11 +59,6 @@ def _rtt_address(elf: Path) -> int:
         raise NSXConfigError(f"Cannot read RTT ELF {elf}: {exc}. Run `nsx build`.") from exc
 
 
-def _validate_serial(serial: str | None) -> None:
-    if serial is not None and (not serial.isascii() or not serial.isdecimal() or int(serial) <= 0):
-        raise NSXConfigError("RTT probe serial must be a positive decimal USB serial number.")
-
-
 def resolve_rtt_app_impl(
     app_dir: Path,
     *,
@@ -67,36 +66,40 @@ def resolve_rtt_app_impl(
     build_dir: Path | None = None,
     target: str | None = None,
     probe_serial: str | None = None,
+    discover_probe: bool = False,
 ) -> RttSettings:
     """Resolve the exact CMake target artifact and its RTT symbol offline."""
+    validate_probe_request(probe_serial, discover_probe)
     app, name, selected, build = _resolve_build_context(app_dir, board=board, build_dir=build_dir)
-    warn_console_mismatch(app, selected, "rtt", target=target or name)
-    build = build.expanduser().resolve()
-    debug = app_debug_settings(app, board=selected, build_dir=build)
     target = name if target is None else target
-    if not target or target in {".", ".."} or any(c in target for c in "/\\\n\r"):
-        raise NSXConfigError("RTT target must be a non-empty CMake target name without separators.")
-    serial = debug.probe_serial if probe_serial is None else probe_serial
-    _validate_serial(serial)
-    manifest = build / "nsx-artifacts" / f"{target}.path"
-    try:
-        paths = manifest.read_text(encoding="utf-8").splitlines()
-        if len(paths) != 1 or not Path(paths[0]).is_absolute():
-            raise ValueError("invalid target artifact path")
-        elf = Path(paths[0]).resolve()
-    except (OSError, ValueError) as exc:
-        raise NSXConfigError(
-            f"Cannot resolve executable target '{target}' from {manifest}: {exc}. "
-            "Run `nsx configure` with this NSX version, then `nsx build`."
-        ) from exc
+    validate_flash_target_name(target)
+    warn_console_mismatch(app, selected, "rtt", target=target)
+    require_adoption(inspect_build(app, build, selected))
+    debug = load_debug_context(app, build, selected).target(target)
+    if debug.rtt_unavailable:
+        raise NSXConfigError(f"RTT unavailable: {debug.rtt_unavailable}")
+    serial = ProbeSelection.from_request(
+        probe_serial, discover_probe, debug.configured_serial
+    ).serial
+    assert debug.speed_khz is not None
     return RttSettings(
-        app, selected, build, target, elf, _rtt_address(elf), debug.device, debug.speed_khz, serial
+        app,
+        selected,
+        build,
+        target,
+        debug.elf,
+        _rtt_address(debug.elf),
+        debug.device,
+        debug.speed_khz,
+        serial,
     )
 
 
 def rtt_app_impl(
     settings: RttSettings,
     *,
+    probe_serial: str | None = None,
+    discover_probe: bool = False,
     duration_s: float,
     startup_timeout_s: float,
     capture: Path | None = None,
@@ -108,10 +111,31 @@ def rtt_app_impl(
     for name, value in (("duration_s", duration_s), ("startup_timeout_s", startup_timeout_s)):
         if not math.isfinite(value) or value <= 0:
             raise NSXConfigError(f"{name} must be positive and finite.")
-    return capture_rtt(
-        settings,
-        duration_s=duration_s,
-        startup_timeout_s=startup_timeout_s,
-        capture=capture,
-        on_data=on_data,
-    )
+    validate_probe_request(probe_serial, discover_probe)
+    require_adoption(inspect_build(settings.app_dir, settings.build_dir, settings.board))
+    with capture_debug_context(
+        settings.app_dir,
+        settings.build_dir,
+        settings.board,
+        operation="rtt",
+        target=settings.target,
+    ) as snap:
+        target = snap.context.target(settings.target)
+        assert target.speed_khz is not None
+        current = replace(
+            settings,
+            elf=target.elf,
+            address=_rtt_address(snap.directory / "firmware.elf"),
+            device=target.device,
+            speed_khz=target.speed_khz,
+            probe_serial=ProbeSelection.from_request(
+                probe_serial, discover_probe, target.configured_serial
+            ).serial,
+        )
+        return capture_rtt(
+            current,
+            duration_s=duration_s,
+            startup_timeout_s=startup_timeout_s,
+            capture=capture,
+            on_data=on_data,
+        )

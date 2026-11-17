@@ -206,3 +206,17 @@ def test_nickname_error_word_is_not_a_failure(monkeypatch: pytest.MonkeyPatch) -
         tooling.subprocess, "run", _fake_run(_SAMPLE_EMU_LIST.replace("bench-rig", "error-test"))
     )
     assert list_jlink_probes()[-1].nickname == "error-test"
+
+
+def test_transport_is_parsed_from_prefix_not_nickname(monkeypatch: pytest.MonkeyPatch) -> None:
+    from neuralspotx._probe_selection import ProbeSelection
+
+    inventory = (
+        "J-Link[0]: Serial number: 1, ProductName: unknown, Nickname: Connection: USB,\n"
+        "J-Link[1]: Connection: IP, Serial number: 2, ProductName: remote\n"
+        "J-Link[2]: Connection: USB, Serial number: 003, ProductName: local\n"
+    )
+    monkeypatch.setattr(tooling, "find_segger_tool", lambda _: "fake")
+    monkeypatch.setattr(tooling.subprocess, "run", _fake_run(inventory))
+    assert len(tooling.list_jlink_probes()) == 3
+    assert ProbeSelection.from_request(None).resolve() == "003"

@@ -204,16 +204,16 @@ toolchain. Do not turn standalone support into a new qualification gate: pinned
 SDK metadata can intentionally describe fewer toolchains than existing example
 build coverage (FreeRTOS in SDK 5.2.30 declares GCC while CI builds ATFE).
 
-## Opt-in configured debug context
+## Configured debug context and probe policy
 
 The internal schema-1 debug handoff is opt-in (`NSX_DEBUG_CONTEXT=ON` and
-`NSX_DEBUG_INPUT_CONTRACT=1`). Existing flash/view/reset/RTT paths do not consume
-it yet. CMake owns evaluated settings, producer paths, recipes, preparation and
+`NSX_DEBUG_INPUT_CONTRACT=1`). App flash/view/reset/RTT require it; legacy
+build-only and direct CMake paths remain supported. CMake owns evaluated settings, producer paths, recipes, preparation and
 capture; the typed internal Python reader validates and manages private-copy
 lifetime. There is no public backend ABI or alternate Python recipe renderer.
 
 The new protocol requires CMake 3.31+ with cmakeFiles 1.1 and single-configuration
-Ninja. This does not raise the minimum for existing workflows. Source authors
+Ninja. Build-only and direct CMake retain their existing minimum requirements. Source authors
 must register external textual setting reads with `nsx_debug_read_text`; opt-in
 is an obligation, not proof that arbitrary CMake/environment dependencies are
 tracked. Flat glob membership preserves directory inclusion and entry types;
@@ -231,6 +231,12 @@ Capture copies operation inputs into a caller-owned temporary directory outside
 the source/build trees, validates around the copy, and renders flash commands
 using the producer's template. Keep the snapshot alive until every related
 process stops. Flash callers must build first; RTT callers must analyze the
-copied ELF. Neither protocol proves running firmware identity. Activation of the
-accepted probe-selection policy is separate work in #152; legacy upgrade and
-frozen-mode behavior must be tested before normal operations use this protocol.
+copied ELF. Neither protocol proves running firmware identity. Explicit serials are temporary overrides; omission inherits the evaluated target
+preference or discovers one eligible USB probe; explicit discovery ignores the
+preference. Resolve once with no fallback. Explicit configure sets/clears the cache
+preference; implicit reconfiguration preserves a validated owned preference.
+Malformed/wrong-identity contexts fail before writes or hardware; only typed
+freshness failures may trigger permitted preparation. Frozen verification precedes
+all potentially regenerating build steps. No automatic helper upgrade or contract
+certification is allowed. Initial template opt-in is bounded to default/blinky on
+Apollo510 EVB/GCC; other graphs require explicit authored adoption/qualification.
