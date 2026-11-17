@@ -481,3 +481,26 @@ def test_flash_build_output_uses_emitter(app, monkeypatch, capsys):
     assert len(builds) == 2
     assert sum(event.message == "compiler output" for event in events) == 2
     assert sum(event.message == "compiler warning" for event in events) == 2
+
+
+@pytest.mark.parametrize("explicit", [False, True])
+def test_failed_board_switch_with_retained_context_has_actionable_remedy(tmp_path, explicit):
+    root, build = make_debug_app(tmp_path / "app", board="apollo4p_evb")
+    source = root / "CMakeLists.txt"
+    original = source.read_text()
+    source.write_text(
+        original.replace(
+            "include(cmake/nsx/nsx_helpers.cmake)", 'message(FATAL_ERROR "before helper loading")'
+        )
+    )
+    failed = subprocess.run(
+        ["cmake", "-S", str(root), "-B", str(build), "-DNSX_BOARD=apollo510_evb"],
+        capture_output=True,
+        text=True,
+        timeout=45,
+    )
+    assert failed.returncode != 0 and "before helper loading" in failed.stderr
+    assert (build / "nsx-debug/context.json").is_file()
+    source.write_text(original)
+    with pytest.raises(NSXConfigError, match="fresh --build-dir"):
+        inspect_build(root, build, "apollo510_evb", replace_board=explicit)

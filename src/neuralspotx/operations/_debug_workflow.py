@@ -79,6 +79,11 @@ def inspect_build(app: Path, build: Path, board: str, *, replace_board: bool = F
             "CMake board mismatch; explicitly run `nsx configure --board ...` to replace it."
         )
     evaluated_board = _cmake_cache_value(build, "NSX_RESET_BOARD")
+    if evaluated_board and evaluated_board != cached_board and context.exists():
+        raise NSXConfigError(
+            "The cached board and retained debug context have conflicting ownership; "
+            "configure using a fresh --build-dir."
+        )
     if evaluated_board and evaluated_board != cached_board and not replace_board:
         raise NSXConfigError(
             "Incomplete CMake board replacement; explicitly run `nsx configure --board ...` "
