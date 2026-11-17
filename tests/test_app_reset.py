@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -168,3 +169,21 @@ def test_real_cmake_exports_and_clears_resolved_settings(
     with pytest.raises(NSXConfigError, match="settings are missing"):
         app_debug_settings(app, board=None, build_dir=None)
     assert len(reset_calls) == 0
+
+
+@pytest.mark.parametrize("as_path", [False, True])
+def test_reset_expands_home_in_explicit_build_path(reset_calls, as_path):
+    # Use a disposable directory under the real home to exercise expanduser on
+    # every host without changing HOME/USERPROFILE or assuming drive layout.
+    with tempfile.TemporaryDirectory(prefix="nsx-reset-path-", dir=Path.home()) as directory:
+        app, build = _app(Path(directory))
+        before = (build / "CMakeCache.txt").read_bytes()
+        app_argument = Path("~") / app.relative_to(Path.home())
+        build_argument = Path("~") / build.relative_to(Path.home())
+        result = api.reset_target(
+            app_dir=app_argument if as_path else str(app_argument),
+            build_dir=build_argument if as_path else str(build_argument),
+        )
+        assert result.device == "CustomDevice" and result.probe_serial == "1234"
+        assert len(reset_calls) == 1
+        assert (build / "CMakeCache.txt").read_bytes() == before
