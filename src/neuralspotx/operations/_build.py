@@ -281,23 +281,30 @@ def flash_app_impl(
         build_dir=build_dir,
         target=target,
     )
-    build_app_impl(
-        app,
-        board=selected,
-        build_dir=build,
-        toolchain=toolchain,
-        target=resolved_target,
-        jobs=jobs,
-        sdk_root=sdk_root,
-        frozen=frozen,
-        on_line=on_line,
-    )
-    prepare_debug(app, build, selected, required=True)
-    # Preparation configures again: compile against that final generation.
-    run(
-        ["cmake", "--build", str(build), "--target", resolved_target, "-j", str(jobs)],
-        on_line=on_line,
-    )
+    try:
+        build_app_impl(
+            app,
+            board=selected,
+            build_dir=build,
+            toolchain=toolchain,
+            target=resolved_target,
+            jobs=jobs,
+            sdk_root=sdk_root,
+            frozen=frozen,
+            on_line=on_line,
+        )
+        prepare_debug(app, build, selected, required=True)
+        # Preparation configures again: compile against that final generation.
+        run(
+            ["cmake", "--build", str(build), "--target", resolved_target, "-j", str(jobs)],
+            on_line=on_line,
+        )
+    except subprocess.CalledProcessError as exc:
+        raise NSXError(
+            format_subprocess_error(
+                exc, context=f"Flash build for target '{resolved_target}' in {build}"
+            )
+        ) from None
     load_debug_context(app, build, selected)  # Regeneration here must fail before USB.
     with capture_debug_context(
         app, build, selected, operation="flash", target=resolved_target
@@ -504,8 +511,8 @@ def view_app_impl(
             sdk_root=sdk_root,
         )
     prepare_debug(app, build, selected, required=True)
-    with capture_debug_context(app, build, selected, operation="swo", target=name) as snap:
-        settings = snap.context.target(name)
+    with capture_debug_context(app, build, selected, operation="swo") as snap:
+        settings = snap.context.target()
         serial = ProbeSelection.from_request(
             probe_serial, discover_probe, settings.configured_serial
         ).resolve()

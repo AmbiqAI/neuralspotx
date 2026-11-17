@@ -400,3 +400,31 @@ def test_update_validates_sdk_override_before_mutating(app, monkeypatch, operati
     assert (
         cli.main([operation, str(root), "--update", "--sdk-root", str(root / "missing-sdk")]) == 1
     )
+
+
+def test_swo_uses_authored_primary_target(app):
+    root, build, calls = app
+    source = root / "CMakeLists.txt"
+    source.write_text(source.read_text().replace("demo", "firmware"))
+    prepare(root, build)
+    cmake("--build", build)
+    api.view_app(root)
+    assert calls[-1]["serial"] == "1234"
+
+
+@pytest.mark.parametrize("failing_build", [1, 2])
+def test_flash_build_failure_is_public_error_before_hardware(app, monkeypatch, failing_build):
+    root, _, calls = app
+    count = 0
+
+    def fail_build(command, **kwargs):
+        nonlocal count
+        count += 1
+        if count == failing_build:
+            raise subprocess.CalledProcessError(1, command, stderr="compiler failed")
+
+    monkeypatch.setattr(_build, "run", fail_build)
+    with pytest.raises(NSXError, match="Flash build for target 'demo'"):
+        api.flash_app(root)
+    assert count == failing_build
+    assert not any("serial" in call for call in calls)
