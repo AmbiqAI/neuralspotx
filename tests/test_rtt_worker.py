@@ -10,20 +10,24 @@ from types import ModuleType, SimpleNamespace
 import pytest
 
 from neuralspotx import _rtt_worker as worker
-from neuralspotx.tooling import JLinkProbe
+from neuralspotx import tooling
+from neuralspotx._errors import NSXConfigError
+from neuralspotx.tooling import JLinkProbe, _JLinkInventoryEntry
 
 
 @pytest.mark.parametrize("count", [0, 2])
 def test_ambiguous_selection_rejected(monkeypatch: pytest.MonkeyPatch, count: int) -> None:
     monkeypatch.setattr(
-        worker, "list_jlink_probes", lambda: [JLinkProbe(0, "1234", "fake")] * count
+        tooling,
+        "_list_jlink_inventory",
+        lambda: [_JLinkInventoryEntry(JLinkProbe(0, "1234", "fake"), "USB")] * count,
     )
-    with pytest.raises(RuntimeError, match="probe-serial"):
+    with pytest.raises(NSXConfigError, match="probe-serial"):
         worker._select_serial(None)
 
 
 def test_explicit_serial_skips_enumeration(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(worker, "list_jlink_probes", lambda: pytest.fail("enumerated"))
+    monkeypatch.setattr(tooling, "_list_jlink_inventory", lambda: pytest.fail("enumerated"))
     assert worker._select_serial("5678") == "5678"
 
 

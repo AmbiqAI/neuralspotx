@@ -3,9 +3,7 @@ flash_app_impl.
 
 Verifies that ``frozen=True`` protects a hand-patched vendored module from
 being silently overwritten by the implicit module-sync that these three
-operations perform when a (re)configure is triggered, and that the existing
-"skip module-sync entirely when already configured" guards on
-build_app_impl/flash_app_impl are unaffected by the new parameter.
+operations perform when a (re)configure is triggered, including already configured builds that Ninja may regenerate.
 
 All CMake/toolchain side effects are monkeypatched out — these tests only
 exercise the module-sync/frozen threading logic, not real builds.
@@ -66,14 +64,11 @@ def _stub_cmake_side_effects(monkeypatch: pytest.MonkeyPatch) -> None:
     )
     monkeypatch.setattr(_build_mod, "print_captured_output", lambda *a, **k: None)
     monkeypatch.setattr(_build_mod, "flash_programming_verified", lambda _output: True)
-    monkeypatch.setattr(
-        _build_mod,
-        "validate_flash_recipe",
-        lambda build_dir, target: (
-            build_dir / f"{target}.bin",
-            build_dir / "jlink" / target / "flash_cmds.jlink",
-        ),
-    )
+    from neuralspotx.operations._debug_workflow import DebugState, OwnedBuild
+
+    # This suite isolates frozen sync threading; real ownership/context is tested separately.
+    monkeypatch.setattr(_build_mod, "inspect_build", lambda *a, **k: OwnedBuild(DebugState.VALID))
+    monkeypatch.setattr(_build_mod, "prepare_debug", lambda *a, **k: False)
 
 
 class TestConfigureFrozen:
@@ -111,14 +106,8 @@ class TestBuildFrozen:
         with pytest.raises(NSXError):
             build_app_impl(tmp_path, frozen=True)
 
-    def test_frozen_skips_module_sync_entirely_when_already_configured(
-        self, tmp_path: Path
-    ) -> None:
-        """Existing behavior preserved: build.ninja present means no module
-
-        sync at all, frozen or not -- drift (even severe drift) is never
-        even inspected on this path.
-        """
+    def test_frozen_checks_drift_even_when_already_configured(self, tmp_path: Path) -> None:
+        """Frozen checks precede Ninja, even with an existing build tree."""
         _make_vendored(tmp_path, "my-vend")
         _write_nsx_yml(tmp_path, [{"name": "my-vend", "source": {"vendored": True}}])
         lock_app_impl(tmp_path)
@@ -128,16 +117,13 @@ class TestBuildFrozen:
         build_dir.mkdir(parents=True, exist_ok=True)
         (build_dir / "build.ninja").write_text("# already configured\n")
 
-        build_app_impl(tmp_path, frozen=True)  # must not raise
+        with pytest.raises(NSXError):
+            build_app_impl(tmp_path, frozen=True)
 
 
 class TestFlashFrozen:
     def test_frozen_raises_on_drift_when_probe_serial_given(self, tmp_path: Path) -> None:
-        """probe_serial always forces a (re)configure (see flash_app_impl's
-
-        docstring) -- frozen changes how the accompanying module sync
-        behaves, but does not skip it.
-        """
+        """A temporary serial override cannot bypass frozen verification."""
         _make_vendored(tmp_path, "my-vend")
         _write_nsx_yml(tmp_path, [{"name": "my-vend", "source": {"vendored": True}}])
         lock_app_impl(tmp_path)
@@ -150,9 +136,7 @@ class TestFlashFrozen:
         with pytest.raises(NSXError):
             flash_app_impl(tmp_path, probe_serial="1160002204", frozen=True)
 
-    def test_frozen_skips_module_sync_when_no_probe_serial_and_already_configured(
-        self, tmp_path: Path
-    ) -> None:
+    def test_frozen_checks_drift_without_probe_override(self, tmp_path: Path) -> None:
         _make_vendored(tmp_path, "my-vend")
         _write_nsx_yml(tmp_path, [{"name": "my-vend", "source": {"vendored": True}}])
         lock_app_impl(tmp_path)
@@ -162,19 +146,15 @@ class TestFlashFrozen:
         build_dir.mkdir(parents=True, exist_ok=True)
         (build_dir / "build.ninja").write_text("# already configured\n")
 
-        flash_app_impl(tmp_path, frozen=True)  # no probe_serial -> must not raise
+        with pytest.raises(NSXError):
+            flash_app_impl(tmp_path, frozen=True)
 
 
 class TestViewFrozen:
     def test_frozen_raises_on_drift_when_probe_serial_given(
         self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
-        """view_app_impl shares flash_app_impl's probe_serial-forces-
-
-        reconfigure trigger, so it must honor frozen identically --
-        otherwise AppViewRequest.frozen (inherited from AppActionRequest)
-        would be silently accepted but ignored.
-        """
+        """SWO checks frozen inputs before any potentially configuring work."""
         from neuralspotx.operations import view_app_impl
 
         _make_vendored(tmp_path, "my-vend")

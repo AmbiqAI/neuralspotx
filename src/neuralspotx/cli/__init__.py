@@ -28,8 +28,9 @@ from importlib.metadata import version as distribution_version
 from pathlib import Path
 
 from .. import api, operations
-from .._errors import NSXError, NSXToolchainError
+from .._errors import NSXConfigError, NSXError, NSXToolchainError
 from .._logging import configure_logging
+from .._probe_selection import validate_probe_request
 from ..constants import DEFAULT_BOARD
 from ..metadata import SUPPORTED_MODULE_TYPES
 from ..models import CommandCategory, CommandHint, CommandScope, OutdatedReport
@@ -40,6 +41,7 @@ from ..subprocess_utils import (
     format_subprocess_error,
     terminate_live_children,
     terminate_on_signals,
+    timeout_budget,
 )
 from ..tooling import JLinkProbe, list_jlink_probes
 from ._cmd_board import cmd_board_create, cmd_board_list, cmd_board_show
@@ -233,6 +235,7 @@ def cmd_reset(args: argparse.Namespace) -> None:
         board=args.board,
         build_dir=args.build_dir,
         probe_serial=getattr(args, "probe_serial", None),
+        discover_probe=getattr(args, "discover_probe", False),
         kind=args.kind,
         interface=args.interface,
         speed_khz=args.speed_khz,
@@ -246,6 +249,17 @@ def cmd_reset(args: argparse.Namespace) -> None:
 def cmd_build(args: argparse.Namespace) -> None:
     app_dir = _selected_app_dir(args)
     if getattr(args, "update", False):
+        if getattr(args, "frozen", False):
+            raise NSXConfigError("--update cannot be combined with --frozen.")
+        with timeout_budget(getattr(args, "timeout", None)):
+            operations._build.preflight_build(
+                app_dir,
+                board=args.board,
+                build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
+                sdk_root=Path(args.sdk_root).expanduser().resolve()
+                if getattr(args, "sdk_root", None)
+                else None,
+            )
         api.update_app(app_dir, timeout_s=getattr(args, "timeout", None))
     api.build_app(
         app_dir,
@@ -264,8 +278,25 @@ def cmd_build(args: argparse.Namespace) -> None:
 
 @command_hint("flash", _C.DEPLOY, _S.APP, "nsx view")
 def cmd_flash(args: argparse.Namespace) -> None:
+    validate_probe_request(
+        getattr(args, "probe_serial", None), getattr(args, "discover_probe", False)
+    )
+    if getattr(args, "target", None) is not None:
+        operations._hardware.validate_flash_target_name(args.target)
+    if getattr(args, "update", False) and getattr(args, "frozen", False):
+        raise NSXConfigError("--update cannot be combined with --frozen.")
     app_dir = _selected_app_dir(args)
     if getattr(args, "update", False):
+        with timeout_budget(getattr(args, "timeout", None)):
+            operations._build.preflight_flash(
+                app_dir,
+                board=args.board,
+                build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
+                sdk_root=Path(args.sdk_root).expanduser().resolve()
+                if getattr(args, "sdk_root", None)
+                else None,
+                target=getattr(args, "target", None),
+            )
         api.update_app(app_dir, timeout_s=getattr(args, "timeout", None))
     quiet_emit = (lambda _event: None) if getattr(args, "quiet", False) else None
     api.flash_app(
@@ -275,6 +306,7 @@ def cmd_flash(args: argparse.Namespace) -> None:
         toolchain=args.toolchain,
         target=getattr(args, "target", None),
         probe_serial=getattr(args, "probe_serial", None),
+        discover_probe=getattr(args, "discover_probe", False),
         jobs=args.jobs,
         sdk_root=Path(args.sdk_root).expanduser().resolve()
         if getattr(args, "sdk_root", None)
@@ -293,6 +325,7 @@ def cmd_view(args: argparse.Namespace) -> None:
         build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
         toolchain=args.toolchain,
         probe_serial=getattr(args, "probe_serial", None),
+        discover_probe=getattr(args, "discover_probe", False),
         sdk_root=Path(args.sdk_root).expanduser().resolve()
         if getattr(args, "sdk_root", None)
         else None,
@@ -708,7 +741,13 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional out-of-tree AmbiqSuite root passed as NSX_AMBIQSUITE_ROOT_OVERRIDE",
     )
-    p_flash.add_argument(
+    p_flash_probe = p_flash.add_mutually_exclusive_group()
+    p_flash_probe.add_argument(
+        "--discover-probe",
+        action="store_true",
+        help="Ignore configured preference and require exactly one local USB probe",
+    )
+    p_flash_probe.add_argument(
         "--probe-serial",
         default=None,
         help="Optional SEGGER J-Link USB serial number to use",
@@ -723,11 +762,10 @@ def _build_parser() -> argparse.ArgumentParser:
         "--frozen",
         action="store_true",
         help=(
-            "When a (re)configure is needed, error on any drift between nsx.yml, "
+            "Before configure/build/preparation, error on any drift between nsx.yml, "
             "nsx.lock, and modules/ instead of correcting it; modules missing from "
-            "modules/ are fetched at their locked revision and verified. Note: passing "
-            "--probe-serial always forces a reconfigure; --frozen only changes "
-            "how the accompanying module sync behaves, not whether it runs."
+            "modules/ are fetched at their locked revision and verified. Probe overrides "
+            "are temporary and never force serial changes in the cache."
         ),
     )
     _add_timeout(p_flash)
@@ -741,7 +779,13 @@ def _build_parser() -> argparse.ArgumentParser:
     p_reset.add_argument("--board", default=None, help="Override board from nsx.yml")
     p_reset.add_argument("--build-dir", default=None, help="Configured build directory override")
     p_reset.add_argument("--device", default=None, help="Explicit SEGGER device; bypass app lookup")
-    p_reset.add_argument(
+    p_reset_probe = p_reset.add_mutually_exclusive_group()
+    p_reset_probe.add_argument(
+        "--discover-probe",
+        action="store_true",
+        help="Ignore configured preference and require exactly one local USB probe",
+    )
+    p_reset_probe.add_argument(
         "--probe-serial", default=None, help="Optional SEGGER J-Link USB serial number to use"
     )
     p_reset.add_argument(
@@ -775,7 +819,13 @@ def _build_parser() -> argparse.ArgumentParser:
         default=None,
         help="Optional out-of-tree AmbiqSuite root passed as NSX_AMBIQSUITE_ROOT_OVERRIDE",
     )
-    p_view.add_argument(
+    p_view_probe = p_view.add_mutually_exclusive_group()
+    p_view_probe.add_argument(
+        "--discover-probe",
+        action="store_true",
+        help="Ignore configured preference and require exactly one local USB probe",
+    )
+    p_view_probe.add_argument(
         "--probe-serial",
         default=None,
         help="Optional SEGGER J-Link USB serial number to use",
@@ -784,11 +834,10 @@ def _build_parser() -> argparse.ArgumentParser:
         "--frozen",
         action="store_true",
         help=(
-            "When a (re)configure is needed, error on any drift between nsx.yml, "
+            "Before configure/build/preparation, error on any drift between nsx.yml, "
             "nsx.lock, and modules/ instead of correcting it; modules missing from "
-            "modules/ are fetched at their locked revision and verified. Note: passing "
-            "--probe-serial always forces a reconfigure; --frozen only changes "
-            "how the accompanying module sync behaves, not whether it runs."
+            "modules/ are fetched at their locked revision and verified. Probe overrides "
+            "are temporary and never force serial changes in the cache."
         ),
     )
     reset_group = p_view.add_mutually_exclusive_group()
@@ -833,7 +882,13 @@ def _build_parser() -> argparse.ArgumentParser:
     p_rtt.add_argument("--board", default=None, help="Override board from nsx.yml")
     p_rtt.add_argument("--build-dir", default=None, help="Configured build directory")
     p_rtt.add_argument("--target", default=None, help="Executable CMake target (default: app name)")
-    p_rtt.add_argument("--probe-serial", default=None, help="SEGGER J-Link USB serial number")
+    p_rtt_probe = p_rtt.add_mutually_exclusive_group()
+    p_rtt_probe.add_argument(
+        "--discover-probe",
+        action="store_true",
+        help="Ignore configured preference and require exactly one local USB probe",
+    )
+    p_rtt_probe.add_argument("--probe-serial", default=None, help="SEGGER J-Link USB serial number")
     p_rtt.add_argument(
         "--duration",
         type=float,

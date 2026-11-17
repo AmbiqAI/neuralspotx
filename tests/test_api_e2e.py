@@ -17,7 +17,6 @@ from neuralspotx import (
     AppBuildRequest,
     AppCleanRequest,
     AppCreateRequest,
-    AppFlashRequest,
     AppViewRequest,
     ModuleInitRequest,
     ModuleRegisterRequest,
@@ -27,13 +26,11 @@ from neuralspotx import (
     clean_app,
     cli,
     create_app,
-    flash_app,
     init_module,
     lock_app,
     register_module,
     remove_module,
     update_modules,
-    view_app,
 )
 from neuralspotx.module_registry import _resolve_module_closure
 from neuralspotx.project_config import (
@@ -41,6 +38,32 @@ from neuralspotx.project_config import (
     _vendored_metadata_relpath,
     _vendored_target_dir,
 )
+
+
+def viewer_command(*args: object, **kwargs: object) -> list[str]:
+    return ["viewer"]
+
+
+def view_app(request: AppViewRequest) -> None:
+    """Exercise viewer lifecycle independently of CMake preparation/capture."""
+    app, name, board, build = operations._build._resolve_build_context(
+        Path(request.app_dir),
+        board=request.board,
+        build_dir=Path(request.build_dir) if request.build_dir else None,
+    )
+    reset = operations._build._resolved_view_reset_on_open(app, board, request.reset_on_open)
+    operations._build._run_viewer(
+        app,
+        build,
+        board,
+        name,
+        viewer_command(),
+        ["captured-reset"] if reset else [],
+        reset_on_open=reset,
+        reset_delay_ms=request.reset_delay_ms,
+        duration_s=request.duration_s,
+        capture=Path(request.capture) if request.capture else None,
+    )
 
 
 class _RecordingContainer:
@@ -865,10 +888,14 @@ def test_build_app_uses_shared_impl_and_triggers_configure_when_needed(
         board: str,
         toolchain: str | None = None,
         sdk_root: Path | None = None,
+        probe_serial: str | None = None,
     ) -> None:
         configure_calls.append((app, build, board, toolchain, sdk_root))
         build.mkdir(parents=True, exist_ok=True)
         (build / "build.ninja").write_text("# fake\n", encoding="utf-8")
+        (build / "CMakeCache.txt").write_text(
+            f"CMAKE_HOME_DIRECTORY:INTERNAL={app}\nCMAKE_CACHEFILE_DIR:INTERNAL={build}\nNSX_BOARD:STRING={board}\n"
+        )
 
     def fake_run(cmd: list[str], cwd: Path | None = None, *, on_line: object = None) -> None:
         del cwd
@@ -882,80 +909,6 @@ def test_build_app_uses_shared_impl_and_triggers_configure_when_needed(
     assert configure_calls == [(app_dir, build_dir, "apollo510_evb", None, None)]
     assert build_calls == [
         ["cmake", "--build", str(build_dir), "--target", "hello_build", "-j", "3"]
-    ]
-
-
-def test_flash_and_view_reconfigure_when_probe_serial_is_supplied(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    create_app(
-        AppCreateRequest(app_dir=tmp_path / "hello_probe", board="apollo510_evb", no_bootstrap=True)
-    )
-
-    app_dir = tmp_path / "hello_probe"
-    build_dir = app_dir / "build" / "apollo510_evb"
-    build_dir.mkdir(parents=True, exist_ok=True)
-    (build_dir / "build.ninja").write_text("# fake\n", encoding="utf-8")
-
-    configure_calls: list[tuple[Path, Path, str, str | None, str | None, Path | None]] = []
-    run_calls: list[list[str]] = []
-
-    def fake_configure(
-        app: Path,
-        build: Path,
-        board: str,
-        toolchain: str | None = None,
-        probe_serial: str | None = None,
-        sdk_root: Path | None = None,
-    ) -> None:
-        configure_calls.append((app, build, board, toolchain, probe_serial, sdk_root))
-
-    def fake_run_capture(
-        cmd: list[str], cwd: Path | None = None
-    ) -> subprocess.CompletedProcess[str]:
-        del cwd
-        run_calls.append(cmd)
-        artifact = build_dir / "hello_probe.bin"
-        artifact.write_bytes(b"firmware")
-        recipe = build_dir / "jlink" / "hello_probe" / "flash_cmds.jlink"
-        recipe.parent.mkdir(parents=True, exist_ok=True)
-        recipe.write_text(
-            f'ExitOnError 1\nReset\nLoadFile "{artifact}", 0x00410000\nReset\nGo\nExit\n',
-            encoding="utf-8",
-        )
-        return subprocess.CompletedProcess(
-            cmd, 0, stdout="Flash download: Total time needed: 0.123s\n", stderr=""
-        )
-
-    monkeypatch.setattr(operations._build, "_run_cmake_configure", fake_configure)
-    monkeypatch.setattr(operations._build, "run_capture", fake_run_capture)
-    monkeypatch.setattr(operations._build, "extract_view_command", lambda *_args, **_kw: ["viewer"])
-    # Stub the probe scan so the test never shells out to ``ps`` (the
-    # cross-platform fallback in ``find_processes_holding_probe``). That
-    # call would otherwise use the globally-patched ``subprocess.Popen``
-    # below and fail on macOS/Windows, where ``/proc`` is unavailable.
-    monkeypatch.setattr(operations._build, "find_processes_holding_probe", lambda _serial: [])
-
-    class _DoneProc:
-        def poll(self) -> int:
-            return 0
-
-        def wait(self, timeout: float | None = None) -> int:
-            del timeout
-            return 0
-
-    monkeypatch.setattr(operations._build.subprocess, "Popen", lambda *args, **kwargs: _DoneProc())
-
-    flash_app(AppFlashRequest(app_dir=app_dir, probe_serial="1160002204"))
-    view_app(AppViewRequest(app_dir=app_dir, probe_serial="1160002204", reset_on_open=False))
-
-    assert configure_calls == [
-        (app_dir, build_dir, "apollo510_evb", None, "1160002204", None),
-        (app_dir, build_dir, "apollo510_evb", None, "1160002204", None),
-    ]
-    assert run_calls == [
-        ["cmake", "--build", str(build_dir), "--target", "hello_probe", "-j", "8"],
-        ["cmake", "--build", str(build_dir), "--target", "hello_probe_flash", "-j", "8"],
     ]
 
 
@@ -983,7 +936,7 @@ def test_view_fails_clearly_when_viewer_exits_before_reset(
         return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
 
     monkeypatch.setattr(operations._build, "run_capture", fake_run_capture)
-    monkeypatch.setattr(operations._build, "extract_view_command", lambda *_args, **_kw: ["viewer"])
+    monkeypatch.setattr(sys.modules[__name__], "viewer_command", lambda *_args, **_kw: ["viewer"])
 
     class _ExitedProc:
         pid = 1234
@@ -1035,7 +988,7 @@ def test_view_auto_skips_reset_for_secure_boards(
         return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
 
     monkeypatch.setattr(operations._build, "run_capture", fake_run_capture)
-    monkeypatch.setattr(operations._build, "extract_view_command", lambda *_args, **_kw: ["viewer"])
+    monkeypatch.setattr(sys.modules[__name__], "viewer_command", lambda *_args, **_kw: ["viewer"])
 
     class _DoneProc:
         def poll(self) -> int:
@@ -1094,7 +1047,7 @@ def test_view_auto_skips_reset_for_custom_board_inheriting_apollo4(
         return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
 
     monkeypatch.setattr(operations._build, "run_capture", fake_run_capture)
-    monkeypatch.setattr(operations._build, "extract_view_command", lambda *_args, **_kw: ["viewer"])
+    monkeypatch.setattr(sys.modules[__name__], "viewer_command", lambda *_args, **_kw: ["viewer"])
 
     class _DoneProc:
         def poll(self) -> int:
@@ -1139,7 +1092,7 @@ def test_view_explicit_reset_overrides_apollo4_auto_policy(
         return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
 
     monkeypatch.setattr(operations._build, "run_capture", fake_run_capture)
-    monkeypatch.setattr(operations._build, "extract_view_command", lambda *_args, **_kw: ["viewer"])
+    monkeypatch.setattr(sys.modules[__name__], "viewer_command", lambda *_args, **_kw: ["viewer"])
 
     class _RunningProc:
         # Running until wait() returns, then exited, like a real viewer; a
@@ -1162,9 +1115,7 @@ def test_view_explicit_reset_overrides_apollo4_auto_policy(
 
     view_app(AppViewRequest(app_dir=app_dir, reset_on_open=True, reset_delay_ms=0))
 
-    assert reset_calls == [
-        ["cmake", "--build", str(build_dir), "--target", "hello_ap4_view_reset_reset", "-j", "1"]
-    ]
+    assert reset_calls == [["captured-reset"]]
 
 
 def test_view_warns_when_probe_already_in_use(
@@ -1182,8 +1133,8 @@ def test_view_warns_when_probe_already_in_use(
     (build_dir / "build.ninja").write_text("# fake\n", encoding="utf-8")
 
     monkeypatch.setattr(
-        operations._build,
-        "extract_view_command",
+        sys.modules[__name__],
+        "viewer_command",
         lambda *_args, **_kw: ["JLinkSWOViewer_CL", "-USB", "1160002204", "-itmport", "0"],
     )
     monkeypatch.setattr(operations._build, "find_processes_holding_probe", lambda _serial: [4242])
@@ -1214,7 +1165,7 @@ def _view_ready_app(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, name: str) 
     build_dir = app_dir / "build" / "apollo510_evb"
     build_dir.mkdir(parents=True, exist_ok=True)
     (build_dir / "build.ninja").write_text("# fake\n", encoding="utf-8")
-    monkeypatch.setattr(operations._build, "extract_view_command", lambda *_a, **_k: ["viewer"])
+    monkeypatch.setattr(sys.modules[__name__], "viewer_command", lambda *_a, **_k: ["viewer"])
     # Drop the stdbuf prefix so the recorded command is platform-independent.
     monkeypatch.setattr(operations._build.shutil, "which", lambda _name: None)
     return app_dir
@@ -1306,7 +1257,7 @@ def test_view_stops_a_running_viewer_when_an_unexpected_error_escapes(
         raise OSError("reset tool vanished")
 
     monkeypatch.setattr(operations._build, "run_capture", failing_reset)
-    monkeypatch.setattr(operations._build, "extract_view_command", lambda *_args, **_kw: ["viewer"])
+    monkeypatch.setattr(sys.modules[__name__], "viewer_command", lambda *_args, **_kw: ["viewer"])
 
     class _RunningProc:
         pid = 4321
@@ -1390,8 +1341,8 @@ def test_view_propagates_natural_nonzero_exit(
     app_dir = _view_ready_app(tmp_path, monkeypatch, "failed_viewer")
     # Real child process, no probe: cover capture and timed/untimed wait paths.
     monkeypatch.setattr(
-        operations._build,
-        "extract_view_command",
+        sys.modules[__name__],
+        "viewer_command",
         lambda *_a, **_k: [sys.executable, "-c", "import sys; sys.exit(7)"],
     )
     with pytest.raises(NSXError, match="7"):

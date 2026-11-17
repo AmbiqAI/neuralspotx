@@ -66,15 +66,13 @@ class AppActionRequest:
         toolchain: Optional toolchain override (``gcc``, ``armclang``).
         sdk_root: Optional out-of-tree AmbiqSuite root passed through as
             ``-DNSX_AMBIQSUITE_ROOT_OVERRIDE=...`` during CMake configure.
-        frozen: When a module sync is needed (fresh workspace, or an
-            existing build directory reconfiguring), verify ``modules/``
+        frozen: Before configure/build/debug preparation, verify ``modules/``
             against ``nsx.lock`` and raise instead of silently
             re-vendoring on any drift; modules missing from disk are
             fetched at their locked revision and verified. Mirrors
             ``AppSyncRequest.frozen``.
-            Use this to iterate on a hand-patched vendored module
-            without ``configure``/``build``/``flash`` silently reverting
-            it on the next run.
+            Drift is rejected even in an already configured build, since Ninja
+            may regenerate CMake inputs. No helper upgrade is implicit.
         timeout_s: Per-subprocess wall-clock budget (seconds).  ``None``
             disables the timeout.  When the budget elapses, the entire
             child process group is SIGTERM/SIGKILL'd and
@@ -121,6 +119,8 @@ class AppViewRequest(AppActionRequest):
     duration_s: float | None = None
     capture: PathLike | None = None
 
+    discover_probe: bool = field(default=False, kw_only=True)
+
 
 @dataclass(slots=True)
 class AppBuildRequest(AppActionRequest):
@@ -136,6 +136,8 @@ class AppFlashRequest(AppActionRequest):
 
     target: str | None = field(default=None, kw_only=True)
     jobs: int = 8
+
+    discover_probe: bool = field(default=False, kw_only=True)
 
 
 @dataclass(slots=True)
@@ -287,3 +289,5 @@ class AppRttRequest:
     duration_s: float = 10.0
     startup_timeout_s: float = 10.0
     capture: PathLike | None = None
+
+    discover_probe: bool = field(default=False, kw_only=True)

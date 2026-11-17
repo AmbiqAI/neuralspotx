@@ -3,6 +3,10 @@ project(coremark LANGUAGES C CXX ASM)
 
 set(NSX_BOARD "apollo510_evb" CACHE STRING "Target board")
 
+# Audited baseline: Apollo510 EVB/GCC. Re-audit external setting inputs when
+# changing modules or board logic; use nsx_debug_read_text for data inputs.
+include(${CMAKE_CURRENT_LIST_DIR}/cmake/nsx/nsx_debug_template.cmake)
+
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/nsx/modules.cmake)
 include(${CMAKE_CURRENT_LIST_DIR}/cmake/nsx/nsx_app_bootstrap.cmake)
 
@@ -51,3 +55,7 @@ target_link_libraries(coremark PRIVATE
 )
 
 nsx_finalize_app(coremark)
+
+if(NSX_DEBUG_CONTEXT)
+    nsx_debug_set_primary_target(coremark)
+endif()

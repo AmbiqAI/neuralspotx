@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import math
 import os
 import shutil
 import subprocess
@@ -14,53 +15,33 @@ from typing import TextIO
 from .. import board_descriptors as bd
 from .._errors import NSXConfigError, NSXError
 from .._io import info, line, warn
+from .._probe_selection import ProbeSelection, validate_probe_request
 from ..models import FlashResult
 from ..project_config import _run_cmake_configure
 from ..subprocess_utils import (
     _ProcessContainer,
     defer_termination,
     die_with_parent_preexec,
-    extract_view_command,
     format_subprocess_error,
     print_captured_output,
     run,
     run_capture,
 )
-from ..tooling import JLINK_NAMES, find_processes_holding_probe, find_segger_tool
+from ..tooling import JLINK_SWO_NAMES, find_processes_holding_probe, find_segger_tool
 from . import _common
 from ._cmake_cache import _cmake_cache_value
 from ._common import _resolve_build_context
+from ._debug_context import capture_debug_context, load_debug_context
+from ._debug_workflow import inspect_build, prepare_debug, require_adoption
 from ._hardware import (
+    _jlink_command,
     flash_programming_verified,
-    validate_flash_recipe,
+    validate_flash_paths,
     validate_flash_target_name,
 )
 from ._lock import warn_if_lock_stale
 from ._requirements import validate_app_requirements
 from ._sync import _ensure_app_modules, regenerate_active_board_glue
-
-
-def _same_executable_path(cached: str | None, resolved: str | None) -> bool:
-    """Compare a CMake FILEPATH cache value with the current discovery result."""
-
-    if resolved is None:
-        return cached is None or not cached or cached.endswith("-NOTFOUND")
-    if cached is None or not cached or cached.endswith("-NOTFOUND"):
-        return False
-    return os.path.normcase(os.path.normpath(cached)) == os.path.normcase(
-        os.path.normpath(resolved)
-    )
-
-
-def _flash_cache_matches(
-    build_dir: Path, *, probe_serial: str | None, jlink_executable: str | None
-) -> bool:
-    """Return whether cached probe and Commander selection match this flash request."""
-
-    cached_probe = _cmake_cache_value(build_dir, "NSX_JLINK_SERIAL") or ""
-    return cached_probe == (probe_serial or "") and _same_executable_path(
-        _cmake_cache_value(build_dir, "NSX_JLINK_EXE"), jlink_executable
-    )
 
 
 def _check_sdk_root(sdk_root: Path | None, *, frozen: bool) -> None:
@@ -163,12 +144,14 @@ def configure_app_impl(
         The resolved build directory.
     """
 
+    validate_probe_request(probe_serial)
     _check_sdk_root(sdk_root, frozen=frozen)
     resolved_app_dir, _, resolved_board, resolved_build_dir = _resolve_build_context(
         app_dir,
         board=board,
         build_dir=build_dir,
     )
+    inspect_build(resolved_app_dir, resolved_build_dir, resolved_board, replace_board=True)
     warn_if_lock_stale(resolved_app_dir, resolved_board)
     _ensure_app_modules(resolved_app_dir, resolved_board, frozen=frozen)
     _run_cmake_configure(
@@ -179,9 +162,24 @@ def configure_app_impl(
         probe_serial=probe_serial,
         sdk_root=sdk_root,
     )
+    prepare_debug(resolved_app_dir, resolved_build_dir, resolved_board)
     info(f"Configured app at: {resolved_app_dir}")
     info(f"Build directory: {resolved_build_dir}")
     return resolved_build_dir
+
+
+def _run_build(
+    command: list[str], *, on_line: Callable[[str], None] | None, capture_output: bool
+) -> None:
+    """Keep normal build streaming; route non-streaming flash output through emitters."""
+    if not capture_output or on_line is not None:
+        run(command, on_line=on_line)
+        return
+    result = run_capture(command)
+    if result.stdout:
+        line(result.stdout.rstrip())
+    if result.stderr:
+        info(result.stderr.rstrip())
 
 
 def build_app_impl(
@@ -194,12 +192,13 @@ def build_app_impl(
     jobs: int = 8,
     sdk_root: Path | None = None,
     frozen: bool = False,
+    _capture_output: bool = False,
     on_line: "Callable[[str], None] | None" = None,
 ) -> Path:
     """Build an app target and return the build directory.
 
     Args:
-        frozen: When a (re)configure is needed (no ``build.ninja`` yet),
+        frozen: Before any configure or Ninja build (which may regenerate),
             verify ``modules/`` against ``nsx.lock`` and raise on any
             drift instead of silently re-vendoring (see
             ``_ensure_app_modules``).
@@ -214,6 +213,12 @@ def build_app_impl(
         board=board,
         build_dir=build_dir,
     )
+    owned = inspect_build(resolved_app_dir, resolved_build_dir, resolved_board)
+    if frozen:
+        cached_sdk = _cmake_cache_value(resolved_build_dir, "NSX_AMBIQSUITE_ROOT_OVERRIDE")
+        if cached_sdk:
+            _check_sdk_root(Path(cached_sdk), frozen=True)
+        _ensure_app_modules(resolved_app_dir, resolved_board, frozen=True)
     warn_if_lock_stale(resolved_app_dir, resolved_board)
     regenerate_active_board_glue(resolved_app_dir, resolved_board, build_dir=resolved_build_dir)
     if not (resolved_build_dir / "build.ninja").exists() or not _sdk_root_cache_matches(
@@ -225,15 +230,48 @@ def build_app_impl(
             resolved_build_dir,
             resolved_board,
             toolchain=toolchain,
+            probe_serial=owned.preference,
             sdk_root=sdk_root,
         )
     validate_app_requirements(resolved_app_dir, resolved_board)
     resolved_target = target or app_name
-    run(
+    _run_build(
         ["cmake", "--build", str(resolved_build_dir), "--target", resolved_target, "-j", str(jobs)],
         on_line=on_line,
+        capture_output=_capture_output,
     )
+    prepare_debug(resolved_app_dir, resolved_build_dir, resolved_board)
     return resolved_build_dir
+
+
+def preflight_build(
+    app_dir: Path,
+    *,
+    board: str | None = None,
+    build_dir: Path | None = None,
+    sdk_root: Path | None = None,
+) -> None:
+    """Guard CLI build/update composition with the same read-only ownership check."""
+    _check_sdk_root(sdk_root, frozen=False)
+    app, _, selected, build = _resolve_build_context(app_dir, board=board, build_dir=build_dir)
+    inspect_build(app, build, selected)
+
+
+def preflight_flash(
+    app_dir: Path,
+    *,
+    board: str | None = None,
+    build_dir: Path | None = None,
+    sdk_root: Path | None = None,
+    target: str | None = None,
+) -> tuple[Path, str, str, Path]:
+    """Validate ownership before flash, including a CLI-requested dependency update."""
+    _check_sdk_root(sdk_root, frozen=False)
+    app, name, selected, build = _resolve_build_context(app_dir, board=board, build_dir=build_dir)
+    resolved_target = name if target is None else target
+    validate_flash_target_name(resolved_target)
+    require_adoption(inspect_build(app, build, selected))
+    return app, resolved_target, selected, build
 
 
 def flash_app_impl(
@@ -244,97 +282,79 @@ def flash_app_impl(
     toolchain: str | None = None,
     target: str | None = None,
     probe_serial: str | None = None,
+    discover_probe: bool = False,
     jobs: int = 8,
     sdk_root: Path | None = None,
     frozen: bool = False,
-    on_line: "Callable[[str], None] | None" = None,
+    on_line: Callable[[str], None] | None = None,
 ) -> FlashResult:
-    """Flash an app using its generated CMake flash target.
-
-    Args:
-        frozen: When a (re)configure is needed (no ``build.ninja`` yet, or
-            a ``probe_serial`` was given — see below), verify ``modules/``
-            against ``nsx.lock`` and raise on any drift instead of
-            silently re-vendoring (see ``_ensure_app_modules``).
-
-            Note: passing ``probe_serial`` always forces a reconfigure
-            here (the serial is baked into the CMake cache via
-            ``-DNSX_JLINK_SERIAL``, so a stale build must not be flashed
-            against a different probe) — ``frozen`` does not skip that
-            reconfigure, it only changes how the accompanying module
-            sync behaves if one is needed.
-        sdk_root: Out-of-tree AmbiqSuite root (escape hatch; see
-            ``_check_sdk_root``). Incompatible with ``frozen``; an explicit
-            value that differs from the cached override forces a reconfigure.
-    """
-
+    """Build and capture a target, then connect once without persisting overrides."""
+    validate_probe_request(probe_serial, discover_probe)
     _check_sdk_root(sdk_root, frozen=frozen)
-    resolved_app_dir, app_name, resolved_board, resolved_build_dir = _resolve_build_context(
+    app, resolved_target, selected, build = preflight_flash(
         app_dir,
         board=board,
         build_dir=build_dir,
+        target=target,
     )
-    warn_if_lock_stale(resolved_app_dir, resolved_board)
-    regenerate_active_board_glue(resolved_app_dir, resolved_board, build_dir=resolved_build_dir)
-    jlink_executable = find_segger_tool(JLINK_NAMES)
-    needs_configure = (
-        probe_serial is not None
-        or not (resolved_build_dir / "build.ninja").exists()
-        or not _flash_cache_matches(
-            resolved_build_dir,
-            probe_serial=probe_serial,
-            jlink_executable=jlink_executable,
-        )
-        or not _sdk_root_cache_matches(resolved_build_dir, sdk_root)
-    )
-    if needs_configure:
-        _ensure_app_modules(resolved_app_dir, resolved_board, frozen=frozen)
-        _run_cmake_configure(
-            resolved_app_dir,
-            resolved_build_dir,
-            resolved_board,
-            toolchain=toolchain,
-            probe_serial=probe_serial,
-            sdk_root=sdk_root,
-        )
-    validate_app_requirements(resolved_app_dir, resolved_board)
-    resolved_target = target or app_name
-    validate_flash_target_name(resolved_target)
-    # Build and validate every executable before invoking its CMake flash
-    # target. In particular, do not let the primary target's dependency build
-    # flow directly into J-Link: a stale or edited recipe must be rejected
-    # before it can program an unintended artifact.
-    build_cmd = [
-        "cmake",
-        "--build",
-        str(resolved_build_dir),
-        "--target",
-        resolved_target,
-        "-j",
-        str(jobs),
-    ]
     try:
-        build_result = run_capture(build_cmd)
+        build_app_impl(
+            app,
+            board=selected,
+            build_dir=build,
+            toolchain=toolchain,
+            target=resolved_target,
+            jobs=jobs,
+            sdk_root=sdk_root,
+            frozen=frozen,
+            _capture_output=True,
+            on_line=on_line,
+        )
+        prepare_debug(app, build, selected, required=True)
+        # Preparation configures again: compile against that final generation.
+        _run_build(
+            ["cmake", "--build", str(build), "--target", resolved_target, "-j", str(jobs)],
+            on_line=on_line,
+            capture_output=True,
+        )
     except subprocess.CalledProcessError as exc:
         raise NSXError(
-            format_subprocess_error(exc, context=f"Build for flash target '{resolved_target}'")
+            format_subprocess_error(
+                exc, context=f"Flash build for target '{resolved_target}' in {build}"
+            )
         ) from None
-    if build_result.stdout:
-        line(build_result.stdout.rstrip())
-    if build_result.stderr:
-        info(build_result.stderr.rstrip())
-    artifact, recipe = validate_flash_recipe(resolved_build_dir, resolved_target)
+    load_debug_context(app, build, selected)  # Regeneration here must fail before USB.
+    with capture_debug_context(
+        app, build, selected, operation="flash", target=resolved_target
+    ) as snap:
+        settings = snap.context.target(resolved_target)
+        artifact = snap.directory / "firmware.bin"
+        recipe = snap.directory / "flash_cmds.jlink"
+        validate_flash_paths(artifact, recipe, resolved_target)
+        serial = ProbeSelection.from_request(
+            probe_serial, discover_probe, settings.configured_serial
+        ).resolve()
+        assert settings.speed_khz is not None
+        cmd = _jlink_command(
+            device=settings.device,
+            interface="SWD",
+            speed_khz=settings.speed_khz,
+            probe_serial=serial,
+            command_file=recipe,
+        )
+        return _execute_flash(
+            cmd, resolved_target, settings.binary, settings.flash_recipe, serial, on_line
+        )
 
-    flash_target = f"{resolved_target}_flash"
-    flash_cmd = [
-        "cmake",
-        "--build",
-        str(resolved_build_dir),
-        "--target",
-        flash_target,
-        "-j",
-        str(jobs),
-    ]
+
+def _execute_flash(
+    flash_cmd: list[str],
+    resolved_target: str,
+    artifact: Path,
+    recipe: Path,
+    probe_serial: str,
+    on_line: Callable[[str], None] | None,
+) -> FlashResult:
     captured_lines: list[str] = []
 
     def _capture_line(output_line: str) -> None:
@@ -471,6 +491,7 @@ def view_app_impl(
     build_dir: Path | None = None,
     toolchain: str | None = None,
     probe_serial: str | None = None,
+    discover_probe: bool = False,
     sdk_root: Path | None = None,
     frozen: bool = False,
     reset_on_open: bool | None = None,
@@ -478,63 +499,102 @@ def view_app_impl(
     duration_s: float | None = None,
     capture: Path | None = None,
 ) -> Path:
-    """Launch the SEGGER SWO viewer for an app.
-
-    By default, NSX chooses the board-appropriate reset policy. Most boards
-    attach the viewer first and then reset once; Apollo4 secure boards attach
-    without resetting because SEGGER's Apollo4 reset path halts in the secure
-    boot handoff and can make the SWO viewer exit.
-
-    When *duration_s* is set the viewer is terminated (process group and
-    all) after that many seconds, so the command always returns. When
-    *capture* is set the viewer's output is line-streamed to both stdout
-    and the given file (combined with *duration_s* this gives a bounded,
-    automation-friendly SWO capture).
-
-    Args:
-        frozen: When a (re)configure is needed (no ``build.ninja`` yet, or
-            a ``probe_serial`` was given — same trigger rule as
-            ``flash_app_impl``), verify ``modules/`` against ``nsx.lock``
-            and raise on any drift instead of silently re-vendoring (see
-            ``_ensure_app_modules``).
-        sdk_root: Out-of-tree AmbiqSuite root (escape hatch; see
-            ``_check_sdk_root``). Incompatible with ``frozen``; an explicit
-            value that differs from the cached override forces a reconfigure.
-    """
-
+    """Capture configured SWO inputs and retain one probe through viewer/reset cleanup."""
+    validate_probe_request(probe_serial, discover_probe)
+    if reset_delay_ms < 0 or (
+        duration_s is not None and (not math.isfinite(duration_s) or duration_s <= 0)
+    ):
+        raise NSXConfigError("SWO delay must be nonnegative and duration positive and finite.")
     _check_sdk_root(sdk_root, frozen=frozen)
-    resolved_app_dir, app_name, resolved_board, resolved_build_dir = _resolve_build_context(
-        app_dir,
-        board=board,
-        build_dir=build_dir,
-    )
+    app, name, selected, build = _resolve_build_context(app_dir, board=board, build_dir=build_dir)
+    owned = inspect_build(app, build, selected)
+    require_adoption(owned)
     from ._console import warn_console_mismatch
 
-    warn_console_mismatch(resolved_app_dir, resolved_board, "swo")
-    warn_if_lock_stale(resolved_app_dir, resolved_board)
-    regenerate_active_board_glue(resolved_app_dir, resolved_board, build_dir=resolved_build_dir)
-    if (
-        probe_serial is not None
-        or not (resolved_build_dir / "build.ninja").exists()
-        or not _sdk_root_cache_matches(resolved_build_dir, sdk_root)
-    ):
-        _ensure_app_modules(resolved_app_dir, resolved_board, frozen=frozen)
+    warn_console_mismatch(app, selected, "swo")
+    if frozen:
+        cached_sdk = _cmake_cache_value(build, "NSX_AMBIQSUITE_ROOT_OVERRIDE")
+        if cached_sdk:
+            _check_sdk_root(Path(cached_sdk), frozen=True)
+        _ensure_app_modules(app, selected, frozen=True)
+    regenerate_active_board_glue(app, selected, build_dir=build)
+    if not (build / "build.ninja").exists() or not _sdk_root_cache_matches(build, sdk_root):
+        _ensure_app_modules(app, selected, frozen=frozen)
         _run_cmake_configure(
-            resolved_app_dir,
-            resolved_build_dir,
-            resolved_board,
+            app,
+            build,
+            selected,
             toolchain=toolchain,
-            probe_serial=probe_serial,
+            probe_serial=owned.preference,
             sdk_root=sdk_root,
         )
-    target = f"{app_name}_view"
-    view_cmd = extract_view_command(resolved_build_dir, target)
+    prepare_debug(app, build, selected, required=True)
+    with capture_debug_context(app, build, selected, operation="swo", target=name) as snap:
+        settings = snap.context.target(name)
+        serial = ProbeSelection.from_request(
+            probe_serial, discover_probe, settings.configured_serial
+        ).resolve()
+        viewer = find_segger_tool(JLINK_SWO_NAMES)
+        if viewer is None:
+            raise NSXError("SEGGER SWO viewer not found; install SEGGER and add it to PATH.")
+        view_cmd = [
+            viewer,
+            "-USB",
+            serial,
+            "-device",
+            settings.device,
+            "-cpufreq",
+            str(settings.cpu_hz),
+            "-swofreq",
+            str(settings.trace_hz),
+            "-itmport",
+            "0",
+        ]
+        assert settings.speed_khz is not None
+        reset_cmd = (
+            _jlink_command(
+                device=settings.device,
+                interface="SWD",
+                speed_khz=settings.speed_khz,
+                probe_serial=serial,
+                command_file=snap.directory / "reset_cmds.jlink",
+            )
+            if _resolved_view_reset_on_open(app, selected, reset_on_open)
+            else []
+        )
+        return _run_viewer(
+            app,
+            build,
+            selected,
+            name,
+            view_cmd,
+            reset_cmd,
+            reset_on_open=bool(reset_cmd),
+            reset_delay_ms=reset_delay_ms,
+            duration_s=duration_s,
+            capture=capture,
+        )
+
+
+def _run_viewer(
+    resolved_app_dir: Path,
+    resolved_build_dir: Path,
+    resolved_board: str,
+    app_name: str,
+    view_cmd: list[str],
+    reset_cmd: list[str],
+    *,
+    reset_on_open: bool,
+    reset_delay_ms: int,
+    duration_s: float | None,
+    capture: Path | None,
+) -> Path:
     info(f"Starting SWO viewer for {app_name} on {resolved_board}")
     effective_reset_on_open = _resolved_view_reset_on_open(
         resolved_app_dir, resolved_board, reset_on_open
     )
 
-    probe = probe_serial or _probe_serial_from_view_cmd(view_cmd)
+    probe = _probe_serial_from_view_cmd(view_cmd)
     if probe:
         busy_pids = find_processes_holding_probe(probe)
         if busy_pids:
@@ -621,15 +681,6 @@ def view_app_impl(
                 cmd=run_cmd,
             )
             info(f"Resetting target after viewer attach delay ({reset_delay_ms} ms)")
-            reset_cmd = [
-                "cmake",
-                "--build",
-                str(resolved_build_dir),
-                "--target",
-                f"{app_name}_reset",
-                "-j",
-                "1",
-            ]
             if _common.get_verbosity() > 0:
                 run(reset_cmd)
             else:

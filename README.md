@@ -115,3 +115,8 @@ See the [RTT capture guide](https://ambiqai.github.io/neuralspotx/guides/apps/bu
 Fully prepared apps can also build with standard CMake commands without installing
 NSX. See [Build without installing NSX](https://ambiqai.github.io/neuralspotx/guides/apps/build-flash-view/#build-without-installing-nsx)
 for preparation, relocation, and offline-sharing requirements.
+
+App debug commands (`flash`, `view`, app-aware `reset`, and `rtt`) require the
+[configured debug handoff](https://ambiqai.github.io/neuralspotx/guides/apps/build-flash-view/#configured-debug-handoff-and-existing-apps).
+Explicit probe serials are temporary; `--discover-probe` ignores a configured
+preference. Existing apps must adopt the input contract and update helpers explicitly.

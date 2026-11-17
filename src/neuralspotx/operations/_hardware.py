@@ -42,6 +42,11 @@ def validate_flash_recipe(build_dir: Path, target: str) -> tuple[Path, Path]:
 
     artifact = build_dir / f"{target}.bin"
     recipe = build_dir / "jlink" / target / "flash_cmds.jlink"
+    return validate_flash_paths(artifact, recipe, target)
+
+
+def validate_flash_paths(artifact: Path, recipe: Path, target: str) -> tuple[Path, Path]:
+    """Validate explicit producer/captured paths instead of assuming a build layout."""
     if not artifact.is_file():
         raise NSXConfigError(
             f"Flash artifact for target '{target}' is missing: {artifact}. "
