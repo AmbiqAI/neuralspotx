@@ -402,14 +402,24 @@ def test_update_validates_sdk_override_before_mutating(app, monkeypatch, operati
     )
 
 
-def test_swo_uses_authored_primary_target(app):
+def test_swo_preserves_app_target_when_reset_primary_differs(app):
     root, build, calls = app
     source = root / "CMakeLists.txt"
-    source.write_text(source.read_text().replace("demo", "firmware"))
+    source.write_text(
+        source.read_text().replace("nsx_debug_set_primary_target(demo)", "")
+        + """
+set(NSX_JLINK_SERIAL 5678)
+add_executable(reset_primary main.c)
+add_custom_command(TARGET reset_primary POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:reset_primary> $<TARGET_FILE_DIR:reset_primary>/reset_primary.bin)
+nsx_add_segger_targets(reset_primary)
+nsx_debug_set_primary_target(reset_primary)
+"""
+    )
     prepare(root, build)
     cmake("--build", build)
     api.view_app(root)
     assert calls[-1]["serial"] == "1234"
+    assert "reset_primary" not in calls[-1]["text"]
 
 
 @pytest.mark.parametrize("failing_build", [1, 2])

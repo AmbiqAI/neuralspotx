@@ -511,8 +511,8 @@ def view_app_impl(
             sdk_root=sdk_root,
         )
     prepare_debug(app, build, selected, required=True)
-    with capture_debug_context(app, build, selected, operation="swo") as snap:
-        settings = snap.context.target()
+    with capture_debug_context(app, build, selected, operation="swo", target=name) as snap:
+        settings = snap.context.target(name)
         serial = ProbeSelection.from_request(
             probe_serial, discover_probe, settings.configured_serial
         ).resolve()

@@ -20,6 +20,8 @@ the tree. They all take `--app-dir` to point somewhere else, and all take a posi
 `app` argument that resolves under `./` and `./examples`.
 
 `reset` uses the app's prepared primary target unless you supply `--device`.
+`view` retains the executable named by `project.name`, even when the configured
+reset primary is a different target. Register that executable for SWO use.
 With `--device`, reset ignores app selectors. `probes` lists the attached J-Link
 inventory without selecting a target.
 
