@@ -265,8 +265,10 @@ def _run_script(script: str, *, timeout_s: float, **variables: str) -> None:
     cmake = shutil.which("cmake")
     if not cmake:
         raise _invalid("CMake >=3.31 is required for context validation")
+    ambient = _effective_timeout(None)
+    effective = timeout_s if ambient is None else min(timeout_s, ambient)
     try:
-        with timeout_budget(min(timeout_s, _effective_timeout(None) or timeout_s)):
+        with timeout_budget(effective):
             run_capture(
                 [
                     cmake,

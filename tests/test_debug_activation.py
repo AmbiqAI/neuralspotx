@@ -512,20 +512,21 @@ def test_failed_board_switch_with_retained_context_has_actionable_remedy(tmp_pat
 
 
 @pytest.mark.parametrize("operation", ["flash", "view", "reset", "resolve_rtt"])
-def test_validation_preserves_public_timeout_error(app, monkeypatch, operation):
+@pytest.mark.parametrize("ambient", [0.0, 12.0])
+def test_validation_preserves_public_timeout_error(app, monkeypatch, operation, ambient):
     from neuralspotx import NSXTimeoutError
     from neuralspotx.operations._debug_context import _reader
     from neuralspotx.subprocess_utils import _effective_timeout, timeout_budget
 
     root, _, calls = app
-    expected = 12 if operation == "resolve_rtt" else 0.01
+    expected = ambient if operation == "resolve_rtt" else 0.01
 
     def timeout(command, **kwargs):
         assert _effective_timeout(None) == expected
         raise subprocess.TimeoutExpired(command, expected)
 
     monkeypatch.setattr(_reader, "run_capture", timeout)
-    with timeout_budget(12):
+    with timeout_budget(ambient):
         with pytest.raises(NSXTimeoutError) as caught:
             if operation == "resolve_rtt":
                 api.resolve_rtt_app(AppRttRequest(root))
@@ -533,7 +534,7 @@ def test_validation_preserves_public_timeout_error(app, monkeypatch, operation):
                 {"flash": api.flash_app, "view": api.view_app, "reset": api.reset_target}[
                     operation
                 ](app_dir=root, timeout_s=0.01)
-        assert _effective_timeout(None) == 12
+        assert _effective_timeout(None) == ambient
     assert caught.value.timeout_s == expected
     assert caught.value.command and "nsx_debug_validate.cmake" in caught.value.command
     assert not calls
