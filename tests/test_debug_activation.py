@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 import pytest
-from debug_fixtures import cmake, make_debug_app
+from debug_fixtures import cmake, make_debug_app, prepare
 
 from neuralspotx import AppRttRequest, NSXConfigError, NSXError, api, tooling
 from neuralspotx._probe_selection import ProbeSelection
@@ -114,7 +114,9 @@ def test_invalid_state_precedes_any_write_or_hardware(app, monkeypatch, operatio
         context.write_text("{")
     elif problem == "cache_owner":
         cache = build / "CMakeCache.txt"
-        cache.write_text(cache.read_text().replace(str(root), str(root.parent / "other")))
+        cache.write_text(
+            cache.read_text().replace(root.as_posix(), (root.parent / "other").as_posix())
+        )
     else:
         data["board" if problem == "wrong_board" else "schema_version"] = (
             "other" if problem == "wrong_board" else 999
@@ -292,3 +294,68 @@ def test_preparation_obeys_subprocess_budget(app):
     with pytest.raises(NSXError, match="timed out"), timeout_budget(0.2):
         prepare_debug(root, build, "apollo510_evb", required=True)
     assert not (build / "nsx-debug/context.json").exists()
+
+
+@pytest.mark.parametrize("operation", ["flash", "build"])
+def test_update_validates_context_before_mutating(app, monkeypatch, operation):
+    from neuralspotx import cli
+
+    root, build, _ = app
+    (build / "nsx-debug/context.json").write_text("{", encoding="utf-8")
+    monkeypatch.setattr(api, "update_app", lambda *a, **k: pytest.fail("updated invalid app"))
+    assert cli.main([operation, str(root), "--update"]) == 1
+
+
+def test_template_default_follows_board_without_overriding_author(tmp_path):
+    from debug_fixtures import ROOT
+
+    project = tmp_path / "CMakeLists.txt"
+    project.write_text(
+        "cmake_minimum_required(VERSION 3.31)\nproject(defaults NONE)\n"
+        "set(CMAKE_C_COMPILER_ID GNU)\nset(CMAKE_SYSTEM_PROCESSOR arm)\n"
+        f'include("{(ROOT / "nsx_debug_template.cmake").as_posix()}")\n',
+        encoding="utf-8",
+    )
+    build = tmp_path / "build"
+    from neuralspotx.operations._cmake_cache import _cmake_cache_value
+
+    cmake("-S", tmp_path, "-B", build, "-DNSX_BOARD=apollo510_evb")
+    assert _cmake_cache_value(build, "NSX_DEBUG_CONTEXT") == "ON"
+    cmake("-S", tmp_path, "-B", build, "-DNSX_BOARD=apollo4p_evb")
+    assert _cmake_cache_value(build, "NSX_DEBUG_CONTEXT") == "OFF"
+    cmake("-S", tmp_path, "-B", build, "-DNSX_BOARD=apollo510_evb")
+    assert _cmake_cache_value(build, "NSX_DEBUG_CONTEXT") == "ON"
+    cmake("-S", tmp_path, "-B", build, "-DNSX_DEBUG_CONTEXT=OFF")
+    cmake("-S", tmp_path, "-B", build)
+    assert _cmake_cache_value(build, "NSX_DEBUG_CONTEXT") == "OFF"
+    cmake(
+        "-S",
+        tmp_path,
+        "-B",
+        build,
+        "-DNSX_BOARD=apollo4p_evb",
+        "-DNSX_DEBUG_CONTEXT=ON",
+        "-DNSX_DEBUG_INPUT_CONTRACT=1",
+    )
+    assert _cmake_cache_value(build, "NSX_DEBUG_CONTEXT") == "ON"
+
+
+def test_named_target_and_repaired_recipe_use_actual_producer(app):
+    root, build, calls = app
+    with (root / "CMakeLists.txt").open("a", encoding="utf-8") as stream:
+        stream.write("""
+add_executable(secondary main.c)
+set_target_properties(secondary PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/second output")
+add_custom_command(TARGET secondary POST_BUILD COMMAND ${CMAKE_COMMAND} -E copy $<TARGET_FILE:secondary> $<TARGET_FILE_DIR:secondary>/secondary.bin)
+nsx_add_segger_targets(secondary)
+""")
+    prepare(root, build)
+    result = api.flash_app(root, target="secondary", probe_serial="42")
+    assert result.artifact == build / "second output/secondary.bin"
+    assert result.recipe == build / "jlink/secondary/flash_cmds.jlink"
+    assert calls[-1]["serial"] == "42"
+    # Changed recipe is stale and repaired from CMake before hardware execution.
+    result.recipe.write_text('LoadFile "other.bin", 0x0\n', encoding="utf-8")
+    api.flash_app(root, target="secondary", probe_serial="42")
+    assert "other.bin" not in calls[-1]["text"]
+    assert "0x1000" in calls[-1]["text"]

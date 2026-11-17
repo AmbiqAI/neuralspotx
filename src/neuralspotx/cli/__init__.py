@@ -248,6 +248,13 @@ def cmd_reset(args: argparse.Namespace) -> None:
 def cmd_build(args: argparse.Namespace) -> None:
     app_dir = _selected_app_dir(args)
     if getattr(args, "update", False):
+        if getattr(args, "frozen", False):
+            raise NSXConfigError("--update cannot be combined with --frozen.")
+        operations._build.preflight_build(
+            app_dir,
+            board=args.board,
+            build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
+        )
         api.update_app(app_dir, timeout_s=getattr(args, "timeout", None))
     api.build_app(
         app_dir,
@@ -275,6 +282,12 @@ def cmd_flash(args: argparse.Namespace) -> None:
         raise NSXConfigError("--update cannot be combined with --frozen.")
     app_dir = _selected_app_dir(args)
     if getattr(args, "update", False):
+        operations._build.preflight_flash(
+            app_dir,
+            board=args.board,
+            build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
+            target=getattr(args, "target", None),
+        )
         api.update_app(app_dir, timeout_s=getattr(args, "timeout", None))
     quiet_emit = (lambda _event: None) if getattr(args, "quiet", False) else None
     api.flash_app(

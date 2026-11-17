@@ -228,6 +228,32 @@ def build_app_impl(
     return resolved_build_dir
 
 
+def preflight_build(
+    app_dir: Path,
+    *,
+    board: str | None = None,
+    build_dir: Path | None = None,
+) -> None:
+    """Guard CLI build/update composition with the same read-only ownership check."""
+    app, _, selected, build = _resolve_build_context(app_dir, board=board, build_dir=build_dir)
+    inspect_build(app, build, selected)
+
+
+def preflight_flash(
+    app_dir: Path,
+    *,
+    board: str | None = None,
+    build_dir: Path | None = None,
+    target: str | None = None,
+) -> tuple[Path, str, str, Path]:
+    """Validate ownership before flash, including a CLI-requested dependency update."""
+    app, name, selected, build = _resolve_build_context(app_dir, board=board, build_dir=build_dir)
+    resolved_target = name if target is None else target
+    validate_flash_target_name(resolved_target)
+    require_adoption(inspect_build(app, build, selected))
+    return app, resolved_target, selected, build
+
+
 def flash_app_impl(
     app_dir: Path,
     *,
@@ -245,10 +271,12 @@ def flash_app_impl(
     """Build and capture a target, then connect once without persisting overrides."""
     validate_probe_request(probe_serial, discover_probe)
     _check_sdk_root(sdk_root, frozen=frozen)
-    app, name, selected, build = _resolve_build_context(app_dir, board=board, build_dir=build_dir)
-    resolved_target = name if target is None else target
-    validate_flash_target_name(resolved_target)
-    require_adoption(inspect_build(app, build, selected))
+    app, resolved_target, selected, build = preflight_flash(
+        app_dir,
+        board=board,
+        build_dir=build_dir,
+        target=target,
+    )
     build_app_impl(
         app,
         board=selected,

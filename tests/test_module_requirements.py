@@ -202,6 +202,15 @@ def test_discovery_preserves_names_and_constraints(tmp_path: Path) -> None:
     }
 
 
+def write_owned_cache(app: Path) -> None:
+    build = app / "build/apollo510_evb"
+    (build / "CMakeCache.txt").write_text(
+        f"CMAKE_HOME_DIRECTORY:INTERNAL={app.as_posix()}\n"
+        f"CMAKE_CACHEFILE_DIR:INTERNAL={build.as_posix()}\nNSX_BOARD:STRING=apollo510_evb\n",
+        encoding="utf-8",
+    )
+
+
 def locked_app(tmp_path: Path) -> Path:
     from neuralspotx.operations._lock import lock_app_impl
 
@@ -233,6 +242,7 @@ def test_existing_lock_rejects_incompatible_metadata_before_cmake(
     build = app / "build" / "apollo510_evb"
     build.mkdir(parents=True, exist_ok=True)
     (build / "build.ninja").write_text("# existing build")
+    write_owned_cache(app)
     monkeypatch.setattr(_build, "regenerate_active_board_glue", lambda *a, **k: None)
     from neuralspotx.operations._debug_workflow import DebugState, OwnedBuild
 
@@ -353,6 +363,7 @@ def test_cached_build_refuses_new_cycle_without_rewriting_lock(
     project(tmp_path, [manifest("dep", required=["parent"])])
     build = app / "build/apollo510_evb"
     (build / "build.ninja").write_text("# configured")
+    write_owned_cache(app)
     monkeypatch.setattr(_build, "regenerate_active_board_glue", lambda *a, **k: None)
 
     def no_build(*args: object, **kwargs: object) -> None:
@@ -385,6 +396,7 @@ def test_cached_build_validates_compiled_copy_not_external_override(
     )
     (app / "modules/dep/nsx-module.yaml").write_text(yaml.safe_dump(manifest("dep", copy_version)))
     (app / "build/apollo510_evb/build.ninja").write_text("# configured")
+    write_owned_cache(app)
     calls: list[object] = []
     monkeypatch.setattr(_build, "run", lambda *a, **k: calls.append(a))
     if accepted:
@@ -466,6 +478,7 @@ def test_cached_build_reads_board_overlay_not_project_mirror(
     overlay.write_text(yaml.safe_dump(invalid if overlay_invalid else valid))
     mirror.write_text(yaml.safe_dump(valid if overlay_invalid else invalid))
     (app / "build/apollo510_evb/build.ninja").write_text("# configured")
+    write_owned_cache(app)
     calls: list[object] = []
     monkeypatch.setattr(_build, "run", lambda *a, **k: calls.append(a))
     if overlay_invalid:
@@ -515,6 +528,7 @@ def test_cached_build_validates_active_tooling_bootstrap(
         yaml.safe_dump(manifest("nsx-tooling", bootstrap_version))
     )
     (tmp_path / "build/apollo510_evb/build.ninja").write_text("# configured")
+    write_owned_cache(tmp_path)
     calls: list[object] = []
     monkeypatch.setattr(_build, "run", lambda *a, **k: calls.append(a))
     if accepted:

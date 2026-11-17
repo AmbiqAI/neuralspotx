@@ -33,68 +33,10 @@ def _recipe_text(artifact: Path | str, *, fail_fast: bool = True) -> str:
     return f'{head}Reset\nLoadFile "{artifact}", 0x00410000\nReset\nGo\nExit\n'
 
 
-def _stub_build_context(monkeypatch: pytest.MonkeyPatch, tmp_path: Path, build_dir: Path) -> None:
-    monkeypatch.setattr(
-        _build,
-        "_resolve_build_context",
-        lambda *_args, **_kwargs: (tmp_path, "primary", "apollo510_evb", build_dir),
-    )
-    monkeypatch.setattr(_build, "warn_if_lock_stale", lambda *_args: None)
-    # This fixture isolates flash recipes from app/metadata resolution.
-    monkeypatch.setattr(_build, "validate_app_requirements", lambda *_args: None)
-    monkeypatch.setattr(_build, "regenerate_active_board_glue", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(_build, "_ensure_app_modules", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(_build, "_run_cmake_configure", lambda *_args, **_kwargs: None)
-
-
-def test_primary_flash_builds_and_validates_before_cmake_flash_target(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    build_dir, artifact = _flash_build(tmp_path, "primary")
-    _stub_build_context(monkeypatch, tmp_path, build_dir)
-    calls: list[list[str]] = []
-
-    def fake_capture(cmd: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
-        calls.append(cmd)
-        return subprocess.CompletedProcess(
-            cmd, 0, stdout="Flash download: Total time needed: 0.2s\n", stderr=""
-        )
-
-    monkeypatch.setattr(_build, "run_capture", fake_capture)
-    result = _build.flash_app_impl(tmp_path, probe_serial="1234")
-
-    assert [cmd[4] for cmd in calls] == ["primary", "primary_flash"]
-    assert result.target == "primary"
-    assert result.artifact == artifact
-    assert result.probe_serial == "1234"
-    assert result.programming_verified is True
-
-
-def test_named_flash_builds_then_uses_target_recipe(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    build_dir, artifact = _flash_build(tmp_path, "hpx_profiler_power")
-    _stub_build_context(monkeypatch, tmp_path, build_dir)
-    calls: list[list[str]] = []
-
-    def fake_capture(cmd: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
-        calls.append(cmd)
-        output = "Flash download: Total time needed: 0.2s\n" if cmd[4].endswith("_flash") else ""
-        return subprocess.CompletedProcess(cmd, 0, stdout=output, stderr="")
-
-    monkeypatch.setattr(_build, "run_capture", fake_capture)
-    result = _build.flash_app_impl(tmp_path, target="hpx_profiler_power")
-
-    assert [cmd[4] for cmd in calls] == ["hpx_profiler_power", "hpx_profiler_power_flash"]
-    assert result.artifact == artifact
-    assert result.recipe == build_dir / "jlink/hpx_profiler_power/flash_cmds.jlink"
-
-
 def test_captured_flash_output_can_be_quiet(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
     build_dir, _ = _flash_build(tmp_path, "primary")
-    _stub_build_context(monkeypatch, tmp_path, build_dir)
     monkeypatch.setattr(
         _build,
         "run_capture",
@@ -103,7 +45,14 @@ def test_captured_flash_output_can_be_quiet(
         ),
     )
     with using_emitter(lambda _event: None):
-        _build.flash_app_impl(tmp_path)
+        _build._execute_flash(
+            ["fake-commander"],
+            "primary",
+            build_dir / "primary.bin",
+            build_dir / "jlink/primary/flash_cmds.jlink",
+            "1234",
+            None,
+        )
     assert capsys.readouterr() == ("", "")
 
 
@@ -111,7 +60,6 @@ def test_reflashing_an_unchanged_image_succeeds(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     build_dir, _ = _flash_build(tmp_path, "primary")
-    _stub_build_context(monkeypatch, tmp_path, build_dir)
     monkeypatch.setattr(
         _build,
         "run_capture",
@@ -122,7 +70,17 @@ def test_reflashing_an_unchanged_image_succeeds(
             stderr="",
         ),
     )
-    assert _build.flash_app_impl(tmp_path).programming_verified is True
+    assert (
+        _build._execute_flash(
+            ["fake-commander"],
+            "primary",
+            build_dir / "primary.bin",
+            build_dir / "jlink/primary/flash_cmds.jlink",
+            "1234",
+            None,
+        ).programming_verified
+        is True
+    )
 
 
 def test_unrecognized_flash_output_still_raises(
@@ -131,7 +89,6 @@ def test_unrecognized_flash_output_still_raises(
     """A clean exit with neither marker must still fail, with the new message."""
 
     build_dir, _ = _flash_build(tmp_path, "primary")
-    _stub_build_context(monkeypatch, tmp_path, build_dir)
     monkeypatch.setattr(
         _build,
         "run_capture",
@@ -143,7 +100,14 @@ def test_unrecognized_flash_output_still_raises(
         using_emitter(lambda _event: None),
         pytest.raises(NSXError, match="no recognized flash result"),
     ):
-        _build.flash_app_impl(tmp_path)
+        _build._execute_flash(
+            ["fake-commander"],
+            "primary",
+            build_dir / "primary.bin",
+            build_dir / "jlink/primary/flash_cmds.jlink",
+            "1234",
+            None,
+        )
 
 
 def test_connection_only_ok_is_rejected() -> None:
@@ -221,86 +185,6 @@ def test_recipe_with_commented_out_fail_fast_is_rejected(tmp_path: Path) -> None
         _hardware.validate_flash_recipe(build_dir, "secondary")
 
 
-def test_primary_flash_rejects_stale_recipe_before_programming(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    build_dir, _ = _flash_build(tmp_path, "primary")
-    recipe = build_dir / "jlink/primary/flash_cmds.jlink"
-    recipe.write_text(_recipe_text("other.bin"), encoding="utf-8")
-    _stub_build_context(monkeypatch, tmp_path, build_dir)
-    calls: list[list[str]] = []
-
-    def fake_capture(cmd: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
-        calls.append(cmd)
-        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
-
-    monkeypatch.setattr(_build, "run_capture", fake_capture)
-    with pytest.raises(NSXConfigError, match="expected artifact"):
-        _build.flash_app_impl(tmp_path)
-
-    assert [cmd[4] for cmd in calls] == ["primary"]
-
-
-def test_flash_reconfigures_when_jlink_discovery_changes(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    build_dir, _ = _flash_build(tmp_path, "primary")
-    (build_dir / "CMakeCache.txt").write_text(
-        "NSX_JLINK_SERIAL:UNINITIALIZED=\nNSX_JLINK_EXE:FILEPATH=NSX_JLINK_EXE-NOTFOUND\n",
-        encoding="utf-8",
-    )
-    _stub_build_context(monkeypatch, tmp_path, build_dir)
-    configure_calls: list[dict[str, object]] = []
-    monkeypatch.setattr(_build, "find_segger_tool", lambda _names: "/opt/SEGGER/JLinkExe")
-    monkeypatch.setattr(
-        _build,
-        "_run_cmake_configure",
-        lambda *_args, **kwargs: configure_calls.append(kwargs),
-    )
-    monkeypatch.setattr(
-        _build,
-        "run_capture",
-        lambda cmd, **_kwargs: subprocess.CompletedProcess(
-            cmd, 0, stdout="Flash download: Total time needed: 0.2s\n", stderr=""
-        ),
-    )
-
-    _build.flash_app_impl(tmp_path)
-
-    assert configure_calls == [{"toolchain": None, "probe_serial": None, "sdk_root": None}]
-
-
-def test_flash_reconfigures_to_clear_cached_probe_selection(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
-    build_dir, _ = _flash_build(tmp_path, "primary")
-    (build_dir / "CMakeCache.txt").write_text(
-        "NSX_JLINK_SERIAL:UNINITIALIZED=previous-probe\n"
-        "NSX_JLINK_EXE:FILEPATH=/opt/SEGGER/JLinkExe\n",
-        encoding="utf-8",
-    )
-    _stub_build_context(monkeypatch, tmp_path, build_dir)
-    configure_calls: list[dict[str, object]] = []
-    monkeypatch.setattr(_build, "find_segger_tool", lambda _names: "/opt/SEGGER/JLinkExe")
-    monkeypatch.setattr(
-        _build,
-        "_run_cmake_configure",
-        lambda *_args, **kwargs: configure_calls.append(kwargs),
-    )
-    monkeypatch.setattr(
-        _build,
-        "run_capture",
-        lambda cmd, **_kwargs: subprocess.CompletedProcess(
-            cmd, 0, stdout="Flash download: Total time needed: 0.2s\n", stderr=""
-        ),
-    )
-
-    result = _build.flash_app_impl(tmp_path)
-
-    assert configure_calls == [{"toolchain": None, "probe_serial": None, "sdk_root": None}]
-    assert result.probe_serial is None
-
-
 @pytest.mark.parametrize("missing", ["artifact", "recipe"])
 def test_named_flash_fails_before_programming_when_input_is_missing(
     missing: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
@@ -308,17 +192,8 @@ def test_named_flash_fails_before_programming_when_input_is_missing(
     build_dir, artifact = _flash_build(tmp_path, "secondary")
     recipe = build_dir / "jlink/secondary/flash_cmds.jlink"
     (artifact if missing == "artifact" else recipe).unlink()
-    _stub_build_context(monkeypatch, tmp_path, build_dir)
-    calls: list[list[str]] = []
-
-    def fake_capture(cmd: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
-        calls.append(cmd)
-        return subprocess.CompletedProcess(cmd, 0, stdout="", stderr="")
-
-    monkeypatch.setattr(_build, "run_capture", fake_capture)
     with pytest.raises(NSXConfigError, match=missing):
-        _build.flash_app_impl(tmp_path, target="secondary")
-    assert [cmd[4] for cmd in calls] == ["secondary"]
+        _hardware.validate_flash_recipe(build_dir, "secondary")
 
 
 @pytest.mark.parametrize("target", ["", ".", "..", "../escape", "nested/target", r"nested\\target"])

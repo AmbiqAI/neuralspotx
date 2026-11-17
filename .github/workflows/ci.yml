@@ -149,7 +149,7 @@ jobs:
       - name: Qualify native debug-context fixtures
         run: >-
           uv run --python 3.11 --with cmake==3.31.10 --with ninja==1.13.0
-          --group test pytest -q tests/test_debug_context.py
+          --group test pytest -q tests/test_debug_context.py tests/test_debug_activation.py tests/test_app_reset.py
 
   # ---------------------------------------------------------------
   # Unit tests under a non-UTF-8 locale (C/POSIX).
