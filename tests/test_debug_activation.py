@@ -42,7 +42,11 @@ def app(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(_hardware, "find_segger_tool", lambda _: "fake-commander")
     monkeypatch.setattr(_build, "find_segger_tool", lambda _: "fake-viewer")
 
+    real_capture = _build.run_capture
+
     def execute(cmd, **kwargs):
+        if cmd[0] == "cmake":
+            return real_capture(cmd, **kwargs)
         assert cmd[0] == "fake-commander"
         serial = cmd[cmd.index("-USB") + 1]
         recipe = Path(cmd[cmd.index("-commandfile") + 1])
@@ -319,11 +323,11 @@ def test_template_default_follows_board_without_overriding_author(tmp_path):
     build = tmp_path / "build"
     from neuralspotx.operations._cmake_cache import _cmake_cache_value
 
-    cmake("-S", tmp_path, "-B", build, "-DNSX_BOARD=apollo510_evb")
+    cmake("-S", tmp_path, "-B", build, "-G", "Ninja", "-DNSX_BOARD=apollo510_evb")
     assert _cmake_cache_value(build, "NSX_DEBUG_CONTEXT") == "ON"
     cmake("-S", tmp_path, "-B", build, "-DNSX_BOARD=apollo4p_evb")
     assert _cmake_cache_value(build, "NSX_DEBUG_CONTEXT") == "OFF"
-    cmake("-S", tmp_path, "-B", build, "-DNSX_BOARD=apollo510_evb")
+    cmake("-S", tmp_path, "-B", build, "-G", "Ninja", "-DNSX_BOARD=apollo510_evb")
     assert _cmake_cache_value(build, "NSX_DEBUG_CONTEXT") == "ON"
     cmake("-S", tmp_path, "-B", build, "-DNSX_DEBUG_CONTEXT=OFF")
     cmake("-S", tmp_path, "-B", build)
@@ -433,8 +437,47 @@ def test_flash_build_failure_is_public_error_before_hardware(app, monkeypatch, f
         if count == failing_build:
             raise subprocess.CalledProcessError(1, command, stderr="compiler failed")
 
-    monkeypatch.setattr(_build, "run", fail_build)
+    monkeypatch.setattr(_build, "_run_build", fail_build)
     with pytest.raises(NSXError, match="Flash build for target 'demo'"):
         api.flash_app(root)
     assert count == failing_build
     assert not any("serial" in call for call in calls)
+
+
+@pytest.mark.parametrize("generator,version", [("Unix Makefiles", "3.31"), ("Ninja", "3.30")])
+def test_template_auto_adoption_requires_supported_cmake(tmp_path, generator, version):
+    from debug_fixtures import ROOT
+
+    script = tmp_path / "defaults.cmake"
+    script.write_text(
+        "set(NSX_BOARD apollo510_evb)\nset(CMAKE_C_COMPILER_ID GNU)\n"
+        "set(CMAKE_SYSTEM_PROCESSOR arm)\n"
+        f'set(CMAKE_GENERATOR "{generator}")\nset(CMAKE_VERSION {version})\n'
+        f'include("{(ROOT / "nsx_debug_template.cmake").as_posix()}")\n'
+        'if(NSX_DEBUG_CONTEXT)\nmessage(FATAL_ERROR "unsupported auto adoption")\nendif()\n'
+    )
+    cmake("-P", script)
+
+
+def test_flash_build_output_uses_emitter(app, monkeypatch, capsys):
+    root, _, _ = app
+    execute = _build.run_capture
+    builds = []
+
+    def capture(command, **kwargs):
+        if command[0] == "cmake":
+            builds.append(command)
+            return subprocess.CompletedProcess(
+                command, 0, stdout="compiler output", stderr="compiler warning"
+            )
+        return execute(command, **kwargs)
+
+    monkeypatch.setattr(_build, "run_capture", capture)
+    capsys.readouterr()
+    events = []
+    api.flash_app(root, emit=events.append)
+    output = capsys.readouterr()
+    assert not output.out and not output.err
+    assert len(builds) == 2
+    assert sum(event.message == "compiler output" for event in events) == 2
+    assert sum(event.message == "compiler warning" for event in events) == 2

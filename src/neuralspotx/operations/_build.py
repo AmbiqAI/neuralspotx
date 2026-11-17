@@ -168,6 +168,20 @@ def configure_app_impl(
     return resolved_build_dir
 
 
+def _run_build(
+    command: list[str], *, on_line: Callable[[str], None] | None, capture_output: bool
+) -> None:
+    """Keep normal build streaming; route non-streaming flash output through emitters."""
+    if not capture_output or on_line is not None:
+        run(command, on_line=on_line)
+        return
+    result = run_capture(command)
+    if result.stdout:
+        line(result.stdout.rstrip())
+    if result.stderr:
+        info(result.stderr.rstrip())
+
+
 def build_app_impl(
     app_dir: Path,
     *,
@@ -178,6 +192,7 @@ def build_app_impl(
     jobs: int = 8,
     sdk_root: Path | None = None,
     frozen: bool = False,
+    _capture_output: bool = False,
     on_line: "Callable[[str], None] | None" = None,
 ) -> Path:
     """Build an app target and return the build directory.
@@ -220,9 +235,10 @@ def build_app_impl(
         )
     validate_app_requirements(resolved_app_dir, resolved_board)
     resolved_target = target or app_name
-    run(
+    _run_build(
         ["cmake", "--build", str(resolved_build_dir), "--target", resolved_target, "-j", str(jobs)],
         on_line=on_line,
+        capture_output=_capture_output,
     )
     prepare_debug(resolved_app_dir, resolved_build_dir, resolved_board)
     return resolved_build_dir
@@ -291,13 +307,15 @@ def flash_app_impl(
             jobs=jobs,
             sdk_root=sdk_root,
             frozen=frozen,
+            _capture_output=True,
             on_line=on_line,
         )
         prepare_debug(app, build, selected, required=True)
         # Preparation configures again: compile against that final generation.
-        run(
+        _run_build(
             ["cmake", "--build", str(build), "--target", resolved_target, "-j", str(jobs)],
             on_line=on_line,
+            capture_output=True,
         )
     except subprocess.CalledProcessError as exc:
         raise NSXError(

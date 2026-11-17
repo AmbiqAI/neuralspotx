@@ -4,7 +4,8 @@
 # Keep an automatically chosen default distinct from an author's explicit opt-in.
 set(_nsx_debug_default OFF)
 if(NSX_BOARD STREQUAL "apollo510_evb" AND CMAKE_C_COMPILER_ID STREQUAL "GNU"
-   AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm")
+   AND CMAKE_SYSTEM_PROCESSOR STREQUAL "arm"
+   AND CMAKE_VERSION VERSION_GREATER_EQUAL 3.31 AND CMAKE_GENERATOR STREQUAL "Ninja")
     set(_nsx_debug_default ON)
 endif()
 
