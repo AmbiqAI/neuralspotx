@@ -41,6 +41,7 @@ from ..subprocess_utils import (
     format_subprocess_error,
     terminate_live_children,
     terminate_on_signals,
+    timeout_budget,
 )
 from ..tooling import JLinkProbe, list_jlink_probes
 from ._cmd_board import cmd_board_create, cmd_board_list, cmd_board_show
@@ -250,14 +251,15 @@ def cmd_build(args: argparse.Namespace) -> None:
     if getattr(args, "update", False):
         if getattr(args, "frozen", False):
             raise NSXConfigError("--update cannot be combined with --frozen.")
-        operations._build.preflight_build(
-            app_dir,
-            board=args.board,
-            build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
-            sdk_root=Path(args.sdk_root).expanduser().resolve()
-            if getattr(args, "sdk_root", None)
-            else None,
-        )
+        with timeout_budget(getattr(args, "timeout", None)):
+            operations._build.preflight_build(
+                app_dir,
+                board=args.board,
+                build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
+                sdk_root=Path(args.sdk_root).expanduser().resolve()
+                if getattr(args, "sdk_root", None)
+                else None,
+            )
         api.update_app(app_dir, timeout_s=getattr(args, "timeout", None))
     api.build_app(
         app_dir,
@@ -285,15 +287,16 @@ def cmd_flash(args: argparse.Namespace) -> None:
         raise NSXConfigError("--update cannot be combined with --frozen.")
     app_dir = _selected_app_dir(args)
     if getattr(args, "update", False):
-        operations._build.preflight_flash(
-            app_dir,
-            board=args.board,
-            build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
-            sdk_root=Path(args.sdk_root).expanduser().resolve()
-            if getattr(args, "sdk_root", None)
-            else None,
-            target=getattr(args, "target", None),
-        )
+        with timeout_budget(getattr(args, "timeout", None)):
+            operations._build.preflight_flash(
+                app_dir,
+                board=args.board,
+                build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
+                sdk_root=Path(args.sdk_root).expanduser().resolve()
+                if getattr(args, "sdk_root", None)
+                else None,
+                target=getattr(args, "target", None),
+            )
         api.update_app(app_dir, timeout_s=getattr(args, "timeout", None))
     quiet_emit = (lambda _event: None) if getattr(args, "quiet", False) else None
     api.flash_app(

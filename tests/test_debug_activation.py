@@ -567,3 +567,29 @@ def test_discovery_timeout_is_typed_before_hardware(app, monkeypatch, operation)
     assert caught.value.timeout_s == 10
     assert len(discoveries) == 1
     assert not any("serial" in call for call in calls)
+
+
+@pytest.mark.parametrize("operation", ["build", "flash"])
+@pytest.mark.parametrize("limit", [0.0, 0.1])
+def test_cli_update_preflight_obeys_timeout_before_mutation(
+    app, monkeypatch, capsys, operation, limit
+):
+    from neuralspotx import cli
+    from neuralspotx.operations._debug_context import _reader
+    from neuralspotx.subprocess_utils import _effective_timeout, timeout_budget
+
+    root, _, calls = app
+    attempts = []
+
+    def expire(command, **kwargs):
+        attempts.append(command)
+        assert _effective_timeout(None) == limit
+        raise subprocess.TimeoutExpired(command, limit)
+
+    monkeypatch.setattr(_reader, "run_capture", expire)
+    monkeypatch.setattr(api, "update_app", lambda *a, **k: pytest.fail("updated after timeout"))
+    with timeout_budget(9):
+        assert cli.main([operation, str(root), "--update", "--timeout", str(limit)]) == 1
+        assert _effective_timeout(None) == 9
+    assert len(attempts) == 1 and not calls
+    assert "timed out" in capsys.readouterr().err
