@@ -14,12 +14,11 @@ def test_registry_nested_mutation_does_not_change_other_callers() -> None:
     registry["caller-only"] = {"values": [1]}
 
     assert api.load_registry() == expected
-    assert api.starter_profile("apollo510_evb") == expected["starter_profiles"][
-        "apollo510_evb_minimal"
-    ]
-    assert api.registry_module_project("nsx-core") == expected["modules"]["nsx-core"][
-        "project"
-    ]
+    assert (
+        api.starter_profile("apollo510_evb")
+        == expected["starter_profiles"]["apollo510_evb_minimal"]
+    )
+    assert api.registry_module_project("nsx-core") == expected["modules"]["nsx-core"]["project"]
 
 
 def test_profile_nested_mutation_does_not_change_registry_or_profiles() -> None:
@@ -29,9 +28,10 @@ def test_profile_nested_mutation_does_not_change_registry_or_profiles() -> None:
     profile["modules"].clear()
     profile["caller-only"] = {"values": [1]}
 
-    assert api.starter_profile("apollo510_evb") == expected["starter_profiles"][
-        "apollo510_evb_minimal"
-    ]
+    assert (
+        api.starter_profile("apollo510_evb")
+        == expected["starter_profiles"]["apollo510_evb_minimal"]
+    )
     assert api.load_registry() == expected
 
 
