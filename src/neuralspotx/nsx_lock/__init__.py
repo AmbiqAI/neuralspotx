@@ -5,10 +5,10 @@ git commit and content hash of every vendored module so that builds are
 reproducible and `nsx sync` can deterministically restore the modules/
 tree.
 
-Schema (YAML, v4):
+Schema excerpt (YAML, v5):
 
 ```yaml
-schema_version: 4
+schema_version: 5
 targets:
   <board>:                      # one resolution section per board
     generated_at: <ISO 8601 UTC>

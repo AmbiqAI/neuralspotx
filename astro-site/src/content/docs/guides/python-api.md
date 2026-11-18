@@ -12,7 +12,7 @@ Every public symbol and signature is in the generated
 watch for.
 
 :::note[The public API is provisional]
-All 80 exported names are marked provisional: public and supported, but able to change in
+The exported names are marked provisional: public and supported, but able to change in
 a minor release. Pin your NSX version if you depend on them.
 :::
 
@@ -27,13 +27,21 @@ configure_app(app_dir)
 build_app(app_dir)
 ```
 
-Three conventions run through the whole surface:
+Most app lifecycle functions take the app directory or a request object as their first
+argument, with additional function options passed by keyword. Request dataclasses also
+accept positional fields; prefer keywords when constructing them.
 
-- **The app directory is the first positional argument**, and every function accepts a
-  path or a request object in that position.
-- **Everything else is keyword only.** There are no positional option arguments to get in
-  the wrong order.
-- **Failure raises.** Nothing returns an error code you can ignore.
+There are deliberate exceptions. `reset_target` takes keyword arguments only;
+`resolve_rtt_app` and `rtt_app` require an `AppRttRequest`. Module functions such as
+`add_module` also accept a positional module name, and registry and inspection helpers
+have their own signatures. Consult the generated reference for each function.
+Operations report failures through exceptions rather than error-code return values.
+
+The supported Python imports are the names in `neuralspotx.__all__` and
+`neuralspotx.api.__all__`. `PathLike` is available from `neuralspotx.api`.
+Implementation packages such as `neuralspotx.operations` and private modules are not
+extension APIs. The existing `neuralspotx.api.operations` attribute remains importable
+for compatibility, but is not a supported export.
 
 ## Two calling styles
 
@@ -53,7 +61,7 @@ request = AppBuildRequest(app_dir=app_dir, board="apollo510_evb", frozen=True)
 build_app(request)
 ```
 
-There is a request type per operation. The exported requests include: `AppActionRequest`,
+The exported request types include: `AppActionRequest`,
 `AppBuildRequest`, `AppCleanRequest`, `AppCreateRequest`, `AppFlashRequest`,
 `AppLockRequest`, `AppOutdatedRequest`, `AppSyncRequest`, `AppUpdateRequest`,
 `AppViewRequest`, `AppRttRequest`, `BoardCreateRequest`, `ModuleChangeRequest`, `ModuleInitRequest`,
@@ -124,7 +132,10 @@ tree has drifted from the lock.
 ## Progress output
 
 Long operations accept an `emit` callable, which is how the CLI prints progress. Pass your
-own to route it into a log, or leave it out to stay silent:
+own to route events into a log. Omitting it (or passing `None`) uses the default
+emitter: progress goes to stderr and line events to stdout. A no-op callback such as
+`emit=lambda event: None` suppresses these events; it does not suppress every source of
+output, such as separately configured subprocess or capture callbacks:
 
 ```python
 from neuralspotx import build_app, default_emitter
@@ -144,6 +155,10 @@ The exported surface is wider than the app lifecycle. It covers modules
 `update_app`), the registry (`load_registry`, `starter_profile`,
 `registry_module_project`), boards (`create_board`), caches (`cache_info`, `clean_cache`),
 SBOM generation (`generate_sbom`) and app discovery (`find_app_root`, `resolve_app_dir`).
+
+`load_registry()` and `starter_profile()` return independent snapshots. You may edit
+nested dictionaries and lists without changing later results or other callers' data.
+These edits do not persist registry overrides; use app configuration for that.
 
 `find_app_root` is the one to reach for first in a script: it reproduces the walk-up that
 the CLI does, so your tool resolves an app the same way `nsx build` would.
