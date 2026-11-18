@@ -2,7 +2,7 @@
 # Copyright (c) 2026, Ambiq
 """Programmatic API for the NSX workflow.
 
-Stable public surface for embedders. The actual implementations live in
+Provisional public surface for embedders. The actual implementations live in
 sibling submodules (``_requests``, ``_app``, ``_modules``, ``_lock``,
 ``_cache``, ``_sbom``); this facade re-exports them so existing
 ``from neuralspotx.api import …`` imports keep working.
@@ -12,7 +12,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from .. import operations
+# Retained as an attribute for existing callers; not a supported API export.
+from .. import operations as operations
 from .._errors import NSXConfigError, NSXError, NSXModuleError
 from ._app import (
     build_app,
@@ -87,7 +88,6 @@ __all__ = [
     "NSXModuleError",
     "PathLike",
     "add_module",
-    "operations",
     "build_app",
     "cache_info",
     "clean_app",
