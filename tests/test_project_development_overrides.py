@@ -157,6 +157,64 @@ def test_lock_pins_selected_license_manifest(tmp_path: Path) -> None:
     assert relocked.manifest_path == "example/nsx-module.yaml"
 
 
+@pytest.mark.parametrize("linked_in_new_revision", [True, False])
+def test_git_manifest_uses_locked_revision(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, linked_in_new_revision: bool
+) -> None:
+    app = tmp_path / "app"
+    checkout = app / "modules" / _MODULE_NAME
+    for directory, license_id in [("old", "ISC"), ("chosen", "MIT")]:
+        _write_module_project(checkout / directory, directory)
+        with (checkout / directory / "nsx-module.yaml").open("a", encoding="utf-8") as stream:
+            stream.write(f"licenses: {{'.': {license_id}}}\n")
+    try:
+        (checkout / "alias").symlink_to("old", target_is_directory=True)
+    except OSError:
+        pytest.skip("directory symlinks unavailable")
+    upstream = tmp_path / "upstream"
+    shutil.copytree(checkout, upstream, symlinks=True)
+    (upstream / "alias").unlink()
+    if linked_in_new_revision:
+        (upstream / "alias").symlink_to("chosen", target_is_directory=True)
+    else:
+        shutil.copytree(upstream / "chosen", upstream / "alias")
+    (upstream / "version").write_text("v2", encoding="utf-8")
+
+    sha = "a" * 40
+    override = {
+        "projects": {
+            _MODULE_NAME: {
+                "url": "https://example.org/repo.git",
+                "revision": sha,
+                "path": f"modules/{_MODULE_NAME}",
+            }
+        },
+        "modules": {
+            _MODULE_NAME: {
+                "project": _MODULE_NAME,
+                "revision": sha,
+                "metadata": "alias/nsx-module.yaml",
+            }
+        },
+    }
+    _write_app(app, layers=["packaged", {"inline": override}], revision=sha)
+    monkeypatch.setattr(operations._lock, "resolve_ref", lambda *_: (sha, None))
+    monkeypatch.setattr(operations._lock, "hash_git_artifact", lambda *_: hash_tree(upstream))
+    receipt = lock_app(app).modules[_MODULE_NAME]
+    assert receipt.commit == sha
+    assert receipt.content_hash == hash_tree(upstream) != hash_tree(checkout)
+    shutil.rmtree(checkout)
+    shutil.copytree(upstream, checkout, symlinks=True)
+    packages = json.loads(generate_sbom(app))["packages"]
+    package = next(p for p in packages if p["name"] == _MODULE_NAME)
+    assert package.get("licenseComments") == (None if linked_in_new_revision else "alias: MIT")
+    components = json.loads(generate_sbom(app, format="cyclonedx"))["components"]
+    properties = next(c for c in components if c["name"] == _MODULE_NAME)["properties"]
+    assert [p for p in properties if p["name"].startswith("nsx:license:")] == (
+        [] if linked_in_new_revision else [{"name": "nsx:license:alias", "value": "MIT"}]
+    )
+
+
 @pytest.mark.parametrize(
     "selector",
     ["alias/../details.yaml", "alias/details.yaml", r"C:details.yaml", r"choice\data.yaml"],

@@ -827,13 +827,18 @@ def _locked_manifest_path(
                 if metadata.is_absolute()
                 else root / _metadata_path_relative_to_project(metadata, project.path)
             )
-    if receipt.kind in (LockKind.LOCAL, LockKind.VENDORED) and not candidate.is_file():
-        return None
-    # The hash walk visits physical directories and hashes a final file symlink
-    # at its lexical name. Resolve the parent before interpreting any "..".
-    root = root.resolve()
-    candidate = candidate.parent.resolve() / candidate.name
-    if not candidate.is_relative_to(root) or not candidate.resolve().is_relative_to(root):
+    if receipt.kind in (LockKind.LOCAL, LockKind.VENDORED):
+        if not candidate.is_file():
+            return None
+        # These receipts hash the source on disk. A directory symlink names
+        # its physical directory, but a final file symlink is hashed by name.
+        root = root.resolve()
+        candidate = candidate.parent.resolve() / candidate.name
+        if not candidate.resolve().is_relative_to(root):
+            return None
+    # A Git receipt can pin a different revision from the checkout on disk.
+    # Keep its lexical selector for lookup in the tree that matches the receipt.
+    if not candidate.is_relative_to(root):
         return None
     locator = candidate.relative_to(root).as_posix()
     return locator if is_portable_manifest_path(locator) else None
