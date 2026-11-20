@@ -159,9 +159,12 @@ def test_worker_failures_are_bounded(
 ) -> None:
     worker(monkeypatch, body)
     monkeypatch.setattr(runtime, "_SHUTDOWN_GRACE_S", 0.1)
+    # Give the fake Python worker time to launch on busy CI runners. Only
+    # the startup timeout case needs a short readiness deadline.
+    startup_timeout_s = 0.5 if match == "startup" else 2.0
     started = time.monotonic()
     with pytest.raises(NSXError, match=match):
-        capture_runtime(settings, duration_s=0.1, startup_timeout_s=0.5)
+        capture_runtime(settings, duration_s=0.1, startup_timeout_s=startup_timeout_s)
     assert time.monotonic() - started < 5
 
 
