@@ -105,6 +105,7 @@ def test_license_scopes_follow_locked_monorepo_sources(
                     kind=kind,
                     vendored_at="modules/nsx-ambiq-sdk",
                     content_hash=hash_tree(root),
+                    manifest_path=manifest.relative_to(root).as_posix(),
                     constraint="v5.2.30",
                     acquired_at="2026-07-28T00:00:00Z",
                 ),
@@ -114,10 +115,6 @@ def test_license_scopes_follow_locked_monorepo_sources(
 
     spdx = json.loads(generate_sbom(tmp_path))["packages"][1]
     cdx = json.loads(generate_sbom(tmp_path, format="cyclonedx"))["components"][0]
-    if duplicate:
-        assert "licenseComments" not in spdx
-        assert not any(k.startswith("nsx:license:") for k in _cyclonedx_properties(cdx))
-        return
     assert spdx["licenseDeclared"] == "NOASSERTION"
     assert spdx["licenseComments"].splitlines() == [
         "modules/custom-rtos: BSD-3-Clause",

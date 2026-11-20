@@ -8,7 +8,7 @@ tree.
 Schema excerpt (YAML, v5):
 
 ```yaml
-schema_version: 5
+schema_version: 6
 targets:
   <board>:                      # one resolution section per board
     generated_at: <ISO 8601 UTC>

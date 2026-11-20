@@ -334,7 +334,7 @@ schemas:
     loader: neuralspotx.nsx_lock.read_lock_file
     model: neuralspotx.nsx_lock.ResolvedModule
     error: NSXLockError
-    schema_version: 5
+    schema_version: 6
     schema_version_constant: neuralspotx.nsx_lock._constants.LOCK_SCHEMA_VERSION
     unknown_keys: >-
       Rejected in effect. The lock is read into frozen dataclasses, so only
@@ -344,7 +344,7 @@ schemas:
     # regenerated, instead of failing the command that needed it.
     missing_required_behavior: regenerate
     fields:
-      - {path: schema_version, type: int, required: false, default: "5", values: "5", description: "Lock schema version. NSX writes it on every lock; a lock that declares an older one is regenerated, and a lock missing it is read as the current version."}
+      - {path: schema_version, type: int, required: false, default: "6", values: "6", description: "Lock schema version. NSX writes it on every lock; a lock that declares an older one is regenerated, and a lock missing it is read as the current version."}
       - {path: targets, type: map of board to lock section, required: true, description: "One resolution per board, so an app can be locked for several boards at once."}
       - {path: "targets.<board>.generated_at", type: "string (ISO 8601)", required: true, description: "When this section was resolved."}
       - {path: "targets.<board>.nsx_tool.version", type: string, required: false, description: "neuralspotx version that produced the section."}
@@ -363,10 +363,11 @@ schemas:
       - {path: "modules.<name>.resolved.commit", model_field: commit, type: string, required: false, description: "Exact commit vendored. Present for git and unresolved kinds."}
       - {path: "modules.<name>.resolved.tool_version", model_field: tool_version, type: string, required: false, description: "neuralspotx version that supplied a packaged module."}
       - {path: "modules.<name>.resolved.vendored_at", model_field: vendored_at, type: string, required: true, description: "Path under the app where the module is materialized."}
+      - {path: "modules.<name>.resolved.manifest_path", model_field: manifest_path, type: string, required: false, description: "Selected module manifest relative to the hashed artifact root, when available."}
       - {path: "modules.<name>.resolved.content_hash", model_field: content_hash, type: string, required: true, description: "SHA-256 of the vendored tree. The SBOM reports this and sync verifies it."}
       - {path: "modules.<name>.resolved.acquired_at", model_field: acquired_at, type: "string (ISO 8601)", required: true, description: "When the module was fetched."}
     example: |
-      schema_version: 5
+      schema_version: 6
       targets:
         apollo510_evb:
           generated_at: '2026-09-03T23:02:17+00:00'
@@ -389,11 +390,12 @@ schemas:
                 url: https://github.com/AmbiqAI/nsx-ambiq-sdk.git
                 tag: v5.2.26
                 commit: ba0621638d57b71a7b0d4f76ddccf0706745ad77
+                manifest_path: modules/nsx-ambiqsuite/nsx-module.yaml
                 vendored_at: modules/nsx-ambiq-sdk
                 content_hash: sha256:da17c45a3cf02797d1703f3c55beea770078cb2cb8829c7211413877089a559e
                 acquired_at: '2026-08-04T04:01:24+00:00'
     coverage_example: |
-      schema_version: 5
+      schema_version: 6
       targets:
         apollo510_evb:
           generated_at: '2026-09-03T23:02:17+00:00'
@@ -417,6 +419,7 @@ schemas:
                 tag: v5.2.26
                 commit: ba0621638d57b71a7b0d4f76ddccf0706745ad77
                 tool_version: 0.8.1
+                manifest_path: modules/nsx-ambiqsuite/nsx-module.yaml
                 vendored_at: modules/nsx-ambiq-sdk
                 content_hash: sha256:da17c45a3cf02797d1703f3c55beea770078cb2cb8829c7211413877089a559e
                 acquired_at: '2026-08-04T04:01:24+00:00'

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import json
 import shutil
 import subprocess
 from pathlib import Path
@@ -13,9 +14,11 @@ import yaml
 
 import neuralspotx.operations as operations
 from neuralspotx import (
+    NSXError,
     NSXIntegrityError,
     NSXModuleError,
     NSXResolutionError,
+    generate_sbom,
     load_registry,
     lock_app,
     sync_app,
@@ -113,6 +116,44 @@ def _write_workspace_overlay(path: Path, override: dict[str, Any]) -> None:
         yaml.safe_dump({"schema_version": 1, **override}, sort_keys=False),
         encoding="utf-8",
     )
+
+
+def test_lock_pins_selected_license_manifest(tmp_path: Path) -> None:
+    source = tmp_path / "project"
+    _write_module_project(source / "chosen", "selected")
+    _write_module_project(source / "example", "decoy")
+    chosen = source / "chosen/details.yaml"
+    (source / "chosen/nsx-module.yaml").rename(chosen)
+    with chosen.open("a", encoding="utf-8") as stream:
+        stream.write("licenses: {'.': MIT}\n")
+    with (source / "example/nsx-module.yaml").open("a", encoding="utf-8") as stream:
+        stream.write("licenses: {'.': ISC}\n")
+
+    override = _project_override(source, "local")
+    override["modules"][_MODULE_NAME]["metadata"] = "chosen/details.yaml"
+    app = tmp_path / "app"
+    overlay = app / "workspace.yaml"
+    _write_app(app, layers=["packaged", {"workspace": overlay.name}], revision="local")
+    _write_workspace_overlay(overlay, override)
+    locked = lock_app(app).modules[_MODULE_NAME]
+    assert locked.manifest_path == "chosen/details.yaml"
+    sync_app(app, frozen=True)
+
+    # Changing the registry alone changes the next lock, never the old receipt.
+    override["modules"][_MODULE_NAME]["metadata"] = "example/nsx-module.yaml"
+    _write_workspace_overlay(overlay, override)
+    with pytest.raises(NSXError):
+        lock_app(app, check=True)
+    spdx = json.loads(generate_sbom(app))["packages"]
+    assert next(p for p in spdx if p["name"] == _MODULE_NAME)["licenseComments"] == "chosen: MIT"
+    cdx = json.loads(generate_sbom(app, format="cyclonedx"))["components"]
+    properties = next(p for p in cdx if p["name"] == _MODULE_NAME)["properties"]
+    assert [p for p in properties if p["name"].startswith("nsx:license:")] == [
+        {"name": "nsx:license:chosen", "value": "MIT"}
+    ]
+    relocked = lock_app(app).modules[_MODULE_NAME]
+    assert relocked.content_hash == locked.content_hash
+    assert relocked.manifest_path == "example/nsx-module.yaml"
 
 
 def test_inline_layer_wins_over_workspace_layer_during_lock(tmp_path: Path) -> None:

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
 
 from .._errors import NSXLockError
@@ -26,6 +26,7 @@ class ResolvedModule:
     tag: str | None = None
     commit: str | None = None
     tool_version: str | None = None
+    manifest_path: str | None = None
 
     def to_yaml_dict(self) -> dict[str, Any]:
         resolved: dict[str, Any] = {
@@ -33,6 +34,8 @@ class ResolvedModule:
             "content_hash": self.content_hash,
             "acquired_at": self.acquired_at,
         }
+        if self.manifest_path is not None:
+            resolved["manifest_path"] = self.manifest_path
         if self.kind in (LockKind.GIT, LockKind.UNRESOLVED):
             head: dict[str, Any] = {"url": self.url}
             if self.tag:
@@ -53,6 +56,19 @@ class ResolvedModule:
         if not isinstance(data, dict):
             raise ValueError(f"Invalid lock entry for module '{name}'")
         resolved = data.get("resolved") or {}
+        manifest_path = resolved.get("manifest_path")
+        if manifest_path is not None and (
+            not isinstance(manifest_path, str)
+            or not PurePosixPath(manifest_path).parts
+            or PurePosixPath(manifest_path).is_absolute()
+            or PureWindowsPath(manifest_path).drive
+            or "\\" in manifest_path
+            or ".." in PurePosixPath(manifest_path).parts
+            or PurePosixPath(manifest_path).as_posix() != manifest_path
+        ):
+            raise ValueError(
+                f"Invalid resolved.manifest_path for {name!r}; expected a relative POSIX file path"
+            )
         raw_kind = data.get("kind", "git")
         try:
             kind = LockKind(raw_kind)
@@ -69,6 +85,7 @@ class ResolvedModule:
             tag=resolved.get("tag"),
             commit=resolved.get("commit"),
             tool_version=resolved.get("tool_version"),
+            manifest_path=manifest_path,
         )
 
 

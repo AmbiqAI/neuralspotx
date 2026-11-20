@@ -20,7 +20,7 @@ requested ref and the resolved commit, while local projects are identified by th
 kind and exact content hash.
 
 A materialized tree that matches its locked hash can supply path-scoped licenses.
-NSX reads the unique `nsx-module.yaml` naming each locked module. SPDX reports
+NSX reads the selected manifest recorded in each module’s `resolved.manifest_path`. SPDX reports
 the scopes in `licenseComments` and CycloneDX uses `nsx:license:<path>` properties.
 Paths in both exports are relative to the recorded `vendored_at` directory.
 

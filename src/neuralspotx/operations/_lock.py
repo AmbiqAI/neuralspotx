@@ -53,6 +53,7 @@ from ..project_config import (
     _load_app_cfg,
     _load_registry,
     _lock_board_key,
+    _metadata_path_relative_to_project,
     _nsx_tool_version,
     _registry_project_entry,
     _write_app_module_file,
@@ -767,6 +768,9 @@ def _build_lock_for_app(
             commit=commit,
         )
 
+    for name, receipt in lock.modules.items():
+        receipt.manifest_path = _locked_manifest_path(name, receipt, app_dir, registry)
+
     if selected is not None:
         validate_materialization(app_dir, lock)
     warn_unpinned_git_constraints(lock)
@@ -790,6 +794,45 @@ def _build_lock_for_app(
     return lock
 
 
+def _locked_manifest_path(
+    name: str, receipt: ResolvedModule, app_dir: Path, registry: dict[str, Any]
+) -> str | None:
+    """Locate the selected manifest within the tree hashed for this entry."""
+    from ..metadata import registry_entry_for_module
+    from ..module_registry._metadata import _module_metadata_path, packaged_module_metadata_path
+
+    root = (app_dir / receipt.vendored_at).absolute()
+    if receipt.kind == LockKind.VENDORED or name not in registry["modules"]:
+        candidate = root / "nsx-module.yaml"
+    else:
+        entry = registry_entry_for_module(registry, name)
+        if receipt.kind == LockKind.PACKAGED:
+            return packaged_module_metadata_path(name, entry, registry).name
+
+        project = _registry_project_entry(registry, entry.project)
+        if project.local_path:
+            root = Path(project.local_path).expanduser().resolve()
+        try:
+            candidate = _module_metadata_path(name, entry, registry, app_dir=app_dir)
+        except NSXResolutionError:
+            # A read-only lock check may use the locked closure on a clean
+            # checkout. Relative registry selectors still identify Git inputs.
+            if receipt.kind not in (LockKind.GIT, LockKind.UNRESOLVED):
+                return None
+            metadata = Path(entry.metadata)
+            candidate = (
+                metadata
+                if metadata.is_absolute()
+                else root / _metadata_path_relative_to_project(metadata, project.path)
+            )
+    if receipt.kind in (LockKind.LOCAL, LockKind.VENDORED) and not candidate.is_file():
+        return None
+    candidate = Path(os.path.abspath(candidate))
+    if not candidate.is_relative_to(root) or not candidate.resolve().is_relative_to(root.resolve()):
+        return None
+    return candidate.relative_to(root).as_posix()
+
+
 def _same_resolution(a: ResolvedModule, b: ResolvedModule) -> bool:
     """True when two lock entries resolve identically (ignoring ``acquired_at``)."""
 
@@ -798,6 +841,7 @@ def _same_resolution(a: ResolvedModule, b: ResolvedModule) -> bool:
         and a.kind == b.kind
         and a.constraint == b.constraint
         and a.vendored_at == b.vendored_at
+        and a.manifest_path == b.manifest_path
         and a.content_hash == b.content_hash
         and (a.url or "") == (b.url or "")
         and (a.tag or "") == (b.tag or "")
@@ -1114,6 +1158,7 @@ def _diff_locks(previous: NsxLock | None, fresh: NsxLock) -> list[str]:
         for label, old, new in (
             ("project", a.project, b.project),
             ("source URL", a.url, b.url),
+            ("module manifest", a.manifest_path, b.manifest_path),
             ("vendored path", Path(a.vendored_at), Path(b.vendored_at)),
         ):
             if old != new:

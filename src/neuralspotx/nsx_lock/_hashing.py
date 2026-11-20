@@ -36,7 +36,7 @@ def hash_tree(
     root: Path,
     *,
     exclude_names: frozenset[str] = frozenset(),
-    module_manifests: dict[Path, bytes] | None = None,
+    module_manifests: dict[Path, bytes | None] | None = None,
 ) -> str:
     """Return a deterministic ``sha256:<hex>`` over the file tree at *root*.
 
@@ -45,7 +45,7 @@ def hash_tree(
 
     *exclude_names* lists top-level filenames to omit from the hash (e.g.
     auto-generated overlay files that are not part of the upstream
-    artifact). If requested, capture canonical module manifests from the same
+    artifact). If requested, populate the requested module manifest keys from the same
     bytes used to compute the receipt. Keys are paths relative to the tree.
     """
 
@@ -57,7 +57,11 @@ def hash_tree(
         rel = f.relative_to(root).as_posix()
         file_h = hashlib.sha256()
         with f.open("rb") as fh:
-            if module_manifests is not None and f.name == "nsx-module.yaml" and not f.is_symlink():
+            if (
+                module_manifests is not None
+                and f.relative_to(root) in module_manifests
+                and (not f.is_symlink() or f.resolve().is_relative_to(root.resolve()))
+            ):
                 content = fh.read()
                 module_manifests[f.relative_to(root)] = content
                 file_h.update(content)

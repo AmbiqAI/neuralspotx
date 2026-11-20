@@ -1,8 +1,7 @@
-"""Read scoped declarations from the same source bytes that produced the receipt."""
+"""Read selected manifests from the same source bytes that produced the receipt."""
 
 from collections import defaultdict
 from pathlib import Path
-from typing import Any
 
 import yaml
 
@@ -13,9 +12,9 @@ from ..nsx_lock import NSX_TOOLING_AUTOGEN_FILES, LockKind, NsxLock, hash_tree
 
 def locked_module_licenses(app_dir: Path, lock: NsxLock) -> dict[str, dict[str, str | None]]:
     app_dir = app_dir.resolve()
-    projects: dict[tuple[Path, frozenset[str]], dict[str, str]] = defaultdict(dict)
+    projects: dict[tuple[Path, frozenset[str]], list[tuple[str, Path, str]]] = defaultdict(list)
     for name, entry in lock.modules.items():
-        if not entry.vendored_at or not entry.content_hash:
+        if not entry.manifest_path or not entry.vendored_at or not entry.content_hash:
             continue
         root = (app_dir / entry.vendored_at).resolve()
         if root == app_dir or not root.is_relative_to(app_dir) or not root.is_dir():
@@ -25,36 +24,31 @@ def locked_module_licenses(app_dir: Path, lock: NsxLock) -> dict[str, dict[str, 
             if entry.kind == LockKind.PACKAGED and root == app_dir / "cmake" / "nsx"
             else frozenset()
         )
-        projects[root, excluded][name] = entry.content_hash
+        projects[root, excluded].append((name, Path(entry.manifest_path), entry.content_hash))
 
     licenses: dict[str, dict[str, str | None]] = {}
-    for (root, excluded), expected in projects.items():
-        manifests: dict[Path, bytes] = {}
+    for (root, excluded), entries in projects.items():
+        manifests: dict[Path, bytes | None] = {path: None for _, path, _ in entries}
         try:
             digest = hash_tree(root, exclude_names=excluded, module_manifests=manifests)
         except OSError:
             continue
-        if digest not in expected.values():
-            continue
-        candidates: dict[str, list[tuple[Path, dict[str, Any]]]] = defaultdict(list)
-        for path, content in manifests.items():
+        for name, path, expected in entries:
+            content = manifests[path]
+            if expected != digest or content is None:
+                continue
             try:
                 data = yaml.safe_load(content)
             except (ValueError, yaml.YAMLError):
                 continue
-            if not isinstance(data, dict) or not isinstance(module := data.get("module"), dict):
+            if (
+                not isinstance(data, dict)
+                or data.get("schema_version") != 1
+                or "licenses" not in data
+            ):
                 continue
-            name = module.get("name")
-            if isinstance(name, str) and expected.get(name) == digest:
-                candidates[name].append((path, data))
-
-        for name, matches in candidates.items():
-            # The receipt identifies a tree and module name. Two manifests for
-            # that name leave the selection ambiguous.
-            if len(matches) != 1:
-                continue
-            path, data = matches[0]
-            if data.get("schema_version") != 1 or "licenses" not in data:
+            module = data.get("module")
+            if not isinstance(module, dict) or module.get("name") != name:
                 continue
             try:
                 scopes = parse_module_licenses(data["licenses"], str(root / path))

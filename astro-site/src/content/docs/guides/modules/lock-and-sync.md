@@ -11,6 +11,10 @@ separate is what lets a build be checked without being changed.
 reach for them directly when you want one without the other, which is most of the time in
 CI.
 
+Schema 6 records the selected manifest path for each module when its manifest belongs to
+the locked artifact. To regenerate a schema 5 lock, run `nsx lock` without a board
+argument so every target is included. Review the resulting commit SHAs for moving refs.
+
 ## What `nsx lock` writes
 
 `nsx lock` walks the graph from the board's baseline plus your declared modules, resolves
