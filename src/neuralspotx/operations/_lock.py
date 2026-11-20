@@ -18,7 +18,7 @@ from .._errors import (
     NSXResolutionError,
 )
 from .._io import info, warn
-from ..constants import DEFAULT_TOOLCHAIN
+from ..constants import DEFAULT_TOOLCHAIN, normalize_board
 from ..file_lock import app_lock
 from ..models import AppConfig, OutdatedModule, OutdatedReport, OutdatedSkip, ResolvedTarget
 from ..module_registry import (
@@ -30,6 +30,7 @@ from ..module_registry import (
 )
 from ..nsx_lock import (
     NSX_TOOLING_AUTOGEN_FILES,
+    LockFile,
     LockKind,
     NsxLock,
     ResolutionError,
@@ -38,7 +39,6 @@ from ..nsx_lock import (
     hash_manifest,
     hash_tree,
     lock_path,
-    prune_lock_targets,
     read_lock,
     read_lock_file,
     resolve_commit,
@@ -46,6 +46,7 @@ from ..nsx_lock import (
     utcnow_iso,
     write_lock,
 )
+from ..nsx_lock._io import _write_lock_file
 from ..nsx_lock._models import is_portable_manifest_path
 from ..project_config import (
     _board_key_for_app,
@@ -224,7 +225,7 @@ def _apply_active_target(nsx_cfg: dict[str, Any], target: ResolvedTarget) -> dic
     if not soc:
         # Lean ``targets:`` entries leave the SoC implicit; derive it from
         # the board descriptor so the resolver sees a complete target.
-        from ..constants import DEFAULT_SOC_FOR_BOARD, normalize_board
+        from ..constants import DEFAULT_SOC_FOR_BOARD
 
         soc = DEFAULT_SOC_FOR_BOARD.get(normalize_board(target.board) or target.board)
     if soc:
@@ -959,13 +960,12 @@ def lock_app_impl(
     if check:
         prepared = _prepare_targeted_inputs(app_dir, boards, update, modules, check=True)
         results = [
-            _lock_app_impl_unlocked(
+            _prepare_board_lock(
                 app_dir,
                 board=b,
                 update=update,
                 modules=modules,
                 check=True,
-                quiet=quiet,
                 prepared=prepared.get(b),
             )
             for b in boards
@@ -974,14 +974,13 @@ def lock_app_impl(
     with app_lock(app_dir):
         prepared = _prepare_targeted_inputs(app_dir, boards, update, modules, check=False)
         results = [
-            _lock_app_impl_unlocked(
+            _prepare_board_lock(
                 app_dir,
                 board=b,
                 update=update,
                 modules=modules,
                 check=False,
                 board_restricted=board is not None,
-                quiet=quiet,
                 prepared=prepared.get(b),
             )
             for b in boards
@@ -999,12 +998,18 @@ def lock_app_impl(
                         union.append(name)
             _write_modules_gitignore_for_module_names(app_dir, _load_app_cfg(app_dir), union)
         if board is None:
-            # Full lock: drop any orphaned target section left behind by a
-            # board that was removed from ``targets:`` in nsx.yml.
-            nsx_cfg = _load_app_cfg(app_dir)
-            keep = {k for b in boards if (k := _lock_board_key(nsx_cfg, b)) is not None}
-            if keep:
-                prune_lock_targets(app_dir, keep)
+            # Publish the complete target set only after every board and its
+            # build inputs succeeded. A failed upgrade preserves all old pins.
+            sections = {
+                normalize_board(b): result for b, result in zip(boards, results, strict=True)
+            }
+            path = _write_lock_file(app_dir, LockFile(targets=sections))
+        else:
+            path = write_lock(app_dir, results[0], normalize_board(board))
+        for result in results:
+            result.path = path
+            if not quiet:
+                _report_written_lock(app_dir, path, result)
     return results[0]
 
 
@@ -1034,7 +1039,7 @@ def _prepare_targeted_inputs(
     return prepared
 
 
-def _lock_app_impl_unlocked(
+def _prepare_board_lock(
     app_dir: Path,
     *,
     board: str | None = None,
@@ -1042,7 +1047,6 @@ def _lock_app_impl_unlocked(
     modules: list[str] | None = None,
     check: bool = False,
     board_restricted: bool = False,
-    quiet: bool = False,
     prepared: LockInputs | None = None,
 ) -> NsxLock:
     board_key = _lock_board_key(_load_app_cfg(app_dir), board)
@@ -1107,7 +1111,6 @@ def _lock_app_impl_unlocked(
 
     if on_disk_lock is None or _diff_locks(on_disk_lock, lock):
         invalidate_snapshot(app_dir, str(lock.target["board"]))
-    path = write_lock(app_dir, lock, board_key)
     nsx_cfg = _load_app_cfg(app_dir)
     app_cfg = AppConfig.from_mapping(nsx_cfg)
     if app_cfg.is_multi_target():
@@ -1122,9 +1125,10 @@ def _lock_app_impl_unlocked(
     # The shared source-tree loader contains no board-specific state.
     _write_app_module_file(app_dir, nsx_cfg, module_names=ordered_modules)
     _write_modules_gitignore_for_module_names(app_dir, nsx_cfg, ordered_modules)
-    # ``write_lock`` already stamps ``lock.path`` for us.
-    if quiet:
-        return lock
+    return lock
+
+
+def _report_written_lock(app_dir: Path, path: Path, lock: NsxLock) -> None:
     info(
         f"Wrote {path.relative_to(app_dir.parent) if path.is_relative_to(app_dir.parent) else path}"
     )
@@ -1139,7 +1143,6 @@ def _lock_app_impl_unlocked(
     if n_unres:
         parts.append(f"{n_unres} unresolved (upstream unreachable)")
     info(f"  modules: {len(lock.modules)} ({', '.join(parts)})")
-    return lock
 
 
 def _diff_locks(previous: NsxLock | None, fresh: NsxLock) -> list[str]:
