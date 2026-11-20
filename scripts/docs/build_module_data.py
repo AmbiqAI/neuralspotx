@@ -290,7 +290,7 @@ def _manifest_fields(data: dict[str, Any]) -> dict[str, Any]:
         "agent_keywords": list(data.get("agent_keywords") or []),
         "provides": data.get("provides") or {},
         "depends": {
-            "required": [dep["name"] for dep in requirements],
+            "required": [dep["name"] for dep in requirements if "name" in dep],
             "required_dependencies": requirements,
             "optional": list(depends.get("optional") or []),
         },

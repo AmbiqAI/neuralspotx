@@ -66,12 +66,10 @@ target_link_libraries(my_bsp PUBLIC nsx_ambiq_hal nsx::board_flags)
 nsx_register_bsp(TARGET my_bsp CONTRACT 2 DEBUG_ITM 0 DEBUG_UART 0)
 ```
 
-Implement the SDK's required BSP functions and headers. Debug capability values
-belong to the CMake target, not duplicated YAML. Contract 2 currently requires an
-SDK revision with that contract implementation and is qualified only for
-Apollo330P and Apollo510. The packaged stable SDK pin is not automatically changed
-by scaffolding a custom board; select a compatible immutable SDK revision through
-an explicit app registry override.
+Implement the SDK's required BSP functions and headers. Declare debug capabilities
+on the CMake target. The packaged SDK 5.2.31 supports contract 2 on Apollo330P
+and Apollo510. If your app overrides the SDK revision, select a release that
+supports contract 2 before locking the app.
 
 ## Configure and qualify
 
