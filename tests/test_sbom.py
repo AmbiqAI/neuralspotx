@@ -15,7 +15,6 @@ import yaml
 
 from neuralspotx import NSXConfigError, generate_sbom
 from neuralspotx.nsx_lock import LockKind, NsxLock, ResolvedModule, hash_tree, write_lock
-from neuralspotx.operations import lock_app_impl
 
 
 def _write_nsx_yml(app_dir: Path, modules: list[dict[str, Any]]) -> None:
@@ -46,7 +45,23 @@ def app_with_lock(tmp_path: Path) -> Path:
             {"name": "beta", "source": {"vendored": True}},
         ],
     )
-    lock_app_impl(tmp_path)
+    write_lock(
+        tmp_path,
+        NsxLock(
+            target={"board": "apollo510_evb"},
+            modules={
+                name: ResolvedModule(
+                    project=name,
+                    kind=LockKind.VENDORED,
+                    constraint="",
+                    vendored_at=f"modules/{name}",
+                    content_hash=hash_tree(tmp_path / "modules" / name),
+                    acquired_at="2026-07-28T00:00:00Z",
+                )
+                for name in ("alpha", "beta")
+            },
+        ),
+    )
     return tmp_path
 
 
