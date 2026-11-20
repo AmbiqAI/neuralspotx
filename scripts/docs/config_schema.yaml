@@ -148,6 +148,7 @@ schemas:
       - {path: integrations.zephyr.path, type: string, required: true, required_when: "support.zephyr is true", description: "Zephyr module directory. Required when support.zephyr is true."}
       - {path: integrations.zephyr.module_yml, type: string, required: true, required_when: "support.zephyr is true", description: "Path to the Zephyr module.yml. Required when support.zephyr is true."}
       - {path: integrations.zephyr.kconfig, type: string, required: true, required_when: "support.zephyr is true", description: "Path to the module's Kconfig. Required when support.zephyr is true."}
+      - {path: licenses, type: "mapping of paths to SPDX expressions or null", required: false, description: "Advisory license declarations scoped to module-relative files or directories. Use . for the module directory and null for unresolved terms. A more specific path takes precedence."}
       - {path: constraints.required_sdk_provider, type: string, required: false, description: "SDK provider module this module must be built against."}
       - {path: summary, type: string, required: false, description: "One-line description shown in the module catalog."}
       - {path: capabilities, type: list of string, required: false, description: "What the module provides, for search and agent discovery."}

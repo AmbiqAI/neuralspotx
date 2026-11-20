@@ -1,15 +1,9 @@
 """Software Bill of Materials (SBOM) generation for NSX apps.
 
 Reads ``nsx.lock`` and emits a single-document SBOM in either
-SPDX 2.3 (default) or CycloneDX 1.5 JSON. Sources every field
-from the lock receipt — per-module commit SHA + content hash +
-registry URL — so the SBOM faithfully describes what an
-``nsx sync`` of the lock would materialise.
-
-License metadata is not currently carried in the lock or in
-``nsx-module.yaml``; every package is emitted with
-``NOASSERTION`` (SPDX) / no ``licenses`` array (CycloneDX) until a
-later phase wires that through.
+SPDX 2.3 (default) or CycloneDX 1.5 JSON. Package provenance comes
+from the lock receipt. Optional path-scoped license declarations come
+from materialized sources that match the receipt.
 """
 
 from __future__ import annotations
@@ -24,6 +18,7 @@ from typing import Any, Final, Literal, TypeGuard
 from .._errors import NSXConfigError
 from ..nsx_lock import LockKind, NsxLock, lock_path, read_lock
 from ..project_config import _board_key_for_app
+from ._sbom_licenses import locked_module_licenses
 
 SBOMFormat = Literal["spdx", "cyclonedx"]
 
@@ -118,6 +113,7 @@ def _build_spdx_document(app_dir: Path, lock: NsxLock) -> dict[str, Any]:
         "relatedSpdxElement": root_spdxid,
     })
 
+    licenses = locked_module_licenses(app_dir, lock)
     for name, entry in sorted(lock.modules.items()):
         spdxid = f"SPDXRef-Package-{_spdxid_safe(name)}"
         download_location = entry.url or _SPDX_NOASSERTION
@@ -157,6 +153,12 @@ def _build_spdx_document(app_dir: Path, lock: NsxLock) -> dict[str, Any]:
         if entry.vendored_at:
             annotations.append(f"vendored_at={entry.vendored_at}")
         pkg["comment"] = "; ".join(annotations)
+
+        if scopes := licenses.get(name):
+            pkg["licenseComments"] = "\n".join(
+                f"{path}: {expression or _SPDX_NOASSERTION}"
+                for path, expression in sorted(scopes.items())
+            )
 
         packages.append(pkg)
         relationships.append({
@@ -220,6 +222,7 @@ def _build_cyclonedx_document(app_dir: Path, lock: NsxLock) -> dict[str, Any]:
     timestamp = _utc_now()
 
     components: list[dict[str, Any]] = []
+    licenses = locked_module_licenses(app_dir, lock)
     for name, entry in sorted(lock.modules.items()):
         comp: dict[str, Any] = {
             "type": "library",
@@ -247,6 +250,10 @@ def _build_cyclonedx_document(app_dir: Path, lock: NsxLock) -> dict[str, Any]:
             properties.append({"name": "nsx:tag", "value": entry.tag})
         if entry.vendored_at:
             properties.append({"name": "nsx:vendored_at", "value": entry.vendored_at})
+        properties.extend(
+            {"name": f"nsx:license:{path}", "value": expression or _SPDX_NOASSERTION}
+            for path, expression in sorted(licenses.get(name, {}).items())
+        )
         comp["properties"] = properties
 
         components.append(comp)

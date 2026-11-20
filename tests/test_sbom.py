@@ -14,7 +14,7 @@ import pytest
 import yaml
 
 from neuralspotx import NSXConfigError, generate_sbom
-from neuralspotx.nsx_lock import LockKind, NsxLock, ResolvedModule, write_lock
+from neuralspotx.nsx_lock import LockKind, NsxLock, ResolvedModule, hash_tree, write_lock
 from neuralspotx.operations import lock_app_impl
 
 
@@ -48,6 +48,65 @@ def app_with_lock(tmp_path: Path) -> Path:
     )
     lock_app_impl(tmp_path)
     return tmp_path
+
+
+def test_license_scopes_follow_locked_monorepo_sources(tmp_path: Path) -> None:
+    name = "nsx-freertos"
+    root = tmp_path / "modules" / "nsx-ambiq-sdk"
+    module_dir = root / "modules" / name
+    module_dir.mkdir(parents=True)
+    manifest = module_dir / "nsx-module.yaml"
+    manifest.write_text(
+        "schema_version: 1\nmodule: {name: nsx-freertos}\n"
+        "licenses: {'.': BSD-3-Clause, kernel: MIT, legacy.c: null}\n",
+        encoding="utf-8",
+    )
+    _write_nsx_yml(tmp_path, [])
+    write_lock(
+        tmp_path,
+        NsxLock(
+            target={"board": "apollo510_evb"},
+            modules={
+                name: ResolvedModule(
+                    project="nsx-ambiq-sdk",
+                    kind=LockKind.GIT,
+                    vendored_at="modules/nsx-ambiq-sdk",
+                    content_hash=hash_tree(root),
+                    constraint="v5.2.30",
+                    acquired_at="2026-07-28T00:00:00Z",
+                ),
+            },
+        ),
+    )
+
+    spdx = json.loads(generate_sbom(tmp_path))["packages"][1]
+    cdx = json.loads(generate_sbom(tmp_path, format="cyclonedx"))["components"][0]
+    assert spdx["licenseDeclared"] == "NOASSERTION"
+    assert spdx["licenseComments"].splitlines() == [
+        ".: BSD-3-Clause",
+        "kernel: MIT",
+        "legacy.c: NOASSERTION",
+    ]
+    assert {
+        key: value
+        for key, value in _cyclonedx_properties(cdx).items()
+        if key.startswith("nsx:license:")
+    } == {
+        "nsx:license:.": "BSD-3-Clause",
+        "nsx:license:kernel": "MIT",
+        "nsx:license:legacy.c": "NOASSERTION",
+    }
+    assert "licenses" not in cdx
+
+    # A source edit with an unchanged lock must not change its declared terms.
+    manifest.write_text(
+        "schema_version: 1\nmodule: {name: nsx-freertos}\nlicenses: {'.': MIT}\n",
+        encoding="utf-8",
+    )
+    spdx = json.loads(generate_sbom(tmp_path))["packages"][1]
+    cdx = json.loads(generate_sbom(tmp_path, format="cyclonedx"))["components"][0]
+    assert "licenseComments" not in spdx
+    assert not any(key.startswith("nsx:license:") for key in _cyclonedx_properties(cdx))
 
 
 class TestGenerateSbomSpdx:
