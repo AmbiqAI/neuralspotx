@@ -11,6 +11,7 @@ import yaml
 from neuralspotx._errors import NSXModuleError
 from neuralspotx.metadata import validate_nsx_module_metadata
 from neuralspotx.models import ModuleMetadata
+from neuralspotx.models._module_license import parse_module_licenses
 from neuralspotx.module_registry._closure import _resolve_module_closure
 from neuralspotx.module_registry._discovery import _module_discovery_record
 from neuralspotx.module_registry._requirements import validate_materialized_requirements
@@ -27,6 +28,20 @@ def manifest(
         "depends": {"required": required or [], "optional": []},
         "compatibility": {"boards": ["*"], "socs": ["*"], "toolchains": ["*"]},
     }
+
+
+@pytest.mark.parametrize(
+    "value", [[], {"src": 42}, {"../src": "MIT"}, {"./src": "MIT"}, {"src": "unknown-license"}]
+)
+def test_invalid_module_license_scopes(value: object) -> None:
+    data = manifest("example")
+    data["licenses"] = value
+    with pytest.raises(ValueError, match="licenses"):
+        validate_nsx_module_metadata(data, "example")
+
+
+def test_module_license_canonicalization() -> None:
+    assert parse_module_licenses({"src": "mit or isc"}, "example") == {"src": "MIT OR ISC"}
 
 
 def project(

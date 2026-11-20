@@ -975,6 +975,7 @@ def lock_app_impl(
                 update=update,
                 modules=modules,
                 check=False,
+                board_restricted=board is not None,
                 quiet=quiet,
                 prepared=prepared.get(b),
             )
@@ -1035,6 +1036,7 @@ def _lock_app_impl_unlocked(
     update: bool = False,
     modules: list[str] | None = None,
     check: bool = False,
+    board_restricted: bool = False,
     quiet: bool = False,
     prepared: LockInputs | None = None,
 ) -> NsxLock:
@@ -1042,6 +1044,10 @@ def _lock_app_impl_unlocked(
     try:
         previous = read_lock(app_dir, board_key)
     except NSXLockError as exc:
+        if board_restricted and len(_lock_boards_for(app_dir, None)) > 1:
+            raise NSXLockError(
+                f"{exc} Run `nsx lock` without --board to regenerate all target sections."
+            ) from exc
         # Older / unsupported on-disk schema. Read-only paths
         # (``check=True``) just log; ``nsx lock`` regenerates from
         # scratch on the next write.
