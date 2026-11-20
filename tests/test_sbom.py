@@ -14,8 +14,7 @@ import pytest
 import yaml
 
 from neuralspotx import NSXConfigError, generate_sbom
-from neuralspotx.nsx_lock import LockKind, NsxLock, ResolvedModule, write_lock
-from neuralspotx.operations import lock_app_impl
+from neuralspotx.nsx_lock import LockKind, NsxLock, ResolvedModule, hash_tree, write_lock
 
 
 def _write_nsx_yml(app_dir: Path, modules: list[dict[str, Any]]) -> None:
@@ -46,8 +45,102 @@ def app_with_lock(tmp_path: Path) -> Path:
             {"name": "beta", "source": {"vendored": True}},
         ],
     )
-    lock_app_impl(tmp_path)
+    write_lock(
+        tmp_path,
+        NsxLock(
+            target={"board": "apollo510_evb"},
+            modules={
+                name: ResolvedModule(
+                    project=name,
+                    kind=LockKind.VENDORED,
+                    constraint="",
+                    vendored_at=f"modules/{name}",
+                    content_hash=hash_tree(tmp_path / "modules" / name),
+                    acquired_at="2026-07-28T00:00:00Z",
+                )
+                for name in ("alpha", "beta")
+            },
+        ),
+    )
     return tmp_path
+
+
+@pytest.mark.parametrize(
+    ("with_app_config", "kind", "duplicate"),
+    [
+        (True, LockKind.GIT, False),
+        (False, LockKind.GIT, False),
+        (False, LockKind.UNRESOLVED, False),
+        (True, LockKind.GIT, True),
+    ],
+)
+def test_license_scopes_follow_locked_monorepo_sources(
+    tmp_path: Path, with_app_config: bool, kind: LockKind, duplicate: bool
+) -> None:
+    name = "custom-rtos"
+    root = tmp_path / "modules" / "nsx-ambiq-sdk"
+    module_dir = root / "modules" / name
+    module_dir.mkdir(parents=True)
+    manifest = module_dir / "nsx-module.yaml"
+    manifest.write_text(
+        "schema_version: 1\nmodule: {name: custom-rtos}\n"
+        "licenses: {'.': BSD-3-Clause, kernel: MIT, legacy.c: null}\n",
+        encoding="utf-8",
+    )
+    if duplicate:
+        alternate = root / "alternate" / "nsx-module.yaml"
+        alternate.parent.mkdir()
+        alternate.write_text(
+            manifest.read_text(encoding="utf-8").replace("MIT", "ISC"), encoding="utf-8"
+        )
+    if with_app_config:
+        _write_nsx_yml(tmp_path, [])
+    write_lock(
+        tmp_path,
+        NsxLock(
+            target={"board": "apollo510_evb"},
+            modules={
+                name: ResolvedModule(
+                    project="nsx-ambiq-sdk",
+                    kind=kind,
+                    vendored_at="modules/nsx-ambiq-sdk",
+                    content_hash=hash_tree(root),
+                    manifest_path=manifest.relative_to(root).as_posix(),
+                    constraint="v5.2.30",
+                    acquired_at="2026-07-28T00:00:00Z",
+                ),
+            },
+        ),
+    )
+
+    spdx = json.loads(generate_sbom(tmp_path))["packages"][1]
+    cdx = json.loads(generate_sbom(tmp_path, format="cyclonedx"))["components"][0]
+    assert spdx["licenseDeclared"] == "NOASSERTION"
+    assert spdx["licenseComments"].splitlines() == [
+        "modules/custom-rtos: BSD-3-Clause",
+        "modules/custom-rtos/kernel: MIT",
+        "modules/custom-rtos/legacy.c: NOASSERTION",
+    ]
+    assert {
+        key: value
+        for key, value in _cyclonedx_properties(cdx).items()
+        if key.startswith("nsx:license:")
+    } == {
+        "nsx:license:modules/custom-rtos": "BSD-3-Clause",
+        "nsx:license:modules/custom-rtos/kernel": "MIT",
+        "nsx:license:modules/custom-rtos/legacy.c": "NOASSERTION",
+    }
+    assert "licenses" not in cdx
+
+    # A source edit with an unchanged lock must not change its declared terms.
+    manifest.write_text(
+        "schema_version: 1\nmodule: {name: custom-rtos}\nlicenses: {'.': MIT}\n",
+        encoding="utf-8",
+    )
+    spdx = json.loads(generate_sbom(tmp_path))["packages"][1]
+    cdx = json.loads(generate_sbom(tmp_path, format="cyclonedx"))["components"][0]
+    assert "licenseComments" not in spdx
+    assert not any(key.startswith("nsx:license:") for key in _cyclonedx_properties(cdx))
 
 
 class TestGenerateSbomSpdx:

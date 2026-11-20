@@ -19,8 +19,12 @@ lock. These fields expose explicit development overrides: branch refs retain bot
 requested ref and the resolved commit, while local projects are identified by their `local`
 kind and exact content hash.
 
-License metadata is not carried in the lock or in `nsx-module.yaml`, so every package is
-emitted with `NOASSERTION` (SPDX) or with no `licenses` array (CycloneDX).
+A materialized tree that matches its locked hash can supply path-scoped licenses.
+NSX reads the selected manifest recorded in each module’s `resolved.manifest_path`. SPDX reports
+the scopes in `licenseComments` and CycloneDX uses `nsx:license:<path>` properties.
+For Git modules, NSX omits declarations if the selected path passes through a directory
+symlink, because the artifact hash walk skips linked directories.
+Paths in both exports are relative to the recorded `vendored_at` directory.
 
 The same payload is available from Python:
 

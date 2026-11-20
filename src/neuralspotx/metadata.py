@@ -226,6 +226,10 @@ def validate_nsx_module_metadata(data: dict[str, Any], module_path: str) -> None
     from .models._module_dependency import parse_required_dependencies
 
     parse_required_dependencies(required, module_path)
+    if "licenses" in data:
+        from .models._module_license import parse_module_licenses
+
+        parse_module_licenses(data["licenses"], module_path)
     from .bsp_contracts import parse_bsp_offer
 
     parse_bsp_offer(data.get("contracts"), module_path)

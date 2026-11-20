@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import copy
+import json
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -13,14 +15,16 @@ import yaml
 
 import neuralspotx.operations as operations
 from neuralspotx import (
+    NSXError,
     NSXIntegrityError,
     NSXModuleError,
     NSXResolutionError,
+    generate_sbom,
     load_registry,
     lock_app,
     sync_app,
 )
-from neuralspotx.nsx_lock import LockKind, hash_tree
+from neuralspotx.nsx_lock import LockKind, hash_tree, read_lock
 
 _MODULE_NAME = "nsx-tflite-micro"
 _PROJECT_NAME = "nsx-tflite-micro"
@@ -113,6 +117,137 @@ def _write_workspace_overlay(path: Path, override: dict[str, Any]) -> None:
         yaml.safe_dump({"schema_version": 1, **override}, sort_keys=False),
         encoding="utf-8",
     )
+
+
+def test_lock_pins_selected_license_manifest(tmp_path: Path) -> None:
+    source = tmp_path / "project"
+    _write_module_project(source / "chosen", "selected")
+    _write_module_project(source / "example", "decoy")
+    chosen = source / "chosen/details.yaml"
+    (source / "chosen/nsx-module.yaml").rename(chosen)
+    with chosen.open("a", encoding="utf-8") as stream:
+        stream.write("licenses: {'.': MIT}\n")
+    with (source / "example/nsx-module.yaml").open("a", encoding="utf-8") as stream:
+        stream.write("licenses: {'.': ISC}\n")
+
+    override = _project_override(source, "local")
+    override["modules"][_MODULE_NAME]["metadata"] = "chosen/details.yaml"
+    app = tmp_path / "app"
+    overlay = app / "workspace.yaml"
+    _write_app(app, layers=["packaged", {"workspace": overlay.name}], revision="local")
+    _write_workspace_overlay(overlay, override)
+    locked = lock_app(app).modules[_MODULE_NAME]
+    assert locked.manifest_path == "chosen/details.yaml"
+    sync_app(app, frozen=True)
+
+    # Changing the registry alone changes the next lock, never the old receipt.
+    override["modules"][_MODULE_NAME]["metadata"] = "example/nsx-module.yaml"
+    _write_workspace_overlay(overlay, override)
+    with pytest.raises(NSXError):
+        lock_app(app, check=True)
+    spdx = json.loads(generate_sbom(app))["packages"]
+    assert next(p for p in spdx if p["name"] == _MODULE_NAME)["licenseComments"] == "chosen: MIT"
+    cdx = json.loads(generate_sbom(app, format="cyclonedx"))["components"]
+    properties = next(p for p in cdx if p["name"] == _MODULE_NAME)["properties"]
+    assert [p for p in properties if p["name"].startswith("nsx:license:")] == [
+        {"name": "nsx:license:chosen", "value": "MIT"}
+    ]
+    relocked = lock_app(app).modules[_MODULE_NAME]
+    assert relocked.content_hash == locked.content_hash
+    assert relocked.manifest_path == "example/nsx-module.yaml"
+
+
+@pytest.mark.parametrize("linked_in_new_revision", [True, False])
+def test_git_manifest_uses_locked_revision(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, linked_in_new_revision: bool
+) -> None:
+    app = tmp_path / "app"
+    checkout = app / "modules" / _MODULE_NAME
+    for directory, license_id in [("old", "ISC"), ("chosen", "MIT")]:
+        _write_module_project(checkout / directory, directory)
+        with (checkout / directory / "nsx-module.yaml").open("a", encoding="utf-8") as stream:
+            stream.write(f"licenses: {{'.': {license_id}}}\n")
+    try:
+        (checkout / "alias").symlink_to("old", target_is_directory=True)
+    except OSError:
+        pytest.skip("directory symlinks unavailable")
+    upstream = tmp_path / "upstream"
+    shutil.copytree(checkout, upstream, symlinks=True)
+    (upstream / "alias").unlink()
+    if linked_in_new_revision:
+        (upstream / "alias").symlink_to("chosen", target_is_directory=True)
+    else:
+        shutil.copytree(upstream / "chosen", upstream / "alias")
+    (upstream / "version").write_text("v2", encoding="utf-8")
+
+    sha = "a" * 40
+    override = {
+        "projects": {
+            _MODULE_NAME: {
+                "url": "https://example.org/repo.git",
+                "revision": sha,
+                "path": f"modules/{_MODULE_NAME}",
+            }
+        },
+        "modules": {
+            _MODULE_NAME: {
+                "project": _MODULE_NAME,
+                "revision": sha,
+                "metadata": "alias/nsx-module.yaml",
+            }
+        },
+    }
+    _write_app(app, layers=["packaged", {"inline": override}], revision=sha)
+    monkeypatch.setattr(operations._lock, "resolve_ref", lambda *_: (sha, None))
+    monkeypatch.setattr(operations._lock, "hash_git_artifact", lambda *_: hash_tree(upstream))
+    receipt = lock_app(app).modules[_MODULE_NAME]
+    assert receipt.commit == sha
+    assert receipt.content_hash == hash_tree(upstream) != hash_tree(checkout)
+    shutil.rmtree(checkout)
+    shutil.copytree(upstream, checkout, symlinks=True)
+    packages = json.loads(generate_sbom(app))["packages"]
+    package = next(p for p in packages if p["name"] == _MODULE_NAME)
+    assert package.get("licenseComments") == (None if linked_in_new_revision else "alias: MIT")
+    components = json.loads(generate_sbom(app, format="cyclonedx"))["components"]
+    properties = next(c for c in components if c["name"] == _MODULE_NAME)["properties"]
+    assert [p for p in properties if p["name"].startswith("nsx:license:")] == (
+        [] if linked_in_new_revision else [{"name": "nsx:license:alias", "value": "MIT"}]
+    )
+
+
+@pytest.mark.parametrize(
+    "selector",
+    ["alias/../details.yaml", "alias/details.yaml", r"C:details.yaml", r"choice\data.yaml"],
+)
+def test_manifest_locator_roundtrip_for_filesystem_paths(tmp_path: Path, selector: str) -> None:
+    source = tmp_path / "project"
+    _write_module_project(source, "root")
+    if selector.startswith("alias/"):
+        (source / "nested/sub").mkdir(parents=True)
+        try:
+            (source / "alias").symlink_to(source / "nested/sub", target_is_directory=True)
+        except OSError:
+            pytest.skip("directory symlinks unavailable")
+    else:
+        if os.name == "nt":
+            pytest.skip("POSIX-only filename")
+    (source / selector).write_bytes((source / "nsx-module.yaml").read_bytes())
+    override = _project_override(source, "local")
+    override["modules"][_MODULE_NAME]["metadata"] = selector
+    app = tmp_path / "app"
+    _write_app(app, layers=["packaged", {"inline": override}], revision="local")
+    lock_app(app)
+    receipt = read_lock(app, "apollo510_evb")
+    assert receipt is not None
+    locator = receipt.modules[_MODULE_NAME].manifest_path
+    if selector.startswith("alias/"):
+        # Windows and POSIX handle ".." after a directory link differently.
+        # Verify the file actually selected by this OS and visited by the hash walk.
+        assert locator is not None
+        assert "alias" not in Path(locator).parts
+        assert (source / locator).samefile(source / selector)
+    else:
+        assert locator is None
 
 
 def test_inline_layer_wins_over_workspace_layer_during_lock(tmp_path: Path) -> None:

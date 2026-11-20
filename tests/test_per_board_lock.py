@@ -11,8 +11,9 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
+import yaml
 
-from neuralspotx._errors import NSXConfigError
+from neuralspotx._errors import NSXConfigError, NSXLockError
 from neuralspotx.models import AppConfig, ResolvedTarget
 from neuralspotx.nsx_lock import (
     LockFile,
@@ -24,7 +25,7 @@ from neuralspotx.nsx_lock import (
     write_lock,
 )
 from neuralspotx.nsx_lock._constants import LOCK_SCHEMA_VERSION
-from neuralspotx.operations._lock import _apply_active_target, _lock_boards_for
+from neuralspotx.operations._lock import _apply_active_target, _lock_boards_for, lock_app_impl
 from neuralspotx.project_config import _board_key_for_app, _lock_board_key
 
 # --- lock_path ------------------------------------------------------------
@@ -63,6 +64,57 @@ def test_single_target_is_not_multi_target() -> None:
 
 def test_targets_block_is_multi_target() -> None:
     assert AppConfig.from_mapping(_multi_cfg()).is_multi_target() is True
+
+
+def test_partial_relock_preserves_old_multi_target_receipt(tmp_path: Path) -> None:
+    (tmp_path / "nsx.yml").write_text(yaml.safe_dump(_multi_cfg()), encoding="utf-8")
+    receipt = tmp_path / "nsx.lock"
+    receipt.write_text(
+        yaml.safe_dump({
+            "schema_version": LOCK_SCHEMA_VERSION - 1,
+            "targets": {"apollo510_evb": {}, "apollo510b_evb": {}},
+        }),
+        encoding="utf-8",
+    )
+    original = receipt.read_bytes()
+    with pytest.raises(NSXLockError, match="without --board"):
+        lock_app_impl(tmp_path, board="apollo510_evb")
+    assert receipt.read_bytes() == original
+
+
+def test_failed_full_schema_upgrade_preserves_all_receipts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from neuralspotx.operations import _lock
+
+    config = {**_multi_cfg(), "baseline": "none", "modules": []}
+    (tmp_path / "nsx.yml").write_text(yaml.safe_dump(config), encoding="utf-8")
+    receipt = lock_path(tmp_path)
+    boards = list(AppConfig.from_mapping(config).targets())
+    original = yaml.safe_dump({
+        "schema_version": LOCK_SCHEMA_VERSION - 1,
+        "targets": {board: {"modules": {}} for board in boards},
+    }).encode()
+    receipt.write_bytes(original)
+    boards_seen = []
+
+    def fail_second_board(_app, cfg, *, module_names):
+        board = cfg["target"]["board"]
+        if board not in boards_seen:
+            boards_seen.append(board)
+        if board == "apollo510b_evb":
+            raise OSError("failed to write build inputs")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(_lock, "_write_app_module_file", fail_second_board)
+        with pytest.raises(OSError, match="failed to write build inputs"):
+            lock_app_impl(tmp_path)
+    assert boards_seen == boards
+    assert receipt.read_bytes() == original
+    assert lock_app_impl(tmp_path).path == receipt
+    combined = read_lock_file(tmp_path)
+    assert combined is not None
+    assert set(combined.targets) == set(boards_seen)
 
 
 def test_lock_board_key_single_target_resolves_default_board() -> None:

@@ -60,6 +60,23 @@ nsx module validate ./my-sensor
 nsx module validate ./my-sensor --json
 ```
 
+Modules may declare path-specific license terms in `nsx-module.yaml`:
+
+```yaml
+licenses:
+  .: BSD-3-Clause
+  sdk/third_party/example: MIT
+  sdk/third_party/legacy.c: null
+```
+
+Paths are relative to the manifest. A specific entry overrides a broader one.
+Use `null` when the terms for a path are unresolved. Run `nsx sync` before
+`nsx sbom` to materialize the locked sources. When their content matches the
+lock, SPDX reports these declarations in `licenseComments` and CycloneDX
+reports them as `nsx:license:<path>` properties. Both exports express paths relative
+to the locked project directory (`vendored_at`). The lock identifies the selected manifest within that directory. Package-wide license fields
+retain their default values.
+
 ## The CMake surface
 
 Your module declares a package and one or more targets; NSX generates the wiring that

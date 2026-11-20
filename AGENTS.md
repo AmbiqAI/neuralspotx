@@ -326,7 +326,7 @@ version mismatch fails loudly with an actionable hint instead of silently
 upgrading data. There are two artifact classes with two behaviors:
 
 - **Generated / disposable artifacts** — `nsx.lock`
-  (`LOCK_SCHEMA_VERSION`, currently `5`) and the on-disk caches. A mismatch is
+  (`LOCK_SCHEMA_VERSION`, currently `6`) and the on-disk caches. A mismatch is
   rejected with a typed error that tells the user how to recreate it:
   `nsx lock` regenerates the lock; `nsx cache clean` clears caches. `nsx lock`
   itself catches the lock mismatch and rewrites the file in place. The
