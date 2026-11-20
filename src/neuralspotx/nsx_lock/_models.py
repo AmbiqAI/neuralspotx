@@ -12,6 +12,19 @@ from ._constants import LOCK_SCHEMA_VERSION
 from ._kinds import LockKind
 
 
+def is_portable_manifest_path(value: object) -> bool:
+    if not isinstance(value, str):
+        return False
+    path = PurePosixPath(value)
+    return bool(path.parts) and (
+        not path.is_absolute()
+        and not PureWindowsPath(value).drive
+        and "\\" not in value
+        and ".." not in path.parts
+        and path.as_posix() == value
+    )
+
+
 @dataclass
 class ResolvedModule:
     """Resolution record for one module."""
@@ -57,15 +70,7 @@ class ResolvedModule:
             raise ValueError(f"Invalid lock entry for module '{name}'")
         resolved = data.get("resolved") or {}
         manifest_path = resolved.get("manifest_path")
-        if manifest_path is not None and (
-            not isinstance(manifest_path, str)
-            or not PurePosixPath(manifest_path).parts
-            or PurePosixPath(manifest_path).is_absolute()
-            or PureWindowsPath(manifest_path).drive
-            or "\\" in manifest_path
-            or ".." in PurePosixPath(manifest_path).parts
-            or PurePosixPath(manifest_path).as_posix() != manifest_path
-        ):
+        if manifest_path is not None and not is_portable_manifest_path(manifest_path):
             raise ValueError(
                 f"Invalid resolved.manifest_path for {name!r}; expected a relative POSIX file path"
             )

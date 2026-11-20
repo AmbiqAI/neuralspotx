@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import copy
 import json
+import os
 import shutil
 import subprocess
 from pathlib import Path
@@ -23,7 +24,7 @@ from neuralspotx import (
     lock_app,
     sync_app,
 )
-from neuralspotx.nsx_lock import LockKind, hash_tree
+from neuralspotx.nsx_lock import LockKind, hash_tree, read_lock
 
 _MODULE_NAME = "nsx-tflite-micro"
 _PROJECT_NAME = "nsx-tflite-micro"
@@ -154,6 +155,35 @@ def test_lock_pins_selected_license_manifest(tmp_path: Path) -> None:
     relocked = lock_app(app).modules[_MODULE_NAME]
     assert relocked.content_hash == locked.content_hash
     assert relocked.manifest_path == "example/nsx-module.yaml"
+
+
+@pytest.mark.parametrize(
+    "selector",
+    ["alias/../details.yaml", "alias/details.yaml", r"C:details.yaml", r"choice\data.yaml"],
+)
+def test_manifest_locator_roundtrip_for_filesystem_paths(tmp_path: Path, selector: str) -> None:
+    source = tmp_path / "project"
+    _write_module_project(source, "root")
+    if selector.startswith("alias/"):
+        (source / "nested/sub").mkdir(parents=True)
+        try:
+            (source / "alias").symlink_to(source / "nested/sub", target_is_directory=True)
+        except OSError:
+            pytest.skip("directory symlinks unavailable")
+        expected = "nested/details.yaml" if ".." in selector else "nested/sub/details.yaml"
+    else:
+        if os.name == "nt":
+            pytest.skip("POSIX-only filename")
+        expected = None
+    (source / selector).write_bytes((source / "nsx-module.yaml").read_bytes())
+    override = _project_override(source, "local")
+    override["modules"][_MODULE_NAME]["metadata"] = selector
+    app = tmp_path / "app"
+    _write_app(app, layers=["packaged", {"inline": override}], revision="local")
+    lock_app(app)
+    receipt = read_lock(app, "apollo510_evb")
+    assert receipt is not None
+    assert receipt.modules[_MODULE_NAME].manifest_path == expected
 
 
 def test_inline_layer_wins_over_workspace_layer_during_lock(tmp_path: Path) -> None:

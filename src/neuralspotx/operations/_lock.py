@@ -46,6 +46,7 @@ from ..nsx_lock import (
     utcnow_iso,
     write_lock,
 )
+from ..nsx_lock._models import is_portable_manifest_path
 from ..project_config import (
     _board_key_for_app,
     _copy_packaged_tree,
@@ -807,7 +808,8 @@ def _locked_manifest_path(
     else:
         entry = registry_entry_for_module(registry, name)
         if receipt.kind == LockKind.PACKAGED:
-            return packaged_module_metadata_path(name, entry, registry).name
+            filename = packaged_module_metadata_path(name, entry, registry).name
+            return filename if is_portable_manifest_path(filename) else None
 
         project = _registry_project_entry(registry, entry.project)
         if project.local_path:
@@ -827,10 +829,14 @@ def _locked_manifest_path(
             )
     if receipt.kind in (LockKind.LOCAL, LockKind.VENDORED) and not candidate.is_file():
         return None
-    candidate = Path(os.path.abspath(candidate))
-    if not candidate.is_relative_to(root) or not candidate.resolve().is_relative_to(root.resolve()):
+    # The hash walk visits physical directories and hashes a final file symlink
+    # at its lexical name. Resolve the parent before interpreting any "..".
+    root = root.resolve()
+    candidate = candidate.parent.resolve() / candidate.name
+    if not candidate.is_relative_to(root) or not candidate.resolve().is_relative_to(root):
         return None
-    return candidate.relative_to(root).as_posix()
+    locator = candidate.relative_to(root).as_posix()
+    return locator if is_portable_manifest_path(locator) else None
 
 
 def _same_resolution(a: ResolvedModule, b: ResolvedModule) -> bool:
