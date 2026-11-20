@@ -468,7 +468,9 @@ function modulePage(module, known, uncheckedProjects) {
     ...section('Provides', pairs(module.provides)),
     ...section('Requires', module.depends.required_dependencies
       ? module.depends.required_dependencies.flatMap(dep =>
-          depends([dep.name]).map(row => dep.version ? `${row} — ${code(dep.version)}` : row))
+          dep.role === 'bsp'
+            ? [`- Board-selected BSP (contracts ${dep.contracts.map(code).join(', ')})`]
+            : depends([dep.name]).map(row => dep.version ? `${row} — ${code(dep.version)}` : row))
       : depends(module.depends.required)),
     ...section('Optional dependencies', depends(module.depends.optional)),
     '## Compatibility',
