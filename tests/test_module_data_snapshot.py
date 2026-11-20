@@ -120,6 +120,13 @@ def registry_lock() -> dict[str, Any]:
 # ---------------------------------------------------------------------------
 
 
+def test_catalog_keeps_bsp_role_separate_from_named_dependencies():
+    role = {"role": "bsp", "contracts": [1, 2]}
+    deps = _builder()._manifest_fields({"depends": {"required": ["nsx-core", role]}})["depends"]
+    assert deps["required"] == ["nsx-core"]
+    assert deps["required_dependencies"] == [{"name": "nsx-core", "version": None}, role]
+
+
 def test_every_registry_module_is_in_the_snapshot(modules, registry_lock):
     assert {entry["name"] for entry in modules["modules"]} == set(registry_lock["modules"])
     assert modules["module_count"] == len(modules["modules"])
