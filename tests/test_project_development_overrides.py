@@ -228,11 +228,9 @@ def test_manifest_locator_roundtrip_for_filesystem_paths(tmp_path: Path, selecto
             (source / "alias").symlink_to(source / "nested/sub", target_is_directory=True)
         except OSError:
             pytest.skip("directory symlinks unavailable")
-        expected = "nested/details.yaml" if ".." in selector else "nested/sub/details.yaml"
     else:
         if os.name == "nt":
             pytest.skip("POSIX-only filename")
-        expected = None
     (source / selector).write_bytes((source / "nsx-module.yaml").read_bytes())
     override = _project_override(source, "local")
     override["modules"][_MODULE_NAME]["metadata"] = selector
@@ -241,7 +239,15 @@ def test_manifest_locator_roundtrip_for_filesystem_paths(tmp_path: Path, selecto
     lock_app(app)
     receipt = read_lock(app, "apollo510_evb")
     assert receipt is not None
-    assert receipt.modules[_MODULE_NAME].manifest_path == expected
+    locator = receipt.modules[_MODULE_NAME].manifest_path
+    if selector.startswith("alias/"):
+        # Windows and POSIX handle ".." after a directory link differently.
+        # Verify the file actually selected by this OS and visited by the hash walk.
+        assert locator is not None
+        assert "alias" not in Path(locator).parts
+        assert (source / locator).samefile(source / selector)
+    else:
+        assert locator is None
 
 
 def test_inline_layer_wins_over_workspace_layer_during_lock(tmp_path: Path) -> None:
