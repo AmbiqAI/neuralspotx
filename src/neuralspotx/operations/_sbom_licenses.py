@@ -15,10 +15,14 @@ def locked_module_licenses(app_dir: Path, lock: NsxLock) -> dict[str, dict[str, 
     app_dir = app_dir.resolve()
     try:
         config = _load_app_cfg(app_dir)
-        registry = _effective_registry(_load_registry(), config, app_dir=app_dir)
     except (NSXConfigError, ValueError, OSError):
-        # A lock-only SBOM still works without registries or an app manifest.
-        config, registry = {}, {"modules": {}}
+        config = {}
+    registry = _load_registry()
+    try:
+        registry = _effective_registry(registry, config, app_dir=app_dir)
+    except (NSXConfigError, ValueError, OSError):
+        # An unavailable workspace overlay must not hide built-in manifests.
+        config = {}
 
     licenses: dict[str, dict[str, str | None]] = {}
     hashes: dict[tuple[Path, frozenset[str]], str] = {}
@@ -30,12 +34,14 @@ def locked_module_licenses(app_dir: Path, lock: NsxLock) -> dict[str, dict[str, 
             if root == app_dir or not root.is_relative_to(app_dir) or not root.is_dir():
                 continue
 
-            try:
-                manifest = _materialized_module_metadata_path(
-                    name, registry, app_dir=app_dir, nsx_cfg=config
-                )
-            except (NSXConfigError, ValueError):
-                manifest = root / "nsx-module.yaml"
+            manifest = root / "nsx-module.yaml"
+            if entry.kind != LockKind.VENDORED:
+                try:
+                    manifest = _materialized_module_metadata_path(
+                        name, registry, app_dir=app_dir, nsx_cfg=config
+                    )
+                except (NSXConfigError, ValueError):
+                    pass
             if not manifest.is_file() or not manifest.is_relative_to(root):
                 continue
             if manifest.resolve() != manifest:

@@ -65,7 +65,10 @@ def app_with_lock(tmp_path: Path) -> Path:
     return tmp_path
 
 
-def test_license_scopes_follow_locked_monorepo_sources(tmp_path: Path) -> None:
+@pytest.mark.parametrize("with_app_config", [True, False])
+def test_license_scopes_follow_locked_monorepo_sources(
+    tmp_path: Path, with_app_config: bool
+) -> None:
     name = "nsx-freertos"
     root = tmp_path / "modules" / "nsx-ambiq-sdk"
     module_dir = root / "modules" / name
@@ -76,7 +79,8 @@ def test_license_scopes_follow_locked_monorepo_sources(tmp_path: Path) -> None:
         "licenses: {'.': BSD-3-Clause, kernel: MIT, legacy.c: null}\n",
         encoding="utf-8",
     )
-    _write_nsx_yml(tmp_path, [])
+    if with_app_config:
+        _write_nsx_yml(tmp_path, [])
     write_lock(
         tmp_path,
         NsxLock(

@@ -222,6 +222,9 @@ schemas:
           bsp:
             versions: [2]
             socs: [apollo330P]
+      licenses:
+        .: BSD-3-Clause
+        third_party/legacy.c: null
       summary: Coverage module.
       capabilities: [dsp]
       use_cases: [filtering]
