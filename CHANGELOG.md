@@ -1,5 +1,25 @@
 # Changelog
 
+## [0.9.7](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.9.6...neuralspotx-v0.9.7) (2026-11-20)
+
+
+### Features
+
+* activate configured debug contexts and temporary probe selection ([#335](https://github.com/AmbiqAI/neuralspotx/issues/335)) ([4e07325](https://github.com/AmbiqAI/neuralspotx/commit/4e07325dfe49a095442ca75d1fe909d8e354d203))
+* add opt-in CMake debug context and private capture ([#334](https://github.com/AmbiqAI/neuralspotx/issues/334)) ([3a723a0](https://github.com/AmbiqAI/neuralspotx/commit/3a723a0132778c08efe1806f7ff655299041e086))
+
+
+### Bug Fixes
+
+* distinguish probe discovery failures from empty inventories ([#333](https://github.com/AmbiqAI/neuralspotx/issues/333)) ([dbc942d](https://github.com/AmbiqAI/neuralspotx/commit/dbc942d36ef5f8bd006e1ac35eb0e3e542af5c21))
+* isolate public registry snapshots and clarify API boundary ([#336](https://github.com/AmbiqAI/neuralspotx/issues/336)) ([fdeadeb](https://github.com/AmbiqAI/neuralspotx/commit/fdeadeba0dddb678568c92dd53869f460659bf23))
+* promote SDK 5.2.31 registry pin ([#341](https://github.com/AmbiqAI/neuralspotx/issues/341)) ([ce617a7](https://github.com/AmbiqAI/neuralspotx/commit/ce617a73e5a13c20eebed0bd8f1664eb02442a5a))
+
+
+### Documentation
+
+* document verified Apollo ICD workflow ([#331](https://github.com/AmbiqAI/neuralspotx/issues/331)) ([c9cdb23](https://github.com/AmbiqAI/neuralspotx/commit/c9cdb2385d749e59c4eebb6bfbb508e124e564ef))
+
 ## [0.9.6](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.9.5...neuralspotx-v0.9.6) (2026-11-15)
 
 
