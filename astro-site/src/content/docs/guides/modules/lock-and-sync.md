@@ -48,6 +48,9 @@ module_registry:
       revision: v5.2.31
 ```
 
+SDK 5.2.31 requires neuralspotx 0.9.6 or newer to resolve BSP dependencies,
+including for built-in boards.
+
 For a module-specific override, use `module_registry.modules.<module>.revision`.
 A `revision` field directly under the app's top-level `modules` entries does not
 set the effective registry revision. Check the resulting constraints in `nsx.lock`.
