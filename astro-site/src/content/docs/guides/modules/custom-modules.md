@@ -73,7 +73,9 @@ Paths are relative to the manifest. A specific entry overrides a broader one.
 Use `null` when the terms for a path are unresolved. Run `nsx sync` before
 `nsx sbom` to materialize the locked sources. When their content matches the
 lock, SPDX reports these declarations in `licenseComments` and CycloneDX
-reports them as `nsx:license:<path>` properties. Package-wide license fields
+reports them as `nsx:license:<path>` properties. Both exports express paths relative
+to the locked project directory (`vendored_at`). A project must contain a unique
+`nsx-module.yaml` naming the module for its scopes to appear. Package-wide license fields
 retain their default values.
 
 ## The CMake surface

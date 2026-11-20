@@ -65,20 +65,34 @@ def app_with_lock(tmp_path: Path) -> Path:
     return tmp_path
 
 
-@pytest.mark.parametrize("with_app_config", [True, False])
+@pytest.mark.parametrize(
+    ("with_app_config", "kind", "duplicate"),
+    [
+        (True, LockKind.GIT, False),
+        (False, LockKind.GIT, False),
+        (False, LockKind.UNRESOLVED, False),
+        (True, LockKind.GIT, True),
+    ],
+)
 def test_license_scopes_follow_locked_monorepo_sources(
-    tmp_path: Path, with_app_config: bool
+    tmp_path: Path, with_app_config: bool, kind: LockKind, duplicate: bool
 ) -> None:
-    name = "nsx-freertos"
+    name = "custom-rtos"
     root = tmp_path / "modules" / "nsx-ambiq-sdk"
     module_dir = root / "modules" / name
     module_dir.mkdir(parents=True)
     manifest = module_dir / "nsx-module.yaml"
     manifest.write_text(
-        "schema_version: 1\nmodule: {name: nsx-freertos}\n"
+        "schema_version: 1\nmodule: {name: custom-rtos}\n"
         "licenses: {'.': BSD-3-Clause, kernel: MIT, legacy.c: null}\n",
         encoding="utf-8",
     )
+    if duplicate:
+        alternate = root / "alternate" / "nsx-module.yaml"
+        alternate.parent.mkdir()
+        alternate.write_text(
+            manifest.read_text(encoding="utf-8").replace("MIT", "ISC"), encoding="utf-8"
+        )
     if with_app_config:
         _write_nsx_yml(tmp_path, [])
     write_lock(
@@ -88,7 +102,7 @@ def test_license_scopes_follow_locked_monorepo_sources(
             modules={
                 name: ResolvedModule(
                     project="nsx-ambiq-sdk",
-                    kind=LockKind.GIT,
+                    kind=kind,
                     vendored_at="modules/nsx-ambiq-sdk",
                     content_hash=hash_tree(root),
                     constraint="v5.2.30",
@@ -100,26 +114,30 @@ def test_license_scopes_follow_locked_monorepo_sources(
 
     spdx = json.loads(generate_sbom(tmp_path))["packages"][1]
     cdx = json.loads(generate_sbom(tmp_path, format="cyclonedx"))["components"][0]
+    if duplicate:
+        assert "licenseComments" not in spdx
+        assert not any(k.startswith("nsx:license:") for k in _cyclonedx_properties(cdx))
+        return
     assert spdx["licenseDeclared"] == "NOASSERTION"
     assert spdx["licenseComments"].splitlines() == [
-        ".: BSD-3-Clause",
-        "kernel: MIT",
-        "legacy.c: NOASSERTION",
+        "modules/custom-rtos: BSD-3-Clause",
+        "modules/custom-rtos/kernel: MIT",
+        "modules/custom-rtos/legacy.c: NOASSERTION",
     ]
     assert {
         key: value
         for key, value in _cyclonedx_properties(cdx).items()
         if key.startswith("nsx:license:")
     } == {
-        "nsx:license:.": "BSD-3-Clause",
-        "nsx:license:kernel": "MIT",
-        "nsx:license:legacy.c": "NOASSERTION",
+        "nsx:license:modules/custom-rtos": "BSD-3-Clause",
+        "nsx:license:modules/custom-rtos/kernel": "MIT",
+        "nsx:license:modules/custom-rtos/legacy.c": "NOASSERTION",
     }
     assert "licenses" not in cdx
 
     # A source edit with an unchanged lock must not change its declared terms.
     manifest.write_text(
-        "schema_version: 1\nmodule: {name: nsx-freertos}\nlicenses: {'.': MIT}\n",
+        "schema_version: 1\nmodule: {name: custom-rtos}\nlicenses: {'.': MIT}\n",
         encoding="utf-8",
     )
     spdx = json.loads(generate_sbom(tmp_path))["packages"][1]

@@ -32,7 +32,12 @@ def _iter_files(root: Path, *, exclude_names: frozenset[str] = frozenset()) -> I
         yield child
 
 
-def hash_tree(root: Path, *, exclude_names: frozenset[str] = frozenset()) -> str:
+def hash_tree(
+    root: Path,
+    *,
+    exclude_names: frozenset[str] = frozenset(),
+    module_manifests: dict[Path, bytes] | None = None,
+) -> str:
     """Return a deterministic ``sha256:<hex>`` over the file tree at *root*.
 
     The hash digests the sorted list of ``(posix-relpath, file-sha256)`` tuples,
@@ -40,7 +45,8 @@ def hash_tree(root: Path, *, exclude_names: frozenset[str] = frozenset()) -> str
 
     *exclude_names* lists top-level filenames to omit from the hash (e.g.
     auto-generated overlay files that are not part of the upstream
-    artifact).
+    artifact). If requested, capture canonical module manifests from the same
+    bytes used to compute the receipt. Keys are paths relative to the tree.
     """
 
     if not root.exists():
@@ -51,8 +57,13 @@ def hash_tree(root: Path, *, exclude_names: frozenset[str] = frozenset()) -> str
         rel = f.relative_to(root).as_posix()
         file_h = hashlib.sha256()
         with f.open("rb") as fh:
-            for chunk in iter(lambda: fh.read(65536), b""):
-                file_h.update(chunk)
+            if module_manifests is not None and f.name == "nsx-module.yaml" and not f.is_symlink():
+                content = fh.read()
+                module_manifests[f.relative_to(root)] = content
+                file_h.update(content)
+            else:
+                for chunk in iter(lambda: fh.read(65536), b""):
+                    file_h.update(chunk)
         h.update(rel.encode("utf-8"))
         h.update(b"\0")
         h.update(file_h.hexdigest().encode("ascii"))
