@@ -361,10 +361,12 @@ def run_capture(
     cwd: Path | None = None,
     *,
     timeout: float | None = None,
+    errors: str | None = None,
 ) -> subprocess.CompletedProcess[str]:
     """Run a subprocess and capture its text output.
 
-    Same timeout / process-tree semantics as :func:`run`.
+    Same timeout / process-tree semantics as :func:`run`. Callers capturing
+    diagnostic output can request replacement decoding with ``errors="replace"``.
     """
     effective = _effective_timeout(timeout)
     child = _Child()
@@ -375,6 +377,7 @@ def run_capture(
                 cmd,
                 cwd=str(cwd) if cwd else None,
                 text=True,
+                errors=errors,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
                 start_new_session=(os.name != "nt"),

@@ -43,7 +43,9 @@ def _run(cmd, **kwargs):
 
     if _CAPTURE_GIT_OUTPUT.get():
         # The captured exception still carries stderr for retry classification.
-        return _run_capture(cmd, cwd=kwargs.get("cwd"), timeout=kwargs.get("timeout"))
+        return _run_capture(
+            cmd, cwd=kwargs.get("cwd"), timeout=kwargs.get("timeout"), errors="replace"
+        )
     return _facade_run(cmd, **kwargs)
 
 

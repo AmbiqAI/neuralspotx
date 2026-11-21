@@ -741,3 +741,25 @@ def test_frozen_origin_credentials_are_absent_from_git_output(
     output = capfd.readouterr()
     assert token not in output.out + output.err + str(failure.value)
     assert not destination.exists()
+
+
+def test_private_git_diagnostic_preserves_subprocess_failure(
+    capfd: pytest.CaptureFixture[str],
+) -> None:
+    import subprocess
+    import sys
+
+    from neuralspotx.subprocess_utils import _git
+
+    # Git/submodule paths may contain bytes outside the host locale. Retry and
+    # fallback need the Git exit code even when the diagnostic cannot be decoded.
+    with _git.capture_git_output(), pytest.raises(subprocess.CalledProcessError) as failure:
+        _git._run([
+            sys.executable,
+            "-c",
+            "import os; os.write(2, bytes([255])); raise SystemExit(3)",
+        ])
+    assert failure.value.returncode == 3
+    assert failure.value.stderr
+    output = capfd.readouterr()
+    assert not output.out and not output.err
