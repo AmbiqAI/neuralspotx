@@ -132,6 +132,7 @@ export default defineConfig({
                   collapsed: false,
                   items: [
                     { label: 'System initialization', slug: 'guides/system/system-init' },
+                    { label: 'ITM PC sampling', slug: 'guides/system/itm-pc-sampling' },
                     { label: 'Memory placement', slug: 'guides/system/memory-placement' },
                     { label: 'Startup and linker', slug: 'guides/system/startup-and-linker' },
                   ],

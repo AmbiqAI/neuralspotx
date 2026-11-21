@@ -31,6 +31,7 @@ Choose a task below. For exact flags, signatures and manifest fields, use the
 ## Configure firmware
 
 - [System initialization](/neuralspotx/guides/system/system-init/): initialize the runtime and enable debug output.
+- [Profile firmware with ITM PC sampling](/neuralspotx/guides/system/itm-pc-sampling/) to find where a running workload spends CPU time.
 - [Memory placement](/neuralspotx/guides/system/memory-placement/): place code and data and manage caches.
 - [Startup and linker](/neuralspotx/guides/system/startup-and-linker/): inspect or override the board's startup and memory layout.
 
