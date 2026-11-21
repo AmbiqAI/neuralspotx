@@ -198,7 +198,8 @@ packaged defaults and can also require an explicit update. A read-only
 
 Closure discovery uses app-local module metadata when available. When a compatible
 locked Git module is missing, a writable relock acquires its metadata at the
-recorded commit. If upstream metadata
+recorded commit. If boards have different qualified pins for the same project,
+NSX reads each board’s metadata from a separate checkout during discovery. If upstream metadata
 changes, materialize it with `sync` and run `lock` again.
 
 Without a usable prior lock there are no resolutions to preserve. Unknown selections

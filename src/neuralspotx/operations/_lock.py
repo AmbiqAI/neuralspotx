@@ -48,7 +48,6 @@ from ..nsx_lock import (
 )
 from ..nsx_lock._io import _write_lock_file
 from ..nsx_lock._models import is_portable_manifest_path
-from ..nsx_lock._resolution import _looks_like_full_sha
 from ..project_config import (
     RegistryAuthorship,
     _board_key_for_app,
@@ -66,6 +65,7 @@ from ..project_config import (
 )
 from ._common import OutdatedStatus, _log
 from ._lock_diagnostics import warn_unpinned_git_constraints
+from ._lock_metadata import discovery_registry, independently_locked_projects
 from ._lock_selection import (
     LockInputs,
     qualified_pin_conflicts,
@@ -237,32 +237,6 @@ def _apply_active_target(nsx_cfg: dict[str, Any], target: ResolvedTarget) -> dic
     return cfg
 
 
-def _registry_for_locked_metadata(registry: dict, previous: NsxLock) -> dict:
-    """Acquire missing metadata at compatible recorded commits during closure discovery.
-
-    The resolver still sees the original revision constraints when writing the lock.
-    Only the acquisition view changes. Existing app-local trees keep precedence.
-    """
-    modules = dict(registry["modules"])
-    for name, row in previous.modules.items():
-        module = modules.get(name)
-        if (
-            not module
-            or row.kind != LockKind.GIT
-            or not row.commit
-            or not _looks_like_full_sha(row.commit)
-        ):
-            continue
-        if row.project != module.get("project") or row.constraint != (
-            module.get("revision") or "main"
-        ):
-            continue
-        project = _registry_project_entry(registry, row.project)
-        if row.url == project.url and not project.local_path:
-            modules[name] = {**module, "revision": row.commit}
-    return {**registry, "modules": modules}
-
-
 def _prepare_lock_inputs(
     app_dir: Path,
     *,
@@ -270,6 +244,8 @@ def _prepare_lock_inputs(
     previous: NsxLock | None = None,
     write_side_effects: bool = True,
     use_locked_closure_on_metadata_error: bool = False,
+    selected: frozenset[str] = frozenset(),
+    isolated: frozenset[str] = frozenset(),
 ) -> LockInputs:
     """Resolve configuration and closure once, before targeted name validation."""
     nsx_cfg = _load_app_cfg(app_dir)
@@ -292,16 +268,47 @@ def _prepare_lock_inputs(
     used_locked_closure = False
 
     try:
-        module_names = _resolve_module_closure(
-            seed_module_names,
-            app_dir=app_dir,
-            nsx_cfg=nsx_cfg,
-            registry=_registry_for_locked_metadata(registry, previous)
-            if previous and write_side_effects
-            else registry,
-            default_toolchain=DEFAULT_TOOLCHAIN,
-            acquire_missing=write_side_effects,
+
+        def refresh_projects(names: set[str]) -> set[str]:
+            return {
+                registry["modules"][name]["project"]
+                for name in selected & names
+                if name in registry["modules"] and name not in local_names | vendored_names
+            }
+
+        def discover(refresh: set[str], separate: frozenset[str]) -> list[str]:
+            with discovery_registry(
+                app_dir,
+                registry,
+                previous if write_side_effects else None,
+                refresh,
+                separate if write_side_effects else frozenset(),
+            ) as metadata_registry:
+                return _resolve_module_closure(
+                    seed_module_names,
+                    app_dir=app_dir,
+                    nsx_cfg=nsx_cfg,
+                    registry=metadata_registry,
+                    default_toolchain=DEFAULT_TOOLCHAIN,
+                    acquire_missing=write_side_effects,
+                )
+
+        initial = refresh_projects(
+            set(seed_module_names) | set(previous.modules if previous else ())
         )
+        module_names = discover(initial, isolated)
+        if selected and previous and write_side_effects:
+            # A newly reachable (or removed) alias can change which projects
+            # this board selects. Rediscover those projects in separate trees
+            # so the first traversal's checkout cannot supply their metadata.
+            effective = refresh_projects(set(module_names))
+            if effective != initial:
+                module_names = discover(effective, isolated | (initial ^ effective))
+                if refresh_projects(set(module_names)) != effective:
+                    raise NSXConfigError(
+                        f"Project selection for board '{board}' changes its own dependency closure. "
+                        "Use a full `nsx lock --update` to resolve all projects together."
+                    )
     except (OSError, subprocess.SubprocessError, NSXResolutionError) as exc:
         if use_locked_closure_on_metadata_error and previous is not None:
             _log.warning(
@@ -988,8 +995,11 @@ def lock_app_impl(
     with app_lock(app_dir):
         conflicts: list[str] = []
         prior = _previous_sections(app_dir, board, check=False)
+        isolated = independently_locked_projects(
+            prior, frozenset(modules or ()) if update else frozenset()
+        )
         prepared = _prepare_targeted_inputs(
-            app_dir, boards, update, modules, check=False, prior=prior
+            app_dir, boards, update, modules, check=False, prior=prior, isolated=isolated
         )
         results = [
             _prepare_board_lock(
@@ -999,6 +1009,7 @@ def lock_app_impl(
                 modules=modules,
                 check=False,
                 conflicts=conflicts,
+                isolated=isolated,
                 prepared=prepared.get(b),
                 previous=prior.get(normalize_board(b)),
             )
@@ -1059,6 +1070,7 @@ def _prepare_targeted_inputs(
     *,
     check: bool,
     prior: dict[str, NsxLock],
+    isolated: frozenset[str] = frozenset(),
 ) -> dict[str, LockInputs]:
     if not update or not modules:
         return {}
@@ -1068,6 +1080,8 @@ def _prepare_targeted_inputs(
             board=board,
             write_side_effects=not check,
             previous=prior.get(normalize_board(board)),
+            selected=frozenset(modules),
+            isolated=isolated,
         )
         for board in boards
     }
@@ -1092,6 +1106,7 @@ def _prepare_board_lock(
     check: bool = False,
     previous: NsxLock | None,
     conflicts: list[str] | None = None,
+    isolated: frozenset[str] = frozenset(),
     prepared: LockInputs | None = None,
 ) -> NsxLock:
     on_disk_lock = previous  # capture before update-mutation
@@ -1112,6 +1127,7 @@ def _prepare_board_lock(
         previous=previous,
         write_side_effects=not check,
         use_locked_closure_on_metadata_error=bool(check and not update and on_disk_lock),
+        isolated=isolated,
     )
     lock = _build_lock_for_app(
         app_dir,

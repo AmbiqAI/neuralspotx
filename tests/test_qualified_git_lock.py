@@ -231,3 +231,33 @@ def test_targeted_update_can_adopt_packaged_replacement(
     for board, target in lock.targets.items():
         assert target.modules["nsx-tooling"].kind == "packaged"
         assert target.modules["driver"].commit == before[board]["driver"][0]
+
+
+def test_board_specific_metadata_after_cold_targeted_update(
+    tmp_path: Path, registry: dict[str, Any]
+) -> None:
+    from neuralspotx.operations import lock_app_impl, sync_app_impl
+
+    manifest = yaml.safe_load((tmp_path / "nsx.yml").read_text())
+    manifest["modules"] = [{"name": "driver"}]
+    (tmp_path / "nsx.yml").write_text(yaml.safe_dump(manifest))
+    assert cli.main(["lock", "--app-dir", str(tmp_path)]) == 0
+    driver = tmp_path / "origins/driver"
+    metadata = driver / "nsx-module.yaml"
+    definition = yaml.safe_load(metadata.read_bytes())
+    definition["depends"]["required"] = ["sdk"]
+    metadata.write_bytes(yaml.safe_dump(definition).encode())
+    git(driver, "commit", "-am", "require SDK")
+    shutil.rmtree(tmp_path / "modules")
+    updated = lock_app_impl(tmp_path, board=BOARDS[1], update=True, modules=["driver"])
+    assert updated.modules["driver"].commit == git(driver, "rev-parse", "HEAD")
+    assert "sdk" in updated.modules
+    before = pins(tmp_path)
+    assert "sdk" not in before[BOARDS[0]]
+    shutil.rmtree(tmp_path / "modules")
+    assert cli.main(["lock", "--app-dir", str(tmp_path)]) == 0
+    assert pins(tmp_path) == before
+    for board in BOARDS:
+        if (tmp_path / "modules").exists():
+            shutil.rmtree(tmp_path / "modules")
+        sync_app_impl(tmp_path, board=board, frozen=True)
