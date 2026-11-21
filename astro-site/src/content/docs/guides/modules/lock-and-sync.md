@@ -178,7 +178,7 @@ closure, effective registry inputs, and local sources are otherwise unchanged.
 | `nsx sync --frozen` | Use verified local content or fetch A from the Git URL recorded in the lock. Verify the content hash and leave the lock untouched. If that origin cannot supply A, identify the recorded source and fail without trying the current registry's mirror. |
 | `nsx lock --check` | Report drift with a nonzero exit if the wheel changes the effective SDK default. Leave the lock untouched. |
 | `nsx lock` | Keep A and its recorded source identity and content hash for both boards. Preserve unrelated Git pins. |
-| `nsx lock --module my-driver` | Refresh the selected registry project wherever it occurs in the requested targets. Its modules can move to B together. Unrelated compatible Git projects keep their pins. |
+| `nsx lock --module my-driver` | Refresh the registry project in each requested target that contains `my-driver`. Its modules in that target can move to B together. Unrelated compatible Git projects keep their pins. |
 | A full lock fails while preparing the second board | Leave the entire previous lock byte-for-byte intact so the developer can retry. |
 
 A newer wheel can also change a packaged registry default, such as the SDK
@@ -254,12 +254,14 @@ changes, materialize it with `sync` and run `lock` again.
 
 Without a usable prior lock there are no resolutions to preserve. Unknown selections
 fail before lock sections are written. With multiple targets, a selection need only
-exist in one requested target; it applies where present. A board-restricted operation
+exist in one requested target. If board A uses the selected module and board B
+uses only a different module from the same project, board B keeps its pin. A board-restricted operation
 preserves other board sections. NSX writes the combined lock after all requested
 boards succeed. If a later board fails, the previous lock stays intact. Caches
 and generated build inputs for earlier boards may already have changed.
 `lock --check --update --module X` uses the same selection rules without writing the
-lock or build glue; cache changes are still possible.
+lock or build glue. On a clean checkout it can read missing Git metadata in temporary
+directories to report upstream drift. Cache changes are still possible.
 
 In the Python API, `lock_app(modules=["X"])` alone does not request an update;
 pass `update=True` explicitly. CLI `lock --module X` implies `--update`. None or an

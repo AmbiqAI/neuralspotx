@@ -361,3 +361,45 @@ def test_authored_empty_module_revision_resets_to_main(
     expected = advance(tmp_path / "origins/sdk")
     assert cli.main(["lock", "--app-dir", str(tmp_path)]) == 0
     assert all(rows["sdk"][0] == expected for rows in pins(tmp_path).values())
+
+
+@pytest.mark.parametrize("flags", [("--update",), ("--module", "driver")])
+def test_cold_update_check_reports_drift_without_vendoring(
+    tmp_path: Path,
+    registry: dict[str, Any],
+    capsys: pytest.CaptureFixture[str],
+    flags: tuple[str, ...],
+) -> None:
+    receipt = tmp_path / "nsx.lock"
+    original = (FIXTURE / "nsx.lock").read_bytes()
+    receipt.write_bytes(original)
+    advance(tmp_path / "origins/driver")
+    assert cli.main(["lock", "--check", *flags, "--app-dir", str(tmp_path)]) != 0
+    captured = capsys.readouterr()
+    assert "OUT OF DATE" in (captured.out + captured.err), captured
+    assert receipt.read_bytes() == original
+    assert not (tmp_path / "modules").exists()
+    assert not (tmp_path / "build").exists()
+
+
+def test_update_selects_a_shared_project_only_where_named_module_is_present(
+    tmp_path: Path, registry: dict[str, Any]
+) -> None:
+    driver = tmp_path / "origins/driver"
+    alias = yaml.safe_load((driver / "nsx-module.yaml").read_bytes())
+    alias["module"]["name"] = "alias"
+    (driver / "alias.yaml").write_text(yaml.safe_dump(alias))
+    git(driver, "add", "alias.yaml")
+    git(driver, "commit", "-m", "add module alias")
+    registry["modules"]["alias"] = {**registry["modules"]["driver"], "metadata": "alias.yaml"}
+    manifest_path = tmp_path / "nsx.yml"
+    manifest = yaml.safe_load(manifest_path.read_bytes())
+    manifest["modules"] = [{"name": "driver", "boards": [BOARDS[0]]}, {"name": "alias"}]
+    manifest_path.write_text(yaml.safe_dump(manifest))
+    assert cli.main(["lock", "--app-dir", str(tmp_path)]) == 0
+    before = pins(tmp_path)
+    updated = advance(driver)
+    assert cli.main(["lock", "--module", "driver", "--app-dir", str(tmp_path)]) == 0
+    after = pins(tmp_path)
+    assert after[BOARDS[0]]["driver"][0] == after[BOARDS[0]]["alias"][0] == updated
+    assert after[BOARDS[1]] == before[BOARDS[1]]

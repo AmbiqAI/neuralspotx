@@ -18,7 +18,7 @@ from .._errors import (
     NSXResolutionError,
 )
 from .._io import info, warn
-from ..constants import DEFAULT_TOOLCHAIN, normalize_board
+from ..constants import DEFAULT_TOOLCHAIN, PACKAGED_PROJECT_NAME, normalize_board
 from ..file_lock import app_lock
 from ..models import AppConfig, OutdatedModule, OutdatedReport, OutdatedSkip, ResolvedTarget
 from ..module_registry import (
@@ -55,6 +55,7 @@ from ..project_config import (
     _effective_registry,
     _load_app_cfg,
     _load_registry,
+    _module_clone_dir,
     _metadata_in_checkout,
     _metadata_path_relative_to_project,
     _nsx_tool_version,
@@ -199,7 +200,7 @@ def _resolved_module_path(
 
     from ..metadata import registry_entry_for_module
     from ..module_registry import _is_packaged_module
-    from ..project_config import _module_clone_dir, _vendored_target_dir
+    from ..project_config import _vendored_target_dir
 
     entry = registry_entry_for_module(registry, module_name)
     if _is_packaged_module(registry, module_name):
@@ -272,6 +273,18 @@ def _prepare_lock_inputs(
 
     checked_composition = None
     isolated_manifests: dict[str, str] = {}
+
+    if not write_side_effects and (selected or refresh_all):
+        # An explicit update check needs current metadata to distinguish
+        # upstream drift from an unavailable closure on a clean checkout.
+        isolated |= frozenset(
+            name
+            for name, project in registry["projects"].items()
+            if name != PACKAGED_PROJECT_NAME
+            and project.get("url")
+            and not project.get("local_path")
+            and not _module_clone_dir(app_dir, name, registry).is_dir()
+        )
 
     def refresh_projects(names: set[str]) -> set[str]:
         return {
