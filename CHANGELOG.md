@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.9.9](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.9.8...neuralspotx-v0.9.9) (2026-11-21)
+
+
+### Features
+
+* preserve qualified Git pins during writable lock ([#345](https://github.com/AmbiqAI/neuralspotx/issues/345)) ([7b468b3](https://github.com/AmbiqAI/neuralspotx/commit/7b468b3ca98abb11353255cc733018f35bb76187))
+
+
+### Bug Fixes
+
+* expose packaged module license scopes in app SBOMs ([#350](https://github.com/AmbiqAI/neuralspotx/issues/350)) ([cad2346](https://github.com/AmbiqAI/neuralspotx/commit/cad2346904dd564e13734e581c4ad083e916d385))
+* restore frozen Git modules from their locked origin ([#344](https://github.com/AmbiqAI/neuralspotx/issues/344)) ([0300396](https://github.com/AmbiqAI/neuralspotx/commit/030039698bd46e53092d0aab29997c89d40d3e30))
+
 ## [0.9.8](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.9.7...neuralspotx-v0.9.8) (2026-11-21)
 
 
