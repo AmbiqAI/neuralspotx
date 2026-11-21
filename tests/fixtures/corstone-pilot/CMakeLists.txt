@@ -1,0 +1,32 @@
+# SPDX-License-Identifier: BSD-3-Clause
+cmake_minimum_required(VERSION 3.24)
+
+set(NSX_BOARD "apollo510_evb" CACHE STRING "Pilot build target")
+if(NSX_BOARD STREQUAL "corstone300_fvp_u55")
+    set(TARGET_CPU cortex-m55)
+    # Arm's toolchain also reads this value when CMake probes the compiler.
+    list(APPEND CMAKE_TRY_COMPILE_PLATFORM_VARIABLES TARGET_CPU)
+    set(CMAKE_TOOLCHAIN_FILE "${ARM_DEPS}/ethos-u-core-platform/cmake/toolchain/arm-none-eabi-gcc.cmake")
+elseif(NOT NSX_BOARD STREQUAL "apollo510_evb")
+    message(FATAL_ERROR "Unknown pilot board: ${NSX_BOARD}")
+endif()
+project(pilot LANGUAGES C CXX ASM)
+
+option(PILOT_INJECT_FAILURE "Exercise guest assertion failure" OFF)
+add_executable(pilot suite.c third_party/unity/src/unity.c)
+target_include_directories(pilot PRIVATE . third_party/unity/src)
+target_compile_definitions(pilot PRIVATE UNITY_INCLUDE_CONFIG_H)
+if(PILOT_INJECT_FAILURE)
+    target_compile_definitions(pilot PRIVATE PILOT_INJECT_FAILURE)
+endif()
+
+if(NSX_BOARD STREQUAL "apollo510_evb")
+    include(cmake/nsx/modules.cmake)
+    include(cmake/nsx/nsx_app_bootstrap.cmake)
+    nsx_bootstrap_app(APP_ROOT "${CMAKE_CURRENT_SOURCE_DIR}" BOARD "${NSX_BOARD}" MODULES ${NSX_APP_MODULES})
+    target_sources(pilot PRIVATE apollo_console.c)
+    target_link_libraries(pilot PRIVATE nsx::board nsx::runtime_core)
+    nsx_finalize_app(pilot)
+else()
+    include(corstone.cmake)
+endif()
