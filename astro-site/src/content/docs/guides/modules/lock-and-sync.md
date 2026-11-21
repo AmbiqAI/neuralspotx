@@ -66,9 +66,9 @@ entries record exact commits even when their constraints can move:
 - A **tag** records both the tag and its resolved commit. Matching previous tag
   resolutions can be reused. If upstream moves a tag, an explicit update may change
   its resolved commit; a committed lock remains the reproducibility anchor.
-- A **branch** can resolve differently on subsequent `nsx lock` writes. Normal
-  locking uses the resolve-ref cache (default TTL: 300 seconds); `--update` clears
-  that cache. Re-resolution does not necessarily mean a fresh network lookup.
+- A **branch** keeps its recorded commit on a plain `nsx lock`. To advance the
+  branch, use `nsx lock --module NAME` for one project or `nsx lock --update`
+  for all projects. Both update forms clear the resolve-ref cache.
 
 ### Unpinned Git diagnostics
 
@@ -182,18 +182,28 @@ selected together. Conflicting Git commits or mixed Git/unresolved rows sharing 
 directory are rejected before writing the affected lock section; align revisions,
 retry unreachable refs, or give separate projects distinct paths.
 
-This preserves compatible Git resolutions, not the entire lockfile: changed project
-identities, URLs or constraints resolve normally, new dependencies are added, removed
-dependencies disappear, and local/vendored/packaged content is rehashed. Closure uses
-the existing metadata acquisition rules, including app-local metadata precedence;
-it does not discover a new remote dependency graph at the updated commit. If upstream
-metadata changes, materialize it with `sync` and run `lock` again. A normal writable
-`lock` refreshes floating refs; review that subsequent diff too.
+A writable lock preserves compatible Git pins for unselected projects. New
+dependencies are resolved, removed dependencies disappear, and local, vendored,
+and packaged content is rehashed. Explicit source or revision edits in the app's
+registry layers apply on the next lock.
+
+If a new wheel changes a packaged default, a plain lock or an unrelated targeted
+update keeps the qualified Git artifact when it still satisfies that default. If the
+default would change the artifact or Git source, NSX reports the affected boards
+and projects and leaves the lock untouched. To adopt the change, select the named
+module or run `nsx lock --update`. To keep the previous SDK, pin its source and
+revision in the app registry. Removing an app override returns that field to
+packaged defaults and can also require an explicit update. A read-only
+`nsx lock --check` still reports effective-input drift.
+
+Closure discovery uses the currently available module metadata. If upstream metadata
+changes, materialize it with `sync` and run `lock` again.
 
 Without a usable prior lock there are no resolutions to preserve. Unknown selections
 fail before lock sections are written. With multiple targets, a selection need only
 exist in one requested target; it applies where present. A board-restricted operation
-preserves other board sections. Later failures are not an all-target transaction.
+preserves other board sections. A full lock publishes all requested sections together. A later board failure leaves
+the previous lock file intact. Cache and generated build inputs can still change.
 `lock --check --update --module X` uses the same selection rules without writing the
 lock or build glue; cache changes are still possible.
 

@@ -157,9 +157,10 @@ A nonempty update selection expands module names to Git registry projects within
 each target closure, matching the unit of app-local vendoring. Unrelated matching
 project/URL/constraint resolutions may be reused even for floating refs. The shared
 lock path prepares target closures once and validates selected names before writes;
-its prefetch and final resolution passes use the same reuse policy. New/changed
-inputs and current metadata still determine closure; this is not a metadata-at-commit
-resolver or a multi-target transaction. Targeted results reject incompatible artifacts
+its prefetch and final resolution passes use the same reuse policy. Current metadata determines the closure. Plain lock preserves matching branch
+commits. Authored Git fields follow registry layer precedence. An incompatible
+packaged default for an unselected project requires an explicit update. All board
+sections publish in one atomic lock write after preparation succeeds. Targeted results reject incompatible artifacts
 sharing a source directory before writing that target section. The locking guide
 documents CLI/API selection, cache, check and metadata limits.
 

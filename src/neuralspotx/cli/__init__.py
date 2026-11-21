@@ -950,8 +950,7 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Resolve modules in nsx.yml to commits and write nsx.lock",
         description=(
             "Resolve module constraints from nsx.yml to commits and content hashes, "
-            "and write nsx.lock. Matching pinned resolutions may be reused; "
-            "floating refs are re-resolved through the TTL cache. "
+            "and write nsx.lock. Matching Git pins, including branch commits, are preserved. "
             "Missing dependency metadata may be acquired during resolution."
         ),
     )
@@ -960,8 +959,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "--update",
         action="store_true",
         help=(
-            "Clear the resolve cache and reconsider prior resolutions; "
-            "normal lock also re-resolves floating refs through the TTL cache"
+            "Clear the resolve cache and refresh Git resolutions for the selected projects or all projects"
         ),
     )
     p_lock.add_argument(

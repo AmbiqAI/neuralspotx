@@ -13,7 +13,7 @@ from typing import Any
 import pytest
 import yaml
 
-from neuralspotx import NSXError, NSXLockError, NSXResolutionError, operations
+from neuralspotx import NSXConfigError, NSXError, NSXLockError, NSXResolutionError, operations
 from neuralspotx.nsx_lock import (
     LockKind,
     NsxLock,
@@ -1006,11 +1006,14 @@ class TestGitKind:
         _write_fake_git_metadata(app)
 
         lock_app_impl(app)
-        lock_app_impl(app)
+        original = (app / "nsx.lock").read_bytes()
+        with pytest.raises(NSXConfigError, match="Qualified Git pins"):
+            lock_app_impl(app)
+        assert (app / "nsx.lock").read_bytes() == original
 
         lock = read_lock(app)
         assert lock is not None
-        assert lock.modules["fake-mod"].content_hash == "sha256:" + "9" * 64
+        assert lock.modules["fake-mod"].content_hash == "sha256:" + "e" * 64
         assert calls == [
             ("https://example.com/fake.git", fake_sha),
             ("https://example.com/fake.git", fake_sha),
@@ -1050,7 +1053,7 @@ class TestGitKind:
         assert lock is not None
         assert lock.modules["fake-mod"].content_hash == previous_hash
 
-    def test_git_lock_refreshes_branch_constraints_each_run(
+    def test_git_lock_refreshes_branch_only_on_update(
         self, app: Path, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         first_sha = "a" * 40
@@ -1083,7 +1086,10 @@ class TestGitKind:
         lock_app_impl(app)
         second_lock = read_lock(app)
         assert second_lock is not None
-        assert second_lock.modules["fake-mod"].commit == second_sha
+        assert second_lock.modules["fake-mod"].commit == first_sha
+        assert seen == ["main"]
+        updated = lock_app_impl(app, update=True)
+        assert updated.modules["fake-mod"].commit == second_sha
         assert seen == ["main", "main"]
 
     def test_unresolved_when_resolver_fails(

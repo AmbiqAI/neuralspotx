@@ -9,6 +9,7 @@ import logging
 import os
 import re
 from collections import OrderedDict
+from dataclasses import dataclass, field
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as package_version
 from pathlib import Path
@@ -385,11 +386,21 @@ def _apply_app_authored_layer(
     return merged
 
 
+@dataclass
+class RegistryAuthorship:
+    """Effective Git source fields supplied by app-owned registry layers."""
+
+    module_projects: set[str] = field(default_factory=set)
+    project_urls: set[str] = field(default_factory=set)
+    module_revisions: set[str] = field(default_factory=set)
+
+
 def _effective_registry(
     base_registry: dict[str, Any],
     nsx_cfg: dict[str, Any],
     *,
     app_dir: Path | None = None,
+    authorship: RegistryAuthorship | None = None,
 ) -> dict[str, Any]:
     """Fold the registry layer stack onto *base_registry*.
 
@@ -420,7 +431,16 @@ def _effective_registry(
     # un-propagation when a later layer re-points the module).
     app_pinned_modules: dict[str, str] = {}
     propagated_revisions: dict[str, str] = {}
-    for label, field_prefix, layer in _iter_registry_layers(nsx_cfg, app_dir):
+    app_override = _resolve_override_local_paths(
+        ModuleRegistryOverride.from_mapping(nsx_cfg.get("module_registry")),
+        base_dir=app_dir if app_dir is not None else Path.cwd(),
+    )
+    layers = _iter_registry_layers(nsx_cfg, app_dir)
+    layers.append(("module_registry", "module_registry", app_override))
+    for label, field_prefix, layer in layers:
+        if authorship is not None:
+            authorship.module_projects.update(k for k, v in layer.modules.items() if "project" in v)
+            authorship.project_urls.update(k for k, v in layer.projects.items() if "url" in v)
         merged = _apply_app_authored_layer(
             merged,
             layer,
@@ -429,18 +449,10 @@ def _effective_registry(
             app_pinned_modules=app_pinned_modules,
             propagated_revisions=propagated_revisions,
         )
-    app_override = _resolve_override_local_paths(
-        ModuleRegistryOverride.from_mapping(nsx_cfg.get("module_registry")),
-        base_dir=app_dir if app_dir is not None else Path.cwd(),
-    )
-    return _apply_app_authored_layer(
-        merged,
-        app_override,
-        layer_label="module_registry",
-        field_prefix="module_registry",
-        app_pinned_modules=app_pinned_modules,
-        propagated_revisions=propagated_revisions,
-    )
+    if authorship is not None:
+        authorship.module_revisions.update(app_pinned_modules)
+        authorship.module_revisions.update(propagated_revisions)
+    return merged
 
 
 def validate_app_module_alignment(

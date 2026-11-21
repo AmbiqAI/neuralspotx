@@ -1,0 +1,11 @@
+schema_version: 2
+project:
+  name: qualified-lock
+baseline: none
+targets:
+  default: apollo510_evb
+  supported: [apollo510_evb, apollo510b_evb]
+toolchain: arm-none-eabi-gcc
+modules:
+  - name: driver
+  - name: sdk

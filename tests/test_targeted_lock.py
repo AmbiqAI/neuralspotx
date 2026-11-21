@@ -217,7 +217,7 @@ def test_missing_lock_and_api_selection_without_update(app: App) -> None:
     assert len(result.modules) == 2
     app.advance()
     result = api.lock_app(app.root, modules=["one"])
-    assert result.modules["other"].commit == "b" * 40
+    assert result.modules["other"].commit == "a" * 40
 
 
 def test_targets_validate_names_globally_before_writes(app: App) -> None:

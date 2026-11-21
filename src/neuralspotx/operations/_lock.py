@@ -49,6 +49,7 @@ from ..nsx_lock import (
 from ..nsx_lock._io import _write_lock_file
 from ..nsx_lock._models import is_portable_manifest_path
 from ..project_config import (
+    RegistryAuthorship,
     _board_key_for_app,
     _copy_packaged_tree,
     _effective_registry,
@@ -65,11 +66,12 @@ from ..project_config import (
 )
 from ._common import OutdatedStatus, _log
 from ._lock_diagnostics import warn_unpinned_git_constraints
-from ._lock_selection import LockInputs, selected_git_modules, validate_materialization
-
-
-def _looks_like_full_sha(ref: str) -> bool:
-    return len(ref) == 40 and all(ch in "0123456789abcdefABCDEF" for ch in ref)
+from ._lock_selection import (
+    LockInputs,
+    qualified_pin_conflicts,
+    selected_git_modules,
+    validate_materialization,
+)
 
 
 # Default age (days) past which a lock that tracks moving refs is flagged
@@ -166,12 +168,11 @@ def _reusable_previous_git_resolution(
     constraint: str,
     url: str,
     project: str,
-    refresh_floating_refs: bool,
 ) -> tuple[str, str | None] | None:
     """Return ``(commit, tag)`` from *previous_entry* when safe to reuse.
 
-    Normal writes reuse matching full-SHA or recorded-tag entries. Read-only
-    checks and unselected targeted-update rows may also reuse floating entries.
+    A matching lock pins floating and immutable constraints alike. Explicit
+    updates omit the previous entry for selected Git projects.
     """
 
     if previous_entry is None:
@@ -185,10 +186,6 @@ def _reusable_previous_git_resolution(
     ):
         return None
     if not previous_entry.commit:
-        return None
-    if refresh_floating_refs and not (
-        _looks_like_full_sha(constraint) or previous_entry.tag == constraint
-    ):
         return None
     return previous_entry.commit, previous_entry.tag
 
@@ -261,7 +258,8 @@ def _prepare_lock_inputs(
     # starter profile in-memory so the resolver below sees an equivalent
     # fully-seeded config. Inlined manifests pass through unchanged.
     nsx_cfg = expand_profile_seeds(nsx_cfg, base_registry, app_dir=app_dir)
-    registry = _effective_registry(base_registry, nsx_cfg, app_dir=app_dir)
+    authorship = RegistryAuthorship()
+    registry = _effective_registry(base_registry, nsx_cfg, app_dir=app_dir, authorship=authorship)
     validate_app_module_alignment(nsx_cfg, registry)
     seed_module_names = _module_names_from_nsx(nsx_cfg)
     local_names = _local_module_names(nsx_cfg)
@@ -297,18 +295,22 @@ def _prepare_lock_inputs(
             ) from exc
 
     return LockInputs(
-        nsx_cfg, registry, module_names, local_names, vendored_names, used_locked_closure
+        nsx_cfg,
+        registry,
+        module_names,
+        local_names,
+        vendored_names,
+        used_locked_closure,
+        authorship,
     )
 
 
 def _build_lock_for_app(
     app_dir: Path,
     *,
-    board: str | None = None,
     previous: NsxLock | None = None,
     write_side_effects: bool = True,
-    use_locked_closure_on_metadata_error: bool = False,
-    prepared: LockInputs | None = None,
+    prepared: LockInputs,
     selected: frozenset[str] | None = None,
 ) -> NsxLock:
     """Resolve every module in nsx.yml to a commit + content hash.
@@ -333,8 +335,7 @@ def _build_lock_for_app(
     For ``kind=unresolved``: best-effort hash of whatever is on disk
     (or the previous lock's recorded hash, if nothing is on disk).
 
-    Normal writable locks reuse matching pinned entries and refresh floating
-    refs through the TTL cache. Targeted updates force selected Git projects
+    Normal writable locks reuse matching Git resolutions, including floating refs. Targeted updates force selected Git projects
     and preserve unrelated matching resolutions. Checks can reuse prior
     floating resolutions; plain checks do not guarantee upstream freshness.
 
@@ -343,29 +344,17 @@ def _build_lock_for_app(
     are skipped. ``nsx lock --check`` uses this so a read-only check
     truly does not modify the on-disk app.
 
-    When ``use_locked_closure_on_metadata_error`` is True, a read-only
-    check may use the existing ``nsx.lock`` module order if dependency
-    metadata is not materialized locally. This keeps ``nsx lock --check``
-    useful on clean checkouts while preserving the package-manager rule
-    that writable lock refreshes must resolve the real dependency graph.
     """
 
     from ..metadata import registry_entry_for_module
     from ..module_registry import _is_packaged_module
 
-    inputs = prepared or _prepare_lock_inputs(
-        app_dir,
-        board=board,
-        previous=previous,
-        write_side_effects=write_side_effects,
-        use_locked_closure_on_metadata_error=use_locked_closure_on_metadata_error,
-    )
-    nsx_cfg, registry = inputs.config, inputs.registry
-    module_names = inputs.module_names
-    local_names, vendored_names = inputs.local_names, inputs.vendored_names
+    nsx_cfg, registry = prepared.config, prepared.registry
+    module_names = prepared.module_names
+    local_names, vendored_names = prepared.local_names, prepared.vendored_names
     tool_version = _nsx_tool_version()
     refresh_modules = (
-        selected_git_modules(inputs, selected) if selected is not None else frozenset()
+        selected_git_modules(prepared, selected) if selected is not None else frozenset()
     )
 
     if write_side_effects:
@@ -391,7 +380,6 @@ def _build_lock_for_app(
     )
 
     prev_modules = previous.modules if previous else {}
-    refresh_floating_git_refs = write_side_effects and selected is None
     # Per-call cache: a single ``nsx lock`` invocation may have multiple
     # modules sharing one (url, commit) pair; clone once.
     git_artifact_hash_cache: dict[tuple[str, str], str] = {}
@@ -432,7 +420,6 @@ def _build_lock_for_app(
                 constraint=cons,
                 url=proj.url,
                 project=ent.project,
-                refresh_floating_refs=refresh_floating_git_refs,
             )
             if reusable is not None:
                 # An allowed prior resolution short-circuits resolve_ref.
@@ -482,7 +469,6 @@ def _build_lock_for_app(
                 constraint=cons,
                 url=proj.url,
                 project=ent.project,
-                refresh_floating_refs=refresh_floating_git_refs,
             )
             if reusable is not None:
                 reused_commit, _ = reusable
@@ -669,7 +655,6 @@ def _build_lock_for_app(
             constraint=constraint,
             url=url,
             project=entry.project,
-            refresh_floating_refs=refresh_floating_git_refs,
         )
         if reusable is not None:
             # Reuse permitted by the writable/read-only policy above.
@@ -773,7 +758,7 @@ def _build_lock_for_app(
     for name, receipt in lock.modules.items():
         receipt.manifest_path = _locked_manifest_path(name, receipt, app_dir, registry)
 
-    if selected is not None:
+    if selected is not None or (previous is not None and write_side_effects):
         validate_materialization(app_dir, lock)
     warn_unpinned_git_constraints(lock)
     from ..module_registry._composition import board_composition
@@ -789,7 +774,7 @@ def _build_lock_for_app(
             registry,
             module_names,
             read_only_record=previous.board_composition
-            if previous and inputs.used_locked_closure
+            if previous and prepared.used_locked_closure
             else None,
         )
     _preserve_unchanged_timestamps(previous, lock)
@@ -972,6 +957,7 @@ def lock_app_impl(
         ]
         return results[0]
     with app_lock(app_dir):
+        conflicts: list[str] = []
         prepared = _prepare_targeted_inputs(app_dir, boards, update, modules, check=False)
         results = [
             _prepare_board_lock(
@@ -981,10 +967,17 @@ def lock_app_impl(
                 modules=modules,
                 check=False,
                 board_restricted=board is not None,
+                conflicts=conflicts,
                 prepared=prepared.get(b),
             )
             for b in boards
         ]
+        if conflicts:
+            raise NSXConfigError(
+                "Qualified Git pins conflict with the current inputs. The lock was not written.\n"
+                + "\n".join(conflicts)
+                + "\nTo refresh all projects, run `nsx lock --update`."
+            )
         if len(results) > 1:
             # Each board writes ``modules/.gitignore`` for its own closure,
             # so the last board would otherwise win and drop sibling-only
@@ -1047,6 +1040,7 @@ def _prepare_board_lock(
     modules: list[str] | None = None,
     check: bool = False,
     board_restricted: bool = False,
+    conflicts: list[str] | None = None,
     prepared: LockInputs | None = None,
 ) -> NsxLock:
     board_key = _lock_board_key(_load_app_cfg(app_dir), board)
@@ -1079,12 +1073,17 @@ def _prepare_board_lock(
         if previous and not modules:
             previous = None  # full refresh
 
-    lock = _build_lock_for_app(
+    prepared = prepared or _prepare_lock_inputs(
         app_dir,
         board=board,
         previous=previous,
         write_side_effects=not check,
         use_locked_closure_on_metadata_error=bool(check and not update and on_disk_lock),
+    )
+    lock = _build_lock_for_app(
+        app_dir,
+        previous=previous,
+        write_side_effects=not check,
         prepared=prepared,
         selected=frozenset(modules) if update and modules else None,
     )
@@ -1106,6 +1105,16 @@ def _prepare_board_lock(
             info(f"  {line_text}")
         info("Run `nsx lock` to refresh.")
         raise NSXError(1)
+
+    if previous and conflicts is not None:
+        refreshed = (
+            selected_git_modules(prepared, frozenset(modules))
+            if update and modules
+            else frozenset()
+        )
+        conflicts.extend(qualified_pin_conflicts(previous, lock, prepared, refreshed))
+        if conflicts:
+            return lock
 
     from ..standalone_cmake import invalidate_snapshot
 
