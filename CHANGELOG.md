@@ -1,5 +1,13 @@
 # Changelog
 
+## [1.0.1](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v1.0.0...neuralspotx-v1.0.1) (2026-11-21)
+
+
+### Documentation
+
+* debug an Apollo510 app from VS Code ([#355](https://github.com/AmbiqAI/neuralspotx/issues/355)) ([9c3a7cb](https://github.com/AmbiqAI/neuralspotx/commit/9c3a7cb20d5ceaefa16cb4f9e5a13270337c1496))
+* profile Apollo510 firmware with ITM PC sampling ([#356](https://github.com/AmbiqAI/neuralspotx/issues/356)) ([9912f60](https://github.com/AmbiqAI/neuralspotx/commit/9912f60a8b516cead44c65327bbae955ac64f902))
+
 ## [1.0.0](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.9.9...neuralspotx-v1.0.0) (2026-11-21)
 
 
