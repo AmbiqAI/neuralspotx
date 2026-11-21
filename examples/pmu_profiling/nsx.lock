@@ -3,9 +3,9 @@
 schema_version: 6
 targets:
   apollo510_evb:
-    generated_at: '2026-11-21T03:50:48+00:00'
+    generated_at: '2026-11-21T15:11:14+00:00'
     nsx_tool:
-      version: 0.9.7
+      version: 0.9.9
     manifest:
       path: nsx.yml
       hash: sha256:121227daf5204c022c7a290c1d1323874a07b431880c3819054d283b3a413036
@@ -107,10 +107,10 @@ targets:
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.9.7
+          tool_version: 0.9.9
           vendored_at: boards/apollo510_evb
-          content_hash: sha256:a024cc52ed059452755197f38e1743159120535ca4816872c106c0223852c7c0
-          acquired_at: '2026-11-21T03:50:49+00:00'
+          content_hash: sha256:564f59a6f7f4fb1eea7c645a213eccdbd0261c0ab813343edc4bbb7253216a5f
+          acquired_at: '2026-11-21T15:11:14+00:00'
           manifest_path: nsx-module.yaml
       nsx-core:
         project: nsx-ambiq-sdk
@@ -141,15 +141,15 @@ targets:
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.9.7
+          tool_version: 0.9.9
           vendored_at: cmake/nsx
-          content_hash: sha256:6aec1378017c86efb37c5743b05f810fe2383a846581d4bd82125c648b0bd928
-          acquired_at: '2026-11-21T03:50:49+00:00'
+          content_hash: sha256:f02228014f0b8a49ccce0ce2b8b76362bad997485c2946915f81ea266010af76
+          acquired_at: '2026-11-21T15:11:14+00:00'
           manifest_path: nsx-module.yaml
   apollo510b_evb:
-    generated_at: '2026-11-21T03:50:49+00:00'
+    generated_at: '2026-11-21T15:11:14+00:00'
     nsx_tool:
-      version: 0.9.7
+      version: 0.9.9
     manifest:
       path: nsx.yml
       hash: sha256:121227daf5204c022c7a290c1d1323874a07b431880c3819054d283b3a413036
@@ -251,10 +251,10 @@ targets:
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.9.7
+          tool_version: 0.9.9
           vendored_at: boards/apollo510b_evb
-          content_hash: sha256:8dbf7b5d0de5e41df869915ddde2ac3207961bad6c87a2826a0354613a455843
-          acquired_at: '2026-11-21T03:50:50+00:00'
+          content_hash: sha256:d52af8077c976401653f3ac5d55df80bcf5805d649beff69bc038ca559ab0f64
+          acquired_at: '2026-11-21T15:11:14+00:00'
           manifest_path: nsx-module.yaml
       nsx-core:
         project: nsx-ambiq-sdk
@@ -285,15 +285,15 @@ targets:
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.9.7
+          tool_version: 0.9.9
           vendored_at: cmake/nsx
-          content_hash: sha256:6aec1378017c86efb37c5743b05f810fe2383a846581d4bd82125c648b0bd928
-          acquired_at: '2026-11-21T03:50:50+00:00'
+          content_hash: sha256:f02228014f0b8a49ccce0ce2b8b76362bad997485c2946915f81ea266010af76
+          acquired_at: '2026-11-21T15:11:14+00:00'
           manifest_path: nsx-module.yaml
   apollo330mP_evb:
-    generated_at: '2026-11-21T03:50:50+00:00'
+    generated_at: '2026-11-21T15:11:15+00:00'
     nsx_tool:
-      version: 0.9.7
+      version: 0.9.9
     manifest:
       path: nsx.yml
       hash: sha256:121227daf5204c022c7a290c1d1323874a07b431880c3819054d283b3a413036
@@ -395,10 +395,10 @@ targets:
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.9.7
+          tool_version: 0.9.9
           vendored_at: boards/apollo330mP_evb
-          content_hash: sha256:f9fb2ec08a969008f6193bcec567ceda48ad4d148322b81275ff1868438bf43b
-          acquired_at: '2026-11-21T03:50:51+00:00'
+          content_hash: sha256:51d86a9a90b730482e4851e4eaa11d26cd33489f7a42683dd46751c6448b392d
+          acquired_at: '2026-11-21T15:11:15+00:00'
           manifest_path: nsx-module.yaml
       nsx-core:
         project: nsx-ambiq-sdk
@@ -429,15 +429,15 @@ targets:
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.9.7
+          tool_version: 0.9.9
           vendored_at: cmake/nsx
-          content_hash: sha256:6aec1378017c86efb37c5743b05f810fe2383a846581d4bd82125c648b0bd928
-          acquired_at: '2026-11-21T03:50:51+00:00'
+          content_hash: sha256:f02228014f0b8a49ccce0ce2b8b76362bad997485c2946915f81ea266010af76
+          acquired_at: '2026-11-21T15:11:15+00:00'
           manifest_path: nsx-module.yaml
   apollo510dL_evb:
-    generated_at: '2026-11-21T03:50:51+00:00'
+    generated_at: '2026-11-21T15:11:15+00:00'
     nsx_tool:
-      version: 0.9.7
+      version: 0.9.9
     manifest:
       path: nsx.yml
       hash: sha256:121227daf5204c022c7a290c1d1323874a07b431880c3819054d283b3a413036
@@ -539,10 +539,10 @@ targets:
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.9.7
+          tool_version: 0.9.9
           vendored_at: boards/apollo510dL_evb
-          content_hash: sha256:02dd182c83067d9f68741e4d213c4c5a10a1eecec8204b563f887f010fe875ef
-          acquired_at: '2026-11-21T03:50:52+00:00'
+          content_hash: sha256:679d8f889defa1fb1861b09cff2dde546959a5a8f9e9dd016be1ddb2fa0d5335
+          acquired_at: '2026-11-21T15:11:15+00:00'
           manifest_path: nsx-module.yaml
       nsx-core:
         project: nsx-ambiq-sdk
@@ -573,8 +573,8 @@ targets:
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.9.7
+          tool_version: 0.9.9
           vendored_at: cmake/nsx
-          content_hash: sha256:6aec1378017c86efb37c5743b05f810fe2383a846581d4bd82125c648b0bd928
-          acquired_at: '2026-11-21T03:50:52+00:00'
+          content_hash: sha256:f02228014f0b8a49ccce0ce2b8b76362bad997485c2946915f81ea266010af76
+          acquired_at: '2026-11-21T15:11:15+00:00'
           manifest_path: nsx-module.yaml

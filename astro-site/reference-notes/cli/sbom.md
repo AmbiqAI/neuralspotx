@@ -25,6 +25,12 @@ the scopes in `licenseComments` and CycloneDX uses `nsx:license:<path>` properti
 For Git modules, NSX omits declarations if the selected path passes through a directory
 symlink, because the artifact hash walk skips linked directories.
 Paths in both exports are relative to the recorded `vendored_at` directory.
+Packaged boards and `nsx-tooling` declare BSD-3-Clause at `.`, the root of their own trees.
+
+After upgrading from 0.9.8 or earlier, run `nsx lock` and review the changed
+packaged hashes and Git pins. Run `nsx sync` to refresh the default board and
+tooling before exporting again.
+Keep using the original wheel to reproduce an older lock from a clean checkout.
 
 The same payload is available from Python:
 
