@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import sys
 import tempfile
 from collections.abc import Callable
@@ -83,6 +84,9 @@ def _smoke_packaged_licenses(package_dir: Path) -> None:
         root = package_dir / relative_metadata.parent
         if not root.is_dir():
             raise RuntimeError(f"Packaged module {name!r} is missing from the wheel: {root}")
+        manifest = yaml.safe_load((package_dir / relative_metadata).read_text(encoding="utf-8"))
+        if manifest.get("licenses", {}).get(".") != "BSD-3-Clause":
+            raise RuntimeError(f"Packaged module {name!r} lacks its root BSD-3-Clause declaration")
         roots.append(root)
 
     if not roots:
@@ -117,6 +121,27 @@ def _smoke_packaged_licenses(package_dir: Path) -> None:
             "Packaged wheel sources are missing leading BSD-3-Clause headers: "
             + json.dumps(missing_headers)
         )
+
+
+def _smoke_example_sbom(package_dir: Path, app_dir: Path) -> None:
+    """Check the shipped package against a real example lock without fetching the SDK."""
+    from neuralspotx import generate_sbom
+
+    example = Path(__file__).resolve().parents[1] / "examples" / "hello_world"
+    for filename in ("nsx.yml", "nsx.lock"):
+        shutil.copyfile(example / filename, app_dir / filename)
+    board = "boards/apollo510_evb"
+    shutil.copytree(package_dir / board, app_dir / board)
+    shutil.copytree(package_dir / "cmake", app_dir / "cmake" / "nsx")
+
+    spdx = {p["name"]: p for p in json.loads(generate_sbom(app_dir))["packages"]}
+    cdx = json.loads(generate_sbom(app_dir, format="cyclonedx"))
+    components = {c["name"]: c for c in cdx["components"]}
+    for name in ("nsx-board-apollo510-evb", "nsx-tooling"):
+        if ".: BSD-3-Clause" not in spdx[name].get("licenseComments", "").splitlines():
+            raise RuntimeError(f"Missing SPDX root license for {name}")
+        if {"name": "nsx:license:.", "value": "BSD-3-Clause"} not in components[name]["properties"]:
+            raise RuntimeError(f"Missing CycloneDX root license for {name}")
 
 
 def main() -> int:
@@ -158,6 +183,8 @@ def main() -> int:
         raise RuntimeError("CLI version does not match the installed distribution")
 
     _smoke_packaged_licenses(package_path.parent)
+    with tempfile.TemporaryDirectory(prefix="nsx-wheel-sbom-") as tmp:
+        _smoke_example_sbom(package_path.parent, Path(tmp))
 
     init_result = nsx_main([
         "module",

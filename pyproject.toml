@@ -96,6 +96,8 @@ neuralspotx = [
     "templates/*/.gitignore",
     "cmake/**/*",
     "boards/**/*",
+    # Board locks hash these tracked files along with the other resources.
+    "boards/*/.gitignore",
 ]
 "neuralspotx.data" = ["*.yaml"]
 
