@@ -1,5 +1,16 @@
 /* SPDX-License-Identifier: BSD-3-Clause */
 /* Copyright (c) 2026, Ambiq */
+#if defined(NSX_PLATFORM_CORSTONE)
+#include <stdio.h>
+#include "uart_stdout.h"
+
+int main(void)
+{
+    UartStdOutInit();
+    puts("nsx hello from generated app");
+    return 0;
+}
+#else
 #include "nsx_core.h"
 
 int main(void)
@@ -16,3 +27,4 @@ int main(void)
         nsx_delay_us(1000000);
     }
 }
+#endif

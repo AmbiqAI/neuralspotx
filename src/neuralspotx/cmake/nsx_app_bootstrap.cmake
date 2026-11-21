@@ -106,6 +106,7 @@ function(nsx_bootstrap_app)
     include("${NSX_ROOT}/boards/${NSX_BOARD}/board.cmake")
 
     foreach(var
+        NSX_SDK_PROVIDER
         NSX_TOOLCHAIN_FAMILY
         NSX_CPU
         NSX_SOC_FAMILY
@@ -158,10 +159,13 @@ function(nsx_bootstrap_app)
         set(_nsx_bsp_link nsx::bsp)
     endif()
 
+    set(_platform_targets "")
+    if(NSX_SDK_PROVIDER STREQUAL "ambiqsuite")
+        set(_platform_targets nsx_soc_hal nsx_startup)
+    endif()
     target_link_libraries(${NSX_BOARD_TARGET} INTERFACE
         ${NSX_SELECTED_SDK_TARGET}
-        nsx_soc_hal
-        nsx_startup
+        ${_platform_targets}
         ${_nsx_bsp_link}
     )
 endfunction()
@@ -242,7 +246,9 @@ function(nsx_finalize_app app_target)
         )
     endif()
 
-    nsx_add_segger_targets(${app_target})
+    if(NOT NSX_SDK_PROVIDER STREQUAL "corstone")
+        nsx_add_segger_targets(${app_target})
+    endif()
 endfunction()
 
 
@@ -315,5 +321,6 @@ function(nsx_target_linker_overlay app_target script_path)
     list(FILTER _link_opts EXCLUDE REGEX "^-T")
     list(APPEND _link_opts "-T${script_path}")
     set_property(TARGET ${_flags_target} PROPERTY INTERFACE_LINK_OPTIONS ${_link_opts})
+    set_property(TARGET ${_flags_target} APPEND PROPERTY INTERFACE_LINK_DEPENDS "${script_path}")
     message(STATUS "nsx: ${app_target} linker overlay -> ${script_path}")
 endfunction()

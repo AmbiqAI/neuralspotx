@@ -24,6 +24,8 @@ The tooling package currently includes built-in board definitions for:
 - `apollo330mP_evb`
 - `atomiq110_fpga_turbo` (preview channel; Atomiq110 FPGA bring-up target)
 
+- `corstone300_fvp_u55` (Arm Corstone-300/U55 FVP, Cortex-M55, GCC)
+
 These descriptors are registered in the packaged board table and available to
 the generated-app flow. Run `nsx board list --registered-only` for the
 authoritative list in the installed version, or add `--json` for structured
@@ -36,6 +38,8 @@ additional gating is applied by `nsx create-app`.
 
 - All Apollo-class boards (Apollo2 through Apollo510/Apollo330P) resolve through
   the single provider `nsx-ambiqsuite`
+- The Corstone board resolves through `nsx-corstone-sdk`. Each additional model
+  needs its own startup, memory layout, console and guest-exit qualification.
 - board definitions are built into the tooling repo and vendored into generated
   apps as required by their declared targets
 - modules are resolved from the packaged registry, cloned from their upstream

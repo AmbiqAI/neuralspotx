@@ -80,8 +80,8 @@ function(_nsx_resolve_provider_board board_name out_var)
 endfunction()
 
 function(nsx_select_sdk_provider board_name)
-    set(NSX_SDK_PROVIDER "" CACHE STRING "SDK provider module (ambiqsuite)")
-    set_property(CACHE NSX_SDK_PROVIDER PROPERTY STRINGS ambiqsuite)
+    set(NSX_SDK_PROVIDER "" CACHE STRING "SDK provider for this board")
+    set_property(CACHE NSX_SDK_PROVIDER PROPERTY STRINGS ambiqsuite corstone)
 
     # Single unified AmbiqSuite root. The legacy per-train override
     # NSX_AMBIQSUITE_R*_ROOT vars are gone; use NSX_AMBIQSUITE_ROOT_OVERRIDE
@@ -94,19 +94,26 @@ function(nsx_select_sdk_provider board_name)
     if(NSX_SDK_PROVIDER STREQUAL "")
         # Follow the parent link for custom boards before giving up.
         _nsx_resolve_provider_board("${board_name}" _provider_board)
-        nsx_board_is_registered("${_provider_board}" _registered)
-        if(_registered)
-            set(NSX_SDK_PROVIDER "ambiqsuite")
-        else()
+        nsx_board_sdk_provider("${_provider_board}" NSX_SDK_PROVIDER)
+        if(NOT NSX_SDK_PROVIDER)
             message(FATAL_ERROR
                 "Unable to infer SDK provider for board '${board_name}'. "
-                "Set -DNSX_SDK_PROVIDER=ambiqsuite."
+                "Select a board with a registered SDK provider."
             )
         endif()
     endif()
 
+    if(NSX_SDK_PROVIDER STREQUAL "corstone")
+        if(NSX_AMBIQSUITE_ROOT_OVERRIDE)
+            message(FATAL_ERROR "The AmbiqSuite SDK root override is incompatible with Corstone")
+        endif()
+        set(NSX_SDK_PROVIDER corstone PARENT_SCOPE)
+        set(NSX_SELECTED_SDK_TARGET nsx_sdk_corstone PARENT_SCOPE)
+        return()
+    endif()
+
     if(NOT NSX_SDK_PROVIDER STREQUAL "ambiqsuite")
-        message(FATAL_ERROR "Unsupported NSX_SDK_PROVIDER='${NSX_SDK_PROVIDER}' (expected 'ambiqsuite').")
+        message(FATAL_ERROR "Unsupported NSX_SDK_PROVIDER='${NSX_SDK_PROVIDER}' (expected 'ambiqsuite' or 'corstone').")
     endif()
 
     set(version "stable")

@@ -96,15 +96,17 @@ class AppTemplate:
     modules: tuple[str, ...] = field(default=())
     description: str = ""
     socs: tuple[str, ...] = field(default=())
+    sdk_provider: str | None = None
 
 
 APP_TEMPLATES: dict[str, AppTemplate] = {
     "default": AppTemplate(
         template_dir="external_app",
-        description="Minimal hello-world app (SWO printf loop).",
+        description="Minimal hello-world app using the board console.",
     ),
     "blinky": AppTemplate(
         template_dir="blinky_app",
+        sdk_provider="ambiqsuite",
         description="Bare-metal LED blink using the board BSP (requires an LED).",
     ),
     "npu-tflm": AppTemplate(
@@ -174,6 +176,11 @@ def create_app_impl(
     # Gate before any filesystem write or module acquisition so a wrong
     # board fails instantly and leaves nothing behind.
     _check_template_supports_soc(template, app_template, board=board, soc=soc)
+    provider = BOARD_SDK_PROVIDER.get(board)
+    if app_template.sdk_provider and provider and provider != app_template.sdk_provider:
+        raise NSXConfigError(
+            f"Template '{template}' requires {app_template.sdk_provider}. Use --template default."
+        )
 
     template_root = resources.files("neuralspotx.templates").joinpath(app_template.template_dir)
     with resources.as_file(template_root) as src_template:
@@ -300,7 +307,12 @@ def _create_app_body(
     info("Next steps:")
     info(f"  1) cd {app_dir}")
     info("  2) Run `nsx configure --app-dir .`")
-    info("  3) Run `nsx build --app-dir .`, `nsx flash --app-dir .`, or `nsx view --app-dir .`")
+    if BOARD_SDK_PROVIDER.get(board) == "corstone":
+        info(
+            "  3) Run `nsx build --app-dir .`, then launch the ELF on the Arm FVP (see README.md)."
+        )
+    else:
+        info("  3) Run `nsx build --app-dir .`, `nsx flash --app-dir .`, or `nsx view --app-dir .`")
     return app_dir
 
 

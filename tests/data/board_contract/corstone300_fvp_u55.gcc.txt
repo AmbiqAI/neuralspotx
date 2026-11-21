@@ -1,0 +1,12 @@
+## CALLS
+add_library: nsx_board_corstone300_fvp_u55;INTERFACE
+add_library: nsx::board;ALIAS;nsx_board_corstone300_fvp_u55
+add_library: nsx::board_corstone300_fvp_u55;ALIAS;nsx_board_corstone300_fvp_u55
+target_compile_definitions: nsx_board_corstone300_fvp_u55;INTERFACE;NSX_PLATFORM_CORSTONE=1
+## VARS
+NSX_BOARD_TARGET=nsx_board_corstone300_fvp_u55
+NSX_CPU=cortex-m55
+NSX_ROOT=/stub/app
+NSX_SDK_PROVIDER=corstone
+NSX_SOC_FAMILY=corstone300
+NSX_TOOLCHAIN_FAMILY=gcc

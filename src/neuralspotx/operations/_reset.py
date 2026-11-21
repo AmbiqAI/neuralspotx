@@ -10,7 +10,7 @@ from .._probe_selection import ProbeSelection, validate_probe_request
 from ..models import ResetResult
 from ._common import _resolve_build_context
 from ._debug_context import capture_debug_context
-from ._debug_workflow import inspect_build, require_adoption
+from ._debug_workflow import inspect_build, require_adoption, require_physical_debug
 from ._hardware import reset_target_impl
 
 
@@ -48,6 +48,7 @@ def reset_impl(
         )
     app, _, selected, build = _resolve_build_context(app_dir, board=board, build_dir=build_dir)
     build = build.expanduser().resolve()
+    require_physical_debug(app, selected)
     require_adoption(inspect_build(app, build, selected))
     with capture_debug_context(app, build, selected, operation="reset") as snap:
         settings = snap.context.target()

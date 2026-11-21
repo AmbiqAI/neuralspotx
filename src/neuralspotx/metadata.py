@@ -210,8 +210,11 @@ def validate_nsx_module_metadata(data: dict[str, Any], module_path: str) -> None
     support = _expect_type(data, "support", dict, module_path)
     ambiqsuite = _expect_type(support, "ambiqsuite", bool, f"{module_path}.support")
     zephyr = _expect_type(support, "zephyr", bool, f"{module_path}.support")
-    if not ambiqsuite:
-        raise ValueError(f"{module_path}: support.ambiqsuite=false is invalid for NSX modules")
+    corstone = support.get("corstone", False)
+    if not isinstance(corstone, bool):
+        raise ValueError(f"{module_path}: support.corstone must be boolean")
+    if not (ambiqsuite or corstone):
+        raise ValueError(f"{module_path}: module must support an NSX SDK provider")
 
     build = _expect_type(data, "build", dict, module_path)
     build_cmake = _expect_type(build, "cmake", dict, f"{module_path}.build")

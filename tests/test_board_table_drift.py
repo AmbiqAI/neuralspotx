@@ -44,11 +44,10 @@ def test_all_boards_have_a_provider() -> None:
     assert not extra, f"BOARD_SDK_PROVIDER has boards not in BOARDS: {extra}"
 
 
-def test_sdk_provider_contract_is_currently_single_valued() -> None:
-    """The current staged SDK-provider contract is single-valued."""
-
-    assert SDK_PROVIDERS == frozenset({"ambiqsuite"})
-    assert set(BOARD_SDK_PROVIDER.values()) == {"ambiqsuite"}
+def test_registered_boards_declare_both_providers() -> None:
+    assert BOARD_SDK_PROVIDER["corstone300_fvp_u55"] == "corstone"
+    assert BOARD_SDK_PROVIDER["apollo510_evb"] == "ambiqsuite"
+    assert set(BOARD_SDK_PROVIDER.values()) == SDK_PROVIDERS
 
 
 def test_committed_cmake_table_matches_generator_output() -> None:

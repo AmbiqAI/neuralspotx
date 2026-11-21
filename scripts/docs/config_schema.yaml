@@ -134,7 +134,8 @@ schemas:
       - {path: module.version, type: string, required: true, description: "Module version string."}
       - {path: module.category, type: string, required: false, description: "Grouping used by the module catalog."}
       - {path: module.provider, type: string, required: false, description: "Organization or project that supplies the module."}
-      - {path: support.ambiqsuite, type: bool, required: true, values: "true", description: "Whether the module builds against AmbiqSuite. NSX requires true."}
+      - {path: support.ambiqsuite, type: bool, required: true, description: "Whether the module builds against AmbiqSuite. At least one NSX SDK provider must be supported."}
+      - {path: support.corstone, type: bool, required: false, description: "Whether the module builds against the Corstone SDK. Defaults to false."}
       - {path: support.zephyr, type: bool, required: true, description: "Whether the module ships a Zephyr integration. When true, integrations.zephyr becomes required."}
       - {path: build.cmake.package, type: string, required: true, description: "CMake package name the module exports."}
       - {path: build.cmake.targets, type: list of string, required: true, description: "CMake targets the module exports. Must be non-empty."}

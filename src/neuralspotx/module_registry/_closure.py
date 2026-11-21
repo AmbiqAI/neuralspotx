@@ -77,6 +77,7 @@ def _resolve_module_closure_inner(
         raise NSXConfigError("nsx.yml toolchain must be a string")
 
     plan = resolve_board_plan(app_dir, nsx_cfg)
+    sdk_provider = plan.descriptor.sdk_provider if plan else "ambiqsuite"
     selected_bsp = plan.descriptor.bsp.module if plan else None
     local_names = _local_module_names(nsx_cfg)
     vendored_names = _vendored_module_names(nsx_cfg)
@@ -141,9 +142,9 @@ def _resolve_module_closure_inner(
             raise NSXModuleError(f"Unselected BSP provider '{module_name}' entered the closure")
         metadata_cache[module_name] = module_meta
 
-        if not module_meta.supports_ambiqsuite:
+        if not module_meta.supports_provider(sdk_provider):
             raise NSXModuleError(
-                f"Module '{module_name}' is not NSX-eligible (support.ambiqsuite=false)"
+                f"Module '{module_name}' does not support the selected SDK provider '{sdk_provider}'"
             )
         if not _compat_check_skipped() and not is_compatible(
             module_meta.raw,

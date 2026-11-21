@@ -67,6 +67,8 @@ def test_board_cpu_matches_sdk_soc_facts() -> None:
     missing_facts: list[str] = []
     mismatches: list[str] = []
     for name, desc in sorted(bd.load_board_descriptors().items()):
+        if desc.sdk_provider != "ambiqsuite":
+            continue
         facts_path = _FACTS_DIR / f"{desc.soc}.cmake"
         if not facts_path.is_file():
             missing_facts.append(f"{name}: no SDK SoC facts file '{facts_path.name}'")
@@ -115,7 +117,11 @@ def test_soc_inventory_symmetry() -> None:
     ``apollo510dL_evb`` → ``apollo510L`` are handled correctly.
     """
     assert _FACTS_DIR is not None  # narrowed by the module-level skip guard
-    board_socs = {desc.soc for desc in bd.load_board_descriptors().values()}
+    board_socs = {
+        desc.soc
+        for desc in bd.load_board_descriptors().values()
+        if desc.sdk_provider == "ambiqsuite"
+    }
     facts_socs = {p.stem for p in _FACTS_DIR.glob("*.cmake")}
 
     boards_without_facts = sorted(board_socs - facts_socs)

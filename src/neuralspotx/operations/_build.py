@@ -32,7 +32,7 @@ from . import _common
 from ._cmake_cache import _cmake_cache_value
 from ._common import _resolve_build_context
 from ._debug_context import capture_debug_context, load_debug_context
-from ._debug_workflow import inspect_build, prepare_debug, require_adoption
+from ._debug_workflow import inspect_build, prepare_debug, require_adoption, require_physical_debug
 from ._hardware import (
     _jlink_command,
     flash_programming_verified,
@@ -268,6 +268,7 @@ def preflight_flash(
     """Validate ownership before flash, including a CLI-requested dependency update."""
     _check_sdk_root(sdk_root, frozen=False)
     app, name, selected, build = _resolve_build_context(app_dir, board=board, build_dir=build_dir)
+    require_physical_debug(app, selected)
     resolved_target = name if target is None else target
     validate_flash_target_name(resolved_target)
     require_adoption(inspect_build(app, build, selected))
@@ -507,6 +508,7 @@ def view_app_impl(
         raise NSXConfigError("SWO delay must be nonnegative and duration positive and finite.")
     _check_sdk_root(sdk_root, frozen=frozen)
     app, name, selected, build = _resolve_build_context(app_dir, board=board, build_dir=build_dir)
+    require_physical_debug(app, selected)
     owned = inspect_build(app, build, selected)
     require_adoption(owned)
     from ._console import warn_console_mismatch

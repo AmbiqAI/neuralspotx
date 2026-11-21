@@ -26,6 +26,7 @@ set(_NSX_REGISTERED_BOARDS_LOWER
     "apollo330mp_evb"
     "apollo510dl_evb"
     "atomiq110_fpga_turbo"
+    "corstone300_fvp_u55"
 )
 
 function(nsx_board_is_registered board_name out_var)
@@ -41,4 +42,28 @@ function(nsx_board_is_registered board_name out_var)
     else()
         set(${out_var} FALSE PARENT_SCOPE)
     endif()
+endfunction()
+
+set(_NSX_PROVIDER_apollo2_evb "ambiqsuite")
+set(_NSX_PROVIDER_apollo3_evb "ambiqsuite")
+set(_NSX_PROVIDER_apollo3_evb_cygnus "ambiqsuite")
+set(_NSX_PROVIDER_apollo3p_evb "ambiqsuite")
+set(_NSX_PROVIDER_apollo3p_evb_cygnus "ambiqsuite")
+set(_NSX_PROVIDER_apollo4l_evb "ambiqsuite")
+set(_NSX_PROVIDER_apollo4l_blue_evb "ambiqsuite")
+set(_NSX_PROVIDER_apollo4p_evb "ambiqsuite")
+set(_NSX_PROVIDER_apollo4p_blue_kbr_evb "ambiqsuite")
+set(_NSX_PROVIDER_apollo4p_blue_kxr_evb "ambiqsuite")
+set(_NSX_PROVIDER_apollo4p_evb_disp_shield_rev2 "ambiqsuite")
+set(_NSX_PROVIDER_apollo5b_evb "ambiqsuite")
+set(_NSX_PROVIDER_apollo510_evb "ambiqsuite")
+set(_NSX_PROVIDER_apollo510b_evb "ambiqsuite")
+set(_NSX_PROVIDER_apollo330mp_evb "ambiqsuite")
+set(_NSX_PROVIDER_apollo510dl_evb "ambiqsuite")
+set(_NSX_PROVIDER_atomiq110_fpga_turbo "ambiqsuite")
+set(_NSX_PROVIDER_corstone300_fvp_u55 "corstone")
+
+function(nsx_board_sdk_provider board_name out_var)
+    string(TOLOWER "${board_name}" _board_lc)
+    set(${out_var} "${_NSX_PROVIDER_${_board_lc}}" PARENT_SCOPE)
 endfunction()

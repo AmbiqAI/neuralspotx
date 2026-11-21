@@ -12,6 +12,7 @@ licenses:
 
 support:
   ambiqsuite: true
+  corstone: true
   zephyr: false
 
 build:
@@ -39,6 +40,7 @@ compatibility:
     - apollo330P
     - apollo510L
     - atomiq110
+    - corstone300
   toolchains:
     - arm-none-eabi-gcc
     - armclang

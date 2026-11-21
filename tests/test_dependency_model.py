@@ -318,3 +318,39 @@ def test_configure_rejects_invalid_source_before_dependency_acquisition(
     acquire.assert_not_called()
     spawn.assert_not_called()
     assert sorted(p.name for p in tmp_path.iterdir()) == ["nsx.yml"]
+
+
+def test_corstone_profile_retains_packaged_board_and_separate_sdk(tmp_path) -> None:
+    registry = _load_registry()
+    cfg = _base_cfg(target={"board": "corstone300_fvp_u55", "soc": "corstone300"})
+    expanded = expand_profile_seeds(cfg, registry, app_dir=tmp_path)
+    modules = {entry["name"]: entry["project"] for entry in expanded["modules"]}
+    assert modules == {
+        "nsx-board-corstone300-fvp-u55": "neuralspotx",
+        "nsx-tooling": "neuralspotx",
+        "nsx-corstone-soc": "nsx-corstone-sdk",
+        "nsx-corstone-sdk": "nsx-corstone-sdk",
+    }
+
+
+def test_corstone_bsp_rebinding_replaces_packaged_bsp_seed(tmp_path) -> None:
+    from neuralspotx.board_descriptors import load_board
+
+    name = "corstone300_fvp_u55"
+    board = load_board(name)
+    assert board is not None
+    overlay = tmp_path / "boards" / name
+    overlay.mkdir(parents=True)
+    (overlay / "board.yaml").write_text(
+        (board.path / "board.yaml")
+        .read_text()
+        .replace("module: nsx-corstone-bsp", "module: app-bsp")
+    )
+    cfg = _base_cfg(
+        target={"board": name, "soc": "corstone300"},
+        modules=[{"name": "app-bsp", "source": {"vendored": True}}],
+    )
+    expanded = expand_profile_seeds(cfg, _load_registry(), app_dir=tmp_path)
+    seeds = [record["name"] for record in expanded["modules"]]
+    assert seeds.count("app-bsp") == 1
+    assert "nsx-corstone-bsp" not in seeds

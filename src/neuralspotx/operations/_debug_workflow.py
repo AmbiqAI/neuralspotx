@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
+from .. import board_descriptors as bd
 from .._errors import NSXConfigError
 from .._probe_selection import validate_probe_request
 from ..subprocess_utils import format_subprocess_error, run_capture
@@ -120,6 +121,17 @@ def inspect_build(app: Path, build: Path, board: str, *, replace_board: bool = F
     except StaleDebugContextError:
         return OwnedBuild(DebugState.STALE, serial)
     return OwnedBuild(DebugState.VALID, serial)
+
+
+def require_physical_debug(app: Path, board: str) -> None:
+    try:
+        descriptor = bd.load_board_for_app(board, app)
+    except bd.BoardDescriptorError as exc:
+        raise NSXConfigError(str(exc)) from exc
+    if descriptor and descriptor.sdk_provider == "corstone":
+        raise NSXConfigError(
+            f"Board '{board}' runs on an Arm FVP. Build the ELF and launch the model."
+        )
 
 
 def require_adoption(state: OwnedBuild) -> None:
