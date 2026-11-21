@@ -16,21 +16,20 @@ One repo, [`nsx-ambiq-sdk`](https://github.com/AmbiqAI/nsx-ambiq-sdk), vendors
 the AmbiqSuite drop, the HAL/BSP wrappers, and the shared NSX module set for
 every supported SoC (Apollo2 through Apollo5, plus the experimental atomiq110).
 Stable resolution pins every SDK module and SoC family to the published
-[`v5.2.31` release](https://github.com/AmbiqAI/nsx-ambiq-sdk/releases/tag/v5.2.31).
-The immutable tag resolves to `d80399e91d28f78078198b75547bbe651a2e51bd`.
+[`v5.2.32` release](https://github.com/AmbiqAI/nsx-ambiq-sdk/releases/tag/v5.2.32).
+The immutable tag resolves to `fc660806bacdfe4b9f84f1e2ea2bd9ada918cda6`.
 The `nsx-ambiqsuite`, `nsx-ambiq-hal` and `nsx-ambiq-bsp` modules are thin
 metadata views onto that same project and revision.
 
-The [5.2.31 release record](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/v5.2.31/release/nsx-ambiq-sdk-5.2.31.yaml)
-identifies the same AmbiqSuite provider and 73 HAL/BSP archives as 5.2.30.
-The NSX integration adds PSRAM API 1.1 asynchronous reads on AP510/AP510B,
-blocking DMA fixes and opt-in BSP v2. Registry-managed apps require NSX 0.9.6
-or newer to resolve the BSP provider role, including on built-in EVBs.
+The [5.2.32 release record](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/v5.2.32/release/nsx-ambiq-sdk-5.2.32.yaml)
+identifies the same AmbiqSuite provider and 73 HAL/BSP archives as 5.2.31.
+The NSX integration adds live power-domain status and raw buck pulse counting
+on supported parts. Registry-managed apps require NSX 0.9.6 or newer to
+resolve the BSP provider role, including on built-in EVBs.
 
-The [SDK qualification report](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/v5.2.31/release/qualification-5.2.31.md)
-records 100 debugger-reset GCC core case executions across AP3 Blue Plus,
-AP4 Blue Plus KXR, AP330 Plus, AP510 and AP510B, plus 48 AP510 PSRAM cases.
-It also records the two AP510B baseline observation timeouts and the passing repeat.
+The [SDK qualification report](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/v5.2.32/release/qualification-5.2.32.md)
+records five-board GCC startup and power tests, generated-app checks on AP510B
+and AP330 Plus, and an over-the-air BLE test on AP510B after the Cordio update.
 
 Board profiles depend on the provider module for their SoC family, and NSX
 vendors the resolved SDK content into the generated app. See
