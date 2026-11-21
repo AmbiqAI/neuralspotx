@@ -449,3 +449,175 @@ def test_check_compares_project_identity_with_identical_artifact() -> None:
     new = copy.deepcopy(old)
     new.modules["one"].project = "new"
     assert _diff_locks(old, new) == ["~ one: project differs"]
+
+
+@dataclass
+class QualifiedSdk:
+    root: Path
+    registry: dict[str, Any]
+    origin: Path
+    receipt: bytes
+    content_hash: str
+    commit: str
+
+    def run(self, command: str, *flags: str) -> int:
+        from neuralspotx import cli
+
+        return cli.main([command, "--app-dir", str(self.root), *flags])
+
+
+@pytest.fixture
+def qualified_sdk(app: App, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> QualifiedSdk:
+    """Lock a fixture SDK at v1. Both local Git origins can serve v1 and v2."""
+    import shutil
+    import subprocess
+
+    from neuralspotx import cli, project_config
+    from neuralspotx.nsx_lock import hash_git_artifact, resolve_ref
+    from neuralspotx.subprocess_utils import _git
+
+    app.add("fixture-sdk", ref="v1")
+    tree = app.root / "modules/fixture-sdk"
+    origin = tmp_path / "origin"
+    mirror = tmp_path / "mirror"
+    shutil.copytree(tree, origin)
+
+    def git(*args: str) -> str:
+        return subprocess.check_output(["git", "-C", str(origin), *args], text=True).strip()
+
+    git("init", "-b", "main")
+    git("config", "user.name", "NSX test")
+    git("config", "user.email", "nsx-test@example.invalid")
+    for revision in ("v1", "v2"):
+        (origin / "sdk.txt").write_text(revision)
+        git("add", ".")
+        git("commit", "-m", revision)
+        git("tag", revision)
+    git("clone", "--bare", str(origin), str(mirror))
+
+    # Inject registry defaults at the package loader, keeping nsx.yml identical
+    # across releases. Rewrite only the two fixture URLs to local Git transports.
+    registry = project_config._load_registry()
+    defaults = app.config.pop("module_registry")
+    for group in ("projects", "modules"):
+        registry[group].update(defaults[group])
+    app.save()
+    monkeypatch.setattr(project_config, "load_registry_lock", lambda _path: registry)
+    first = registry["projects"]["fixture-sdk"]["url"]
+    second = "https://example.invalid/mirror.git"
+    git_config = tmp_path / "gitconfig"
+    for source, url in ((origin, first), (mirror, second)):
+        git("config", "--file", str(git_config), f"url.{source.as_uri()}.insteadOf", url)
+    monkeypatch.setenv("GIT_CONFIG_GLOBAL", str(git_config))
+    monkeypatch.setattr(_git, "GIT_PROTOCOL_ALLOWLIST_FLAGS", ("-c", "protocol.file.allow=always"))
+    monkeypatch.setattr(operations._lock, "resolve_ref", resolve_ref)
+    monkeypatch.setattr(operations._lock, "hash_git_artifact", hash_git_artifact)
+    monkeypatch.setenv("NSX_CACHE_DIR", str(tmp_path / "cache"))
+    monkeypatch.setenv("NSX_DISABLE_MODULE_CACHE", "1")
+    monkeypatch.setenv("NSX_GIT_RETRIES", "1")
+
+    assert cli.main(["lock", "--app-dir", str(app.root)]) == 0
+    locked = read_lock(app.root, "apollo510_evb")
+    assert locked is not None
+    sdk = locked.modules["fixture-sdk"]
+    assert sdk.commit is not None and sdk.commit == git("rev-parse", "v1")
+    assert sdk.url == first
+    return QualifiedSdk(
+        app.root,
+        registry,
+        origin,
+        (app.root / "nsx.lock").read_bytes(),
+        sdk.content_hash,
+        sdk.commit,
+    )
+
+
+def test_frozen_restore_uses_recorded_origin(
+    qualified_sdk: QualifiedSdk, monkeypatch: pytest.MonkeyPatch, capfd: pytest.CaptureFixture[str]
+) -> None:
+    import shutil
+
+    from neuralspotx.nsx_lock import hash_tree
+
+    sdk = qualified_sdk
+    project = sdk.registry["projects"]["fixture-sdk"]
+    first = project["url"]
+    project["url"] = "https://example.invalid/mirror.git"
+    tree = sdk.root / "modules/fixture-sdk"
+    shutil.rmtree(tree)
+    trace = sdk.root / "git.trace"
+    monkeypatch.setenv("GIT_TRACE", str(trace))
+    assert sdk.run("sync", "--frozen") == 0
+    uploads = [line for line in trace.read_text().splitlines() if "upload-pack" in line]
+    assert any("/origin" in line for line in uploads)
+    assert all("/mirror" not in line for line in uploads)
+    assert hash_tree(tree) == sdk.content_hash
+    assert (sdk.root / "nsx.lock").read_bytes() == sdk.receipt
+
+    # Taking only the recorded origin offline must fail, even with the mirror available.
+    shutil.rmtree(tree)
+    sdk.origin.rename(sdk.root / "offline")
+    trace.write_text("")
+    capfd.readouterr()
+    assert sdk.run("sync", "--frozen") != 0
+    assert first in capfd.readouterr().err
+    assert "/mirror" not in trace.read_text()
+    assert not tree.exists()
+    assert (sdk.root / "nsx.lock").read_bytes() == sdk.receipt
+
+
+def test_frozen_restore_rejects_a_changed_destination(qualified_sdk: QualifiedSdk) -> None:
+    sdk = qualified_sdk
+    sdk.registry["projects"]["fixture-sdk"]["path"] = "modules/moved"
+    assert sdk.run("sync", "--frozen") != 0
+    assert not (sdk.root / "modules/moved").exists()
+    assert (sdk.root / "nsx.lock").read_bytes() == sdk.receipt
+
+
+def test_frozen_rebuild_after_sdk_default_promotion(
+    qualified_sdk: QualifiedSdk, capfd: pytest.CaptureFixture[str]
+) -> None:
+    import shutil
+    import subprocess
+
+    if not shutil.which("cmake") or not shutil.which("ninja"):
+        pytest.skip("host build requires CMake and Ninja")
+    sdk = qualified_sdk
+    sdk.registry["modules"]["fixture-sdk"]["revision"] = "v2"
+    capfd.readouterr()
+    assert sdk.run("lock", "--check") != 0
+    output = capfd.readouterr()
+    assert "fixture-sdk: constraint v1 -> v2" in output.out + output.err
+    assert (sdk.root / "nsx.lock").read_bytes() == sdk.receipt
+
+    shutil.rmtree(sdk.root / "modules/fixture-sdk")
+    assert sdk.run("sync", "--frozen") == 0
+    assert (sdk.root / "nsx.lock").read_bytes() == sdk.receipt
+
+    # Configure a host-only target. The actual nsx build drives Ninja and the
+    # artifact records which SDK source was consumed without an ARM toolchain.
+    (sdk.root / "CMakeLists.txt").write_text(
+        "cmake_minimum_required(VERSION 3.20)\nproject(targeted NONE)\n"
+        'add_custom_target(targeted COMMAND "${CMAKE_COMMAND}" -E copy '
+        '"${CMAKE_SOURCE_DIR}/modules/fixture-sdk/sdk.txt" "${CMAKE_BINARY_DIR}/built-sdk.txt")\n'
+    )
+    build = sdk.root / "build/apollo510_evb"
+    subprocess.run(
+        [
+            "cmake",
+            "-S",
+            str(sdk.root),
+            "-B",
+            str(build),
+            "-G",
+            "Ninja",
+            "-DNSX_BOARD=apollo510_evb",
+        ],
+        check=True,
+    )
+    assert sdk.run("build", "--frozen", "--build-dir", str(build)) == 0
+    expected = subprocess.check_output(
+        ["git", "-C", str(sdk.origin), "show", f"{sdk.commit}:sdk.txt"], text=True
+    )
+    assert (build / "built-sdk.txt").read_text() == expected == "v1"
+    assert (sdk.root / "nsx.lock").read_bytes() == sdk.receipt

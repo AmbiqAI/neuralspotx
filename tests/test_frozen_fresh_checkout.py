@@ -81,6 +81,11 @@ def _fake_vendor(monkeypatch: pytest.MonkeyPatch, vendored_dir: Path, content: s
         calls.append(commit)
         _write_tree(vendored_dir, content)
 
+    def locked_vendor(_url: str, dest: Path, commit: str, **_: Any) -> None:
+        calls.append(commit)
+        _write_tree(dest, content)
+
+    monkeypatch.setattr(module_registry._vendoring, "_vendor_git_tree_at_commit", locked_vendor)
     monkeypatch.setattr(module_registry, "_vendor_git_module_at_commit", _vendor)
     return calls
 
@@ -275,12 +280,11 @@ def test_interrupted_fetch_of_missing_module_leaves_nothing_behind(
     vendored_dir = app_dir / "modules" / "demo-proj"
     entry = _entry(_locked_hash(tmp_path, "locked"))
 
-    def _interrupted(
-        app_dir: Path, name: str, registry: dict[str, Any], commit: str, **_: Any
-    ) -> None:  # noqa: ARG001
+    def _interrupted(*_args: Any, **_kwargs: Any) -> None:
         (vendored_dir / ".git").mkdir(parents=True)
         raise KeyboardInterrupt
 
+    monkeypatch.setattr(module_registry._vendoring, "_vendor_git_tree_at_commit", _interrupted)
     monkeypatch.setattr(module_registry, "_vendor_git_module_at_commit", _interrupted)
     with pytest.raises(KeyboardInterrupt):
         _sync_fetchable_entry(_ctx(app_dir, frozen=frozen), "demo-mod", entry, vendored_dir, set())
