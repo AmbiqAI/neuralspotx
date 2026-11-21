@@ -108,7 +108,7 @@ function commitSha() {
  * Finish the pages pyref wrote.
  *
  * Starlight renders frontmatter `banner` once per page, which is where the
- * the API compatibility policy belongs; pyref has no status field of its own
+ * API compatibility policy belongs; pyref has no status field of its own
  * (AmbiqAI/helia-ui, gaps note). pyref also titles a page with the module's
  * leaf name, so `neuralspotx.api` arrives as "api"; the dotted path is what a
  * reader needs in a tab title and a search result. The sidebar is built
