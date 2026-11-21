@@ -156,6 +156,33 @@ The first proves the lock matches the manifest, the second proves the tree match
 lock, and the third builds without either being allowed to move.
 :::
 
+## Proposed 1.x lock behavior
+
+Under the [proposed compatibility policy](/neuralspotx/reference/releases/#proposed-compatibility-policy-for-1x),
+upgrading the tool would preserve a valid 1.x lock's Git pins. Suppose two
+boards use a driver from `main`. Both lock sections record commit A, and
+upstream has since advanced to B. The app configuration, selected dependency
+closure, effective registry inputs, and local sources are otherwise unchanged.
+
+| Operation after upgrading the tool | Proposed outcome |
+| --- | --- |
+| `nsx sync --frozen` | Materialize the selected board's driver at A, verify the recorded content hash, and leave the lock untouched. Report an unavailable commit or mismatched content. |
+| `nsx lock` | Keep A and its recorded source identity and content hash for both boards. Preserve unrelated Git pins. |
+| `nsx lock --module my-driver` | Refresh the selected registry project wherever it occurs in the requested targets. Its modules can move to B together. Unrelated compatible Git projects keep their pins. |
+| A full lock fails while preparing the second board | Leave the entire previous lock byte-for-byte intact so the developer can retry. |
+
+Two differences matter when using 0.x today. A writable plain `nsx lock`
+refreshes floating Git refs, even with unchanged inputs. It also regenerates
+an unsupported lock schema from scratch. In either case review the resulting
+pins. Preserving them on a plain lock would be a behavior change for 1.0.
+
+Content from a local directory, an app-vendored module, or the CMake files
+shipped in the wheel has a hash but may have no Git commit to fetch. Under
+the proposal, frozen sync must report a hash mismatch if those locked bytes
+cannot be reproduced. A developer could then use the original inputs or
+deliberately re-lock the changed content and review the diff. That re-lock
+would still preserve compatible Git pins for unrelated projects.
+
 ## Updating on purpose
 
 ```bash
@@ -193,7 +220,8 @@ metadata changes, materialize it with `sync` and run `lock` again. A normal writ
 Without a usable prior lock there are no resolutions to preserve. Unknown selections
 fail before lock sections are written. With multiple targets, a selection need only
 exist in one requested target; it applies where present. A board-restricted operation
-preserves other board sections. Later failures are not an all-target transaction.
+preserves other board sections. A full lock publishes its combined target sections after all requested boards succeed.
+Generated build inputs for an earlier board can already exist if a later board fails.
 `lock --check --update --module X` uses the same selection rules without writing the
 lock or build glue; cache changes are still possible.
 
