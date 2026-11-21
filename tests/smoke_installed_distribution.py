@@ -8,9 +8,12 @@ import shutil
 import sys
 import tempfile
 from collections.abc import Callable
+from importlib.metadata import Distribution
 from pathlib import Path
 
 import yaml
+from packaging.requirements import Requirement
+from packaging.utils import canonicalize_name
 
 # Files every ``create-app --no-bootstrap`` scaffold must ship, per template.
 # The npu-tflm entries guard the wheel-level package-data contract: the
@@ -60,6 +63,32 @@ def _smoke_create_app(nsx_main: Callable[[list[str]], int], work_dir: Path, temp
         raise RuntimeError(
             f"create-app --template {template} scaffold is missing packaged template files: "
             + json.dumps(missing)
+        )
+
+
+def _smoke_runtime_notice(install_root: Path) -> None:
+    """Compare dependency names and conditions in the installed NOTICE and METADATA."""
+    (dist_info,) = install_root.glob("neuralspotx-*.dist-info")
+    notice = (dist_info / "licenses" / "NOTICE").read_text(encoding="utf-8")
+    third_party = notice.split("Third-Party Components", 1)[1].split("Modules Fetched", 1)[0]
+    listed = [
+        line.removeprefix("  - ").split(" | ", 1)[0]
+        for line in third_party.splitlines()
+        if line.startswith("  - ")
+    ]
+
+    def identities(entries: list[str]) -> set[tuple[str, str]]:
+        return {
+            (canonicalize_name(req.name), str(req.marker or ""))
+            for req in map(Requirement, entries)
+        }
+
+    expected = identities(Distribution.at(dist_info).requires or [])
+    actual = identities(listed)
+    if actual != expected:
+        raise RuntimeError(
+            f"Wheel NOTICE differs from Requires-Dist: missing {sorted(expected - actual)}, "
+            f"unexpected {sorted(actual - expected)}"
         )
 
 
@@ -182,6 +211,7 @@ def main() -> int:
     if output.getvalue().strip() != f"nsx {version('neuralspotx')}":
         raise RuntimeError("CLI version does not match the installed distribution")
 
+    _smoke_runtime_notice(install_root)
     _smoke_packaged_licenses(package_path.parent)
     with tempfile.TemporaryDirectory(prefix="nsx-wheel-sbom-") as tmp:
         _smoke_example_sbom(package_path.parent, Path(tmp))
