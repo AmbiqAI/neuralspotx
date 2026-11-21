@@ -83,8 +83,10 @@ the metadata model reference on the docs site and
 `neuralspotx.registry_policy.orphaned_registry_project_report`.
 
 Targeted lock updates select Git registry projects through module names, matching
-the project vendoring unit. Preserve unrelated compatible prior Git resolutions;
-new entries and changed project/URL/constraint inputs still resolve. Keep selection
+the project vendoring unit. Plain lock and unselected projects keep compatible Git resolutions, including
+floating branch commits. New entries and explicit app source or revision edits
+resolve normally. An incompatible packaged default requires selecting the project
+or a full update. Publish the combined lock only after every requested board succeeds. Keep selection
 and reuse in shared operations and validate targeted shared-directory consistency
 before writing the affected lock section.
 

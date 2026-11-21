@@ -17,7 +17,7 @@ from ..metadata import (
 from ..models import ModuleMetadata
 from ..project_config import (
     _board_overlay_dir,
-    _metadata_path_relative_to_project,
+    _metadata_in_checkout,
     _module_clone_dir,
     _module_source_dir_relative_to_app,
     _packaged_metadata_path,
@@ -94,7 +94,7 @@ def _module_metadata_path(
     # 1. An explicit local project overrides packaged and app-local mirrors.
     if project_entry.local_path:
         local_root = Path(project_entry.local_path).expanduser()
-        metadata_rel = _metadata_path_relative_to_project(metadata, project_entry.path)
+        metadata_rel = _metadata_in_checkout(metadata, project_entry, local_root)
         candidate = local_root / metadata_rel
         if candidate.exists():
             return candidate
@@ -116,9 +116,8 @@ def _module_metadata_path(
 
     # 4. Check the configured app-local project clone directory.
     if app_dir is not None:
-        project_path = project_entry.path
-        metadata_rel = _metadata_path_relative_to_project(metadata, project_path)
         clone_dir = _module_clone_dir(app_dir, registry_entry.project, registry)
+        metadata_rel = _metadata_in_checkout(metadata, project_entry, clone_dir)
         candidate = clone_dir / metadata_rel
         if candidate.exists():
             return candidate
@@ -224,7 +223,9 @@ def _materialized_module_metadata_path(
     """Locate the manifest beside the sources selected by generated CMake."""
     entry = registry_entry_for_module(registry, module_name)
     project = _registry_project_entry(registry, entry.project)
-    metadata_rel = _metadata_path_relative_to_project(Path(entry.metadata), project.path)
+    metadata_rel = _metadata_in_checkout(
+        Path(entry.metadata), project, _module_clone_dir(app_dir, entry.project, registry)
+    )
     if module_name == "nsx-tooling":
         # App templates include this bootstrap tree directly, even when the
         # registry also mirrors a local neuralspotx development checkout.
@@ -235,7 +236,9 @@ def _materialized_module_metadata_path(
         # _sync_local_board_overlay; its metadata can differ on cached builds.
         source = _board_overlay_dir(app_dir, metadata_rel)
     else:
-        source = app_dir / _module_source_dir_relative_to_app(module_name, registry, nsx_cfg)
+        source = app_dir / _module_source_dir_relative_to_app(
+            module_name, registry, nsx_cfg, app_dir=app_dir
+        )
     filename = "nsx-module.yaml" if module_name == "nsx-tooling" else Path(entry.metadata).name
     return source / filename
 

@@ -18,7 +18,7 @@ from .._errors import (
     NSXResolutionError,
 )
 from .._io import info, warn
-from ..constants import DEFAULT_TOOLCHAIN, normalize_board
+from ..constants import DEFAULT_TOOLCHAIN, PACKAGED_PROJECT_NAME, normalize_board
 from ..file_lock import app_lock
 from ..models import AppConfig, OutdatedModule, OutdatedReport, OutdatedSkip, ResolvedTarget
 from ..module_registry import (
@@ -49,13 +49,15 @@ from ..nsx_lock import (
 from ..nsx_lock._io import _write_lock_file
 from ..nsx_lock._models import is_portable_manifest_path
 from ..project_config import (
+    RegistryAuthorship,
     _board_key_for_app,
     _copy_packaged_tree,
     _effective_registry,
     _load_app_cfg,
     _load_registry,
-    _lock_board_key,
+    _metadata_in_checkout,
     _metadata_path_relative_to_project,
+    _module_clone_dir,
     _nsx_tool_version,
     _registry_project_entry,
     _write_app_module_file,
@@ -65,12 +67,13 @@ from ..project_config import (
 )
 from ._common import OutdatedStatus, _log
 from ._lock_diagnostics import warn_unpinned_git_constraints
-from ._lock_selection import LockInputs, selected_git_modules, validate_materialization
-
-
-def _looks_like_full_sha(ref: str) -> bool:
-    return len(ref) == 40 and all(ch in "0123456789abcdefABCDEF" for ch in ref)
-
+from ._lock_metadata import AcquiredSources, discovery_registry, independently_locked_projects
+from ._lock_selection import (
+    LockInputs,
+    qualified_pin_conflicts,
+    selected_git_modules,
+    validate_materialization,
+)
 
 # Default age (days) past which a lock that tracks moving refs is flagged
 # stale by :func:`lock_freshness_warning`. Override via NSX_LOCK_STALE_DAYS
@@ -166,12 +169,11 @@ def _reusable_previous_git_resolution(
     constraint: str,
     url: str,
     project: str,
-    refresh_floating_refs: bool,
 ) -> tuple[str, str | None] | None:
     """Return ``(commit, tag)`` from *previous_entry* when safe to reuse.
 
-    Normal writes reuse matching full-SHA or recorded-tag entries. Read-only
-    checks and unselected targeted-update rows may also reuse floating entries.
+    A matching lock pins floating and immutable constraints alike. Explicit
+    updates omit the previous entry for selected Git projects.
     """
 
     if previous_entry is None:
@@ -186,10 +188,6 @@ def _reusable_previous_git_resolution(
         return None
     if not previous_entry.commit:
         return None
-    if refresh_floating_refs and not (
-        _looks_like_full_sha(constraint) or previous_entry.tag == constraint
-    ):
-        return None
     return previous_entry.commit, previous_entry.tag
 
 
@@ -202,7 +200,7 @@ def _resolved_module_path(
 
     from ..metadata import registry_entry_for_module
     from ..module_registry import _is_packaged_module
-    from ..project_config import _module_clone_dir, _vendored_target_dir
+    from ..project_config import _vendored_target_dir
 
     entry = registry_entry_for_module(registry, module_name)
     if _is_packaged_module(registry, module_name):
@@ -247,7 +245,11 @@ def _prepare_lock_inputs(
     board: str | None = None,
     previous: NsxLock | None = None,
     write_side_effects: bool = True,
+    refresh_all: bool = False,
     use_locked_closure_on_metadata_error: bool = False,
+    selected: frozenset[str] = frozenset(),
+    isolated: frozenset[str] = frozenset(),
+    acquired: AcquiredSources | None = None,
 ) -> LockInputs:
     """Resolve configuration and closure once, before targeted name validation."""
     nsx_cfg = _load_app_cfg(app_dir)
@@ -261,55 +263,120 @@ def _prepare_lock_inputs(
     # starter profile in-memory so the resolver below sees an equivalent
     # fully-seeded config. Inlined manifests pass through unchanged.
     nsx_cfg = expand_profile_seeds(nsx_cfg, base_registry, app_dir=app_dir)
-    registry = _effective_registry(base_registry, nsx_cfg, app_dir=app_dir)
+    authorship = RegistryAuthorship()
+    registry = _effective_registry(base_registry, nsx_cfg, app_dir=app_dir, authorship=authorship)
     validate_app_module_alignment(nsx_cfg, registry)
     seed_module_names = _module_names_from_nsx(nsx_cfg)
     local_names = _local_module_names(nsx_cfg)
     vendored_names = _vendored_module_names(nsx_cfg)
-    used_locked_closure = False
+    from ..module_registry._composition import board_composition
 
-    try:
-        module_names = _resolve_module_closure(
-            seed_module_names,
-            app_dir=app_dir,
-            nsx_cfg=nsx_cfg,
-            registry=registry,
-            default_toolchain=DEFAULT_TOOLCHAIN,
-            acquire_missing=write_side_effects,
+    checked_composition = None
+    isolated_manifests: dict[str, str] = {}
+
+    if not write_side_effects and (selected or refresh_all):
+        # An explicit update check needs current metadata to distinguish
+        # upstream drift from an unavailable closure on a clean checkout.
+        isolated |= frozenset(
+            name
+            for name, project in registry["projects"].items()
+            if name != PACKAGED_PROJECT_NAME
+            and project.get("url")
+            and not project.get("local_path")
+            and not _module_clone_dir(app_dir, name, registry).is_dir()
         )
-    except (OSError, subprocess.SubprocessError, NSXResolutionError) as exc:
-        if use_locked_closure_on_metadata_error and previous is not None:
-            _log.warning(
-                "could not resolve dependency metadata for all modules (%s); "
-                "using the module closure recorded in nsx.lock for read-only check; "
-                "dependency version constraints and unavailable BSP contract inputs cannot be certified without metadata.",
-                exc,
-            )
-            module_names = list(previous.modules)
-            used_locked_closure = True
-        else:
-            seed_summary = ", ".join(seed_module_names) or "<none>"
-            raise NSXResolutionError(
-                "Unable to resolve dependency metadata for nsx.yml modules "
-                f"[{seed_summary}]: {exc}. Run `nsx lock` with the required "
-                "module sources available so nsx.lock can record the full "
-                "dependency closure."
-            ) from exc
+
+    def refresh_projects(names: set[str]) -> set[str]:
+        return {
+            registry["modules"][name]["project"]
+            for name in selected & names
+            if name in registry["modules"] and name not in local_names | vendored_names
+        }
+
+    def discover(refresh: set[str], separate: frozenset[str]) -> list[str]:
+        nonlocal checked_composition
+        isolated_manifests.clear()
+        with discovery_registry(
+            app_dir,
+            registry,
+            previous,
+            authorship,
+            refresh,
+            separate,
+            acquired,
+            isolated_manifests,
+            read_only=not write_side_effects,
+        ) as (metadata_registry, prepare_metadata):
+            fallback = None
+            try:
+                names = _resolve_module_closure(
+                    seed_module_names,
+                    app_dir=app_dir,
+                    nsx_cfg=nsx_cfg,
+                    registry=metadata_registry,
+                    default_toolchain=DEFAULT_TOOLCHAIN,
+                    acquire_missing=write_side_effects,
+                    prepare_metadata=prepare_metadata,
+                )
+            except (OSError, subprocess.SubprocessError, NSXResolutionError) as exc:
+                if not use_locked_closure_on_metadata_error or previous is None:
+                    seed_summary = ", ".join(seed_module_names) or "<none>"
+                    raise NSXResolutionError(
+                        "Unable to resolve dependency metadata for nsx.yml modules "
+                        f"[{seed_summary}]: {exc}. Run `nsx lock` with the required "
+                        "module sources available so nsx.lock can record the full "
+                        "dependency closure."
+                    ) from exc
+                _log.warning(
+                    "could not resolve dependency metadata for all modules (%s); "
+                    "using the module closure recorded in nsx.lock for read-only check; "
+                    "dependency version constraints and unavailable BSP contract inputs cannot be certified without metadata.",
+                    exc,
+                )
+                names = list(previous.modules)
+                fallback = previous.board_composition
+            if not write_side_effects:
+                checked_composition = board_composition(
+                    app_dir, nsx_cfg, metadata_registry, names, read_only_record=fallback
+                )
+            return names
+
+    initial = refresh_projects(set(seed_module_names) | set(previous.modules if previous else ()))
+    if refresh_all:
+        initial = set(registry["projects"])
+    module_names = discover(initial, isolated)
+    if selected and previous and write_side_effects:
+        # A newly reachable (or removed) alias can change which projects this
+        # board selects. Rediscover them in separate checkouts.
+        effective = refresh_projects(set(module_names))
+        if effective != initial:
+            module_names = discover(effective, isolated | (initial ^ effective))
+            if refresh_projects(set(module_names)) != effective:
+                raise NSXConfigError(
+                    f"Project selection for board '{board}' changes its own dependency closure. "
+                    "Use a full `nsx lock --update` to resolve all projects together."
+                )
 
     return LockInputs(
-        nsx_cfg, registry, module_names, local_names, vendored_names, used_locked_closure
+        nsx_cfg,
+        registry,
+        module_names,
+        local_names,
+        vendored_names,
+        checked_composition,
+        authorship,
+        isolated_manifests,
     )
 
 
 def _build_lock_for_app(
     app_dir: Path,
     *,
-    board: str | None = None,
     previous: NsxLock | None = None,
     write_side_effects: bool = True,
-    use_locked_closure_on_metadata_error: bool = False,
-    prepared: LockInputs | None = None,
+    prepared: LockInputs,
     selected: frozenset[str] | None = None,
+    conflicts: list[str] | None = None,
 ) -> NsxLock:
     """Resolve every module in nsx.yml to a commit + content hash.
 
@@ -333,8 +400,7 @@ def _build_lock_for_app(
     For ``kind=unresolved``: best-effort hash of whatever is on disk
     (or the previous lock's recorded hash, if nothing is on disk).
 
-    Normal writable locks reuse matching pinned entries and refresh floating
-    refs through the TTL cache. Targeted updates force selected Git projects
+    Normal writable locks reuse matching Git resolutions, including floating refs. Targeted updates force selected Git projects
     and preserve unrelated matching resolutions. Checks can reuse prior
     floating resolutions; plain checks do not guarantee upstream freshness.
 
@@ -343,29 +409,17 @@ def _build_lock_for_app(
     are skipped. ``nsx lock --check`` uses this so a read-only check
     truly does not modify the on-disk app.
 
-    When ``use_locked_closure_on_metadata_error`` is True, a read-only
-    check may use the existing ``nsx.lock`` module order if dependency
-    metadata is not materialized locally. This keeps ``nsx lock --check``
-    useful on clean checkouts while preserving the package-manager rule
-    that writable lock refreshes must resolve the real dependency graph.
     """
 
     from ..metadata import registry_entry_for_module
     from ..module_registry import _is_packaged_module
 
-    inputs = prepared or _prepare_lock_inputs(
-        app_dir,
-        board=board,
-        previous=previous,
-        write_side_effects=write_side_effects,
-        use_locked_closure_on_metadata_error=use_locked_closure_on_metadata_error,
-    )
-    nsx_cfg, registry = inputs.config, inputs.registry
-    module_names = inputs.module_names
-    local_names, vendored_names = inputs.local_names, inputs.vendored_names
+    nsx_cfg, registry = prepared.config, prepared.registry
+    module_names = prepared.module_names
+    local_names, vendored_names = prepared.local_names, prepared.vendored_names
     tool_version = _nsx_tool_version()
     refresh_modules = (
-        selected_git_modules(inputs, selected) if selected is not None else frozenset()
+        selected_git_modules(prepared, selected) if selected is not None else frozenset()
     )
 
     if write_side_effects:
@@ -391,7 +445,6 @@ def _build_lock_for_app(
     )
 
     prev_modules = previous.modules if previous else {}
-    refresh_floating_git_refs = write_side_effects and selected is None
     # Per-call cache: a single ``nsx lock`` invocation may have multiple
     # modules sharing one (url, commit) pair; clone once.
     git_artifact_hash_cache: dict[tuple[str, str], str] = {}
@@ -432,7 +485,6 @@ def _build_lock_for_app(
                 constraint=cons,
                 url=proj.url,
                 project=ent.project,
-                refresh_floating_refs=refresh_floating_git_refs,
             )
             if reusable is not None:
                 # An allowed prior resolution short-circuits resolve_ref.
@@ -482,7 +534,6 @@ def _build_lock_for_app(
                 constraint=cons,
                 url=proj.url,
                 project=ent.project,
-                refresh_floating_refs=refresh_floating_git_refs,
             )
             if reusable is not None:
                 reused_commit, _ = reusable
@@ -669,7 +720,6 @@ def _build_lock_for_app(
             constraint=constraint,
             url=url,
             project=entry.project,
-            refresh_floating_refs=refresh_floating_git_refs,
         )
         if reusable is not None:
             # Reuse permitted by the writable/read-only policy above.
@@ -771,33 +821,37 @@ def _build_lock_for_app(
         )
 
     for name, receipt in lock.modules.items():
-        receipt.manifest_path = _locked_manifest_path(name, receipt, app_dir, registry)
+        receipt.manifest_path = prepared.isolated_manifests.get(name) or _locked_manifest_path(
+            name, receipt, app_dir, registry, prev_modules.get(name)
+        )
 
-    if selected is not None:
-        validate_materialization(app_dir, lock)
     warn_unpinned_git_constraints(lock)
-    from ..module_registry._composition import board_composition
-
+    if previous and conflicts is not None:
+        # Check changed wheel defaults before validating the new artifacts
+        # against the board contract. The user has not opted into them yet.
+        conflicts.extend(
+            qualified_pin_conflicts(
+                previous, lock, prepared, (selected or frozenset()) | refresh_modules
+            )
+        )
+        if conflicts:
+            return lock
     if write_side_effects:
         from ._lock_composition import resolved_board_composition
 
         lock.board_composition = resolved_board_composition(app_dir, nsx_cfg, registry, lock)
     else:
-        lock.board_composition = board_composition(
-            app_dir,
-            nsx_cfg,
-            registry,
-            module_names,
-            read_only_record=previous.board_composition
-            if previous and inputs.used_locked_closure
-            else None,
-        )
+        lock.board_composition = prepared.checked_composition
     _preserve_unchanged_timestamps(previous, lock)
     return lock
 
 
 def _locked_manifest_path(
-    name: str, receipt: ResolvedModule, app_dir: Path, registry: dict[str, Any]
+    name: str,
+    receipt: ResolvedModule,
+    app_dir: Path,
+    registry: dict[str, Any],
+    previous: ResolvedModule | None,
 ) -> str | None:
     """Locate the selected manifest within the tree hashed for this entry."""
     from ..metadata import registry_entry_for_module
@@ -823,10 +877,24 @@ def _locked_manifest_path(
             if receipt.kind not in (LockKind.GIT, LockKind.UNRESOLVED):
                 return None
             metadata = Path(entry.metadata)
+            # On a cold check the tree cannot disambiguate an implicit
+            # checkout prefix. Reuse its verified locator only for the same
+            # artifact and only if the current selector still allows it.
+            if (
+                project.path is None
+                and not metadata.is_absolute()
+                and previous
+                and previous.commit == receipt.commit
+                and previous.url == receipt.url
+                and previous.content_hash == receipt.content_hash
+                and previous.manifest_path
+                == _metadata_path_relative_to_project(metadata, project.checkout_path).as_posix()
+            ):
+                return previous.manifest_path
             candidate = (
                 metadata
                 if metadata.is_absolute()
-                else root / _metadata_path_relative_to_project(metadata, project.path)
+                else root / _metadata_in_checkout(metadata, project, root)
             )
     if receipt.kind in (LockKind.LOCAL, LockKind.VENDORED):
         if not candidate.is_file():
@@ -958,7 +1026,13 @@ def lock_app_impl(
     # so it does not need the per-app advisory lock and CI can verify
     # multiple apps in parallel without contention.
     if check:
-        prepared = _prepare_targeted_inputs(app_dir, boards, update, modules, check=True)
+        prior = _previous_sections(app_dir, board, check=True)
+        isolated = independently_locked_projects(
+            prior, frozenset(modules or ()) if update else frozenset()
+        )
+        prepared = _prepare_targeted_inputs(
+            app_dir, boards, update, modules, check=True, prior=prior, isolated=isolated
+        )
         results = [
             _prepare_board_lock(
                 app_dir,
@@ -966,13 +1040,30 @@ def lock_app_impl(
                 update=update,
                 modules=modules,
                 check=True,
+                isolated=isolated,
                 prepared=prepared.get(b),
+                previous=prior.get(normalize_board(b)),
             )
             for b in boards
         ]
         return results[0]
     with app_lock(app_dir):
-        prepared = _prepare_targeted_inputs(app_dir, boards, update, modules, check=False)
+        conflicts: list[str] = []
+        prior = _previous_sections(app_dir, board, check=False)
+        acquired: AcquiredSources | None = {} if len(boards) > 1 else None
+        isolated = independently_locked_projects(
+            prior, frozenset(modules or ()) if update else frozenset()
+        )
+        prepared = _prepare_targeted_inputs(
+            app_dir,
+            boards,
+            update,
+            modules,
+            check=False,
+            prior=prior,
+            isolated=isolated,
+            acquired=acquired,
+        )
         results = [
             _prepare_board_lock(
                 app_dir,
@@ -980,11 +1071,20 @@ def lock_app_impl(
                 update=update,
                 modules=modules,
                 check=False,
-                board_restricted=board is not None,
+                conflicts=conflicts,
+                isolated=isolated,
+                acquired=acquired,
                 prepared=prepared.get(b),
+                previous=prior.get(normalize_board(b)),
             )
             for b in boards
         ]
+        if conflicts:
+            raise NSXConfigError(
+                "Qualified Git pins conflict with the current inputs. The lock was not written.\n"
+                + "\n".join(conflicts)
+                + "\nTo refresh all projects, run `nsx lock --update`."
+            )
         if len(results) > 1:
             # Each board writes ``modules/.gitignore`` for its own closure,
             # so the last board would otherwise win and drop sibling-only
@@ -1013,6 +1113,19 @@ def lock_app_impl(
     return results[0]
 
 
+def _previous_sections(app_dir: Path, board: str | None, *, check: bool) -> dict[str, NsxLock]:
+    try:
+        combined = read_lock_file(app_dir)
+    except NSXLockError as exc:
+        if board is not None and not check and len(_lock_boards_for(app_dir, None)) > 1:
+            raise NSXLockError(
+                f"{exc} Run `nsx lock` without --board to regenerate all target sections."
+            ) from exc
+        _log.warning("%s%s", exc, "" if check else " (regenerating)")
+        return {}
+    return combined.targets if combined else {}
+
+
 def _prepare_targeted_inputs(
     app_dir: Path,
     boards: list[str],
@@ -1020,11 +1133,22 @@ def _prepare_targeted_inputs(
     modules: list[str] | None,
     *,
     check: bool,
+    prior: dict[str, NsxLock],
+    isolated: frozenset[str] = frozenset(),
+    acquired: AcquiredSources | None = None,
 ) -> dict[str, LockInputs]:
     if not update or not modules:
         return {}
     prepared = {
-        board: _prepare_lock_inputs(app_dir, board=board, write_side_effects=not check)
+        board: _prepare_lock_inputs(
+            app_dir,
+            board=board,
+            write_side_effects=not check,
+            previous=prior.get(normalize_board(board)),
+            selected=frozenset(modules),
+            isolated=isolated,
+            acquired=acquired,
+        )
         for board in boards
     }
     present = {name for inputs in prepared.values() for name in inputs.module_names}
@@ -1046,27 +1170,12 @@ def _prepare_board_lock(
     update: bool = False,
     modules: list[str] | None = None,
     check: bool = False,
-    board_restricted: bool = False,
+    previous: NsxLock | None,
+    conflicts: list[str] | None = None,
+    isolated: frozenset[str] = frozenset(),
+    acquired: AcquiredSources | None = None,
     prepared: LockInputs | None = None,
 ) -> NsxLock:
-    board_key = _lock_board_key(_load_app_cfg(app_dir), board)
-    try:
-        previous = read_lock(app_dir, board_key)
-    except NSXLockError as exc:
-        if board_restricted and len(_lock_boards_for(app_dir, None)) > 1:
-            raise NSXLockError(
-                f"{exc} Run `nsx lock` without --board to regenerate all target sections."
-            ) from exc
-        # Older / unsupported on-disk schema. Read-only paths
-        # (``check=True``) just log; ``nsx lock`` regenerates from
-        # scratch on the next write.
-        from .._logging import get_logger
-
-        if check:
-            get_logger(__name__).warning("%s", exc)
-        else:
-            get_logger(__name__).warning("%s (regenerating)", exc)
-        previous = None
     on_disk_lock = previous  # capture before update-mutation
 
     if update:
@@ -1079,18 +1188,29 @@ def _prepare_board_lock(
         if previous and not modules:
             previous = None  # full refresh
 
-    lock = _build_lock_for_app(
+    prepared = prepared or _prepare_lock_inputs(
         app_dir,
         board=board,
+        previous=on_disk_lock,
+        write_side_effects=not check,
+        refresh_all=update and not modules,
+        use_locked_closure_on_metadata_error=bool(check and not update and on_disk_lock),
+        isolated=isolated,
+        acquired=acquired,
+    )
+    lock = _build_lock_for_app(
+        app_dir,
         previous=previous,
         write_side_effects=not check,
-        use_locked_closure_on_metadata_error=bool(check and not update and on_disk_lock),
         prepared=prepared,
         selected=frozenset(modules) if update and modules else None,
+        conflicts=conflicts,
     )
     lock_file = lock_path(app_dir)
 
     if check:
+        if update:
+            validate_materialization(app_dir, lock)
         diff = _diff_locks(on_disk_lock, lock)
         rel = (
             lock_file.relative_to(app_dir.parent)
@@ -1104,9 +1224,13 @@ def _prepare_board_lock(
         info(f"{rel} is OUT OF DATE:")
         for line_text in diff:
             info(f"  {line_text}")
-        info("Run `nsx lock` to refresh.")
+        info("Run `nsx lock` for app changes or `nsx lock --module NAME` to adopt a Git update.")
         raise NSXError(1)
 
+    if conflicts:
+        return lock
+
+    validate_materialization(app_dir, lock)
     from ..standalone_cmake import invalidate_snapshot
 
     if on_disk_lock is None or _diff_locks(on_disk_lock, lock):

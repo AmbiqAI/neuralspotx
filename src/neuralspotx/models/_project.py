@@ -20,6 +20,11 @@ class ProjectEntry:
     path: str | None = None
     local_path: str | None = None
 
+    @property
+    def checkout_path(self) -> str:
+        """Registry checkout path, including the implicit app-local default."""
+        return self.path or f"modules/{self.name}"
+
     @classmethod
     def from_mapping(
         cls,

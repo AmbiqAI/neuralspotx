@@ -19,7 +19,7 @@ from ..module_registry._vendoring import _strip_git_metadata
 from ..nsx_lock import LockKind, NsxLock, hash_tree
 from ..nsx_lock._composition import BoardComposition
 from ..project_config import (
-    _metadata_path_relative_to_project,
+    _metadata_in_checkout,
     _module_clone_dir,
     _registry_project_entry,
 )
@@ -79,7 +79,7 @@ def resolved_board_composition(
                         "use a project-relative metadata path or an explicit local source override."
                     ) from exc
             else:
-                relative = _metadata_path_relative_to_project(metadata, original.path)
+                relative = _metadata_in_checkout(metadata, original, source)
             candidate = source / relative
             if not candidate.resolve().is_relative_to(source.resolve()):
                 raise NSXLockError(f"Git module '{name}' metadata escapes its verified artifact")

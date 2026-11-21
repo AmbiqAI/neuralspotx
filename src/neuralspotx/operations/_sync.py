@@ -43,7 +43,7 @@ from ..project_config import (
     _effective_registry,
     _load_app_cfg,
     _load_registry,
-    _metadata_path_relative_to_project,
+    _metadata_in_checkout,
     _registry_project_entry,
     _write_app_module_file,
     _write_cmake_nsx_gitignore,
@@ -382,7 +382,6 @@ def _sync_local_entry(
             ctx,
             name,
             source_dir,
-            project_entry.path,
         )
 
         # Mirror is already in sync with current source: skip.
@@ -425,7 +424,6 @@ def _sync_local_board_overlay(
     ctx: _SyncContext,
     name: str,
     source_dir: Path,
-    project_path: str | None,
 ) -> int:
     """Keep the bootstrap's app-local ``boards/<board>`` view authoritative."""
 
@@ -437,7 +435,8 @@ def _sync_local_board_overlay(
 
     registry_entry = registry_entry_for_module(ctx.registry, name)
     metadata = Path(registry_entry.metadata)
-    metadata_rel = _metadata_path_relative_to_project(metadata, project_path)
+    project = _registry_project_entry(ctx.registry, registry_entry.project)
+    metadata_rel = _metadata_in_checkout(metadata, project, source_dir)
     if "boards" not in metadata_rel.parts:
         return 0
 
@@ -729,7 +728,7 @@ def _sync_app_impl_unlocked(
                     project = None
                 if project is not None and project.local_path:
                     changed += _sync_local_board_overlay(
-                        ctx, name, Path(project.local_path).expanduser().resolve(), project.path
+                        ctx, name, Path(project.local_path).expanduser().resolve()
                     )
             continue
 

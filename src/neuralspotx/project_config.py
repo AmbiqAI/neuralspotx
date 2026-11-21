@@ -9,6 +9,7 @@ import logging
 import os
 import re
 from collections import OrderedDict
+from dataclasses import dataclass, field
 from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as package_version
 from pathlib import Path
@@ -211,7 +212,7 @@ def _propagate_layer_project_pins(
     layer_label: str,
     field_prefix: str,
     app_pinned_modules: dict[str, str],
-    propagated_revisions: dict[str, str],
+    propagated_revisions: dict[str, str | None],
 ) -> None:
     """Make *layer*'s project-level ``revision`` pins effective for its modules.
 
@@ -315,8 +316,7 @@ def _propagate_layer_project_pins(
                 # Remember what propagation replaced (first write wins across
                 # chained layers) so a later project re-point can restore it.
                 current = module_entry.get("revision")
-                if isinstance(current, str) and current:
-                    propagated_revisions.setdefault(module_name, current)
+                propagated_revisions.setdefault(module_name, current)
             module_entry["revision"] = revision
     for module_name, layer_module in layer.modules.items():
         layer_revision = layer_module.get("revision")
@@ -331,7 +331,7 @@ def _apply_app_authored_layer(
     layer_label: str,
     field_prefix: str,
     app_pinned_modules: dict[str, str],
-    propagated_revisions: dict[str, str],
+    propagated_revisions: dict[str, str | None],
 ) -> dict[str, Any]:
     """Merge one app-authored override layer and apply its pin semantics.
 
@@ -372,7 +372,11 @@ def _apply_app_authored_layer(
             continue
         entry = modules.get(name)
         if isinstance(entry, dict) and entry.get("project") != prev_projects.get(name):
-            entry["revision"] = propagated_revisions.pop(name)
+            prior_revision = propagated_revisions.pop(name)
+            if prior_revision is None:
+                entry.pop("revision", None)
+            else:
+                entry["revision"] = prior_revision
 
     _propagate_layer_project_pins(
         merged,
@@ -385,11 +389,21 @@ def _apply_app_authored_layer(
     return merged
 
 
+@dataclass
+class RegistryAuthorship:
+    """Effective Git source fields supplied by app-owned registry layers."""
+
+    module_projects: set[str] = field(default_factory=set)
+    project_urls: set[str] = field(default_factory=set)
+    module_revisions: set[str] = field(default_factory=set)
+
+
 def _effective_registry(
     base_registry: dict[str, Any],
     nsx_cfg: dict[str, Any],
     *,
     app_dir: Path | None = None,
+    authorship: RegistryAuthorship | None = None,
 ) -> dict[str, Any]:
     """Fold the registry layer stack onto *base_registry*.
 
@@ -419,8 +433,20 @@ def _effective_registry(
     # which carry a propagated project pin (and the value it replaced, for
     # un-propagation when a later layer re-points the module).
     app_pinned_modules: dict[str, str] = {}
-    propagated_revisions: dict[str, str] = {}
-    for label, field_prefix, layer in _iter_registry_layers(nsx_cfg, app_dir):
+    propagated_revisions: dict[str, str | None] = {}
+    app_override = _resolve_override_local_paths(
+        ModuleRegistryOverride.from_mapping(nsx_cfg.get("module_registry")),
+        base_dir=app_dir if app_dir is not None else Path.cwd(),
+    )
+    layers = _iter_registry_layers(nsx_cfg, app_dir)
+    layers.append(("module_registry", "module_registry", app_override))
+    for label, field_prefix, layer in layers:
+        if authorship is not None:
+            authorship.module_projects.update(k for k, v in layer.modules.items() if "project" in v)
+            authorship.module_revisions.update(
+                k for k, v in layer.modules.items() if "revision" in v
+            )
+            authorship.project_urls.update(k for k, v in layer.projects.items() if "url" in v)
         merged = _apply_app_authored_layer(
             merged,
             layer,
@@ -429,18 +455,9 @@ def _effective_registry(
             app_pinned_modules=app_pinned_modules,
             propagated_revisions=propagated_revisions,
         )
-    app_override = _resolve_override_local_paths(
-        ModuleRegistryOverride.from_mapping(nsx_cfg.get("module_registry")),
-        base_dir=app_dir if app_dir is not None else Path.cwd(),
-    )
-    return _apply_app_authored_layer(
-        merged,
-        app_override,
-        layer_label="module_registry",
-        field_prefix="module_registry",
-        app_pinned_modules=app_pinned_modules,
-        propagated_revisions=propagated_revisions,
-    )
+    if authorship is not None:
+        authorship.module_revisions.update(propagated_revisions)
+    return merged
 
 
 def validate_app_module_alignment(
@@ -710,7 +727,9 @@ def _write_app_module_file(
 
     for name in ordered_module_names:
         try:
-            source_dir = _module_source_dir_relative_to_app(name, registry, nsx_cfg)
+            source_dir = _module_source_dir_relative_to_app(
+                name, registry, nsx_cfg, app_dir=app_dir
+            )
         except (KeyError, ValueError, TypeError):
             continue
         if source_dir.parts[:1] != ("modules",):
@@ -941,6 +960,15 @@ def _metadata_path_relative_to_project(metadata: Path, project_path: str | None)
     return Path(metadata.name)
 
 
+def _metadata_in_checkout(metadata: Path, project: ProjectEntry, checkout: Path) -> Path:
+    """Resolve a selector inside a checkout, preserving legacy repository-relative paths."""
+    if project.path is None and not metadata.is_absolute():
+        app_relative = _metadata_path_relative_to_project(metadata, project.checkout_path)
+        if app_relative != metadata and (checkout / app_relative).is_file():
+            return app_relative
+    return _metadata_path_relative_to_project(metadata, project.path)
+
+
 def _is_packaged_module(registry: dict[str, Any], module_name: str) -> bool:
     """Return whether *module_name* should resolve from packaged content."""
 
@@ -960,15 +988,12 @@ def _module_clone_dir(app_dir: Path, project_name: str, registry: dict | None = 
 
     if registry is not None:
         project = _registry_project_entry(registry, project_name)
-        project_path = project.path
+        project_path = project.checkout_path
         if project.local_path and (
-            not project_path
-            or Path(project_path).is_absolute()
-            or Path(project_path).parts[:1] != ("modules",)
+            Path(project_path).is_absolute() or Path(project_path).parts[:1] != ("modules",)
         ):
             return app_dir / "modules" / project_name
-        if project_path:
-            return app_dir / project_path
+        return app_dir / project_path
 
     return app_dir / "modules" / project_name
 
@@ -977,6 +1002,8 @@ def _module_source_dir_relative_to_app(
     module_name: str,
     registry: dict[str, Any],
     nsx_cfg: dict[str, Any],
+    *,
+    app_dir: Path | None = None,
 ) -> Path:
     """Resolve a module's on-disk directory relative to the app root.
 
@@ -1022,8 +1049,13 @@ def _module_source_dir_relative_to_app(
         return _vendored_target_dir(Path("."), module_name, entry.metadata)
 
     project_entry = _registry_project_entry(registry, entry.project)
-    metadata_rel = _metadata_path_relative_to_project(Path(entry.metadata), project_entry.path)
-    return _module_clone_dir(Path("."), entry.project, registry) / metadata_rel.parent
+    root = _module_clone_dir(Path("."), entry.project, registry)
+    metadata_rel = (
+        _metadata_in_checkout(Path(entry.metadata), project_entry, app_dir / root)
+        if app_dir
+        else _metadata_path_relative_to_project(Path(entry.metadata), project_entry.path)
+    )
+    return root / metadata_rel.parent
 
 
 def _module_project_dir_relative_to_app(

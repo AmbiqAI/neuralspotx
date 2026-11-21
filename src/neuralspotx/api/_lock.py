@@ -35,12 +35,11 @@ def lock_app(
     Returns the resolved :class:`~neuralspotx.nsx_lock.NsxLock`. The
     filesystem path to the lock file is available on ``lock.path``.
     *timeout_s* applies per ``git`` / ``git ls-remote`` subprocess.
-    Normal writes re-resolve floating constraints through the TTL cache;
-    matching full-SHA/tag resolutions can be reused. ``update=True`` clears
+    Normal writes preserve compatible Git pins, including branch commits. ``update=True`` clears
     the cache and reconsiders all or selected prior entries. ``modules`` only
     selects projects when ``update=True``; matching Git resolutions in unrelated
-    projects are preserved, including branches. New entries and changed sources
-    or constraints resolve normally. Unknown selections fail before lock writes.
+    projects are preserved, including branches. New entries and app-authored Git changes resolve normally.
+    Conflicting packaged defaults require an explicit update. Unknown selections fail before lock writes.
     Plain ``check=True`` can reuse prior branch SHAs and does not guarantee
     upstream freshness. Checks do not write lock/build glue, but may use caches.
 

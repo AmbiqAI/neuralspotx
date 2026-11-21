@@ -191,6 +191,9 @@ def test_conflicting_shared_directory_does_not_write_lock(
     with pytest.raises(NSXConfigError, match="one.*two.*shared project directory"):
         lock_app_impl(app.root, update=True, modules=["one"])
     assert (app.root / "nsx.lock").read_bytes() == before
+    with pytest.raises(NSXConfigError, match="shared project directory"):
+        lock_app_impl(app.root, update=True)
+    assert (app.root / "nsx.lock").read_bytes() == before
 
 
 def test_check_applies_selection_without_writing(app: App) -> None:
@@ -217,7 +220,7 @@ def test_missing_lock_and_api_selection_without_update(app: App) -> None:
     assert len(result.modules) == 2
     app.advance()
     result = api.lock_app(app.root, modules=["one"])
-    assert result.modules["other"].commit == "b" * 40
+    assert result.modules["other"].commit == "a" * 40
 
 
 def test_targets_validate_names_globally_before_writes(app: App) -> None:
