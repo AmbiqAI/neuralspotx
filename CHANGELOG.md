@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.0.0](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.9.9...neuralspotx-v1.0.0) (2026-11-21)
+
+
+### Bug Fixes
+
+* align wheel NOTICE with runtime dependencies ([#351](https://github.com/AmbiqAI/neuralspotx/issues/351)) ([9d537eb](https://github.com/AmbiqAI/neuralspotx/commit/9d537ebce2c6ae4b0b3ecacce37303bee4a7fa65))
+
+
+### Documentation
+
+* prepare the 1.0 upgrade guide and API reference ([#354](https://github.com/AmbiqAI/neuralspotx/issues/354)) ([eeb1ca8](https://github.com/AmbiqAI/neuralspotx/commit/eeb1ca80da55fdf1ac9289c8ee9ee04f3fd9c926))
+* publish the accepted 1.x compatibility and support policy ([#352](https://github.com/AmbiqAI/neuralspotx/issues/352)) ([3abed2e](https://github.com/AmbiqAI/neuralspotx/commit/3abed2e6aaf7dab06d1673f4a50fcff24fb6a2a5))
+
 ## [0.9.9](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.9.8...neuralspotx-v0.9.9) (2026-11-21)
 
 
