@@ -13,7 +13,9 @@ NSX 0.x is Beta. The approved 1.x support scope covers the current release
 for evaluation and integration with modular CMake and AmbiqSuite, including
 bring-up, profiling, validation and demos. Production support, long-term
 support and backports are outside that commitment. Direct Zephyr and CMSIS-Pack
-workflows are outside the tool's scope.
+workflows are outside the tool's scope. Spark hardware qualification is
+tracked separately, and an independent Corstone/FVP provider is deferred.
+[Spark qualification](https://github.com/AmbiqAI/neuralspotx/issues/154) · [Corstone/FVP investigation](https://github.com/AmbiqAI/neuralspotx/issues/287)
 
 ## Cadence
 
@@ -94,9 +96,9 @@ Disposable caches can still be regenerated.
 The compatibility promise includes the documented minimum board/BSP binding,
 board selection, and public configure, flash, reset and RTT behavior. Private
 debug snapshots, internal Python modules and undocumented output are
-implementation details. Supported aliases deprecated during 1.x keep working
-through the series. Release notes name their replacements before removal in a
-major release. [Lock behavior](/neuralspotx/guides/modules/lock-and-sync/#1x-lock-behavior)
+implementation details. Release notes announce deprecations of documented
+interfaces and identify their replacements. Supported aliases deprecated
+during 1.x keep working through the series. [Lock behavior](/neuralspotx/guides/modules/lock-and-sync/#1x-lock-behavior)
 
 ## Qualification baseline for 1.0
 
@@ -109,19 +111,25 @@ The 1.0 candidate has a separate qualification and signoff. [Readiness tracker](
 | Apollo510, installed CLI | The 0.9.9 candidate restored and built the locked `kws_infer` example with GCC. The lock stayed byte-identical. This was a host build. [Release qualification](https://github.com/AmbiqAI/neuralspotx/issues/226) |
 | AP330 Plus, AP510, AP510B and AP510 Lite | The SDK linked minimal firmware and checked its layout using GCC, ATfE and ACfE. AP510 Lite has link coverage in this run. [SDK qualification](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/v5.2.32/release/qualification-5.2.32.md) |
 | AP3 Blue Plus, AP4 Blue Plus KXR, AP330 Plus, AP510 and AP510B EVBs | SDK startup, runtime and power checks ran with GCC and debugger reset. AP510B also passed over-the-air BLE GATT and reconnect checks. The generated power apps in this SDK run used CLI 0.9.7. [Board results](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/v5.2.32/release/qualification-5.2.32.md) |
+| Linux, AP510 EVB and external Apollo ICD | A prior debugger smoke at `4e07325` with SDK 5.2.30 exercised flash, reset, SWO and RTT. [Recorded probe configuration and results](https://github.com/AmbiqAI/neuralspotx/issues/226) |
 
 ### Reading license coverage
 
 In the 0.9.9 registry, all 17 packaged boards and the tooling module declare
-BSD-3-Clause at their module root. Fourteen external module entries omit
+BSD-3-Clause at their module root. [Packaged declarations in 0.9.9](https://github.com/AmbiqAI/neuralspotx/pull/350)
+
+Fourteen external module entries omit
 path-scoped declarations at their pinned revisions. Their SBOM entries still
 identify the components. Consult the upstream notices for the files you use.
-[Registry audit](https://github.com/AmbiqAI/neuralspotx/issues/226#issuecomment-7063572501)
+[Audit of the external module pins](https://github.com/AmbiqAI/neuralspotx/issues/226#issuecomment-7063572501)
 
 SDK 5.2.32 leaves four scopes explicitly unresolved. They cover the mixed
-AmbiqSuite payload, two USB headers and one PSRAM driver. Their scoped SBOM values are
-`NOASSERTION`. For the 1.0 candidate, the wheel NOTICE must identify all required Python
-dependencies and distinguish optional extras. [SDK scope details](https://github.com/AmbiqAI/nsx-ambiq-sdk/issues/73#issuecomment-7056564313) · [NOTICE correction](https://github.com/AmbiqAI/neuralspotx/issues/348)
+AmbiqSuite payload, two USB headers and one PSRAM driver. The tool reports
+`NOASSERTION` for these paths. If the payload changes, the SDK maintainer
+must review the affected scopes again. [SDK maintainer decision](https://github.com/AmbiqAI/nsx-ambiq-sdk/issues/73#issuecomment-7056564313)
+
+The 1.0 wheel NOTICE must identify all required Python dependencies and
+distinguish optional extras. [NOTICE correction](https://github.com/AmbiqAI/neuralspotx/issues/348)
 
 ## How to pin
 
