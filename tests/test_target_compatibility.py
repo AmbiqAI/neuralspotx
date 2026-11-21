@@ -101,3 +101,30 @@ def test_skip_env_bypasses_incompatible_module(monkeypatch) -> None:
     # enforcement site, so an otherwise-incompatible module resolves.
     monkeypatch.setenv("NSX_SKIP_COMPAT_CHECK", "1")
     assert _resolve(_meta(["nope"], ["nope"], ["nope"]), monkeypatch) == ["m"]
+
+
+@pytest.mark.parametrize(
+    ("board", "soc", "provider"),
+    [
+        ("corstone300_fvp_u55", "corstone300", "corstone"),
+        ("apollo510_evb", "apollo510", "ambiqsuite"),
+    ],
+)
+@pytest.mark.parametrize(
+    "support",
+    [
+        {"ambiqsuite": True},
+        {"ambiqsuite": False, "corstone": True},
+        {"ambiqsuite": True, "corstone": True},
+    ],
+)
+def test_wildcard_modules_require_explicit_provider_support(
+    board: str, soc: str, provider: str, support: dict[str, bool], monkeypatch
+) -> None:
+    meta = _meta(["*"], ["*"], ["*"])
+    meta["support"].update(support)
+    if support.get(provider):
+        assert _resolve(meta, monkeypatch, board=board, soc=soc) == ["m"]
+    else:
+        with pytest.raises(NSXModuleError, match=f"selected SDK provider '{provider}'"):
+            _resolve(meta, monkeypatch, board=board, soc=soc)
