@@ -528,7 +528,8 @@ def test_local_path_overrides_packaged_neuralspotx_project(tmp_path: Path) -> No
     sync_app(app_dir, frozen=True)
 
 
-def test_local_neuralspotx_board_is_mirrored_for_bootstrap(tmp_path: Path) -> None:
+@pytest.mark.parametrize("project", ["neuralspotx", "board-project"])
+def test_local_neuralspotx_board_is_mirrored_for_bootstrap(tmp_path: Path, project: str) -> None:
     module_name = "nsx-board-apollo510-evb"
     source = tmp_path / "neuralspotx-checkout"
     board_dir = source / "src" / "neuralspotx" / "boards" / "apollo510_evb"
@@ -574,16 +575,19 @@ def test_local_neuralspotx_board_is_mirrored_for_bootstrap(tmp_path: Path) -> No
         "modules": [{"name": module_name}],
         "module_registry": {
             "projects": {
-                "neuralspotx": {
+                project: {
                     "local_path": str(source),
                     "revision": "local-checkout",
                 }
             },
             "modules": {
                 module_name: {
-                    "project": "neuralspotx",
+                    "project": project,
                     "revision": "local-checkout",
-                    "metadata": ("src/neuralspotx/boards/apollo510_evb/nsx-module.yaml"),
+                    "metadata": (
+                        ("modules/board-project/" if project == "board-project" else "")
+                        + "src/neuralspotx/boards/apollo510_evb/nsx-module.yaml"
+                    ),
                 }
             },
         },
@@ -595,7 +599,7 @@ def test_local_neuralspotx_board_is_mirrored_for_bootstrap(tmp_path: Path) -> No
 
     lock = lock_app(app_dir, quiet=True)
     assert lock.modules[module_name].kind == LockKind.LOCAL
-    sync_app(app_dir)
+    sync_app(app_dir, frozen=True)
 
     mirrored_board = app_dir / "boards" / "apollo510_evb" / "board.cmake"
     assert mirrored_board.read_text(encoding="utf-8") == (board_dir / "board.cmake").read_text(

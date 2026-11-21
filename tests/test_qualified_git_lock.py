@@ -258,7 +258,12 @@ def test_board_specific_metadata_after_cold_targeted_update(
     assert "sdk" in updated.modules
     before = pins(tmp_path)
     assert "sdk" not in before[BOARDS[0]]
+    assert cli.main(["lock", "--app-dir", str(tmp_path)]) == 0
+    assert cli.main(["lock", "--check", "--app-dir", str(tmp_path)]) == 0
+    assert pins(tmp_path) == before
     shutil.rmtree(tmp_path / "modules")
+    assert cli.main(["lock", "--check", "--app-dir", str(tmp_path)]) == 0
+    assert not (tmp_path / "modules").exists()
     assert cli.main(["lock", "--app-dir", str(tmp_path)]) == 0
     assert pins(tmp_path) == before
     for board in BOARDS:
@@ -308,3 +313,24 @@ def test_new_board_discovers_dependencies_from_its_own_revision(
     shutil.rmtree(tmp_path / "modules")
     assert cli.main(["lock", "--check", "--app-dir", str(tmp_path)]) == 0
     sync_app_impl(tmp_path, board=BOARDS[1], frozen=True)
+
+
+def test_cold_conflict_reports_qualified_pin_before_new_board_requirements(
+    tmp_path: Path, registry: dict[str, Any], capsys: pytest.CaptureFixture[str]
+) -> None:
+    receipt = tmp_path / "nsx.lock"
+    shutil.copyfile(FIXTURE / "nsx.lock", receipt)
+    sdk = tmp_path / "origins/sdk"
+    path = sdk / "nsx-module.yaml"
+    meta = yaml.safe_load(path.read_bytes())
+    meta["compatibility"]["boards"] = [BOARDS[1]]
+    path.write_text(yaml.safe_dump(meta))
+    git(sdk, "commit", "-am", "limit supported boards")
+    git(sdk, "tag", "v2")
+    registry["modules"]["sdk"]["revision"] = "v2"
+    assert cli.main(["lock", "--app-dir", str(tmp_path)]) != 0
+    message = capsys.readouterr().err
+    for board in BOARDS:
+        assert f"board '{board}', project 'sdk'" in message
+    assert "nsx lock --module sdk" in message
+    assert receipt.read_bytes() == (FIXTURE / "nsx.lock").read_bytes()

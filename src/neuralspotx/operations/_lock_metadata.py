@@ -10,9 +10,11 @@ from typing import Any
 
 from .._errors import NSXConfigError
 from ..models import ProjectEntry
+from ..module_registry._vendoring import _ensure_module_cloned
 from ..nsx_lock import LockKind, NsxLock
 from ..nsx_lock._resolution import _looks_like_full_sha
 from ..project_config import (
+    RegistryAuthorship,
     _metadata_in_checkout,
     _metadata_path_relative_to_project,
     _module_clone_dir,
@@ -83,16 +85,20 @@ def discovery_registry(
     app_dir: Path,
     registry: dict[str, Any],
     previous: NsxLock | None,
+    authorship: RegistryAuthorship,
     refresh: set[str],
     isolated: frozenset[str],
     acquired: AcquiredSources | None,
     manifests: dict[str, str],
+    *,
+    read_only: bool,
 ) -> Iterator[tuple[dict[str, Any], Callable[[str], None] | None]]:
     """Choose revisions for acquisition without changing the constraints recorded in the lock."""
     if previous is None and not isolated and acquired is None:
         yield registry, None
         return
     modules = dict(registry["modules"])
+    projects = dict(registry["projects"])
     if previous:
         for name, row in previous.modules.items():
             module = modules.get(name)
@@ -104,16 +110,30 @@ def discovery_registry(
                 or not _looks_like_full_sha(row.commit)
             ):
                 continue
-            if row.project != module.get("project") or row.constraint != (
-                module.get("revision") or "main"
-            ):
+            if row.project != module["project"]:
                 continue
             project = _registry_project_entry(registry, row.project)
-            if row.url == project.url and not project.local_path:
-                modules[name] = {**module, "revision": row.commit}
+            if project.local_path or not row.url:
+                continue
+            if (
+                row.constraint != (module.get("revision") or "main")
+                and name in authorship.module_revisions
+            ):
+                continue
+            if row.url != project.url:
+                if row.project in authorship.project_urls:
+                    continue
+                projects[row.project] = {**projects[row.project], "url": row.url}
+            # An unselected wheel default may point to an incompatible board or
+            # dependency graph. Discover the qualified graph first. Resolution
+            # still uses the effective registry to accept an alias or report drift.
+            modules[name] = {**module, "revision": row.commit}
 
+    registry = {**registry, "projects": projects}
     with _separate_new_checkouts(app_dir, registry, modules, acquired) as different:
-        with _board_sources(app_dir, registry, modules, isolated | different, manifests) as view:
+        with _board_sources(
+            app_dir, registry, modules, isolated | different, manifests, read_only=read_only
+        ) as view:
             yield view
 
 
@@ -124,6 +144,8 @@ def _board_sources(
     modules: dict,
     isolated: frozenset[str],
     manifests: dict[str, str],
+    *,
+    read_only: bool,
 ) -> Iterator[tuple[dict[str, Any], Callable[[str], None] | None]]:
     if not isolated:
         yield {**registry, "modules": modules}, None
@@ -133,6 +155,7 @@ def _board_sources(
     # board has already populated the shared modules/ directory. Acquisition
     # remains lazy: the traversal fetches only projects it actually reaches.
     projects = dict(registry["projects"])
+    temporary_modules: set[str] = set()
     ambiguous: dict[str, tuple[Path, ProjectEntry, Path]] = {}
     with tempfile.TemporaryDirectory(prefix="nsx-lock-metadata-") as temporary:
         for index, project_name in enumerate(sorted(isolated & projects.keys())):
@@ -144,6 +167,7 @@ def _board_sources(
             for name, module in modules.items():
                 if module["project"] != project_name:
                     continue
+                temporary_modules.add(name)
                 metadata = Path(module["metadata"])
                 if metadata.is_absolute():
                     try:
@@ -162,7 +186,13 @@ def _board_sources(
                     raise NSXConfigError(f"Module '{name}' metadata escapes its Git project.")
                 modules[name] = {**module, "metadata": str(root / relative)}
 
-        def bind_selector(name: str) -> None:
+        view = {**registry, "modules": modules, "projects": projects}
+
+        def prepare_metadata(name: str) -> None:
+            # Read-only checks can populate the private checkout for this board.
+            # Other sources retain ordinary check behavior inside the app.
+            if read_only and name in temporary_modules:
+                _ensure_module_cloned(app_dir, name, view)
             # A default checkout prefix can also be a real directory *inside*
             # the repo. Disambiguate only after DFS has fetched this project.
             if name in ambiguous:
@@ -171,7 +201,4 @@ def _board_sources(
                 modules[name]["metadata"] = str(root / relative)
                 manifests[name] = relative.as_posix()
 
-        yield (
-            {**registry, "modules": modules, "projects": projects},
-            bind_selector if ambiguous else None,
-        )
+        yield view, prepare_metadata if ambiguous or (read_only and temporary_modules) else None

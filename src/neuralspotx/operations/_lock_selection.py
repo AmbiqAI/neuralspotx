@@ -10,6 +10,7 @@ from .._errors import NSXConfigError
 from ..metadata import registry_entry_for_module
 from ..module_registry import _is_packaged_module
 from ..nsx_lock import LockKind, NsxLock, ResolvedModule
+from ..nsx_lock._composition import BoardComposition
 from ..project_config import RegistryAuthorship, _registry_project_entry
 
 
@@ -22,7 +23,7 @@ class LockInputs:
     module_names: list[str]
     local_names: set[str]
     vendored_names: set[str]
-    used_locked_closure: bool = False
+    checked_composition: BoardComposition | None = None
     authorship: RegistryAuthorship = field(default_factory=RegistryAuthorship)
     isolated_manifests: dict[str, str] = field(default_factory=dict)
 

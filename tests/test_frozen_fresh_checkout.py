@@ -514,7 +514,7 @@ def _overlay_ctx(tmp_path: Path) -> tuple[_SyncContext, Path, Path]:
 def test_frozen_creates_a_missing_local_board_overlay(tmp_path: Path) -> None:
     ctx, source, destination = _overlay_ctx(tmp_path)
 
-    assert _sync_local_board_overlay(ctx, "nsx-board-demo", source, None) == 1
+    assert _sync_local_board_overlay(ctx, "nsx-board-demo", source) == 1
     assert hash_tree(destination) == hash_tree(source / "boards" / "demo_evb")
 
 
@@ -523,7 +523,7 @@ def test_frozen_refuses_a_local_board_overlay_that_differs(tmp_path: Path) -> No
     _write_tree(destination, "edited board")
 
     with pytest.raises(NSXIntegrityError, match="Refusing under --frozen"):
-        _sync_local_board_overlay(ctx, "nsx-board-demo", source, None)
+        _sync_local_board_overlay(ctx, "nsx-board-demo", source)
     assert (destination / "src.c").read_text(encoding="utf-8") == "edited board"
 
 
@@ -539,7 +539,7 @@ def test_frozen_creates_an_empty_local_board_overlay(tmp_path: Path) -> None:
     ctx, source, destination = _overlay_ctx(tmp_path)
     destination.mkdir(parents=True)
 
-    assert _sync_local_board_overlay(ctx, "nsx-board-demo", source, None) == 1
+    assert _sync_local_board_overlay(ctx, "nsx-board-demo", source) == 1
     assert hash_tree(destination) == hash_tree(source / "boards" / "demo_evb")
 
 
@@ -556,11 +556,11 @@ def test_interrupted_board_overlay_copy_leaves_nothing_behind(
 
     monkeypatch.setattr(_sync.shutil, "copytree", _interrupted)
     with pytest.raises(OSError):
-        _sync_local_board_overlay(ctx, "nsx-board-demo", source, None)
+        _sync_local_board_overlay(ctx, "nsx-board-demo", source)
     assert not destination.exists()
 
     monkeypatch.setattr(_sync.shutil, "copytree", real_copytree)
-    assert _sync_local_board_overlay(ctx, "nsx-board-demo", source, None) == 1
+    assert _sync_local_board_overlay(ctx, "nsx-board-demo", source) == 1
 
 
 def test_interrupted_local_mirror_leaves_nothing_behind(

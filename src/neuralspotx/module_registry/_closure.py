@@ -43,7 +43,7 @@ def _resolve_module_closure(
     registry: dict[str, Any],
     default_toolchain: str,
     acquire_missing: bool = False,
-    after_acquire: Callable[[str], None] | None = None,
+    prepare_metadata: Callable[[str], None] | None = None,
 ) -> list[str]:
     with metadata_cache_scope():
         return _resolve_module_closure_inner(
@@ -53,7 +53,7 @@ def _resolve_module_closure(
             registry=registry,
             default_toolchain=default_toolchain,
             acquire_missing=acquire_missing,
-            after_acquire=after_acquire,
+            prepare_metadata=prepare_metadata,
         )
 
 
@@ -65,7 +65,7 @@ def _resolve_module_closure_inner(
     registry: dict[str, Any],
     default_toolchain: str,
     acquire_missing: bool = False,
-    after_acquire: Callable[[str], None] | None = None,
+    prepare_metadata: Callable[[str], None] | None = None,
 ) -> list[str]:
     target = nsx_cfg.get("target", {})
     board = target.get("board")
@@ -124,8 +124,8 @@ def _resolve_module_closure_inner(
                 vendored_modules=vendored_names,
             )
 
-            if after_acquire is not None:
-                after_acquire(module_name)
+        if prepare_metadata is not None and module_name not in opaque_names:
+            prepare_metadata(module_name)
 
         if module_name in opaque_names:
             if app_dir is None:

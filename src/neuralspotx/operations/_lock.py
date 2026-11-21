@@ -267,73 +267,79 @@ def _prepare_lock_inputs(
     seed_module_names = _module_names_from_nsx(nsx_cfg)
     local_names = _local_module_names(nsx_cfg)
     vendored_names = _vendored_module_names(nsx_cfg)
-    used_locked_closure = False
+    from ..module_registry._composition import board_composition
+
+    checked_composition = None
     isolated_manifests: dict[str, str] = {}
 
-    try:
+    def refresh_projects(names: set[str]) -> set[str]:
+        return {
+            registry["modules"][name]["project"]
+            for name in selected & names
+            if name in registry["modules"] and name not in local_names | vendored_names
+        }
 
-        def refresh_projects(names: set[str]) -> set[str]:
-            return {
-                registry["modules"][name]["project"]
-                for name in selected & names
-                if name in registry["modules"] and name not in local_names | vendored_names
-            }
-
-        def discover(refresh: set[str], separate: frozenset[str]) -> list[str]:
-            isolated_manifests.clear()
-            with discovery_registry(
-                app_dir,
-                registry,
-                previous if write_side_effects else None,
-                refresh,
-                separate if write_side_effects else frozenset(),
-                acquired,
-                isolated_manifests,
-            ) as (metadata_registry, bind_selector):
-                return _resolve_module_closure(
+    def discover(refresh: set[str], separate: frozenset[str]) -> list[str]:
+        nonlocal checked_composition
+        isolated_manifests.clear()
+        with discovery_registry(
+            app_dir,
+            registry,
+            previous,
+            authorship,
+            refresh,
+            separate,
+            acquired,
+            isolated_manifests,
+            read_only=not write_side_effects,
+        ) as (metadata_registry, prepare_metadata):
+            fallback = None
+            try:
+                names = _resolve_module_closure(
                     seed_module_names,
                     app_dir=app_dir,
                     nsx_cfg=nsx_cfg,
                     registry=metadata_registry,
                     default_toolchain=DEFAULT_TOOLCHAIN,
                     acquire_missing=write_side_effects,
-                    after_acquire=bind_selector,
+                    prepare_metadata=prepare_metadata,
                 )
+            except (OSError, subprocess.SubprocessError, NSXResolutionError) as exc:
+                if not use_locked_closure_on_metadata_error or previous is None:
+                    seed_summary = ", ".join(seed_module_names) or "<none>"
+                    raise NSXResolutionError(
+                        "Unable to resolve dependency metadata for nsx.yml modules "
+                        f"[{seed_summary}]: {exc}. Run `nsx lock` with the required "
+                        "module sources available so nsx.lock can record the full "
+                        "dependency closure."
+                    ) from exc
+                _log.warning(
+                    "could not resolve dependency metadata for all modules (%s); "
+                    "using the module closure recorded in nsx.lock for read-only check; "
+                    "dependency version constraints and unavailable BSP contract inputs cannot be certified without metadata.",
+                    exc,
+                )
+                names = list(previous.modules)
+                fallback = previous.board_composition
+            if not write_side_effects:
+                checked_composition = board_composition(
+                    app_dir, nsx_cfg, metadata_registry, names, read_only_record=fallback
+                )
+            return names
 
-        initial = refresh_projects(
-            set(seed_module_names) | set(previous.modules if previous else ())
-        )
-        module_names = discover(initial, isolated)
-        if selected and previous and write_side_effects:
-            # A newly reachable (or removed) alias can change which projects
-            # this board selects. Rediscover those projects in separate trees
-            # so the first traversal's checkout cannot supply their metadata.
-            effective = refresh_projects(set(module_names))
-            if effective != initial:
-                module_names = discover(effective, isolated | (initial ^ effective))
-                if refresh_projects(set(module_names)) != effective:
-                    raise NSXConfigError(
-                        f"Project selection for board '{board}' changes its own dependency closure. "
-                        "Use a full `nsx lock --update` to resolve all projects together."
-                    )
-    except (OSError, subprocess.SubprocessError, NSXResolutionError) as exc:
-        if use_locked_closure_on_metadata_error and previous is not None:
-            _log.warning(
-                "could not resolve dependency metadata for all modules (%s); "
-                "using the module closure recorded in nsx.lock for read-only check; "
-                "dependency version constraints and unavailable BSP contract inputs cannot be certified without metadata.",
-                exc,
-            )
-            module_names = list(previous.modules)
-            used_locked_closure = True
-        else:
-            seed_summary = ", ".join(seed_module_names) or "<none>"
-            raise NSXResolutionError(
-                "Unable to resolve dependency metadata for nsx.yml modules "
-                f"[{seed_summary}]: {exc}. Run `nsx lock` with the required "
-                "module sources available so nsx.lock can record the full "
-                "dependency closure."
-            ) from exc
+    initial = refresh_projects(set(seed_module_names) | set(previous.modules if previous else ()))
+    module_names = discover(initial, isolated)
+    if selected and previous and write_side_effects:
+        # A newly reachable (or removed) alias can change which projects this
+        # board selects. Rediscover them in separate checkouts.
+        effective = refresh_projects(set(module_names))
+        if effective != initial:
+            module_names = discover(effective, isolated | (initial ^ effective))
+            if refresh_projects(set(module_names)) != effective:
+                raise NSXConfigError(
+                    f"Project selection for board '{board}' changes its own dependency closure. "
+                    "Use a full `nsx lock --update` to resolve all projects together."
+                )
 
     return LockInputs(
         nsx_cfg,
@@ -341,7 +347,7 @@ def _prepare_lock_inputs(
         module_names,
         local_names,
         vendored_names,
-        used_locked_closure,
+        checked_composition,
         authorship,
         isolated_manifests,
     )
@@ -354,6 +360,7 @@ def _build_lock_for_app(
     write_side_effects: bool = True,
     prepared: LockInputs,
     selected: frozenset[str] | None = None,
+    conflicts: list[str] | None = None,
 ) -> NsxLock:
     """Resolve every module in nsx.yml to a commit + content hash.
 
@@ -803,22 +810,22 @@ def _build_lock_for_app(
         )
 
     warn_unpinned_git_constraints(lock)
-    from ..module_registry._composition import board_composition
-
+    if previous and conflicts is not None:
+        # Check changed wheel defaults before validating the new artifacts
+        # against the board contract. The user has not opted into them yet.
+        conflicts.extend(
+            qualified_pin_conflicts(
+                previous, lock, prepared, (selected or frozenset()) | refresh_modules
+            )
+        )
+        if conflicts:
+            return lock
     if write_side_effects:
         from ._lock_composition import resolved_board_composition
 
         lock.board_composition = resolved_board_composition(app_dir, nsx_cfg, registry, lock)
     else:
-        lock.board_composition = board_composition(
-            app_dir,
-            nsx_cfg,
-            registry,
-            module_names,
-            read_only_record=previous.board_composition
-            if previous and prepared.used_locked_closure
-            else None,
-        )
+        lock.board_composition = prepared.checked_composition
     _preserve_unchanged_timestamps(previous, lock)
     return lock
 
@@ -1004,8 +1011,11 @@ def lock_app_impl(
     # multiple apps in parallel without contention.
     if check:
         prior = _previous_sections(app_dir, board, check=True)
+        isolated = independently_locked_projects(
+            prior, frozenset(modules or ()) if update else frozenset()
+        )
         prepared = _prepare_targeted_inputs(
-            app_dir, boards, update, modules, check=True, prior=prior
+            app_dir, boards, update, modules, check=True, prior=prior, isolated=isolated
         )
         results = [
             _prepare_board_lock(
@@ -1014,6 +1024,7 @@ def lock_app_impl(
                 update=update,
                 modules=modules,
                 check=True,
+                isolated=isolated,
                 prepared=prepared.get(b),
                 previous=prior.get(normalize_board(b)),
             )
@@ -1176,6 +1187,7 @@ def _prepare_board_lock(
         write_side_effects=not check,
         prepared=prepared,
         selected=frozenset(modules) if update and modules else None,
+        conflicts=conflicts,
     )
     lock_file = lock_path(app_dir)
 
@@ -1198,15 +1210,8 @@ def _prepare_board_lock(
         info("Run `nsx lock` for app changes or `nsx lock --module NAME` to adopt a Git update.")
         raise NSXError(1)
 
-    if previous and conflicts is not None:
-        refreshed = (
-            frozenset(modules) | selected_git_modules(prepared, frozenset(modules))
-            if update and modules
-            else frozenset()
-        )
-        conflicts.extend(qualified_pin_conflicts(previous, lock, prepared, refreshed))
-        if conflicts:
-            return lock
+    if conflicts:
+        return lock
 
     validate_materialization(app_dir, lock)
     from ..standalone_cmake import invalidate_snapshot
