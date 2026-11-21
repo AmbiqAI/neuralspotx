@@ -2,7 +2,7 @@
 # Copyright (c) 2026, Ambiq
 """Programmatic API for the NSX workflow.
 
-Provisional public surface for embedders. The actual implementations live in
+Public Python API for embedders. The actual implementations live in
 sibling submodules (``_requests``, ``_app``, ``_modules``, ``_lock``,
 ``_cache``, ``_sbom``); this facade re-exports them so existing
 ``from neuralspotx.api import …`` imports keep working.

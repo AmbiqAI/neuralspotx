@@ -47,27 +47,32 @@ stay as they are.
 
 Numbering follows the usual major, minor, patch shape, driven by the kind of
 change that landed: a new capability moves the minor, a fix moves the patch.
-NSX is pre-1.0, so a minor bump is allowed to change behavior that a 1.x minor
-bump would not. Read the changelog before you take one.
+In 0.x, minor releases can change public behavior. Starting with 1.0,
+incompatible changes to the documented public interfaces require a major release.
 
 ## What Provisional means
 
-Every name exported from the `neuralspotx` Python package is currently
-**Provisional**.
+In 0.x, Python exports are **Provisional**. Applications can use them, but their
+names, signatures and behavior can change in a minor release. In 1.x, the
+documented Python and CLI interfaces follow the compatibility policy below.
 
-- **Provisional** means the name is public and supported, and it may still
-  change before 1.0. A signature can gain a parameter, a return type can become
-  more specific, a name can move.
-- **Stable** means frozen: after 1.0, removing a name or breaking its signature
-  needs a major version bump.
+## Upgrading an app from 0.9.9 to 1.0.0
 
-Nothing is Stable yet. The tier is stated once at the top of each
-[Python API](/neuralspotx/reference/api/) page rather than repeated per symbol,
-and it will be revisited at 1.0.
+Keep a copy of the app's committed `nsx.yml` and `nsx.lock`. If the manifest
+records `tooling.nsx.major: 0`, update the existing `tooling.nsx` block to
+`version: 1.0.0` and `major: 1` on an upgrade branch. Run the following with
+the 1.0.0 CLI from the app directory:
 
-The same caution applies to the CLI while NSX is pre-1.0: flags and output
-formats can change in a minor release. The `--json` output of commands that
-offer it is the most stable thing to build on, because it is what tooling reads.
+```bash
+nsx lock
+nsx configure --frozen
+nsx build --frozen
+```
+
+Review the manifest and lock diff together. A plain lock preserves compatible
+Git pins and records the updated manifest hash. Verify the app on its target
+before committing the upgrade. Apps without a recorded tool major can start
+with `nsx configure --frozen` and their existing lock.
 
 <span id="proposed-compatibility-policy-for-1x"></span>
 

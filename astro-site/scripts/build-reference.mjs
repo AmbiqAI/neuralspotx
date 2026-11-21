@@ -31,9 +31,9 @@ const SOURCE_URL = 'https://github.com/AmbiqAI/neuralspotx/blob/{commit}/{path}#
 
 // Every name in neuralspotx.__all__ carries the same status, so the site says
 // so once per page instead of 80 times per page.
-const PROVISIONAL_BANNER =
-  'The names on this page are <strong>Provisional</strong>: public and supported, ' +
-  'but they may change in a minor release.';
+const API_COMPATIBILITY_BANNER =
+  'Python exports are provisional in 0.x. From 1.0, documented calls follow the ' +
+  '<a href="/neuralspotx/reference/releases/#compatibility-policy-for-1x">1.x compatibility policy</a>.';
 
 const GROUP_LABELS = {
   errors: 'Errors',
@@ -108,7 +108,7 @@ function commitSha() {
  * Finish the pages pyref wrote.
  *
  * Starlight renders frontmatter `banner` once per page, which is where the
- * Provisional status belongs; pyref has no status field of its own
+ * the API compatibility policy belongs; pyref has no status field of its own
  * (AmbiqAI/helia-ui, gaps note). pyref also titles a page with the module's
  * leaf name, so `neuralspotx.api` arrives as "api"; the dotted path is what a
  * reader needs in a tab title and a search result. The sidebar is built
@@ -135,7 +135,7 @@ function finalizeApiPages(dir) {
         head = head.replace(/^title:.*$/m, `title: ${JSON.stringify(dotted)}`);
       }
       if (!head.includes('\nbanner:')) {
-        head += `\nbanner:\n  content: ${JSON.stringify(PROVISIONAL_BANNER)}`;
+        head += `\nbanner:\n  content: ${JSON.stringify(API_COMPATIBILITY_BANNER)}`;
       }
       fs.writeFileSync(full, head + text.slice(end), 'utf8');
       touched += 1;
@@ -310,7 +310,7 @@ function main() {
       '---',
       'title: "Python API reference"',
       'description: "Every name exported from neuralspotx, generated from the installed package."',
-      `banner:\n  content: ${JSON.stringify(PROVISIONAL_BANNER)}`,
+      `banner:\n  content: ${JSON.stringify(API_COMPATIBILITY_BANNER)}`,
       '---',
       '',
       `The \`neuralspotx\` package exports ${catalog.symbols.length} names. Every one of them can be`,
@@ -383,7 +383,7 @@ function main() {
     griffeVersion: griffeVersion(),
     base: BASE,
     unresolvedReferences: warnings,
-    provisionalBanners: bannered + 1,
+    compatibilityBanners: bannered + 1,
     python: {
       route: routes.api,
       pages: catalog.modules.length + 1,
