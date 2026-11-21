@@ -443,6 +443,9 @@ def _effective_registry(
     for label, field_prefix, layer in layers:
         if authorship is not None:
             authorship.module_projects.update(k for k, v in layer.modules.items() if "project" in v)
+            authorship.module_revisions.update(
+                k for k, v in layer.modules.items() if "revision" in v
+            )
             authorship.project_urls.update(k for k, v in layer.projects.items() if "url" in v)
         merged = _apply_app_authored_layer(
             merged,
@@ -453,7 +456,6 @@ def _effective_registry(
             propagated_revisions=propagated_revisions,
         )
     if authorship is not None:
-        authorship.module_revisions.update(app_pinned_modules)
         authorship.module_revisions.update(propagated_revisions)
     return merged
 

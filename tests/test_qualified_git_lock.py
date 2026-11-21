@@ -348,3 +348,16 @@ def test_cold_conflict_reports_qualified_pin_before_new_board_requirements(
         assert cli.main(["lock", *flags, "--app-dir", str(tmp_path)]) != 0
         assert "incompatible with target" in capsys.readouterr().err
         assert receipt.read_bytes() == (FIXTURE / "nsx.lock").read_bytes()
+
+
+def test_authored_empty_module_revision_resets_to_main(
+    tmp_path: Path, registry: dict[str, Any]
+) -> None:
+    shutil.copyfile(FIXTURE / "nsx.lock", tmp_path / "nsx.lock")
+    manifest_path = tmp_path / "nsx.yml"
+    manifest = yaml.safe_load(manifest_path.read_text())
+    manifest["module_registry"] = {"modules": {"sdk": {"revision": ""}}}
+    manifest_path.write_text(yaml.safe_dump(manifest))
+    expected = advance(tmp_path / "origins/sdk")
+    assert cli.main(["lock", "--app-dir", str(tmp_path)]) == 0
+    assert all(rows["sdk"][0] == expected for rows in pins(tmp_path).values())
