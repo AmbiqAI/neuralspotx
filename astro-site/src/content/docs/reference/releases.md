@@ -9,15 +9,11 @@ stands, not a branch snapshot.
 
 ## Maturity and support
 
-NSX is **Beta**, and it is supported for **evaluation**: bring-up, profiling,
-validation and demos. Production support is not committed before 1.0. That is the
-maturity and support tier Ambiq records for it in the HELIA portfolio, and it is
-what the stability tier below and the pinning advice further down follow from.
-
-Beta is a statement about the interface, not about whether the tool works: the
-commands and the module registry are in daily use inside Ambiq. It means the
-names are still allowed to move, so anything you automate against them should
-pin a version.
+NSX 0.x is Beta. The approved 1.x support scope covers the current release
+for evaluation and integration with modular CMake and AmbiqSuite, including
+bring-up, profiling, validation and demos. Production support, long-term
+support and backports are outside that commitment. Direct Zephyr and CMSIS-Pack
+workflows are outside the tool's scope.
 
 ## Cadence
 
@@ -71,12 +67,13 @@ The same caution applies to the CLI while NSX is pre-1.0: flags and output
 formats can change in a minor release. The `--json` output of commands that
 offer it is the most stable thing to build on, because it is what tooling reads.
 
-## Proposed compatibility policy for 1.x
+<span id="proposed-compatibility-policy-for-1x"></span>
 
-This proposal is under review for the first stable release. The provisional
-policy above applies to 0.x today. The proposed promise is that an application
-written for 1.0 can keep its configuration, automation, and locked Git
-dependencies when its developer upgrades the NSX tool within 1.x.
+## Compatibility policy for 1.x
+
+Starting with 1.0, applications can retain their configuration, automation and
+compatible locked Git dependencies when upgrading the tool within 1.x. The
+provisional policy above applies to 0.x releases.
 
 | Surface | A compatible 1.x change | A change that requires a new major version |
 | --- | --- | --- |
@@ -88,24 +85,43 @@ dependencies when its developer upgrades the NSX tool within 1.x.
 | Prepared apps using direct CMake | Add an optional CMake target or option. | Require Python to build an already prepared app, remove the documented toolchain entry point, or change how `NSX_BOARD` selects a prepared target. |
 | Committed `nsx.lock` | Add optional diagnostic metadata that older readers can safely ignore. | Require a different lock schema to consume an existing valid 1.x lock, or select a different Git revision solely because the tool was upgraded. |
 
-For authored files, the proposed policy keeps exact schema-version checks.
+Authored files retain exact schema-version checks.
 A new build requirement can use the existing version only if older tools
 already reject its syntax or enforce it correctly. The default for an
 incompatible authored or lock format change is to schedule it for 2.0.
 Disposable caches can still be regenerated.
 
-The 1.0 freeze would identify the supported exports, documented commands,
-schemas, and board/provider interfaces. Internal Python modules and
-undocumented output remain implementation details. A supported alias
-deprecated during 1.x would keep working throughout the series. The release
-notes would name its replacement before removal in a major release.
-The proposed support window covers the current release for evaluation and
-integration. It carries no commitment to long-term support or backports. SDK pins, toolchains, and physical board qualification have their
-own release and acceptance decisions.
+The compatibility promise includes the documented minimum board/BSP binding,
+board selection, and public configure, flash, reset and RTT behavior. Private
+debug snapshots, internal Python modules and undocumented output are
+implementation details. Supported aliases deprecated during 1.x keep working
+through the series. Release notes name their replacements before removal in a
+major release. [Lock behavior](/neuralspotx/guides/modules/lock-and-sync/#1x-lock-behavior)
 
-See the [proposed 1.x lock behavior](/neuralspotx/guides/modules/lock-and-sync/#proposed-1x-lock-behavior)
-for the difference between upgrading the CLI and updating dependencies.
-The scope and qualification decisions are tracked in [the v1 readiness issue](https://github.com/AmbiqAI/neuralspotx/issues/226).
+## Qualification baseline for 1.0
+
+The evidence below comes from neuralspotx 0.9.9 and nsx-ambiq-sdk 5.2.32.
+The 1.0 candidate has a separate qualification and signoff. [Readiness tracker](https://github.com/AmbiqAI/neuralspotx/issues/226)
+
+| Configuration | What was verified |
+| --- | --- |
+| Linux, macOS and Windows | Python 3.11 and 3.13 tests and GCC example builds. Linux also ran ATfE example builds. The licensed Armclang example job was skipped. The example suite includes FreeRTOS blinky. [Release CI](https://github.com/AmbiqAI/neuralspotx/actions/runs/44926578489) |
+| Apollo510, installed CLI | The 0.9.9 candidate restored and built the locked `kws_infer` example with GCC. The lock stayed byte-identical. This was a host build. [Release qualification](https://github.com/AmbiqAI/neuralspotx/issues/226) |
+| AP330 Plus, AP510, AP510B and AP510 Lite | The SDK linked minimal firmware and checked its layout using GCC, ATfE and ACfE. AP510 Lite has link coverage in this run. [SDK qualification](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/v5.2.32/release/qualification-5.2.32.md) |
+| AP3 Blue Plus, AP4 Blue Plus KXR, AP330 Plus, AP510 and AP510B EVBs | SDK startup, runtime and power checks ran with GCC and debugger reset. AP510B also passed over-the-air BLE GATT and reconnect checks. The generated power apps in this SDK run used CLI 0.9.7. [Board results](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/v5.2.32/release/qualification-5.2.32.md) |
+
+### Reading license coverage
+
+In the 0.9.9 registry, all 17 packaged boards and the tooling module declare
+BSD-3-Clause at their module root. Fourteen external module entries omit
+path-scoped declarations at their pinned revisions. Their SBOM entries still
+identify the components. Consult the upstream notices for the files you use.
+[Registry audit](https://github.com/AmbiqAI/neuralspotx/issues/226#issuecomment-7063572501)
+
+SDK 5.2.32 leaves four scopes explicitly unresolved. They cover the mixed
+AmbiqSuite payload, two USB headers and one PSRAM driver. Their scoped SBOM values are
+`NOASSERTION`. For the 1.0 candidate, the wheel NOTICE must identify all required Python
+dependencies and distinguish optional extras. [SDK scope details](https://github.com/AmbiqAI/nsx-ambiq-sdk/issues/73#issuecomment-7056564313) · [NOTICE correction](https://github.com/AmbiqAI/neuralspotx/issues/348)
 
 ## How to pin
 

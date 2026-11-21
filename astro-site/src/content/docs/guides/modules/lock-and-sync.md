@@ -165,15 +165,18 @@ this check reports drift and exits nonzero without writing the lock. An app that
 explicitly pins v1 keeps that override. Use `nsx lock --check --update` to check
 for movement in upstream Git refs too.
 
-## Proposed 1.x lock behavior
+<span id="proposed-1x-lock-behavior"></span>
 
-Under the [proposed compatibility policy](/neuralspotx/reference/releases/#proposed-compatibility-policy-for-1x),
-upgrading the tool would preserve a valid 1.x lock's Git pins. Suppose two
-boards use a driver from `main`. Both lock sections record commit A, and
+## 1.x lock behavior
+
+The [1.x compatibility policy](/neuralspotx/reference/releases/#compatibility-policy-for-1x)
+protects compatible Git pins across tool upgrades. NSX 0.9.9 already implements
+these rules. Suppose both boards use a driver from `main`. Their lock sections
+record commit A, and
 upstream has since advanced to B. The app configuration, selected dependency
 closure, effective registry inputs, and local sources are otherwise unchanged.
 
-| Operation after upgrading the tool | Proposed outcome |
+| Operation after upgrading the tool | Outcome |
 | --- | --- |
 | `nsx sync --frozen` | Use verified local content or fetch A from the Git URL recorded in the lock. Verify the content hash and leave the lock untouched. If that origin cannot supply A, identify the recorded source and fail without trying the current registry's mirror. |
 | `nsx lock --check` | Report drift with a nonzero exit if the wheel changes the effective SDK default. Leave the lock untouched. |
@@ -182,29 +185,28 @@ closure, effective registry inputs, and local sources are otherwise unchanged.
 | A full lock fails while preparing the second board | Leave the entire previous lock byte-for-byte intact so the developer can retry. |
 
 A newer wheel can also change a packaged registry default, such as the SDK
-revision for the same board. With unchanged app inputs, frozen sync would
-use the recorded identities or fail verification. Plain lock would retain
+revision for the same board. With unchanged app inputs, frozen sync
+uses the recorded identities or fails verification. Plain lock retains
 the existing Git pin if it still satisfies the effective inputs. If the
-new default requires a different revision, plain lock would stop before
-writing, identify the project and affected boards, and explain how to opt
-in. A targeted update of a different project would also stop before writing
+new default requires a different revision, plain lock stops before
+writing, identifies the project and affected boards, and explains how to opt
+in. A targeted update of a different project also stops before writing
 if the wheel introduced this conflict in any requested board section where
 the SDK was unselected. To adopt the new SDK, select a module from its
 project in each affected target or request a full update with
 `nsx lock --update`. To retain the old SDK, pin its previous revision in the app registry.
-A first lock for a new app would use the new wheel's defaults.
+A first lock for a new app uses the new wheel's defaults.
 
 In 0.9.7, a writable plain `nsx lock` refreshes floating Git refs even when the
-app inputs stay the same. The v1 candidate preserves compatible pins on a plain
+app inputs stay the same. Version 0.9.9 preserves compatible pins on a plain
 lock. An unsupported lock schema still requires regeneration, so review the
 new pins when replacing an older lock.
 
 Content from a local directory, an app-vendored module, or the CMake files
-shipped in the wheel has a hash but may have no Git commit to fetch. Under
-the proposal, frozen sync must report a hash mismatch if those locked bytes
-cannot be reproduced. A developer could then use the original inputs or
-deliberately re-lock the changed content and review the diff. That re-lock
-would still preserve compatible Git pins for unrelated projects.
+shipped in the wheel has a hash but may have no Git commit to fetch. Frozen
+sync verifies the materialized bytes against the lock. To adopt changed
+content, re-lock explicitly and review the diff. Compatible Git pins for
+unrelated projects are preserved.
 
 ## Updating on purpose
 
