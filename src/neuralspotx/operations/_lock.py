@@ -73,7 +73,6 @@ from ._lock_selection import (
     validate_materialization,
 )
 
-
 # Default age (days) past which a lock that tracks moving refs is flagged
 # stale by :func:`lock_freshness_warning`. Override via NSX_LOCK_STALE_DAYS
 # (set to 0 to disable the warning entirely).
