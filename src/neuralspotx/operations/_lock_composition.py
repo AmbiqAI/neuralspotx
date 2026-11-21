@@ -79,7 +79,7 @@ def resolved_board_composition(
                         "use a project-relative metadata path or an explicit local source override."
                     ) from exc
             else:
-                relative = _metadata_path_relative_to_project(metadata, original.path)
+                relative = _metadata_path_relative_to_project(metadata, original.checkout_path)
             candidate = source / relative
             if not candidate.resolve().is_relative_to(source.resolve()):
                 raise NSXLockError(f"Git module '{name}' metadata escapes its verified artifact")

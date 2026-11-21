@@ -272,6 +272,10 @@ def test_new_board_discovers_dependencies_from_its_own_revision(
 ) -> None:
     from neuralspotx.operations import sync_app_impl
 
+    # An app-relative selector can refer to the default checkout even when
+    # the project does not explicitly set its path.
+    del registry["projects"]["driver"]["path"]
+    registry["modules"]["driver"]["metadata"] = "modules/driver/nsx-module.yaml"
     manifest_path = tmp_path / "nsx.yml"
     manifest = yaml.safe_load(manifest_path.read_text())
     manifest["modules"] = [{"name": "driver"}]

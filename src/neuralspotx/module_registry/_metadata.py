@@ -94,7 +94,7 @@ def _module_metadata_path(
     # 1. An explicit local project overrides packaged and app-local mirrors.
     if project_entry.local_path:
         local_root = Path(project_entry.local_path).expanduser()
-        metadata_rel = _metadata_path_relative_to_project(metadata, project_entry.path)
+        metadata_rel = _metadata_path_relative_to_project(metadata, project_entry.checkout_path)
         candidate = local_root / metadata_rel
         if candidate.exists():
             return candidate
@@ -116,7 +116,7 @@ def _module_metadata_path(
 
     # 4. Check the configured app-local project clone directory.
     if app_dir is not None:
-        project_path = project_entry.path
+        project_path = project_entry.checkout_path
         metadata_rel = _metadata_path_relative_to_project(metadata, project_path)
         clone_dir = _module_clone_dir(app_dir, registry_entry.project, registry)
         candidate = clone_dir / metadata_rel
@@ -224,7 +224,7 @@ def _materialized_module_metadata_path(
     """Locate the manifest beside the sources selected by generated CMake."""
     entry = registry_entry_for_module(registry, module_name)
     project = _registry_project_entry(registry, entry.project)
-    metadata_rel = _metadata_path_relative_to_project(Path(entry.metadata), project.path)
+    metadata_rel = _metadata_path_relative_to_project(Path(entry.metadata), project.checkout_path)
     if module_name == "nsx-tooling":
         # App templates include this bootstrap tree directly, even when the
         # registry also mirrors a local neuralspotx development checkout.

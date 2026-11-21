@@ -147,7 +147,7 @@ def _board_sources(
                             f"Module '{name}' metadata must be inside its Git project."
                         ) from exc
                 else:
-                    relative = _metadata_path_relative_to_project(metadata, project.path)
+                    relative = _metadata_path_relative_to_project(metadata, project.checkout_path)
                 if ".." in relative.parts:
                     raise NSXConfigError(f"Module '{name}' metadata escapes its Git project.")
                 modules[name] = {**module, "metadata": str(root / relative)}

@@ -845,7 +845,7 @@ def _locked_manifest_path(
             candidate = (
                 metadata
                 if metadata.is_absolute()
-                else root / _metadata_path_relative_to_project(metadata, project.path)
+                else root / _metadata_path_relative_to_project(metadata, project.checkout_path)
             )
     if receipt.kind in (LockKind.LOCAL, LockKind.VENDORED):
         if not candidate.is_file():

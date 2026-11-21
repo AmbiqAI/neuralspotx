@@ -975,15 +975,12 @@ def _module_clone_dir(app_dir: Path, project_name: str, registry: dict | None = 
 
     if registry is not None:
         project = _registry_project_entry(registry, project_name)
-        project_path = project.path
+        project_path = project.checkout_path
         if project.local_path and (
-            not project_path
-            or Path(project_path).is_absolute()
-            or Path(project_path).parts[:1] != ("modules",)
+            Path(project_path).is_absolute() or Path(project_path).parts[:1] != ("modules",)
         ):
             return app_dir / "modules" / project_name
-        if project_path:
-            return app_dir / project_path
+        return app_dir / project_path
 
     return app_dir / "modules" / project_name
 
@@ -1037,7 +1034,9 @@ def _module_source_dir_relative_to_app(
         return _vendored_target_dir(Path("."), module_name, entry.metadata)
 
     project_entry = _registry_project_entry(registry, entry.project)
-    metadata_rel = _metadata_path_relative_to_project(Path(entry.metadata), project_entry.path)
+    metadata_rel = _metadata_path_relative_to_project(
+        Path(entry.metadata), project_entry.checkout_path
+    )
     return _module_clone_dir(Path("."), entry.project, registry) / metadata_rel.parent
 
 
