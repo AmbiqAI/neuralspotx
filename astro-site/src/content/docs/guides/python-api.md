@@ -13,7 +13,8 @@ watch for.
 
 :::note[The public API is provisional]
 The exported names are marked provisional: public and supported, but able to change in
-a minor release. Pin your NSX version if you depend on them.
+a 0.x release. Pin your NSX version if you depend on them. Starting at 1.0, the documented
+exports and calling conventions follow the [1.x compatibility policy](/neuralspotx/reference/releases/#compatibility-policy-for-1x).
 :::
 
 ## The shape of it
