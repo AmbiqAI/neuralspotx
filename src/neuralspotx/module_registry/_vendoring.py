@@ -157,7 +157,14 @@ def _vendor_git_module_at_commit(
 
     clone_dir = _module_clone_dir(app_dir, entry.project, registry)
 
-    # Fast path: try to materialise from the content-addressed cache.
+    _vendor_git_tree_at_commit(url, clone_dir, commit, content_hash=content_hash)
+
+
+def _vendor_git_tree_at_commit(
+    url: str, clone_dir: Path, commit: str, *, content_hash: str | None
+) -> None:
+    """Materialize a Git artifact from the supplied origin or a verified cache hit."""
+
     if content_hash and module_cache.lookup(content_hash, clone_dir):
         return
 

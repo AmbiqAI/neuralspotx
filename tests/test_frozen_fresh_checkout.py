@@ -81,8 +81,28 @@ def _fake_vendor(monkeypatch: pytest.MonkeyPatch, vendored_dir: Path, content: s
         calls.append(commit)
         _write_tree(vendored_dir, content)
 
+    def locked_vendor(_url: str, dest: Path, commit: str, **_: Any) -> None:
+        calls.append(commit)
+        _write_tree(dest, content)
+
+    monkeypatch.setattr(module_registry._vendoring, "_vendor_git_tree_at_commit", locked_vendor)
     monkeypatch.setattr(module_registry, "_vendor_git_module_at_commit", _vendor)
     return calls
+
+
+def test_frozen_git_destination_accepts_windows_lock_on_posix(tmp_path: Path) -> None:
+    ctx = _ctx(tmp_path, frozen=True)
+    ctx.registry.update({
+        "projects": {
+            "demo-proj": {"path": "modules/demo-proj", "url": "https://example.com/demo.git"}
+        },
+        "modules": {
+            "demo-mod": {"project": "demo-proj", "metadata": "nsx-module.yaml", "revision": "v1"}
+        },
+    })
+    entry = _entry("sha256:" + "a" * 64)
+    entry.vendored_at = r"modules\demo-proj"
+    assert _sync._resolve_vendored_dir(ctx, "demo-mod", entry) == tmp_path / "modules/demo-proj"
 
 
 def test_frozen_fetches_missing_module_at_locked_commit(
@@ -275,12 +295,11 @@ def test_interrupted_fetch_of_missing_module_leaves_nothing_behind(
     vendored_dir = app_dir / "modules" / "demo-proj"
     entry = _entry(_locked_hash(tmp_path, "locked"))
 
-    def _interrupted(
-        app_dir: Path, name: str, registry: dict[str, Any], commit: str, **_: Any
-    ) -> None:  # noqa: ARG001
+    def _interrupted(*_args: Any, **_kwargs: Any) -> None:
         (vendored_dir / ".git").mkdir(parents=True)
         raise KeyboardInterrupt
 
+    monkeypatch.setattr(module_registry._vendoring, "_vendor_git_tree_at_commit", _interrupted)
     monkeypatch.setattr(module_registry, "_vendor_git_module_at_commit", _interrupted)
     with pytest.raises(KeyboardInterrupt):
         _sync_fetchable_entry(_ctx(app_dir, frozen=frozen), "demo-mod", entry, vendored_dir, set())
@@ -697,3 +716,50 @@ def test_frozen_sync_interrupted_cmake_refresh_leaves_nothing_then_retry_passes(
     assert hash_tree(cmake_nsx, exclude_names=NSX_TOOLING_AUTOGEN_FILES) == _packaged_cmake_hash(
         tmp_path
     )
+
+
+@pytest.mark.parametrize("suffix", ["/repo.git?test=", "/private/"])
+def test_frozen_origin_credentials_are_absent_from_git_output(
+    suffix: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capfd: pytest.CaptureFixture[str]
+) -> None:
+    from neuralspotx.subprocess_utils import _git
+
+    token = "fixture-query-value"
+    entry = _entry(_locked_hash(tmp_path, "locked"))
+    entry.url = f"https://example.invalid{suffix}{token}"
+    # A missing local repo makes real Git echo the token-bearing path during
+    # both fetch and fallback clone without contacting an external service.
+    monkeypatch.setenv("GIT_CONFIG_COUNT", "1")
+    monkeypatch.setenv("GIT_CONFIG_KEY_0", f"url.{(tmp_path / token).as_uri()}.insteadOf")
+    monkeypatch.setenv("GIT_CONFIG_VALUE_0", entry.url)
+    monkeypatch.setattr(_git, "GIT_PROTOCOL_ALLOWLIST_FLAGS", ("-c", "protocol.file.allow=always"))
+    monkeypatch.setenv("NSX_DISABLE_MODULE_CACHE", "1")
+    ctx = _ctx(tmp_path, frozen=True)
+    destination = tmp_path / entry.vendored_at
+    with pytest.raises(NSXIntegrityError, match=r"resolved\.url") as failure:
+        _sync_fetchable_entry(ctx, "demo-mod", entry, destination, set())
+    output = capfd.readouterr()
+    assert token not in output.out + output.err + str(failure.value)
+    assert not destination.exists()
+
+
+def test_private_git_diagnostic_preserves_subprocess_failure(
+    capfd: pytest.CaptureFixture[str],
+) -> None:
+    import subprocess
+    import sys
+
+    from neuralspotx.subprocess_utils import _git
+
+    # Git/submodule paths may contain bytes outside the host locale. Retry and
+    # fallback need the Git exit code even when the diagnostic cannot be decoded.
+    with _git.capture_git_output(), pytest.raises(subprocess.CalledProcessError) as failure:
+        _git._run([
+            sys.executable,
+            "-c",
+            "import os; os.write(2, bytes([255])); raise SystemExit(3)",
+        ])
+    assert failure.value.returncode == 3
+    assert failure.value.stderr
+    output = capfd.readouterr()
+    assert not output.out and not output.err

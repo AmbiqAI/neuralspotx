@@ -12,11 +12,27 @@ import os
 import random
 import subprocess
 import sys
+from collections.abc import Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from pathlib import Path
 
 from ._runner import _SHUTTING_DOWN
 
 _log = logging.getLogger(__name__)
+
+
+_CAPTURE_GIT_OUTPUT = ContextVar("nsx_capture_git_output", default=False)
+
+
+@contextmanager
+def capture_git_output() -> Iterator[None]:
+    """Keep Git diagnostics private when a recorded URL may contain credentials."""
+    token = _CAPTURE_GIT_OUTPUT.set(True)
+    try:
+        yield
+    finally:
+        _CAPTURE_GIT_OUTPUT.reset(token)
 
 
 def _run(cmd, **kwargs):
@@ -25,6 +41,11 @@ def _run(cmd, **kwargs):
     # to intercept git helpers after the package was split.
     from . import run as _facade_run
 
+    if _CAPTURE_GIT_OUTPUT.get():
+        # The captured exception still carries stderr for retry classification.
+        return _run_capture(
+            cmd, cwd=kwargs.get("cwd"), timeout=kwargs.get("timeout"), errors="replace"
+        )
     return _facade_run(cmd, **kwargs)
 
 
