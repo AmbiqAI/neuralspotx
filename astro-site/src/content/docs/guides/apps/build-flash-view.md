@@ -12,6 +12,9 @@ surprise people.
 Full option tables are generated from the CLI itself and live under
 [the CLI reference](/neuralspotx/reference/cli/).
 
+For VS Code build and flash tasks, source stepping and peripheral inspection, see
+[Debug an NSX app in VS Code](/neuralspotx/guides/apps/debug-vscode/).
+
 ## Which commands know about your app
 
 `configure`, `build`, `flash`, `view` and `clean` find the app by walking up from your
