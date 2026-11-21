@@ -354,3 +354,27 @@ def test_corstone_bsp_rebinding_replaces_packaged_bsp_seed(tmp_path) -> None:
     seeds = [record["name"] for record in expanded["modules"]]
     assert seeds.count("app-bsp") == 1
     assert "nsx-corstone-bsp" not in seeds
+
+
+@pytest.mark.parametrize(
+    ("board", "soc", "module", "provider"),
+    [
+        ("corstone300_fvp_u55", "corstone300", "nsx-board-apollo510-evb", "corstone"),
+        ("apollo510_evb", "apollo510", "nsx-board-corstone300-fvp-u55", "ambiqsuite"),
+    ],
+)
+def test_provider_eligibility_precedes_board_compatibility(
+    board: str, soc: str, module: str, provider: str, monkeypatch
+) -> None:
+    from neuralspotx._errors import NSXModuleError
+    from neuralspotx.module_registry import _resolve_module_closure
+
+    monkeypatch.setenv("NSX_SKIP_COMPAT_CHECK", "1")
+    with pytest.raises(NSXModuleError, match=f"selected SDK provider '{provider}'"):
+        _resolve_module_closure(
+            [module],
+            app_dir=None,
+            nsx_cfg=_base_cfg(target={"board": board, "soc": soc}),
+            registry=_load_registry(),
+            default_toolchain="arm-none-eabi-gcc",
+        )
