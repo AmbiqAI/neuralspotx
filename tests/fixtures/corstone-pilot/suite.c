@@ -10,8 +10,7 @@ static volatile int32_t accumulator;
 void setUp(void) {}
 void tearDown(void) {}
 
-static void test_signed_dot_product(void)
-{
+static void test_signed_dot_product(void) {
     const int8_t right[] = {4, 7, 1};
     TEST_ASSERT_EQUAL_INT32(0, accumulator);
     for (unsigned i = 0; i < sizeof(left) / sizeof(left[0]); ++i) {
@@ -24,8 +23,7 @@ static void test_signed_dot_product(void)
 #endif
 }
 
-int main(void)
-{
+int main(void) {
     if (pilot_console_init() != 0) {
         return 2;
     }

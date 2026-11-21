@@ -3,13 +3,11 @@
 #include "uart_stdout.h"
 #include "pilot.h"
 
-int pilot_console_init(void)
-{
+int pilot_console_init(void) {
     UartStdOutInit();
     return 0;
 }
 
-void pilot_putchar(int ch)
-{
+void pilot_putchar(int ch) {
     putchar(ch);
 }

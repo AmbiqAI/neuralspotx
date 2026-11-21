@@ -11,11 +11,15 @@ from pathlib import Path
 def guest_result(uart: bytes) -> int:
     """The model can exit successfully when the firmware fails."""
     text = uart.replace(b"\r\n", b"\n")
-    result = re.search(rb"^Application exit code: ([0-9]+)\.\n\x04\Z", text, re.MULTILINE)
+    # Arm retarget ends at EOT on some models, at the subsequent shutdown tag on others.
+    result = re.search(
+        rb"^Application exit code: (0|[1-9][0-9]*)\.\n\x04(?:\nEXITTHESIM\n?)?\Z",
+        text,
+        re.MULTILINE,
+    )
     if result is None or text.count(b"Application exit code:") != 1:
         return 2
-    code = int(result[1])
-    if code != 0:
+    if result[1] != b"0":
         return 1
     expected = (b"NSX pilot hello", b"1 Tests 0 Failures 0 Ignored", b"OK")
     lines = {line.strip() for line in text.splitlines()}
@@ -48,8 +52,9 @@ def main() -> int:
         except (OSError, subprocess.TimeoutExpired) as error:
             print(error, file=sys.stderr)
             return 2
-        output = uart.read_bytes() if uart.exists() else b""
-        sys.stdout.buffer.write(output)
+        finally:
+            output = uart.read_bytes() if uart.exists() else b""
+            sys.stdout.buffer.write(output)
         if process.returncode:
             print(f"FVP exited with status {process.returncode}", file=sys.stderr)
             return 2
