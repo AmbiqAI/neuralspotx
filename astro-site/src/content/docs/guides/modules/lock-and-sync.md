@@ -171,6 +171,17 @@ closure, effective registry inputs, and local sources are otherwise unchanged.
 | `nsx lock --module my-driver` | Refresh the selected registry project wherever it occurs in the requested targets. Its modules can move to B together. Unrelated compatible Git projects keep their pins. |
 | A full lock fails while preparing the second board | Leave the entire previous lock byte-for-byte intact so the developer can retry. |
 
+A newer wheel can also change a packaged registry default, such as the SDK
+revision for the same board. With unchanged app inputs, frozen sync would
+use the recorded identities or fail verification. Plain lock would retain
+the existing Git pin if it still satisfies the effective inputs. If the
+new default requires a different revision, plain lock would stop before
+writing, identify the project and affected boards, and explain how to opt
+in. For example, `nsx lock --module nsx-audio` would explicitly refresh
+the SDK project in target closures containing that module. Developers
+could instead pin the original SDK revision in the app registry.
+A first lock for a new app would use the new wheel's defaults.
+
 Two differences matter when using 0.x today. A writable plain `nsx lock`
 refreshes floating Git refs, even with unchanged inputs. It also regenerates
 an unsupported lock schema from scratch. In either case review the resulting

@@ -80,10 +80,12 @@ dependencies when its developer upgrades the NSX tool within 1.x.
 
 | Surface | A compatible 1.x change | A change that requires a new major version |
 | --- | --- | --- |
-| Documented Python exports from `neuralspotx` and `neuralspotx.api` | Add an optional keyword that preserves existing calls and defaults. | Remove an export, require a new argument, or make an existing positional request field keyword-only. |
-| Documented CLI commands and flags | Add an optional flag. Help text and progress messages can evolve. | Rename a supported flag, change its default behavior incompatibly, or change the meaning of a documented exit code. |
+| Public exports listed in `neuralspotx.__all__` and `neuralspotx.api.__all__` | Add an optional keyword that preserves existing calls and defaults. | Remove an export, require a new argument, or make an existing positional request field keyword-only. |
+| Documented Python requests, results, enums, and exceptions | Add an optional request field with a compatible default. | Remove a result field, change a documented return type or enum member, or change which documented exception callers can catch. |
+| Documented CLI commands, positional arguments, and flags | Add an optional flag. Help text and progress messages can evolve. | Reorder required arguments, rename a supported flag, change its default behavior incompatibly, or change the meaning of a documented exit code. |
 | Documented CLI JSON output | Add an optional object field. Consumers should ignore unfamiliar keys. | Remove or rename a field, change its type or meaning, or add a value to an enumeration documented as closed. |
 | Authored app, module, registry, and board configuration | Accept a new optional field while continuing to accept valid 1.0 files with their existing meaning. | Require an edit to a previously valid file or silently ignore a requirement that changes the dependency, target, or build. |
+| Prepared apps using direct CMake | Add an optional CMake target or option. | Require Python to build an already prepared app, remove the documented toolchain entry point, or change how `NSX_BOARD` selects a prepared target. |
 | Committed `nsx.lock` | Add optional diagnostic metadata that older readers can safely ignore. | Require a different lock schema to consume an existing valid 1.x lock, or select a different Git revision solely because the tool was upgraded. |
 
 For authored files, the proposed policy keeps exact schema-version checks.
@@ -98,7 +100,7 @@ undocumented output remain implementation details. A supported alias
 deprecated during 1.x would keep working throughout the series. The release
 notes would name its replacement before removal in a major release.
 The proposed support window covers the current release for evaluation and
-integration. SDK pins, toolchains, and physical board qualification have their
+integration. It carries no commitment to long-term support or backports. SDK pins, toolchains, and physical board qualification have their
 own release and acceptance decisions.
 
 See the [proposed 1.x lock behavior](/neuralspotx/guides/modules/lock-and-sync/#proposed-1x-lock-behavior)
