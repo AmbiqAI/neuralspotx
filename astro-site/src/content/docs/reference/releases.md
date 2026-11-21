@@ -69,6 +69,10 @@ nsx configure --frozen
 nsx build --frozen
 ```
 
+Plain lock refreshes every declared board. Configure and build select the default
+board. Repeat both frozen commands with `--board <board>` for each additional
+target you use, including boards previously prepared for direct CMake.
+
 Review the manifest and lock diff together. A plain lock preserves compatible
 Git pins and records the updated manifest hash. Verify the app on its target
 before committing the upgrade. Apps without a recorded tool major can start
