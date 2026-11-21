@@ -105,6 +105,7 @@ export default defineConfig({
                     { label: 'The app model', slug: 'guides/apps/app-model' },
                     { label: 'App layout', slug: 'guides/apps/app-layout' },
                     { label: 'Build, flash and view', slug: 'guides/apps/build-flash-view' },
+                    { label: 'Debug in VS Code', slug: 'guides/apps/debug-vscode' },
                     { label: 'Troubleshooting', slug: 'guides/apps/troubleshooting' },
                   ],
                 },
