@@ -4,13 +4,21 @@ from __future__ import annotations
 
 import re
 import shutil
+import subprocess
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
-from .._errors import NSXConfigError, NSXIntegrityError, NSXModuleError
+from .._errors import (
+    NSXConfigError,
+    NSXGitError,
+    NSXIntegrityError,
+    NSXModuleError,
+    NSXTimeoutError,
+)
 from .._io import info
 from .._logging import get_logger
 from ..file_lock import app_lock
@@ -216,7 +224,21 @@ def _resolve_vendored_dir(ctx: _SyncContext, name: str, entry: ResolvedModule) -
             # ``registry_entry_for_module`` raises ``ValueError`` when the
             # module isn't in the registry. Trust the lock-recorded path.
             return ctx.app_dir / entry.vendored_at
-    return _resolved_module_path(ctx.app_dir, name, ctx.registry)
+    destination = _resolved_module_path(ctx.app_dir, name, ctx.registry)
+    # Schema 4 writers serialize vendored_at with the writer host's separators.
+    # Always materialize to the registry destination, never a path supplied by the lock.
+    if (
+        ctx.frozen
+        and entry.kind == LockKind.GIT
+        and destination != ctx.app_dir / entry.vendored_at
+        and destination != ctx.app_dir / entry.vendored_at.replace("\\", "/")
+    ):
+        raise NSXIntegrityError(
+            f"Module '{name}' is locked at {entry.vendored_at}, but the registry places it "
+            f"at {destination}. Restore the recorded project path or explicitly update the lock.",
+            module=name,
+        )
+    return destination
 
 
 def _sync_vendored_entry(
@@ -452,6 +474,47 @@ def _sync_local_board_overlay(
     return 1
 
 
+def _restore_locked_git(name: str, entry: ResolvedModule, destination: Path, commit: str) -> None:
+    from ..module_registry._vendoring import _vendor_git_tree_at_commit
+    from ..subprocess_utils._git import capture_git_output
+
+    url = entry.url
+    if not isinstance(url, str) or not url:
+        raise NSXIntegrityError(
+            f"Module '{name}' has no Git origin in nsx.lock. Restore a complete lock "
+            "or run `nsx lock` to record the source.",
+            module=name,
+        )
+    # A path component can itself be a credential. Identify the exact lock
+    # field and host, and keep raw Git output out of user-facing diagnostics.
+    origin = f"nsx.lock entry '{name}' (resolved.url)"
+    try:
+        host = urlsplit(url).hostname
+    except ValueError:
+        host = None
+    if host and re.fullmatch(r"[\w.:-]+", host):
+        origin += f" on {host}"
+    try:
+        with capture_git_output():
+            _vendor_git_tree_at_commit(url, destination, commit, content_hash=entry.content_hash)
+    except subprocess.TimeoutExpired as exc:
+        raise NSXTimeoutError(
+            f"Timed out restoring module '{name}' at {commit} from {origin}.",
+            timeout_s=float(exc.timeout) if exc.timeout is not None else None,
+        ) from None
+    except NSXGitError:
+        raise NSXGitError(
+            f"Git refused the recorded origin for module '{name}'. "
+            "Check resolved.url in nsx.lock and use a supported Git transport."
+        ) from None
+    except subprocess.CalledProcessError:
+        raise NSXIntegrityError(
+            f"Could not restore module '{name}' at {commit} from {origin}. "
+            "Verify access to the recorded origin and commit.",
+            module=name,
+        ) from None
+
+
 def _sync_fetchable_entry(
     ctx: _SyncContext,
     name: str,
@@ -522,7 +585,9 @@ def _sync_fetchable_entry(
             _vendor_packaged_module_into_app(ctx.app_dir, name, ctx.registry)
         elif entry.kind == LockKind.GIT:
             # Re-vendor at the exact locked commit (not the branch tip).
-            if entry.commit:
+            if ctx.frozen and entry.commit:
+                _restore_locked_git(name, entry, vendored_dir, entry.commit)
+            elif entry.commit:
                 _vendor_git_module_at_commit(
                     ctx.app_dir,
                     name,
