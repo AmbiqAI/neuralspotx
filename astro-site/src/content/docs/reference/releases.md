@@ -95,19 +95,21 @@ Disposable caches can still be regenerated.
 
 The compatibility promise includes the documented minimum board/BSP binding,
 board selection, and public configure, flash, reset and RTT behavior. Private
-debug snapshots, internal Python modules and undocumented output are
-implementation details. Release notes announce deprecations of documented
+debug snapshots, helper files, internal Python modules and undocumented output are
+implementation details. Additional probe backends and dynamic plugins are outside
+the 1.x commitment. Release notes announce deprecations of documented
 interfaces and identify their replacements. Supported aliases deprecated
 during 1.x keep working through the series. [Lock behavior](/neuralspotx/guides/modules/lock-and-sync/#1x-lock-behavior)
 
 ## Qualification baseline for 1.0
 
-The evidence below comes from neuralspotx 0.9.9 and nsx-ambiq-sdk 5.2.32.
-The 1.0 candidate has a separate qualification and signoff. [Readiness tracker](https://github.com/AmbiqAI/neuralspotx/issues/226)
+The evidence below comes from [neuralspotx 0.9.9](https://github.com/AmbiqAI/neuralspotx/commit/05a5f51206343599bcf0e3e4a4a8a96e63319fcd)
+and [nsx-ambiq-sdk 5.2.32](https://github.com/AmbiqAI/nsx-ambiq-sdk/commit/fc660806bacdfe4b9f84f1e2ea2bd9ada918cda6).
+Qualification and signoff on the exact 1.0 wheel are pending. [Readiness tracker](https://github.com/AmbiqAI/neuralspotx/issues/226)
 
 | Configuration | What was verified |
 | --- | --- |
-| Linux, macOS and Windows | Python 3.11 and 3.13 tests and GCC example builds. Linux also ran ATfE example builds. The licensed Armclang example job was skipped. The example suite includes FreeRTOS blinky. [Release CI](https://github.com/AmbiqAI/neuralspotx/actions/runs/44926578489) |
+| Linux, macOS and Windows | Python 3.11 and 3.13 tests and GCC example builds. Linux also ran ATfE example builds. The licensed Armclang example job was skipped. FreeRTOS blinky was compiled. Per-board scheduler behavior was outside that check. [Release CI](https://github.com/AmbiqAI/neuralspotx/actions/runs/44926578489) |
 | Apollo510, installed CLI | The 0.9.9 candidate restored and built the locked `kws_infer` example with GCC. The lock stayed byte-identical. This was a host build. [Release qualification](https://github.com/AmbiqAI/neuralspotx/issues/226) |
 | AP330 Plus, AP510, AP510B and AP510 Lite | The SDK linked minimal firmware and checked its layout using GCC, ATfE and ACfE. AP510 Lite has link coverage in this run. [SDK qualification](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/v5.2.32/release/qualification-5.2.32.md) |
 | AP3 Blue Plus, AP4 Blue Plus KXR, AP330 Plus, AP510 and AP510B EVBs | SDK startup, runtime and power checks ran with GCC and debugger reset. AP510B also passed over-the-air BLE GATT and reconnect checks. The generated power apps in this SDK run used CLI 0.9.7. [Board results](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/v5.2.32/release/qualification-5.2.32.md) |
@@ -124,9 +126,10 @@ identify the components. Consult the upstream notices for the files you use.
 [Audit of the external module pins](https://github.com/AmbiqAI/neuralspotx/issues/226#issuecomment-7063572501)
 
 SDK 5.2.32 leaves four scopes explicitly unresolved. They cover the mixed
-AmbiqSuite payload, two USB headers and one PSRAM driver. The tool reports
+AmbiqSuite payload, two USB headers and one PSRAM driver. The SBOM records
 `NOASSERTION` for these paths. If the payload changes, the SDK maintainer
-must review the affected scopes again. [SDK maintainer decision](https://github.com/AmbiqAI/nsx-ambiq-sdk/issues/73#issuecomment-7056564313)
+must record a new decision on the affected scopes. The approval here covers
+how NSX discloses those gaps. [SDK maintainer decision](https://github.com/AmbiqAI/nsx-ambiq-sdk/issues/73#issuecomment-7056564313)
 
 The 1.0 wheel NOTICE must identify all required Python dependencies and
 distinguish optional extras. [NOTICE correction](https://github.com/AmbiqAI/neuralspotx/issues/348)
