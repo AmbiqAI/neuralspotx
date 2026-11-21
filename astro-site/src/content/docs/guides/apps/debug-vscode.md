@@ -29,11 +29,11 @@ The task and Cortex-Debug both use this variable so that flashing and debugging
 select the same probe even when several are connected.
 
 For source-level stepping, add this line after `add_executable(hello ...)` in the
-app's `CMakeLists.txt`. It gives the application source GCC debug information and
-debug-friendly optimization.
+app's `CMakeLists.txt`. Applying the flags to the source file places them after
+the SDK's release flags. The rest of the firmware keeps its normal optimization.
 
 ```cmake
-target_compile_options(hello PRIVATE -Og -g)
+set_property(SOURCE src/main.c APPEND PROPERTY COMPILE_OPTIONS -Og -g)
 ```
 
 The configured Apollo510 board uses the SEGGER device `AP510NFA-CBR`. For
@@ -43,9 +43,12 @@ example the effective value also appears as `NSX_RESET_DEVICE` in the build's
 `CMakeCache.txt`. Match the ELF to the executable produced by your app target.
 
 NSX board metadata identifies the SoC. It currently supplies no SVD path.
-For this board, copy `pack/SVD/apollo510.svd` from the matching AmbiqSuite
-distribution into `debug/apollo510.svd` under your app. The debugger uses this
-XML file to display register names and bit fields.
+For this board, download **AmbiqMicro.Apollo_DFP.1.5.2.pack** from the
+[Arm pack catalog](https://www.keil.arm.com/packs/apollo_dfp-ambiqmicro/versions/).
+Open the pack as a ZIP archive. Its `AmbiqMicro.Apollo_DFP.pdsc` maps
+`AP510NFA-CBR` to `SVD/apollo510.svd`. Copy that member to
+`debug/apollo510.svd` in your app. The debugger uses this XML file to display
+register names and bit fields.
 
 ## Add the build and flash tasks
 
