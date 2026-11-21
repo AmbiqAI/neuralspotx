@@ -1,5 +1,22 @@
 # Changelog
 
+## [0.9.8](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.9.7...neuralspotx-v0.9.8) (2026-11-21)
+
+
+### Features
+
+* report module license scopes in SBOMs ([#340](https://github.com/AmbiqAI/neuralspotx/issues/340)) ([58596db](https://github.com/AmbiqAI/neuralspotx/commit/58596dbf010c850b5fab638367ffbaa7e09f124c))
+
+
+### Bug Fixes
+
+* promote Ambiq SDK 5.2.32 registry pin ([#346](https://github.com/AmbiqAI/neuralspotx/issues/346)) ([9fc13e5](https://github.com/AmbiqAI/neuralspotx/commit/9fc13e5fb2f8f291896c69362e1fee2c7daf6001))
+
+
+### Documentation
+
+* propose the NSX 1.x compatibility policy ([#343](https://github.com/AmbiqAI/neuralspotx/issues/343)) ([3ee8d5d](https://github.com/AmbiqAI/neuralspotx/commit/3ee8d5d0987fa751cbf0f7129115fcdfba6abdcf))
+
 ## [0.9.7](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v0.9.6...neuralspotx-v0.9.7) (2026-11-20)
 
 
