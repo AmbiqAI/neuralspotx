@@ -177,9 +177,11 @@ use the recorded identities or fail verification. Plain lock would retain
 the existing Git pin if it still satisfies the effective inputs. If the
 new default requires a different revision, plain lock would stop before
 writing, identify the project and affected boards, and explain how to opt
-in. For example, `nsx lock --module nsx-audio` would explicitly refresh
-the SDK project in target closures containing that module. Developers
-could instead pin the original SDK revision in the app registry.
+in. A targeted update of a different project would also stop before writing
+if the wheel introduced this conflict in any requested board section where
+the SDK was unselected. To adopt the new SDK, select a module from its
+project in each affected target or request a full update with
+`nsx lock --update`. To retain the old SDK, pin its previous revision in the app registry.
 A first lock for a new app would use the new wheel's defaults.
 
 Two differences matter when using 0.x today. A writable plain `nsx lock`
