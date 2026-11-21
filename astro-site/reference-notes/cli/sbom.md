@@ -29,7 +29,7 @@ Packaged boards and `nsx-tooling` declare BSD-3-Clause at `.`, the root of their
 
 After upgrading from 0.9.8 or earlier, run `nsx lock` and review the changed
 packaged hashes and Git pins. Run `nsx sync` to refresh the default board and
-tooling before exporting again. For additional targets, `nsx configure --board <board>` runs the corresponding sync.
+tooling before exporting again.
 Keep using the original wheel to reproduce an older lock from a clean checkout.
 
 The same payload is available from Python:
