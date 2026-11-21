@@ -69,7 +69,7 @@ def publish_snapshot(app_dir: Path, config: dict[str, Any], modules: list[str]) 
             metadata.add(local)
             required.add(local)
     for name in modules:
-        directory = _module_source_dir_relative_to_app(name, registry, config)
+        directory = _module_source_dir_relative_to_app(name, registry, config, app_dir=app_dir)
         if directory.parts[:1] == ("modules",):
             required.add(directory / "CMakeLists.txt")
         path = participant_metadata_path(name, registry, app_dir, config, materialized=True)

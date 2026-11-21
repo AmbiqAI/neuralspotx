@@ -3,15 +3,17 @@
 from __future__ import annotations
 
 import tempfile
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
 from .._errors import NSXConfigError
+from ..models import ProjectEntry
 from ..nsx_lock import LockKind, NsxLock
 from ..nsx_lock._resolution import _looks_like_full_sha
 from ..project_config import (
+    _metadata_in_checkout,
     _metadata_path_relative_to_project,
     _module_clone_dir,
     _registry_project_entry,
@@ -84,10 +86,11 @@ def discovery_registry(
     refresh: set[str],
     isolated: frozenset[str],
     acquired: AcquiredSources | None,
-) -> Iterator[dict[str, Any]]:
+    manifests: dict[str, str],
+) -> Iterator[tuple[dict[str, Any], Callable[[str], None] | None]]:
     """Choose revisions for acquisition without changing the constraints recorded in the lock."""
     if previous is None and not isolated and acquired is None:
-        yield registry
+        yield registry, None
         return
     modules = dict(registry["modules"])
     if previous:
@@ -110,22 +113,27 @@ def discovery_registry(
                 modules[name] = {**module, "revision": row.commit}
 
     with _separate_new_checkouts(app_dir, registry, modules, acquired) as different:
-        with _board_sources(app_dir, registry, modules, isolated | different) as view:
+        with _board_sources(app_dir, registry, modules, isolated | different, manifests) as view:
             yield view
 
 
 @contextmanager
 def _board_sources(
-    app_dir: Path, registry: dict, modules: dict, isolated: frozenset[str]
-) -> Iterator[dict[str, Any]]:
+    app_dir: Path,
+    registry: dict,
+    modules: dict,
+    isolated: frozenset[str],
+    manifests: dict[str, str],
+) -> Iterator[tuple[dict[str, Any], Callable[[str], None] | None]]:
     if not isolated:
-        yield {**registry, "modules": modules}
+        yield {**registry, "modules": modules}, None
         return
 
     # Each board needs its own view of these projects, even when a preceding
     # board has already populated the shared modules/ directory. Acquisition
     # remains lazy: the traversal fetches only projects it actually reaches.
     projects = dict(registry["projects"])
+    ambiguous: dict[str, tuple[Path, ProjectEntry, Path]] = {}
     with tempfile.TemporaryDirectory(prefix="nsx-lock-metadata-") as temporary:
         for index, project_name in enumerate(sorted(isolated & projects.keys())):
             project = _registry_project_entry(registry, project_name)
@@ -148,7 +156,22 @@ def _board_sources(
                         ) from exc
                 else:
                     relative = _metadata_path_relative_to_project(metadata, project.checkout_path)
+                    if project.path is None and relative != metadata:
+                        ambiguous[name] = (metadata, project, root)
                 if ".." in relative.parts:
                     raise NSXConfigError(f"Module '{name}' metadata escapes its Git project.")
                 modules[name] = {**module, "metadata": str(root / relative)}
-        yield {**registry, "modules": modules, "projects": projects}
+
+        def bind_selector(name: str) -> None:
+            # A default checkout prefix can also be a real directory *inside*
+            # the repo. Disambiguate only after DFS has fetched this project.
+            if name in ambiguous:
+                selector, project, root = ambiguous[name]
+                relative = _metadata_in_checkout(selector, project, root)
+                modules[name]["metadata"] = str(root / relative)
+                manifests[name] = relative.as_posix()
+
+        yield (
+            {**registry, "modules": modules, "projects": projects},
+            bind_selector if ambiguous else None,
+        )

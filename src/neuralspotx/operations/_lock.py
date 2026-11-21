@@ -55,6 +55,7 @@ from ..project_config import (
     _effective_registry,
     _load_app_cfg,
     _load_registry,
+    _metadata_in_checkout,
     _metadata_path_relative_to_project,
     _nsx_tool_version,
     _registry_project_entry,
@@ -267,6 +268,7 @@ def _prepare_lock_inputs(
     local_names = _local_module_names(nsx_cfg)
     vendored_names = _vendored_module_names(nsx_cfg)
     used_locked_closure = False
+    isolated_manifests: dict[str, str] = {}
 
     try:
 
@@ -278,6 +280,7 @@ def _prepare_lock_inputs(
             }
 
         def discover(refresh: set[str], separate: frozenset[str]) -> list[str]:
+            isolated_manifests.clear()
             with discovery_registry(
                 app_dir,
                 registry,
@@ -285,7 +288,8 @@ def _prepare_lock_inputs(
                 refresh,
                 separate if write_side_effects else frozenset(),
                 acquired,
-            ) as metadata_registry:
+                isolated_manifests,
+            ) as (metadata_registry, bind_selector):
                 return _resolve_module_closure(
                     seed_module_names,
                     app_dir=app_dir,
@@ -293,6 +297,7 @@ def _prepare_lock_inputs(
                     registry=metadata_registry,
                     default_toolchain=DEFAULT_TOOLCHAIN,
                     acquire_missing=write_side_effects,
+                    after_acquire=bind_selector,
                 )
 
         initial = refresh_projects(
@@ -338,6 +343,7 @@ def _prepare_lock_inputs(
         vendored_names,
         used_locked_closure,
         authorship,
+        isolated_manifests,
     )
 
 
@@ -792,7 +798,9 @@ def _build_lock_for_app(
         )
 
     for name, receipt in lock.modules.items():
-        receipt.manifest_path = _locked_manifest_path(name, receipt, app_dir, registry)
+        receipt.manifest_path = prepared.isolated_manifests.get(name) or _locked_manifest_path(
+            name, receipt, app_dir, registry, prev_modules.get(name)
+        )
 
     warn_unpinned_git_constraints(lock)
     from ..module_registry._composition import board_composition
@@ -816,7 +824,11 @@ def _build_lock_for_app(
 
 
 def _locked_manifest_path(
-    name: str, receipt: ResolvedModule, app_dir: Path, registry: dict[str, Any]
+    name: str,
+    receipt: ResolvedModule,
+    app_dir: Path,
+    registry: dict[str, Any],
+    previous: ResolvedModule | None,
 ) -> str | None:
     """Locate the selected manifest within the tree hashed for this entry."""
     from ..metadata import registry_entry_for_module
@@ -842,10 +854,24 @@ def _locked_manifest_path(
             if receipt.kind not in (LockKind.GIT, LockKind.UNRESOLVED):
                 return None
             metadata = Path(entry.metadata)
+            # On a cold check the tree cannot disambiguate an implicit
+            # checkout prefix. Reuse its verified locator only for the same
+            # artifact and only if the current selector still allows it.
+            if (
+                project.path is None
+                and not metadata.is_absolute()
+                and previous
+                and previous.commit == receipt.commit
+                and previous.url == receipt.url
+                and previous.content_hash == receipt.content_hash
+                and previous.manifest_path
+                == _metadata_path_relative_to_project(metadata, project.checkout_path).as_posix()
+            ):
+                return previous.manifest_path
             candidate = (
                 metadata
                 if metadata.is_absolute()
-                else root / _metadata_path_relative_to_project(metadata, project.checkout_path)
+                else root / _metadata_in_checkout(metadata, project, root)
             )
     if receipt.kind in (LockKind.LOCAL, LockKind.VENDORED):
         if not candidate.is_file():

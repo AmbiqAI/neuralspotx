@@ -725,7 +725,9 @@ def _write_app_module_file(
 
     for name in ordered_module_names:
         try:
-            source_dir = _module_source_dir_relative_to_app(name, registry, nsx_cfg)
+            source_dir = _module_source_dir_relative_to_app(
+                name, registry, nsx_cfg, app_dir=app_dir
+            )
         except (KeyError, ValueError, TypeError):
             continue
         if source_dir.parts[:1] != ("modules",):
@@ -956,6 +958,15 @@ def _metadata_path_relative_to_project(metadata: Path, project_path: str | None)
     return Path(metadata.name)
 
 
+def _metadata_in_checkout(metadata: Path, project: ProjectEntry, checkout: Path) -> Path:
+    """Resolve a selector inside a checkout, preserving legacy repository-relative paths."""
+    if project.path is None and not metadata.is_absolute():
+        app_relative = _metadata_path_relative_to_project(metadata, project.checkout_path)
+        if app_relative != metadata and (checkout / app_relative).is_file():
+            return app_relative
+    return _metadata_path_relative_to_project(metadata, project.path)
+
+
 def _is_packaged_module(registry: dict[str, Any], module_name: str) -> bool:
     """Return whether *module_name* should resolve from packaged content."""
 
@@ -989,6 +1000,8 @@ def _module_source_dir_relative_to_app(
     module_name: str,
     registry: dict[str, Any],
     nsx_cfg: dict[str, Any],
+    *,
+    app_dir: Path | None = None,
 ) -> Path:
     """Resolve a module's on-disk directory relative to the app root.
 
@@ -1034,10 +1047,13 @@ def _module_source_dir_relative_to_app(
         return _vendored_target_dir(Path("."), module_name, entry.metadata)
 
     project_entry = _registry_project_entry(registry, entry.project)
-    metadata_rel = _metadata_path_relative_to_project(
-        Path(entry.metadata), project_entry.checkout_path
+    root = _module_clone_dir(Path("."), entry.project, registry)
+    metadata_rel = (
+        _metadata_in_checkout(Path(entry.metadata), project_entry, app_dir / root)
+        if app_dir
+        else _metadata_path_relative_to_project(Path(entry.metadata), project_entry.path)
     )
-    return _module_clone_dir(Path("."), entry.project, registry) / metadata_rel.parent
+    return root / metadata_rel.parent
 
 
 def _module_project_dir_relative_to_app(

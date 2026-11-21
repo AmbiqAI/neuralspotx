@@ -24,6 +24,7 @@ class LockInputs:
     vendored_names: set[str]
     used_locked_closure: bool = False
     authorship: RegistryAuthorship = field(default_factory=RegistryAuthorship)
+    isolated_manifests: dict[str, str] = field(default_factory=dict)
 
 
 def selected_git_modules(inputs: LockInputs, selected: frozenset[str]) -> frozenset[str]:

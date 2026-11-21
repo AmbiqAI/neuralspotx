@@ -267,13 +267,23 @@ def test_board_specific_metadata_after_cold_targeted_update(
         sync_app_impl(tmp_path, board=board, frozen=True)
 
 
+@pytest.mark.parametrize("nested", [False, True])
 def test_new_board_discovers_dependencies_from_its_own_revision(
-    tmp_path: Path, registry: dict[str, Any]
+    tmp_path: Path, registry: dict[str, Any], nested: bool
 ) -> None:
     from neuralspotx.operations import sync_app_impl
 
     # An app-relative selector can refer to the default checkout even when
     # the project does not explicitly set its path.
+    driver = tmp_path / "origins/driver"
+    metadata = driver / "nsx-module.yaml"
+    if nested:
+        nested_dir = driver / "modules/driver"
+        nested_dir.mkdir(parents=True)
+        metadata.rename(nested_dir / metadata.name)
+        metadata = nested_dir / metadata.name
+        git(driver, "add", "-A")
+        git(driver, "commit", "-m", "nest module inside repository")
     del registry["projects"]["driver"]["path"]
     registry["modules"]["driver"]["metadata"] = "modules/driver/nsx-module.yaml"
     manifest_path = tmp_path / "nsx.yml"
@@ -283,8 +293,6 @@ def test_new_board_discovers_dependencies_from_its_own_revision(
     manifest_path.write_text(yaml.safe_dump(manifest))
     assert cli.main(["lock", "--app-dir", str(tmp_path)]) == 0
     original = pins(tmp_path)
-    driver = tmp_path / "origins/driver"
-    metadata = driver / "nsx-module.yaml"
     definition = yaml.safe_load(metadata.read_bytes())
     definition["depends"]["required"] = ["sdk"]
     metadata.write_bytes(yaml.safe_dump(definition).encode())
@@ -298,4 +306,5 @@ def test_new_board_discovers_dependencies_from_its_own_revision(
     assert current[BOARDS[1]]["driver"][0] == git(driver, "rev-parse", "HEAD")
     assert "sdk" in current[BOARDS[1]]
     shutil.rmtree(tmp_path / "modules")
+    assert cli.main(["lock", "--check", "--app-dir", str(tmp_path)]) == 0
     sync_app_impl(tmp_path, board=BOARDS[1], frozen=True)

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -42,6 +43,7 @@ def _resolve_module_closure(
     registry: dict[str, Any],
     default_toolchain: str,
     acquire_missing: bool = False,
+    after_acquire: Callable[[str], None] | None = None,
 ) -> list[str]:
     with metadata_cache_scope():
         return _resolve_module_closure_inner(
@@ -51,6 +53,7 @@ def _resolve_module_closure(
             registry=registry,
             default_toolchain=default_toolchain,
             acquire_missing=acquire_missing,
+            after_acquire=after_acquire,
         )
 
 
@@ -62,6 +65,7 @@ def _resolve_module_closure_inner(
     registry: dict[str, Any],
     default_toolchain: str,
     acquire_missing: bool = False,
+    after_acquire: Callable[[str], None] | None = None,
 ) -> list[str]:
     target = nsx_cfg.get("target", {})
     board = target.get("board")
@@ -119,6 +123,9 @@ def _resolve_module_closure_inner(
                 local_modules=local_names,
                 vendored_modules=vendored_names,
             )
+
+            if after_acquire is not None:
+                after_acquire(module_name)
 
         if module_name in opaque_names:
             if app_dir is None:
