@@ -90,6 +90,21 @@ def _fake_vendor(monkeypatch: pytest.MonkeyPatch, vendored_dir: Path, content: s
     return calls
 
 
+def test_frozen_git_destination_accepts_windows_lock_on_posix(tmp_path: Path) -> None:
+    ctx = _ctx(tmp_path, frozen=True)
+    ctx.registry.update({
+        "projects": {
+            "demo-proj": {"path": "modules/demo-proj", "url": "https://example.com/demo.git"}
+        },
+        "modules": {
+            "demo-mod": {"project": "demo-proj", "metadata": "nsx-module.yaml", "revision": "v1"}
+        },
+    })
+    entry = _entry("sha256:" + "a" * 64)
+    entry.vendored_at = r"modules\demo-proj"
+    assert _sync._resolve_vendored_dir(ctx, "demo-mod", entry) == tmp_path / "modules/demo-proj"
+
+
 def test_frozen_fetches_missing_module_at_locked_commit(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
@@ -701,3 +716,27 @@ def test_frozen_sync_interrupted_cmake_refresh_leaves_nothing_then_retry_passes(
     assert hash_tree(cmake_nsx, exclude_names=NSX_TOOLING_AUTOGEN_FILES) == _packaged_cmake_hash(
         tmp_path
     )
+
+
+def test_frozen_origin_credentials_are_absent_from_git_output(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capfd: pytest.CaptureFixture[str]
+) -> None:
+    from neuralspotx.subprocess_utils import _git
+
+    token = "fixture-query-value"
+    entry = _entry(_locked_hash(tmp_path, "locked"))
+    entry.url = f"https://example.invalid/repo.git?test={token}"
+    # A missing local repo makes real Git echo the token-bearing path during
+    # both fetch and fallback clone without contacting an external service.
+    monkeypatch.setenv("GIT_CONFIG_COUNT", "1")
+    monkeypatch.setenv("GIT_CONFIG_KEY_0", f"url.{(tmp_path / token).as_uri()}.insteadOf")
+    monkeypatch.setenv("GIT_CONFIG_VALUE_0", entry.url)
+    monkeypatch.setattr(_git, "GIT_PROTOCOL_ALLOWLIST_FLAGS", ("-c", "protocol.file.allow=always"))
+    monkeypatch.setenv("NSX_DISABLE_MODULE_CACHE", "1")
+    ctx = _ctx(tmp_path, frozen=True)
+    destination = tmp_path / entry.vendored_at
+    with pytest.raises(NSXIntegrityError, match=r"resolved\.url in nsx.lock") as failure:
+        _sync_fetchable_entry(ctx, "demo-mod", entry, destination, set())
+    output = capfd.readouterr()
+    assert token not in output.out + output.err + str(failure.value)
+    assert not destination.exists()
