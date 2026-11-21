@@ -6,9 +6,8 @@ The names exposed here form the **public Python API** of NSX. Anything
 importable from a private ``_<name>`` module is, by convention,
 internal and may change without notice.
 
-Every name here is Provisional until 1.0; see
-https://ambiqai.github.io/neuralspotx/reference/releases/ for what that
-means and how to pin. ``tests/test_public_surface_doc.py`` keeps the
+The exports are provisional in 0.x. The documented 1.x interfaces follow
+the compatibility policy at https://ambiqai.github.io/neuralspotx/reference/releases/. ``tests/test_public_surface_doc.py`` keeps the
 published symbol catalog and ``__all__`` from drifting.
 """
 

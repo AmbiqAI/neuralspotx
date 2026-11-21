@@ -18,7 +18,7 @@ the argument parser. Many commands also support `--json` for scripting, and
 ## [Python API](/neuralspotx/reference/api/)
 
 The names exported from `neuralspotx`, with their signatures, parameters and return types.
-All of them are currently Provisional, which each page says once at the top.
+Each page links to the compatibility policy for its documented exports.
 
 ## [Configuration](/neuralspotx/reference/config/)
 

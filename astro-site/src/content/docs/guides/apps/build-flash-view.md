@@ -60,7 +60,7 @@ shared, so separate build directories do not isolate dependency updates.
 
 A bootstrapped app created with current NSX, or an existing app prepared with
 `nsx lock` followed by `nsx sync`, can be built with standard CMake commands.
-For multiple targets, prepare each board with `nsx sync --board <board>`.
+For multiple targets, prepare each board with `nsx configure --frozen --board <board>`.
 The recipient needs CMake 3.24 or newer, Ninja, and the selected compiler:
 
 ```sh
