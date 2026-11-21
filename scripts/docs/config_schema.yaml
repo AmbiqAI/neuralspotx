@@ -193,6 +193,7 @@ schemas:
         provider: Ambiq
       support:
         ambiqsuite: true
+        corstone: false
         zephyr: true
       build:
         cmake:
