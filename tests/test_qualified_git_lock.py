@@ -315,8 +315,9 @@ def test_new_board_discovers_dependencies_from_its_own_revision(
     sync_app_impl(tmp_path, board=BOARDS[1], frozen=True)
 
 
+@pytest.mark.parametrize("renamed", [False, True])
 def test_cold_conflict_reports_qualified_pin_before_new_board_requirements(
-    tmp_path: Path, registry: dict[str, Any], capsys: pytest.CaptureFixture[str]
+    tmp_path: Path, registry: dict[str, Any], capsys: pytest.CaptureFixture[str], renamed: bool
 ) -> None:
     receipt = tmp_path / "nsx.lock"
     shutil.copyfile(FIXTURE / "nsx.lock", receipt)
@@ -328,9 +329,22 @@ def test_cold_conflict_reports_qualified_pin_before_new_board_requirements(
     git(sdk, "commit", "-am", "limit supported boards")
     git(sdk, "tag", "v2")
     registry["modules"]["sdk"]["revision"] = "v2"
+    project = "sdk"
+    if renamed:
+        project = "new-sdk"
+        registry["projects"][project] = registry["projects"].pop("sdk")
+        registry["modules"]["sdk"]["project"] = project
     assert cli.main(["lock", "--app-dir", str(tmp_path)]) != 0
     message = capsys.readouterr().err
     for board in BOARDS:
-        assert f"board '{board}', project 'sdk'" in message
+        assert f"board '{board}', project '{project}'" in message
     assert "nsx lock --module sdk" in message
     assert receipt.read_bytes() == (FIXTURE / "nsx.lock").read_bytes()
+    # The old checkout can also have been restored before the update attempt.
+    # Neither retry may use its compatibility metadata to approve v2.
+    shutil.copytree(sdk, tmp_path / "modules/sdk", dirs_exist_ok=True)
+    git(tmp_path / "modules/sdk", "checkout", "v1")
+    for flags in (["--module", "sdk"], ["--update"]):
+        assert cli.main(["lock", *flags, "--app-dir", str(tmp_path)]) != 0
+        assert "incompatible with target" in capsys.readouterr().err
+        assert receipt.read_bytes() == (FIXTURE / "nsx.lock").read_bytes()

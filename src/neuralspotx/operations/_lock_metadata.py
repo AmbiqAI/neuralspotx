@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 from .._errors import NSXConfigError
+from ..constants import PACKAGED_PROJECT_NAME
 from ..models import ProjectEntry
 from ..module_registry._vendoring import _ensure_module_cloned
 from ..nsx_lock import LockKind, NsxLock
@@ -99,40 +100,60 @@ def discovery_registry(
         return
     modules = dict(registry["modules"])
     projects = dict(registry["projects"])
+    private = set(isolated)
     if previous:
         for name, row in previous.modules.items():
             module = modules.get(name)
+            if not module or row.kind != LockKind.GIT or not row.url or not row.commit:
+                continue
+            if not _looks_like_full_sha(row.commit):
+                continue
+            project = _registry_project_entry(registry, module["project"])
+            if project.local_path:
+                continue
+            moved = row.project != project.name
+            new_url = row.url != project.url
+            new_ref = row.constraint != (module.get("revision") or "main")
             if (
-                not module
-                or row.kind != LockKind.GIT
-                or row.project in refresh
-                or not row.commit
-                or not _looks_like_full_sha(row.commit)
+                (moved and name in authorship.module_projects)
+                or (new_url and project.name in authorship.project_urls)
+                or (new_ref and name in authorship.module_revisions)
             ):
                 continue
-            if row.project != module["project"]:
+            if (moved or new_url or new_ref) and project.name != PACKAGED_PROJECT_NAME:
+                # A check of new defaults can report identity drift without
+                # installing the new artifact. A writable retry must validate
+                # the selected revision without consuming an old checkout.
+                if not read_only or project.name not in refresh:
+                    private.add(project.name)
+            if project.name in refresh:
                 continue
-            project = _registry_project_entry(registry, row.project)
-            if project.local_path or not row.url:
-                continue
-            if (
-                row.constraint != (module.get("revision") or "main")
-                and name in authorship.module_revisions
-            ):
-                continue
-            if row.url != project.url:
-                if row.project in authorship.project_urls:
-                    continue
-                projects[row.project] = {**projects[row.project], "url": row.url}
-            # An unselected wheel default may point to an incompatible board or
-            # dependency graph. Discover the qualified graph first. Resolution
-            # still uses the effective registry to accept an alias or report drift.
-            modules[name] = {**module, "revision": row.commit}
+            if moved or new_url:
+                # A consolidated project can contain modules from different old
+                # repositories. Address each original artifact independently.
+                key = f"qualified:{name}"
+                while key in projects:
+                    key += ":"
+                projects[key] = {"url": row.url, "path": row.vendored_at}
+                private.add(key)
+                modules[name] = {
+                    **module,
+                    "project": key,
+                    "revision": row.commit,
+                    "metadata": row.manifest_path or module["metadata"],
+                }
+            else:
+                modules[name] = {**module, "revision": row.commit}
 
     registry = {**registry, "projects": projects}
     with _separate_new_checkouts(app_dir, registry, modules, acquired) as different:
         with _board_sources(
-            app_dir, registry, modules, isolated | different, manifests, read_only=read_only
+            app_dir,
+            registry,
+            modules,
+            frozenset(private | different),
+            manifests,
+            read_only=read_only,
         ) as view:
             yield view
 

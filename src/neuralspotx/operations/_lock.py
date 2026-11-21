@@ -244,6 +244,7 @@ def _prepare_lock_inputs(
     board: str | None = None,
     previous: NsxLock | None = None,
     write_side_effects: bool = True,
+    refresh_all: bool = False,
     use_locked_closure_on_metadata_error: bool = False,
     selected: frozenset[str] = frozenset(),
     isolated: frozenset[str] = frozenset(),
@@ -328,6 +329,8 @@ def _prepare_lock_inputs(
             return names
 
     initial = refresh_projects(set(seed_module_names) | set(previous.modules if previous else ()))
+    if refresh_all:
+        initial = set(registry["projects"])
     module_names = discover(initial, isolated)
     if selected and previous and write_side_effects:
         # A newly reachable (or removed) alias can change which projects this
@@ -1175,8 +1178,9 @@ def _prepare_board_lock(
     prepared = prepared or _prepare_lock_inputs(
         app_dir,
         board=board,
-        previous=previous,
+        previous=on_disk_lock,
         write_side_effects=not check,
+        refresh_all=update and not modules,
         use_locked_closure_on_metadata_error=bool(check and not update and on_disk_lock),
         isolated=isolated,
         acquired=acquired,
