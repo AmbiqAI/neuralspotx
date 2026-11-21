@@ -541,7 +541,6 @@ def test_frozen_restore_uses_recorded_origin(
 
     sdk = qualified_sdk
     project = sdk.registry["projects"]["fixture-sdk"]
-    first = project["url"]
     project["url"] = "https://example.invalid/mirror.git"
     tree = sdk.root / "modules/fixture-sdk"
     shutil.rmtree(tree)
@@ -560,7 +559,8 @@ def test_frozen_restore_uses_recorded_origin(
     trace.write_text("")
     capfd.readouterr()
     assert sdk.run("sync", "--frozen") != 0
-    assert first in capfd.readouterr().err
+    diagnostic = capfd.readouterr().err
+    assert "nsx.lock entry 'fixture-sdk' (resolved.url) on example.invalid" in diagnostic
     assert "/mirror" not in trace.read_text()
     assert not tree.exists()
     assert (sdk.root / "nsx.lock").read_bytes() == sdk.receipt

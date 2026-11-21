@@ -718,14 +718,15 @@ def test_frozen_sync_interrupted_cmake_refresh_leaves_nothing_then_retry_passes(
     )
 
 
+@pytest.mark.parametrize("suffix", ["/repo.git?test=", "/private/"])
 def test_frozen_origin_credentials_are_absent_from_git_output(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capfd: pytest.CaptureFixture[str]
+    suffix: str, tmp_path: Path, monkeypatch: pytest.MonkeyPatch, capfd: pytest.CaptureFixture[str]
 ) -> None:
     from neuralspotx.subprocess_utils import _git
 
     token = "fixture-query-value"
     entry = _entry(_locked_hash(tmp_path, "locked"))
-    entry.url = f"https://example.invalid/repo.git?test={token}"
+    entry.url = f"https://example.invalid{suffix}{token}"
     # A missing local repo makes real Git echo the token-bearing path during
     # both fetch and fallback clone without contacting an external service.
     monkeypatch.setenv("GIT_CONFIG_COUNT", "1")
@@ -735,7 +736,7 @@ def test_frozen_origin_credentials_are_absent_from_git_output(
     monkeypatch.setenv("NSX_DISABLE_MODULE_CACHE", "1")
     ctx = _ctx(tmp_path, frozen=True)
     destination = tmp_path / entry.vendored_at
-    with pytest.raises(NSXIntegrityError, match=r"resolved\.url in nsx.lock") as failure:
+    with pytest.raises(NSXIntegrityError, match=r"resolved\.url") as failure:
         _sync_fetchable_entry(ctx, "demo-mod", entry, destination, set())
     output = capfd.readouterr()
     assert token not in output.out + output.err + str(failure.value)

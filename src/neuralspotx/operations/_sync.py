@@ -6,10 +6,11 @@ import re
 import shutil
 import subprocess
 from collections.abc import Iterator
-from contextlib import contextmanager, nullcontext
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from .._errors import (
     NSXConfigError,
@@ -484,11 +485,17 @@ def _restore_locked_git(name: str, entry: ResolvedModule, destination: Path, com
             "or run `nsx lock` to record the source.",
             module=name,
         )
-    # Git can include its raw URL in both stdout and stderr on failure.
-    plain_origin = re.fullmatch(r"(?:https?|ssh|git)://[\w.:-]+/[\w./-]+", url)
-    origin = url if plain_origin else "resolved.url in nsx.lock"
+    # A path component can itself be a credential. Identify the exact lock
+    # field and host, and keep raw Git output out of user-facing diagnostics.
+    origin = f"nsx.lock entry '{name}' (resolved.url)"
     try:
-        with nullcontext() if plain_origin else capture_git_output():
+        host = urlsplit(url).hostname
+    except ValueError:
+        host = None
+    if host and re.fullmatch(r"[\w.:-]+", host):
+        origin += f" on {host}"
+    try:
+        with capture_git_output():
             _vendor_git_tree_at_commit(url, destination, commit, content_hash=entry.content_hash)
     except subprocess.TimeoutExpired as exc:
         raise NSXTimeoutError(
