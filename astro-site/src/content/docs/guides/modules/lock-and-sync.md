@@ -146,15 +146,24 @@ with neuralspotx: after upgrading neuralspotx, run `nsx lock` once before using 
 `--frozen` is also accepted by `configure`, `build`, `flash` and `view`, where it applies
 to the implicit sync those commands would otherwise perform.
 
-:::tip[The CI recipe]
+### Two CI workflows
+
+To **rebuild a qualified commit**, check out its app and lock together, then run:
+
 ```bash
-nsx lock --check
 nsx sync --frozen
 nsx build --frozen
 ```
-The first proves the lock matches the manifest, the second proves the tree matches the
-lock, and the third builds without either being allowed to move.
-:::
+
+The sync step verifies the selected board's sources before the build and
+restores any missing fetchable modules. Use the tool version recorded in the lock
+when the packaged CMake files have changed.
+
+To **enforce today's registry defaults** as well, run `nsx lock --check` before those
+two commands. If a new wheel changes the effective SDK revision from v1 to v2,
+this check reports drift and exits nonzero without writing the lock. An app that
+explicitly pins v1 keeps that override. Use `nsx lock --check --update` to check
+for movement in upstream Git refs too.
 
 ## Proposed 1.x lock behavior
 
@@ -166,7 +175,8 @@ closure, effective registry inputs, and local sources are otherwise unchanged.
 
 | Operation after upgrading the tool | Proposed outcome |
 | --- | --- |
-| `nsx sync --frozen` | Materialize the selected board's driver at A, verify the recorded content hash, and leave the lock untouched. Report an unavailable commit or mismatched content. |
+| `nsx sync --frozen` | Use verified local content or fetch A from the Git URL recorded in the lock. Verify the content hash and leave the lock untouched. If that origin cannot supply A, identify the recorded source and fail without trying the current registry's mirror. |
+| `nsx lock --check` | Report drift with a nonzero exit if the wheel changes the effective SDK default. Leave the lock untouched. |
 | `nsx lock` | Keep A and its recorded source identity and content hash for both boards. Preserve unrelated Git pins. |
 | `nsx lock --module my-driver` | Refresh the selected registry project wherever it occurs in the requested targets. Its modules can move to B together. Unrelated compatible Git projects keep their pins. |
 | A full lock fails while preparing the second board | Leave the entire previous lock byte-for-byte intact so the developer can retry. |
