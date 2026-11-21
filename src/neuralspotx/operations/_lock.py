@@ -65,7 +65,7 @@ from ..project_config import (
 )
 from ._common import OutdatedStatus, _log
 from ._lock_diagnostics import warn_unpinned_git_constraints
-from ._lock_metadata import discovery_registry, independently_locked_projects
+from ._lock_metadata import AcquiredSources, discovery_registry, independently_locked_projects
 from ._lock_selection import (
     LockInputs,
     qualified_pin_conflicts,
@@ -246,6 +246,7 @@ def _prepare_lock_inputs(
     use_locked_closure_on_metadata_error: bool = False,
     selected: frozenset[str] = frozenset(),
     isolated: frozenset[str] = frozenset(),
+    acquired: AcquiredSources | None = None,
 ) -> LockInputs:
     """Resolve configuration and closure once, before targeted name validation."""
     nsx_cfg = _load_app_cfg(app_dir)
@@ -283,6 +284,7 @@ def _prepare_lock_inputs(
                 previous if write_side_effects else None,
                 refresh,
                 separate if write_side_effects else frozenset(),
+                acquired,
             ) as metadata_registry:
                 return _resolve_module_closure(
                     seed_module_names,
@@ -995,11 +997,19 @@ def lock_app_impl(
     with app_lock(app_dir):
         conflicts: list[str] = []
         prior = _previous_sections(app_dir, board, check=False)
+        acquired: AcquiredSources | None = {} if len(boards) > 1 else None
         isolated = independently_locked_projects(
             prior, frozenset(modules or ()) if update else frozenset()
         )
         prepared = _prepare_targeted_inputs(
-            app_dir, boards, update, modules, check=False, prior=prior, isolated=isolated
+            app_dir,
+            boards,
+            update,
+            modules,
+            check=False,
+            prior=prior,
+            isolated=isolated,
+            acquired=acquired,
         )
         results = [
             _prepare_board_lock(
@@ -1010,6 +1020,7 @@ def lock_app_impl(
                 check=False,
                 conflicts=conflicts,
                 isolated=isolated,
+                acquired=acquired,
                 prepared=prepared.get(b),
                 previous=prior.get(normalize_board(b)),
             )
@@ -1071,6 +1082,7 @@ def _prepare_targeted_inputs(
     check: bool,
     prior: dict[str, NsxLock],
     isolated: frozenset[str] = frozenset(),
+    acquired: AcquiredSources | None = None,
 ) -> dict[str, LockInputs]:
     if not update or not modules:
         return {}
@@ -1082,6 +1094,7 @@ def _prepare_targeted_inputs(
             previous=prior.get(normalize_board(board)),
             selected=frozenset(modules),
             isolated=isolated,
+            acquired=acquired,
         )
         for board in boards
     }
@@ -1107,6 +1120,7 @@ def _prepare_board_lock(
     previous: NsxLock | None,
     conflicts: list[str] | None = None,
     isolated: frozenset[str] = frozenset(),
+    acquired: AcquiredSources | None = None,
     prepared: LockInputs | None = None,
 ) -> NsxLock:
     on_disk_lock = previous  # capture before update-mutation
@@ -1128,6 +1142,7 @@ def _prepare_board_lock(
         write_side_effects=not check,
         use_locked_closure_on_metadata_error=bool(check and not update and on_disk_lock),
         isolated=isolated,
+        acquired=acquired,
     )
     lock = _build_lock_for_app(
         app_dir,
@@ -1154,7 +1169,7 @@ def _prepare_board_lock(
         info(f"{rel} is OUT OF DATE:")
         for line_text in diff:
             info(f"  {line_text}")
-        info("Run `nsx lock` to refresh.")
+        info("Run `nsx lock` for app changes or `nsx lock --module NAME` to adopt a Git update.")
         raise NSXError(1)
 
     if previous and conflicts is not None:

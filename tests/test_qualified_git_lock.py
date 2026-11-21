@@ -192,13 +192,17 @@ def test_cold_plain_lock_discovers_dependencies_from_pinned_commit(
     assert cli.main(["sync", "--app-dir", str(tmp_path), "--frozen"]) == 0
 
 
+@pytest.mark.parametrize("empty_revision", [False, True])
 def test_authored_project_provides_sole_module_revision(
-    tmp_path: Path, registry: dict[str, Any]
+    tmp_path: Path, registry: dict[str, Any], empty_revision: bool
 ) -> None:
     manifest = yaml.safe_load((tmp_path / "nsx.yml").read_text())
     sdk_project = registry["projects"].pop("sdk")
     sdk_module = registry["modules"].pop("sdk")
-    del sdk_module["revision"]
+    if empty_revision:
+        sdk_module["revision"] = ""
+    else:
+        del sdk_module["revision"]
     sdk_project["revision"] = "v1"
     manifest["module_registry"] = {"projects": {"sdk": sdk_project}, "modules": {"sdk": sdk_module}}
     (tmp_path / "nsx.yml").write_text(yaml.safe_dump(manifest))
@@ -261,3 +265,33 @@ def test_board_specific_metadata_after_cold_targeted_update(
         if (tmp_path / "modules").exists():
             shutil.rmtree(tmp_path / "modules")
         sync_app_impl(tmp_path, board=board, frozen=True)
+
+
+def test_new_board_discovers_dependencies_from_its_own_revision(
+    tmp_path: Path, registry: dict[str, Any]
+) -> None:
+    from neuralspotx.operations import sync_app_impl
+
+    manifest_path = tmp_path / "nsx.yml"
+    manifest = yaml.safe_load(manifest_path.read_text())
+    manifest["modules"] = [{"name": "driver"}]
+    manifest["targets"]["supported"] = [BOARDS[0]]
+    manifest_path.write_text(yaml.safe_dump(manifest))
+    assert cli.main(["lock", "--app-dir", str(tmp_path)]) == 0
+    original = pins(tmp_path)
+    driver = tmp_path / "origins/driver"
+    metadata = driver / "nsx-module.yaml"
+    definition = yaml.safe_load(metadata.read_bytes())
+    definition["depends"]["required"] = ["sdk"]
+    metadata.write_bytes(yaml.safe_dump(definition).encode())
+    git(driver, "commit", "-am", "require SDK")
+    shutil.rmtree(tmp_path / "modules")
+    manifest["targets"]["supported"] = list(BOARDS)
+    manifest_path.write_text(yaml.safe_dump(manifest))
+    assert cli.main(["lock", "--app-dir", str(tmp_path)]) == 0
+    current = pins(tmp_path)
+    assert current[BOARDS[0]] == original[BOARDS[0]]
+    assert current[BOARDS[1]]["driver"][0] == git(driver, "rev-parse", "HEAD")
+    assert "sdk" in current[BOARDS[1]]
+    shutil.rmtree(tmp_path / "modules")
+    sync_app_impl(tmp_path, board=BOARDS[1], frozen=True)
