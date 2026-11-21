@@ -48,6 +48,7 @@ from ..nsx_lock import (
 )
 from ..nsx_lock._io import _write_lock_file
 from ..nsx_lock._models import is_portable_manifest_path
+from ..nsx_lock._resolution import _looks_like_full_sha
 from ..project_config import (
     RegistryAuthorship,
     _board_key_for_app,
@@ -55,7 +56,6 @@ from ..project_config import (
     _effective_registry,
     _load_app_cfg,
     _load_registry,
-    _lock_board_key,
     _metadata_path_relative_to_project,
     _nsx_tool_version,
     _registry_project_entry,
@@ -237,6 +237,32 @@ def _apply_active_target(nsx_cfg: dict[str, Any], target: ResolvedTarget) -> dic
     return cfg
 
 
+def _registry_for_locked_metadata(registry: dict, previous: NsxLock) -> dict:
+    """Acquire missing metadata at compatible recorded commits during closure discovery.
+
+    The resolver still sees the original revision constraints when writing the lock.
+    Only the acquisition view changes. Existing app-local trees keep precedence.
+    """
+    modules = dict(registry["modules"])
+    for name, row in previous.modules.items():
+        module = modules.get(name)
+        if (
+            not module
+            or row.kind != LockKind.GIT
+            or not row.commit
+            or not _looks_like_full_sha(row.commit)
+        ):
+            continue
+        if row.project != module.get("project") or row.constraint != (
+            module.get("revision") or "main"
+        ):
+            continue
+        project = _registry_project_entry(registry, row.project)
+        if row.url == project.url and not project.local_path:
+            modules[name] = {**module, "revision": row.commit}
+    return {**registry, "modules": modules}
+
+
 def _prepare_lock_inputs(
     app_dir: Path,
     *,
@@ -270,7 +296,9 @@ def _prepare_lock_inputs(
             seed_module_names,
             app_dir=app_dir,
             nsx_cfg=nsx_cfg,
-            registry=registry,
+            registry=_registry_for_locked_metadata(registry, previous)
+            if previous and write_side_effects
+            else registry,
             default_toolchain=DEFAULT_TOOLCHAIN,
             acquire_missing=write_side_effects,
         )
@@ -757,8 +785,6 @@ def _build_lock_for_app(
     for name, receipt in lock.modules.items():
         receipt.manifest_path = _locked_manifest_path(name, receipt, app_dir, registry)
 
-    if selected is not None or (previous is not None and write_side_effects):
-        validate_materialization(app_dir, lock)
     warn_unpinned_git_constraints(lock)
     from ..module_registry._composition import board_composition
 
@@ -942,7 +968,10 @@ def lock_app_impl(
     # so it does not need the per-app advisory lock and CI can verify
     # multiple apps in parallel without contention.
     if check:
-        prepared = _prepare_targeted_inputs(app_dir, boards, update, modules, check=True)
+        prior = _previous_sections(app_dir, board, check=True)
+        prepared = _prepare_targeted_inputs(
+            app_dir, boards, update, modules, check=True, prior=prior
+        )
         results = [
             _prepare_board_lock(
                 app_dir,
@@ -951,13 +980,17 @@ def lock_app_impl(
                 modules=modules,
                 check=True,
                 prepared=prepared.get(b),
+                previous=prior.get(normalize_board(b)),
             )
             for b in boards
         ]
         return results[0]
     with app_lock(app_dir):
         conflicts: list[str] = []
-        prepared = _prepare_targeted_inputs(app_dir, boards, update, modules, check=False)
+        prior = _previous_sections(app_dir, board, check=False)
+        prepared = _prepare_targeted_inputs(
+            app_dir, boards, update, modules, check=False, prior=prior
+        )
         results = [
             _prepare_board_lock(
                 app_dir,
@@ -965,9 +998,9 @@ def lock_app_impl(
                 update=update,
                 modules=modules,
                 check=False,
-                board_restricted=board is not None,
                 conflicts=conflicts,
                 prepared=prepared.get(b),
+                previous=prior.get(normalize_board(b)),
             )
             for b in boards
         ]
@@ -1005,6 +1038,19 @@ def lock_app_impl(
     return results[0]
 
 
+def _previous_sections(app_dir: Path, board: str | None, *, check: bool) -> dict[str, NsxLock]:
+    try:
+        combined = read_lock_file(app_dir)
+    except NSXLockError as exc:
+        if board is not None and not check and len(_lock_boards_for(app_dir, None)) > 1:
+            raise NSXLockError(
+                f"{exc} Run `nsx lock` without --board to regenerate all target sections."
+            ) from exc
+        _log.warning("%s%s", exc, "" if check else " (regenerating)")
+        return {}
+    return combined.targets if combined else {}
+
+
 def _prepare_targeted_inputs(
     app_dir: Path,
     boards: list[str],
@@ -1012,11 +1058,17 @@ def _prepare_targeted_inputs(
     modules: list[str] | None,
     *,
     check: bool,
+    prior: dict[str, NsxLock],
 ) -> dict[str, LockInputs]:
     if not update or not modules:
         return {}
     prepared = {
-        board: _prepare_lock_inputs(app_dir, board=board, write_side_effects=not check)
+        board: _prepare_lock_inputs(
+            app_dir,
+            board=board,
+            write_side_effects=not check,
+            previous=prior.get(normalize_board(board)),
+        )
         for board in boards
     }
     present = {name for inputs in prepared.values() for name in inputs.module_names}
@@ -1038,28 +1090,10 @@ def _prepare_board_lock(
     update: bool = False,
     modules: list[str] | None = None,
     check: bool = False,
-    board_restricted: bool = False,
+    previous: NsxLock | None,
     conflicts: list[str] | None = None,
     prepared: LockInputs | None = None,
 ) -> NsxLock:
-    board_key = _lock_board_key(_load_app_cfg(app_dir), board)
-    try:
-        previous = read_lock(app_dir, board_key)
-    except NSXLockError as exc:
-        if board_restricted and len(_lock_boards_for(app_dir, None)) > 1:
-            raise NSXLockError(
-                f"{exc} Run `nsx lock` without --board to regenerate all target sections."
-            ) from exc
-        # Older / unsupported on-disk schema. Read-only paths
-        # (``check=True``) just log; ``nsx lock`` regenerates from
-        # scratch on the next write.
-        from .._logging import get_logger
-
-        if check:
-            get_logger(__name__).warning("%s", exc)
-        else:
-            get_logger(__name__).warning("%s (regenerating)", exc)
-        previous = None
     on_disk_lock = previous  # capture before update-mutation
 
     if update:
@@ -1089,6 +1123,8 @@ def _prepare_board_lock(
     lock_file = lock_path(app_dir)
 
     if check:
+        if update:
+            validate_materialization(app_dir, lock)
         diff = _diff_locks(on_disk_lock, lock)
         rel = (
             lock_file.relative_to(app_dir.parent)
@@ -1107,7 +1143,7 @@ def _prepare_board_lock(
 
     if previous and conflicts is not None:
         refreshed = (
-            selected_git_modules(prepared, frozenset(modules))
+            frozenset(modules) | selected_git_modules(prepared, frozenset(modules))
             if update and modules
             else frozenset()
         )
@@ -1115,6 +1151,7 @@ def _prepare_board_lock(
         if conflicts:
             return lock
 
+    validate_materialization(app_dir, lock)
     from ..standalone_cmake import invalidate_snapshot
 
     if on_disk_lock is None or _diff_locks(on_disk_lock, lock):

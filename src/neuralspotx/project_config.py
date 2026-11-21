@@ -212,7 +212,7 @@ def _propagate_layer_project_pins(
     layer_label: str,
     field_prefix: str,
     app_pinned_modules: dict[str, str],
-    propagated_revisions: dict[str, str],
+    propagated_revisions: dict[str, str | None],
 ) -> None:
     """Make *layer*'s project-level ``revision`` pins effective for its modules.
 
@@ -316,8 +316,7 @@ def _propagate_layer_project_pins(
                 # Remember what propagation replaced (first write wins across
                 # chained layers) so a later project re-point can restore it.
                 current = module_entry.get("revision")
-                if isinstance(current, str) and current:
-                    propagated_revisions.setdefault(module_name, current)
+                propagated_revisions.setdefault(module_name, current)
             module_entry["revision"] = revision
     for module_name, layer_module in layer.modules.items():
         layer_revision = layer_module.get("revision")
@@ -332,7 +331,7 @@ def _apply_app_authored_layer(
     layer_label: str,
     field_prefix: str,
     app_pinned_modules: dict[str, str],
-    propagated_revisions: dict[str, str],
+    propagated_revisions: dict[str, str | None],
 ) -> dict[str, Any]:
     """Merge one app-authored override layer and apply its pin semantics.
 
@@ -373,7 +372,11 @@ def _apply_app_authored_layer(
             continue
         entry = modules.get(name)
         if isinstance(entry, dict) and entry.get("project") != prev_projects.get(name):
-            entry["revision"] = propagated_revisions.pop(name)
+            prior_revision = propagated_revisions.pop(name)
+            if prior_revision is None:
+                entry.pop("revision", None)
+            else:
+                entry["revision"] = prior_revision
 
     _propagate_layer_project_pins(
         merged,
@@ -430,7 +433,7 @@ def _effective_registry(
     # which carry a propagated project pin (and the value it replaced, for
     # un-propagation when a later layer re-points the module).
     app_pinned_modules: dict[str, str] = {}
-    propagated_revisions: dict[str, str] = {}
+    propagated_revisions: dict[str, str | None] = {}
     app_override = _resolve_override_local_paths(
         ModuleRegistryOverride.from_mapping(nsx_cfg.get("module_registry")),
         base_dir=app_dir if app_dir is not None else Path.cwd(),

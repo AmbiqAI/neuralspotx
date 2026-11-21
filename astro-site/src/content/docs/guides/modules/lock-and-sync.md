@@ -196,7 +196,9 @@ revision in the app registry. Removing an app override returns that field to
 packaged defaults and can also require an explicit update. A read-only
 `nsx lock --check` still reports effective-input drift.
 
-Closure discovery uses the currently available module metadata. If upstream metadata
+Closure discovery uses app-local module metadata when available. When a compatible
+locked Git module is missing, a writable relock acquires its metadata at the
+recorded commit. If upstream metadata
 changes, materialize it with `sync` and run `lock` again.
 
 Without a usable prior lock there are no resolutions to preserve. Unknown selections

@@ -165,3 +165,69 @@ def test_compatible_default_and_workspace_pin(tmp_path: Path, registry: dict[str
     (tmp_path / "pins.yml").write_text("projects:\n  sdk:\n    revision: v2\n")
     assert cli.main(["lock", "--app-dir", str(tmp_path)]) == 0
     assert all(rows["sdk"][0] == new_sdk for rows in pins(tmp_path).values())
+
+
+def test_cold_plain_lock_discovers_dependencies_from_pinned_commit(
+    tmp_path: Path, registry: dict[str, Any]
+) -> None:
+    manifest = yaml.safe_load((tmp_path / "nsx.yml").read_text())
+    manifest["modules"] = [{"name": "driver"}]
+    (tmp_path / "nsx.yml").write_text(yaml.safe_dump(manifest))
+    driver = tmp_path / "origins/driver"
+    metadata = driver / "nsx-module.yaml"
+    old_bytes = metadata.read_bytes()
+    definition = yaml.safe_load(old_bytes)
+    definition["depends"]["required"] = ["sdk"]
+    metadata.write_bytes(yaml.safe_dump(definition).encode())
+    git(driver, "commit", "-am", "require SDK")
+    assert cli.main(["lock", "--app-dir", str(tmp_path)]) == 0
+    original = pins(tmp_path)
+    assert all(set(rows) == {"driver", "sdk"} for rows in original.values())
+    metadata.write_bytes(old_bytes)
+    git(driver, "commit", "-am", "remove SDK dependency")
+    shutil.rmtree(tmp_path / "modules")
+    assert cli.main(["lock", "--app-dir", str(tmp_path)]) == 0
+    assert pins(tmp_path) == original
+    shutil.rmtree(tmp_path / "modules")
+    assert cli.main(["sync", "--app-dir", str(tmp_path), "--frozen"]) == 0
+
+
+def test_authored_project_provides_sole_module_revision(
+    tmp_path: Path, registry: dict[str, Any]
+) -> None:
+    manifest = yaml.safe_load((tmp_path / "nsx.yml").read_text())
+    sdk_project = registry["projects"].pop("sdk")
+    sdk_module = registry["modules"].pop("sdk")
+    del sdk_module["revision"]
+    sdk_project["revision"] = "v1"
+    manifest["module_registry"] = {"projects": {"sdk": sdk_project}, "modules": {"sdk": sdk_module}}
+    (tmp_path / "nsx.yml").write_text(yaml.safe_dump(manifest))
+    assert cli.main(["lock", "--app-dir", str(tmp_path)]) == 0
+    sdk = tmp_path / "origins/sdk"
+    expected = advance(sdk)
+    git(sdk, "tag", "v2")
+    sdk_project["revision"] = "v2"
+    (tmp_path / "nsx.yml").write_text(yaml.safe_dump(manifest))
+    assert cli.main(["lock", "--app-dir", str(tmp_path)]) == 0
+    assert all(rows["sdk"][0] == expected for rows in pins(tmp_path).values())
+
+
+def test_targeted_update_can_adopt_packaged_replacement(
+    tmp_path: Path, registry: dict[str, Any]
+) -> None:
+    manifest = yaml.safe_load((tmp_path / "nsx.yml").read_text())
+    manifest["modules"] = [{"name": "driver"}, {"name": "nsx-tooling"}]
+    (tmp_path / "nsx.yml").write_text(yaml.safe_dump(manifest))
+    packaged = registry["modules"]["nsx-tooling"]
+    registry["modules"]["nsx-tooling"] = registry["modules"]["sdk"]
+    assert cli.main(["lock", "--app-dir", str(tmp_path)]) == 0
+    before = pins(tmp_path)
+    advance(tmp_path / "origins/driver")
+    registry["modules"]["nsx-tooling"] = packaged
+    assert cli.main(["lock", "--app-dir", str(tmp_path)]) != 0
+    assert cli.main(["lock", "--app-dir", str(tmp_path), "--module", "nsx-tooling"]) == 0
+    lock = read_lock_file(tmp_path)
+    assert lock is not None
+    for board, target in lock.targets.items():
+        assert target.modules["nsx-tooling"].kind == "packaged"
+        assert target.modules["driver"].commit == before[board]["driver"][0]
