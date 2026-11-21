@@ -140,7 +140,12 @@ def discovery_registry(
                     **module,
                     "project": key,
                     "revision": row.commit,
-                    "metadata": row.manifest_path or module["metadata"],
+                    # The receipt locator is relative to the artifact root.
+                    "metadata": (
+                        str(Path(row.vendored_at) / row.manifest_path)
+                        if row.manifest_path
+                        else module["metadata"]
+                    ),
                 }
             else:
                 modules[name] = {**module, "revision": row.commit}
@@ -176,50 +181,41 @@ def _board_sources(
     # board has already populated the shared modules/ directory. Acquisition
     # remains lazy: the traversal fetches only projects it actually reaches.
     projects = dict(registry["projects"])
-    temporary_modules: set[str] = set()
-    ambiguous: dict[str, tuple[Path, ProjectEntry, Path]] = {}
+    checkouts: dict[str, tuple[ProjectEntry, Path]] = {}
     with tempfile.TemporaryDirectory(prefix="nsx-lock-metadata-") as temporary:
         for index, project_name in enumerate(sorted(isolated & projects.keys())):
             project = _registry_project_entry(registry, project_name)
-            if project.local_path or not project.url:
+            if project.local_path or not project.url or project.name == PACKAGED_PROJECT_NAME:
                 continue
             root = Path(temporary) / str(index)
             projects[project_name] = {**projects[project_name], "path": str(root)}
-            for name, module in modules.items():
-                if module["project"] != project_name:
-                    continue
-                temporary_modules.add(name)
-                metadata = Path(module["metadata"])
-                if metadata.is_absolute():
-                    try:
-                        relative = metadata.relative_to(
-                            _module_clone_dir(app_dir, project_name, registry)
-                        )
-                    except ValueError as exc:
-                        raise NSXConfigError(
-                            f"Module '{name}' metadata must be inside its Git project."
-                        ) from exc
-                else:
-                    relative = _metadata_path_relative_to_project(metadata, project.checkout_path)
-                    if project.path is None and relative != metadata:
-                        ambiguous[name] = (metadata, project, root)
-                if ".." in relative.parts:
-                    raise NSXConfigError(f"Module '{name}' metadata escapes its Git project.")
-                modules[name] = {**module, "metadata": str(root / relative)}
+            checkouts[project_name] = project, root
 
-        view = {**registry, "modules": modules, "projects": projects}
+        view = {**registry, "modules": dict(modules), "projects": projects}
 
         def prepare_metadata(name: str) -> None:
-            # Read-only checks can populate the private checkout for this board.
-            # Other sources retain ordinary check behavior inside the app.
-            if read_only and name in temporary_modules:
+            module = modules[name]
+            checkout = checkouts.get(module["project"])
+            if checkout is None:
+                return
+            project, root = checkout
+            metadata = Path(module["metadata"])
+            if metadata.is_absolute():
+                app_checkout = _module_clone_dir(app_dir, project.name, registry)
+                if not metadata.is_relative_to(app_checkout):
+                    # An explicit external registration remains the metadata source.
+                    return
+                relative = metadata.relative_to(app_checkout)
+            else:
+                relative = _metadata_path_relative_to_project(metadata, project.checkout_path)
+            if ".." in relative.parts:
+                raise NSXConfigError(f"Module '{name}' metadata escapes its Git project.")
+            if read_only:
                 _ensure_module_cloned(app_dir, name, view)
-            # A default checkout prefix can also be a real directory *inside*
-            # the repo. Disambiguate only after DFS has fetched this project.
-            if name in ambiguous:
-                selector, project, root = ambiguous[name]
-                relative = _metadata_in_checkout(selector, project, root)
-                modules[name]["metadata"] = str(root / relative)
-                manifests[name] = relative.as_posix()
+            if not metadata.is_absolute():
+                # A default checkout prefix may also be a directory in the repo.
+                relative = _metadata_in_checkout(metadata, project, root)
+            view["modules"][name] = {**module, "metadata": str(root / relative)}
+            manifests[name] = relative.as_posix()
 
-        yield view, prepare_metadata if ambiguous or (read_only and temporary_modules) else None
+        yield view, prepare_metadata if checkouts else None

@@ -315,14 +315,34 @@ def test_new_board_discovers_dependencies_from_its_own_revision(
     sync_app_impl(tmp_path, board=BOARDS[1], frozen=True)
 
 
-@pytest.mark.parametrize("renamed", [False, True])
+@pytest.mark.parametrize("renamed,nested", [(False, False), (True, False), (True, True)])
 def test_cold_conflict_reports_qualified_pin_before_new_board_requirements(
-    tmp_path: Path, registry: dict[str, Any], capsys: pytest.CaptureFixture[str], renamed: bool
+    tmp_path: Path,
+    registry: dict[str, Any],
+    capsys: pytest.CaptureFixture[str],
+    renamed: bool,
+    nested: bool,
 ) -> None:
     receipt = tmp_path / "nsx.lock"
     shutil.copyfile(FIXTURE / "nsx.lock", receipt)
     sdk = tmp_path / "origins/sdk"
     path = sdk / "nsx-module.yaml"
+    baseline = "v1"
+    if nested:
+        nested_path = sdk / "modules/sdk/nsx-module.yaml"
+        nested_path.parent.mkdir(parents=True)
+        path.rename(nested_path)
+        path = nested_path
+        git(sdk, "add", "-A")
+        git(sdk, "commit", "-m", "move manifest inside vendor-shaped directory")
+        baseline = "nested-v1"
+        git(sdk, "tag", baseline)
+        registry["modules"]["sdk"]["revision"] = baseline
+        registry["modules"]["sdk"]["metadata"] = "modules/sdk/modules/sdk/nsx-module.yaml"
+        receipt.unlink()
+        assert cli.main(["lock", "--app-dir", str(tmp_path)]) == 0
+        shutil.rmtree(tmp_path / "modules")
+    original = receipt.read_bytes()
     meta = yaml.safe_load(path.read_bytes())
     meta["compatibility"]["boards"] = [BOARDS[1]]
     path.write_text(yaml.safe_dump(meta))
@@ -339,15 +359,15 @@ def test_cold_conflict_reports_qualified_pin_before_new_board_requirements(
     for board in BOARDS:
         assert f"board '{board}', project '{project}'" in message
     assert "nsx lock --module sdk" in message
-    assert receipt.read_bytes() == (FIXTURE / "nsx.lock").read_bytes()
+    assert receipt.read_bytes() == original
     # The old checkout can also have been restored before the update attempt.
     # Neither retry may use its compatibility metadata to approve v2.
     shutil.copytree(sdk, tmp_path / "modules/sdk", dirs_exist_ok=True)
-    git(tmp_path / "modules/sdk", "checkout", "v1")
+    git(tmp_path / "modules/sdk", "checkout", baseline)
     for flags in (["--module", "sdk"], ["--update"]):
         assert cli.main(["lock", *flags, "--app-dir", str(tmp_path)]) != 0
         assert "incompatible with target" in capsys.readouterr().err
-        assert receipt.read_bytes() == (FIXTURE / "nsx.lock").read_bytes()
+        assert receipt.read_bytes() == original
 
 
 def test_authored_empty_module_revision_resets_to_main(
@@ -370,6 +390,14 @@ def test_cold_update_check_reports_drift_without_vendoring(
     capsys: pytest.CaptureFixture[str],
     flags: tuple[str, ...],
 ) -> None:
+    # A workspace registry may include external metadata for another project
+    # that no target uses. A cold update check must not inspect or acquire it.
+    registry["projects"]["extra"] = {"url": "https://fixture.invalid/unselected.git"}
+    registry["modules"]["extra"] = {
+        "project": "extra",
+        "revision": "main",
+        "metadata": str(tmp_path / "external.yaml"),
+    }
     receipt = tmp_path / "nsx.lock"
     original = (FIXTURE / "nsx.lock").read_bytes()
     receipt.write_bytes(original)
