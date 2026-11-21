@@ -9,15 +9,20 @@ for the full license text.
 Third-Party Components
 ================================================================================
 
-The `neuralspotx` Python distribution declares the following runtime
-dependencies. These packages are installed separately by the package manager
-(pip / uv) and are not bundled in this repository. Each is distributed under
-its own license:
+The package manager installs these direct Python dependencies for neuralspotx.
+Entries with an extra marker apply only when that extra is selected.
 
-  - Jinja2 ........................ BSD-3-Clause
-    https://github.com/pallets/jinja
-  - PyYAML ........................ MIT
-    https://github.com/yaml/pyyaml
+  - Jinja2 | BSD-3-Clause
+    https://github.com/pallets/jinja/blob/3.1.6/LICENSE.txt
+  - PyYAML | MIT
+    https://github.com/yaml/pyyaml/blob/6.0.3/LICENSE
+  - packaging | Apache-2.0 OR BSD-2-Clause
+    https://github.com/pypa/packaging/blob/26.0/LICENSE
+  - pyelftools | Unlicense (bundled construct is MIT)
+    https://github.com/eliben/pyelftools/blob/v0.33/LICENSE
+    https://github.com/eliben/pyelftools/blob/v0.33/elftools/construct/LICENSE
+  - pylink-square; extra == "rtt" | Apache-2.0
+    https://github.com/square/pylink/blob/v2.1.0/LICENSE.md
 
 ================================================================================
 Modules Fetched at App-Generation Time
