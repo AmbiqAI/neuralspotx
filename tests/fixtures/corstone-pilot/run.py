@@ -21,9 +21,15 @@ def guest_result(uart: bytes) -> int:
         return 2
     if result[1] != b"0":
         return 1
-    expected = (b"NSX pilot hello", b"1 Tests 0 Failures 0 Ignored", b"OK")
-    lines = {line.strip() for line in text.splitlines()}
-    return 0 if all(line in lines for line in expected) else 2
+    # This fixture runs exactly one pinned suite. A restarted or truncated
+    # transcript must never certify a pass merely because it contains "OK".
+    success = re.fullmatch(
+        rb"NSX pilot hello\n"
+        rb"[^\n]+:[0-9]+:test_signed_dot_product:PASS\n\n-+\n"
+        rb"1 Tests 0 Failures 0 Ignored *\nOK\n",
+        text[: result.start()],
+    )
+    return 0 if success else 2
 
 
 def main() -> int:

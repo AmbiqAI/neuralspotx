@@ -8,7 +8,10 @@ import pytest
 guest_result = runpy.run_path(
     str(Path(__file__).parent / "fixtures" / "corstone-pilot" / "run.py")
 )["guest_result"]
-PASS = b"NSX pilot hello\r\n1 Tests 0 Failures 0 Ignored \r\nOK\r\n"
+PASS = (
+    b"NSX pilot hello\r\nsuite.c:35:test_signed_dot_product:PASS\r\n\r\n"
+    b"-----------------------\r\n1 Tests 0 Failures 0 Ignored \r\nOK\r\n"
+)
 EXIT_OK = b"Application exit code: 0.\r\n\x04"
 
 
@@ -30,6 +33,9 @@ def test_pilot_propagates_guest_failure() -> None:
         PASS + EXIT_OK[:-1],
         PASS + EXIT_OK + b"garbage",
         EXIT_OK + PASS + EXIT_OK,
+        PASS + PASS + EXIT_OK,
+        PASS + b"OK\r\n" + EXIT_OK,
+        b"1 Tests 1 Failures 0 Ignored\r\nFAIL\r\n" + PASS + EXIT_OK,
     ],
 )
 def test_pilot_rejects_incomplete_or_ambiguous_success(uart: bytes) -> None:
