@@ -118,6 +118,7 @@ or configure, save edits you need in the app’s module directories and
 | App-owned (`vendored`, or `local` with no registered source path) | Restore the module directory from the app’s version control. For intentional edits, run `nsx lock` and review the diff. |
 | Registered local directory | Save any edits in the registered source, restore it to the intended revision, then run `nsx sync` to copy it into the app. |
 | Git or packaged module | Run `nsx sync` to replace the app’s copy. For a packaged module, use the CLI version that supplied the locked content. |
+| Unresolved (`unresolved`) | Restore the directory that matches the locked hash. To resolve the dependency again, restore access to its upstream, run `nsx lock`, and review the change. |
 
 The commands above use the app’s default board. To repair another target,
 run `nsx configure --board <board>`. Add `--frozen` to verify the repaired
