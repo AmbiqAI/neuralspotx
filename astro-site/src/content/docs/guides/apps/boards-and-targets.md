@@ -168,10 +168,12 @@ For Cortex-M85 and Ethos-U85 use `--board corstone320_fvp_u85` and Arm's
 For example, with Arm's x86-64 Corstone-320 11.27 distribution:
 
 ```sh
+nsx create-app demo320 --board corstone320_fvp_u85
+nsx build demo320
 fvp_root=/path/to/FVP_Corstone_SSE-320
 model_dir="$fvp_root/models/Linux64_GCC-9.3"
 LD_LIBRARY_PATH="$fvp_root/python/lib:$fvp_root/fmtplib:$model_dir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
-    nsx run demo --fvp "$model_dir/FVP_Corstone_SSE-320"
+    nsx run demo320 --fvp "$model_dir/FVP_Corstone_SSE-320"
 ```
 
 Run NSX with its normal host Python environment. For Cortex-M85 with U55 choose `corstone310_fvp_u55` and `FVP_Corstone_SSE-310`.
