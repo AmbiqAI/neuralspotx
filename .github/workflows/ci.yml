@@ -78,24 +78,39 @@ jobs:
         with:
           python-version: "3.11"
 
-      - name: Install runtime dependencies
-        run: uv sync --locked --no-install-project
+      - name: Install locked runtime dependencies in the consumer environment
+        run: UV_PROJECT_ENVIRONMENT="$RUNNER_TEMP/nsx-wheel-consumer/.venv" uv sync --locked --no-install-project
 
       - name: Build wheel
         run: uv build --wheel
 
       - name: Install and exercise wheel
         run: |
-          install_root="$RUNNER_TEMP/nsx-wheel-install"
-          module_dir="$RUNNER_TEMP/nsx-wheel-module"
-          uv pip install --python .venv/bin/python --target "$install_root" --no-deps dist/*.whl
-          (
-            cd "$RUNNER_TEMP"
-            PYTHONPATH="$install_root" "$GITHUB_WORKSPACE/.venv/bin/python" \
-              "$GITHUB_WORKSPACE/tests/smoke_installed_distribution.py" \
-              --install-root "$install_root" \
-              --module-dir "$module_dir"
-          )
+          consumer="$RUNNER_TEMP/nsx-wheel-consumer"
+          python="$consumer/.venv/bin/python"
+          uv pip install --python "$python" --no-deps dist/*.whl
+          cd "$consumer"
+          "$python" -I "$GITHUB_WORKSPACE/tests/smoke_installed_distribution.py" \
+            --install-root "$("$python" -Ic 'import sysconfig; print(sysconfig.get_path("purelib"))')" \
+            --module-dir "$RUNNER_TEMP/nsx-wheel-module"
+
+      - name: Verify the app-local CLI records the wheel version
+        run: |
+          cd "$RUNNER_TEMP/nsx-wheel-consumer"
+          printf '[project]\nname = "wheel-consumer"\nversion = "0.0.0"\n' > pyproject.toml
+          .venv/bin/nsx create-app . --force --no-bootstrap
+          .venv/bin/nsx lock
+          .venv/bin/python -I - <<'PYTHON'
+          from importlib.metadata import version
+          from pathlib import Path
+          import yaml
+
+          targets = yaml.safe_load(Path("nsx.lock").read_text())["targets"]
+          actual = {target["nsx_tool"]["version"] for target in targets.values()}
+          expected = version("neuralspotx")
+          if actual != {expected}:
+              raise SystemExit(f"Expected installed NSX {expected} in nsx.lock, found {actual}")
+          PYTHON
 
   # ---------------------------------------------------------------
   # Unit tests — run on all three platforms
