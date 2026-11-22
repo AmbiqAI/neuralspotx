@@ -105,24 +105,26 @@ Local module 'my-module' content drifted from lock ...
 Local source for 'my-module' at /home/you/src/my-module has drifted ...
 ```
 
-Something on disk no longer matches the content hash recorded in `nsx.lock`. If you
-changed the module on purpose, re-run `nsx lock` to record the new state. If you did not,
-`nsx sync` without `--frozen` restores it. A fetched module that was edited in `modules/`
-fails the same way:
+Check the module’s source kind in the selected board’s lock entry. The recovery
+depends on where the source lives.
 
-```text
-Module 'my-module' at modules/my-module does not match nsx.lock ...
-```
+| Source | How to recover |
+| --- | --- |
+| App-owned (`vendored`, or `local` with no registered source path) | Restore the module directory from the app’s version control. Sync can verify these files but has no other copy. For intentional edits, run `nsx lock` and review the diff. |
+| Registered local directory | Restore the registered source to the intended revision first. Save any edits you need from the app’s mirror, then run `nsx sync` to copy the source into the app. |
+| Git or packaged module | Save any edits you need from the app’s copy, then run `nsx sync` to replace it. For a packaged module, use the CLI version recorded by the app. |
 
-A module missing from `modules/`, as on a fresh clone, is not drift: `--frozen` fetches it
-at the revision in `nsx.lock` and checks its content hash. If the upstream changed since
-the lock was written, the fetched copy is removed and the command fails:
+On a fresh checkout, `nsx sync --frozen` can restore a missing Git module at
+its recorded revision and verify its content hash. If a newly fetched tree
+fails that check, the command reports:
 
 ```text
 Module 'my-module' fetched at its locked revision does not match nsx.lock ...
 ```
 
-Re-run `nsx lock` to record the upstream as it is now, then review the change.
+Keep the committed lock while investigating. Check the recorded Git origin,
+commit and content hash against the expected module. Refresh the lock only
+when you intend to change the recorded dependency.
 
 ```text
 /home/you/my_app/nsx.lock not found. Run `nsx lock` first (or drop --frozen).
@@ -156,8 +158,8 @@ The build tree was never generated or has been partly deleted. Run `nsx configur
 
 A compiler error inside a vendored module is a real compiler error: the sources under
 `modules/` are the sources being compiled, and the path in the error message is the file
-to open. If you edited a vendored module to get past it, remember that `nsx sync` will
-restore the original.
+to open. Before editing a module in place, check its source in `nsx.lock`. For Git and
+packaged modules, a later sync can replace the app’s copy.
 
 ```text
 /home/you/my_app/nsx.lock not found. Run `nsx lock` first.
