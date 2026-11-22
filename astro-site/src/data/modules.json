@@ -2714,9 +2714,9 @@
       "provider": null,
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/nsx-ethos-u-driver",
-      "revision": "nsx-ethos-u-driver-v0.1.2",
+      "revision": "nsx-ethos-u-driver-v0.2.0",
       "slug": "nsx-ethos-u-driver",
-      "source_url": "https://github.com/AmbiqAI/nsx-ethos-u-driver/tree/nsx-ethos-u-driver-v0.1.2",
+      "source_url": "https://github.com/AmbiqAI/nsx-ethos-u-driver/tree/nsx-ethos-u-driver-v0.2.0",
       "summary": "NSX integration of Arm's Ethos-U core driver. Wraps the upstream ethos-u-core-driver (vendored as plain files) with NSX build glue, CMSIS-based cache coherency hooks, a board-supplied IRQ shim, and inference begin/end probes. Runtime-agnostic \u2014 consumed by HeliaAOT, HeliaRT, TFLM applications, and bespoke C runtimes alike.",
       "type": "runtime",
       "use_cases": [
@@ -2724,7 +2724,7 @@
         "NPU IRQ wiring and cache-coherent invocation on Armv8.1-M hosts",
         "host-side begin/end probes for profiling (e.g. helia-profiler)"
       ],
-      "version": "0.1.2"
+      "version": "0.2.0"
     },
     {
       "agent_keywords": [
