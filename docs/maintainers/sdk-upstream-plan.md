@@ -23,8 +23,11 @@ metadata views onto that same project and revision.
 
 The [5.2.33 release record](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/v5.2.33/release/nsx-ambiq-sdk-5.2.33.yaml)
 identifies the same AmbiqSuite provider and 73 HAL/BSP archives as 5.2.32.
-Changing the SDK root in an existing build directory now selects the matching
-HAL and BSP archives. Registry-managed apps require NSX 0.9.6 or newer to
+With 5.2.33, CMake follows the selected SDK root for its default HAL and BSP
+archives and preserves explicit archive pins. If a build directory from an
+older SDK reports an ambiguous cached archive, reconfigure CMake with
+`-UNSX_HAL_LIB -UNSX_BSP_LIB` to use both defaults, or explicitly pin the
+intended archive paths. Registry-managed apps require NSX 0.9.6 or newer to
 resolve the BSP provider role, including on built-in EVBs.
 
 The [SDK qualification report](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/v5.2.33/release/qualification-5.2.33.md)
