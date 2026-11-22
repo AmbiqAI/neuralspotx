@@ -178,8 +178,9 @@ uv run --locked nsx build --frozen
 
 Here `uv.lock` pins the Python environment, including the CLI. The app's
 `nsx.lock` records the firmware modules for each board, including the SDK
-provider. Commit both locks to restore those dependencies. To reproduce firmware
-binaries, also record the host build environment, including the Arm compiler,
+provider. Commit both locks to preserve those selections. Commit any app-owned
+module sources and make registered local sources available on each machine.
+To reproduce firmware binaries, also record the host build environment, including the Arm compiler,
 CMake and Ninja versions. To look up the exact SDK and upstream source, see [Which revision you are on](/neuralspotx/guides/modules/sdk-providers/#which-revision-you-are-on).
 
 ## Verifying what you installed
