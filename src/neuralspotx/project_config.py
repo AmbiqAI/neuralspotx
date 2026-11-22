@@ -7,7 +7,7 @@ import copy
 import importlib.resources as resources
 import logging
 import os
-import re
+import tomllib
 from collections import OrderedDict
 from dataclasses import dataclass, field
 from importlib.metadata import PackageNotFoundError
@@ -515,32 +515,19 @@ def _registry_project_entry(registry: dict[str, Any], project_name: str) -> Proj
 
 
 def _source_checkout_version() -> str | None:
-    """Return the version declared in a nearby source checkout, if present."""
-
-    for parent in Path(__file__).resolve().parents:
-        pyproject = parent / "pyproject.toml"
-        if not pyproject.is_file():
-            continue
-        try:
-            text = pyproject.read_text(encoding="utf-8")
-        except OSError:
-            return None
-
-        in_project = False
-        for raw_line in text.splitlines():
-            line = raw_line.strip()
-            if not line or line.startswith("#"):
-                continue
-            if line.startswith("[") and line.endswith("]"):
-                in_project = line == "[project]"
-                continue
-            if not in_project:
-                continue
-            match = re.match(r'version\s*=\s*["\']([^"\']+)["\']\s*$', line)
-            if match:
-                return match.group(1)
+    """Read source metadata only when this module belongs to the NSX src tree."""
+    package = Path(__file__).resolve().parent
+    if package.name != "neuralspotx" or package.parent.name != "src":
         return None
-    return None
+    try:
+        with (package.parent.parent / "pyproject.toml").open("rb") as stream:
+            project = tomllib.load(stream).get("project")
+    except (OSError, UnicodeDecodeError, tomllib.TOMLDecodeError):
+        return None
+    if not isinstance(project, dict) or project.get("name") != "neuralspotx":
+        return None
+    version = project.get("version")
+    return version if isinstance(version, str) else None
 
 
 def _nsx_tool_version() -> str | None:
