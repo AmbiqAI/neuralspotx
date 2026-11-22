@@ -67,7 +67,7 @@ nsx_register_bsp(TARGET my_bsp CONTRACT 2 DEBUG_ITM 0 DEBUG_UART 0)
 ```
 
 Implement the SDK's required BSP functions and headers. Declare debug capabilities
-on the CMake target. The packaged SDK 5.2.32 supports contract 2 on Apollo330P
+on the CMake target. The packaged SDK 5.2.33 supports contract 2 on Apollo330P
 and Apollo510. If your app overrides the SDK revision, select a release that
 supports contract 2 before locking the app.
 
