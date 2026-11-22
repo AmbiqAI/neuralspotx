@@ -105,13 +105,16 @@ Local module 'my-module' content drifted from lock ...
 Local source for 'my-module' at /home/you/src/my-module has drifted ...
 ```
 
-Check `kind` in the selected board’s `nsx.lock` entry. For a `local`
-entry, look in `nsx.yml` for a module `source.path` or a registry
-`local_path`. If neither is configured, the app owns the source.
+Read the module’s `kind` in the selected board’s `nsx.lock` entry. For
+`local`, check the module’s `source.path` and registry `local_path` settings
+in `nsx.yml`, including any workspace files named by `registry.layers`. A
+relative path in a workspace file resolves from that file’s directory. With
+no registered path, the source lives in the app.
 
-Sync processes all modules for the selected board. Before a non-frozen sync
-or configure, save edits you need in the app’s module directories and
-`boards/<board>` copies, including other modules in a shared project directory.
+Before a non-frozen sync or configure, save edits you need from **all** the
+selected board’s `resolved.vendored_at` directories. This includes shared
+module trees and packaged tooling under `cmake/nsx`. Also save edits to any
+app-local `boards/<board>` copy of a registered board.
 
 | Source | How to recover |
 | --- | --- |
@@ -120,8 +123,8 @@ or configure, save edits you need in the app’s module directories and
 | Git or packaged module | Run `nsx sync` to replace the app’s copy. For a packaged module, use the CLI version that supplied the locked content. |
 | Unresolved (`unresolved`) | Restore the directory that matches the locked hash. To resolve the dependency again, restore access to its upstream, run `nsx lock`, and review the change. |
 
-The commands above use the app’s default board. To repair another target,
-run `nsx configure --board <board>`. Add `--frozen` to verify the repaired
+`nsx lock` refreshes all declared boards. `nsx sync` operates on the
+default board. To repair another target, run `nsx configure --board <board>`. Add `--frozen` to verify the repaired
 tree. Frozen mode refuses to overwrite an existing module whose content differs
 from the lock.
 
