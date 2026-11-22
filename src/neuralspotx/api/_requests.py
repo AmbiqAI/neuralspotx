@@ -295,7 +295,7 @@ class AppRttRequest:
 
 @dataclass(slots=True)
 class AppRunRequest:
-    """Run a built Corstone-300/U55 ELF on the locally installed Arm FVP.
+    """Run a built Corstone ELF on the locally installed Arm FVP.
 
     The selected app and board must own the configured build directory.
     ``elf`` defaults to the app executable and is relative to that directory

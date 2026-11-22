@@ -695,7 +695,7 @@ def _build_parser() -> argparse.ArgumentParser:
     _add_timeout(p_configure)
     p_configure.set_defaults(func=cmd_configure)
 
-    p_run = sub.add_parser("run", help="Run a built Corstone-300/U55 ELF on the Arm FVP")
+    p_run = sub.add_parser("run", help="Run a built Corstone ELF on the Arm FVP")
     _add_app_selector(p_run)
     p_run.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
     p_run.add_argument("--board", help="Select the execution board from nsx.yml")

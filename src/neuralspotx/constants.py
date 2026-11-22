@@ -36,6 +36,8 @@ _BOARD_ORDER: tuple[str, ...] = (
     "apollo510dL_evb",
     "atomiq110_fpga_turbo",
     "corstone300_fvp_u55",
+    "corstone310_fvp_u55",
+    "corstone320_fvp_u85",
 )
 
 # Load the packaged board descriptors. A malformed descriptor must NOT make

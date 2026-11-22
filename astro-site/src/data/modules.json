@@ -1,5 +1,5 @@
 {
-  "module_count": 59,
+  "module_count": 62,
   "modules": [
     {
       "agent_keywords": [
@@ -1917,6 +1917,116 @@
       "version": "0.1.0"
     },
     {
+      "agent_keywords": [],
+      "anti_use_cases": [],
+      "capabilities": [],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "corstone310_fvp_u55"
+        ],
+        "socs": [
+          "corstone310"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc"
+        ]
+      },
+      "constraints": {
+        "required_sdk_provider": "nsx-corstone-sdk"
+      },
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-corstone-soc"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-corstone-soc",
+            "version": null
+          },
+          {
+            "contracts": [
+              2
+            ],
+            "role": "bsp"
+          }
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "packaged",
+      "metadata_path": "src/neuralspotx/boards/corstone310_fvp_u55/nsx-module.yaml",
+      "name": "nsx-board-corstone310-fvp-u55",
+      "project": "neuralspotx",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/neuralspotx",
+      "revision": "main",
+      "slug": "nsx-board-corstone310-fvp-u55",
+      "source_url": "https://github.com/AmbiqAI/neuralspotx/tree/main",
+      "summary": null,
+      "type": "board",
+      "use_cases": [],
+      "version": "0.1.0"
+    },
+    {
+      "agent_keywords": [],
+      "anti_use_cases": [],
+      "capabilities": [],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "corstone320_fvp_u85"
+        ],
+        "socs": [
+          "corstone320"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc"
+        ]
+      },
+      "constraints": {
+        "required_sdk_provider": "nsx-corstone-sdk"
+      },
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-corstone-soc"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-corstone-soc",
+            "version": null
+          },
+          {
+            "contracts": [
+              2
+            ],
+            "role": "bsp"
+          }
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "packaged",
+      "metadata_path": "src/neuralspotx/boards/corstone320_fvp_u85/nsx-module.yaml",
+      "name": "nsx-board-corstone320-fvp-u85",
+      "project": "neuralspotx",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/neuralspotx",
+      "revision": "main",
+      "slug": "nsx-board-corstone320-fvp-u85",
+      "source_url": "https://github.com/AmbiqAI/neuralspotx/tree/main",
+      "summary": null,
+      "type": "board",
+      "use_cases": [],
+      "version": "0.1.0"
+    },
+    {
       "agent_keywords": [
         "cmsis",
         "cmsis-core",
@@ -2301,10 +2411,14 @@
       "category": null,
       "compatibility": {
         "boards": [
-          "corstone300_fvp_u55"
+          "corstone300_fvp_u55",
+          "corstone310_fvp_u55",
+          "corstone320_fvp_u85"
         ],
         "socs": [
-          "corstone300"
+          "corstone300",
+          "corstone310",
+          "corstone320"
         ],
         "toolchains": [
           "arm-none-eabi-gcc"
@@ -2333,9 +2447,9 @@
       "provider": null,
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/nsx-corstone-sdk",
-      "revision": "9673587418bdcc63438fa8f0f7229aaeb2033ebc",
+      "revision": "c2972d6636f653a0f25a94dc091fa4c305d52141",
       "slug": "nsx-corstone-bsp",
-      "source_url": "https://github.com/AmbiqAI/nsx-corstone-sdk/tree/9673587418bdcc63438fa8f0f7229aaeb2033ebc",
+      "source_url": "https://github.com/AmbiqAI/nsx-corstone-sdk/tree/c2972d6636f653a0f25a94dc091fa4c305d52141",
       "summary": null,
       "type": "backend_specific",
       "use_cases": [],
@@ -2348,10 +2462,65 @@
       "category": null,
       "compatibility": {
         "boards": [
-          "corstone300_fvp_u55"
+          "corstone300_fvp_u55",
+          "corstone310_fvp_u55",
+          "corstone320_fvp_u85"
         ],
         "socs": [
-          "corstone300"
+          "corstone300",
+          "corstone310",
+          "corstone320"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-corstone-soc"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-corstone-soc",
+            "version": null
+          }
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/nsx-corstone-npu/nsx-module.yaml",
+      "name": "nsx-corstone-npu",
+      "project": "nsx-corstone-sdk",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/nsx-corstone-sdk",
+      "revision": "c2972d6636f653a0f25a94dc091fa4c305d52141",
+      "slug": "nsx-corstone-npu",
+      "source_url": "https://github.com/AmbiqAI/nsx-corstone-sdk/tree/c2972d6636f653a0f25a94dc091fa4c305d52141",
+      "summary": null,
+      "type": "backend_specific",
+      "use_cases": [],
+      "version": "0.1.0"
+    },
+    {
+      "agent_keywords": [],
+      "anti_use_cases": [],
+      "capabilities": [],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "corstone300_fvp_u55",
+          "corstone310_fvp_u55",
+          "corstone320_fvp_u85"
+        ],
+        "socs": [
+          "corstone300",
+          "corstone310",
+          "corstone320"
         ],
         "toolchains": [
           "arm-none-eabi-gcc"
@@ -2373,9 +2542,9 @@
       "provider": "corstone",
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/nsx-corstone-sdk",
-      "revision": "9673587418bdcc63438fa8f0f7229aaeb2033ebc",
+      "revision": "c2972d6636f653a0f25a94dc091fa4c305d52141",
       "slug": "nsx-corstone-sdk",
-      "source_url": "https://github.com/AmbiqAI/nsx-corstone-sdk/tree/9673587418bdcc63438fa8f0f7229aaeb2033ebc",
+      "source_url": "https://github.com/AmbiqAI/nsx-corstone-sdk/tree/c2972d6636f653a0f25a94dc091fa4c305d52141",
       "summary": null,
       "type": "sdk_provider",
       "use_cases": [],
@@ -2388,10 +2557,14 @@
       "category": null,
       "compatibility": {
         "boards": [
-          "corstone300_fvp_u55"
+          "corstone300_fvp_u55",
+          "corstone310_fvp_u55",
+          "corstone320_fvp_u85"
         ],
         "socs": [
-          "corstone300"
+          "corstone300",
+          "corstone310",
+          "corstone320"
         ],
         "toolchains": [
           "arm-none-eabi-gcc"
@@ -2420,9 +2593,9 @@
       "provider": null,
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/nsx-corstone-sdk",
-      "revision": "9673587418bdcc63438fa8f0f7229aaeb2033ebc",
+      "revision": "c2972d6636f653a0f25a94dc091fa4c305d52141",
       "slug": "nsx-corstone-soc",
-      "source_url": "https://github.com/AmbiqAI/nsx-corstone-sdk/tree/9673587418bdcc63438fa8f0f7229aaeb2033ebc",
+      "source_url": "https://github.com/AmbiqAI/nsx-corstone-sdk/tree/c2972d6636f653a0f25a94dc091fa4c305d52141",
       "summary": null,
       "type": "soc",
       "use_cases": [],
@@ -4086,7 +4259,9 @@
           "apollo330P",
           "apollo510L",
           "atomiq110",
-          "corstone300"
+          "corstone300",
+          "corstone310",
+          "corstone320"
         ],
         "toolchains": [
           "arm-none-eabi-gcc",
