@@ -23,6 +23,10 @@ With the Arm FVP for {{ board }} installed, run the built app:
 nsx run --fvp /path/to/{{ "FVP_Corstone_SSE-320" if board == "corstone320_fvp_u85" else "FVP_Corstone_SSE-300_Ethos-U55" }}
 ```
 
+{% if board == "corstone320_fvp_u85" %}
+On Linux, set the FVP library search path as shown in the
+[Corstone target guide](https://ambiqai.github.io/neuralspotx/guides/apps/boards-and-targets/#arm-corstone-virtual-target).
+{% endif %}
 Omit `--fvp` when the model is on PATH. Each invocation retains the guest UART
 and model output under the selected build directory's `nsx-run/` directory.
 Expect `nsx hello from generated app` followed by `Application exit code: 0.`

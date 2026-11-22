@@ -143,7 +143,7 @@ targets:
         resolved:
           tool_version: 0.9.9
           vendored_at: cmake/nsx
-          content_hash: sha256:c999f7c8717214e055ca5d91a2be11d8e908993c7ffcf80334ea35db8b2341e0
+          content_hash: sha256:f8e70428c408fa00cd26414f0291b4f82f1a908f60366deff77c79be1fc1f713
           acquired_at: '2026-11-21T15:11:14+00:00'
           manifest_path: nsx-module.yaml
   apollo510b_evb:
@@ -287,7 +287,7 @@ targets:
         resolved:
           tool_version: 0.9.9
           vendored_at: cmake/nsx
-          content_hash: sha256:c999f7c8717214e055ca5d91a2be11d8e908993c7ffcf80334ea35db8b2341e0
+          content_hash: sha256:f8e70428c408fa00cd26414f0291b4f82f1a908f60366deff77c79be1fc1f713
           acquired_at: '2026-11-21T15:11:14+00:00'
           manifest_path: nsx-module.yaml
   apollo330mP_evb:
@@ -431,7 +431,7 @@ targets:
         resolved:
           tool_version: 0.9.9
           vendored_at: cmake/nsx
-          content_hash: sha256:c999f7c8717214e055ca5d91a2be11d8e908993c7ffcf80334ea35db8b2341e0
+          content_hash: sha256:f8e70428c408fa00cd26414f0291b4f82f1a908f60366deff77c79be1fc1f713
           acquired_at: '2026-11-21T15:11:15+00:00'
           manifest_path: nsx-module.yaml
   apollo510dL_evb:
@@ -575,6 +575,6 @@ targets:
         resolved:
           tool_version: 0.9.9
           vendored_at: cmake/nsx
-          content_hash: sha256:c999f7c8717214e055ca5d91a2be11d8e908993c7ffcf80334ea35db8b2341e0
+          content_hash: sha256:f8e70428c408fa00cd26414f0291b4f82f1a908f60366deff77c79be1fc1f713
           acquired_at: '2026-11-21T15:11:15+00:00'
           manifest_path: nsx-module.yaml

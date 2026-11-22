@@ -164,8 +164,17 @@ checks the firmware's signed exit code and its terminal UART marker.
 The Python entry point is `run_app(AppRunRequest(...))`.
 
 For Cortex-M85 and Ethos-U85 use `--board corstone320_fvp_u85` and Arm's
-`FVP_Corstone_SSE-320`. On Linux, initialize the model vendor's library
-environment before running it. Both boards support GCC, UART and an optional
+`FVP_Corstone_SSE-320`. On Linux, add the model's bundled libraries to the loader path.
+For example, with Arm's x86-64 Corstone-320 11.27 distribution:
+
+```sh
+fvp_root=/path/to/FVP_Corstone_SSE-320
+model_dir="$fvp_root/models/Linux64_GCC-9.3"
+LD_LIBRARY_PATH="$fvp_root/python/lib:$fvp_root/fmtplib:$model_dir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+    nsx run demo --fvp "$model_dir/FVP_Corstone_SSE-320"
+```
+
+Run NSX with its normal host Python environment. Both boards support GCC, UART and an optional
 `nsx-corstone-npu` module. The runner selects 32 MACs for U55 and 256 for U85.
 Use a Vela payload compiled for the selected NPU and MAC count. The
 [provider KWS fixture](https://github.com/AmbiqAI/nsx-corstone-sdk/tree/main/tests/kws)
