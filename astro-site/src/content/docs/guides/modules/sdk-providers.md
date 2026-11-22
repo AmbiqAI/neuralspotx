@@ -13,8 +13,8 @@ and commands supported by your CLI version.
 
 Modules can declare `constraints.required_sdk_provider`. NSX checks the module
 dependencies for each target and rejects a combination that requires two SDK providers.
-A custom Ambiq board can supply its own board support package (BSP) while using
-the same silicon support as the EVB. See [Add a board](/neuralspotx/guides/contribute/adding-a-board/).
+Custom Apollo330P and Apollo510 boards can supply their own board support
+package (BSP) while using the SDK silicon support. See [Add a board](/neuralspotx/guides/contribute/adding-a-board/).
 
 ## How NSX builds on AmbiqSuite
 
@@ -36,12 +36,13 @@ directory and select the board you built.
 | Question | Where to look |
 | --- | --- |
 | Which NSX CLI am I running? | Run `nsx --version`, or `uv run --locked nsx --version` for an app with a committed `uv.lock` and a project dependency on `neuralspotx`. Compare it with `targets.<board>.nsx_tool.version` in `nsx.lock`, which records the tool that wrote the lock. |
-| Which NSX SDK did the app lock? | In `targets.<board>.modules.nsx-ambiqsuite`, read `constraint` for the requested revision and `resolved.commit` for the exact Git commit. `resolved.vendored_at` gives the project directory inside the app. |
-| Which upstream AmbiqSuite source went into that SDK? | Open the release manifest at the **locked SDK revision**. For a snapshot intake, read `upstream.vendor_source_commit` for the SWS commit and `upstream.source_commit` for the prepared archive source. The manifest also records staged header corrections and the provenance of retained files. |
+| Which NSX SDK did the app lock? | Open `targets.<board>.modules.nsx-ambiqsuite`. For a Git entry, `constraint` names the requested revision and `resolved.commit` gives the exact commit. For app-owned or local sources, use the recorded path and content hash. |
+| Which upstream AmbiqSuite source went into that SDK? | Open the release manifest at the **locked SDK revision**. Read the manifest’s description of the upstream identity and the provenance for the specific headers or archives you use. Older SDKs can combine archives from different upstream commits. |
 
 For example, an app locked to NSX SDK `v5.2.32` records SDK commit `fc660806ba`.
-That SDK took in AmbiqSuite commit `3cfb7d5071` from November 5, 2026, and built
-its HAL/BSP archives from prepared commit `83bd69c37e`. The NSX SDK tag identifies
+Its manifest identifies the AmbiqSuite snapshot from November 5, 2026 as
+`upstream.vendor_source_commit` (`3cfb7d5071`) and the prepared source for its
+HAL/BSP archives as `upstream.source_commit` (`83bd69c37e`). The NSX SDK tag identifies
 our distribution. The release manifest identifies the upstream snapshot and patches.
 [SDK v5.2.32 release manifest](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/v5.2.32/release/nsx-ambiq-sdk-5.2.32.yaml)
 
@@ -54,7 +55,9 @@ and review the resulting lock diff for each board.
 
 For a local experiment, point `--sdk-root` at a prepared AmbiqSuite payload
 directory containing the headers and archives expected by the selected target.
-Use a separate build directory so the experiment has its own CMake cache.
+Start with a fresh build directory for each distinct SDK root. CMake caches the
+selected archives. To verify the selection, check the `NSX_HAL_LIB` and
+`NSX_BSP_LIB` paths in that directory’s `CMakeCache.txt`.
 From an app targeting the Apollo510 EVB, for example:
 
 ```bash
