@@ -14,8 +14,10 @@ for evaluation and integration with modular CMake and AmbiqSuite, including
 bring-up, profiling, validation and demos. Production support, long-term
 support and backports are outside that commitment. Direct Zephyr and CMSIS-Pack
 workflows are outside the tool's scope. Spark hardware qualification is
-tracked separately, and an independent Corstone/FVP provider is deferred.
-[Spark qualification](https://github.com/AmbiqAI/neuralspotx/issues/154) · [Corstone/FVP investigation](https://github.com/AmbiqAI/neuralspotx/issues/287)
+tracked separately. For Corstone virtual targets on the development branch, see
+[Boards and targets](/neuralspotx/guides/apps/boards-and-targets/). Check the
+[release notes](https://github.com/AmbiqAI/neuralspotx/releases) for availability
+in your installed CLI. [Spark qualification](https://github.com/AmbiqAI/neuralspotx/issues/154)
 
 ## Cadence
 
@@ -112,9 +114,15 @@ during 1.x keep working through the series. [Lock behavior](/neuralspotx/guides/
 
 ## Qualification baseline for 1.0
 
-The evidence below comes from [neuralspotx 0.9.9](https://github.com/AmbiqAI/neuralspotx/commit/05a5f51206343599bcf0e3e4a4a8a96e63319fcd)
+The table below records the pre-release baseline from [neuralspotx 0.9.9](https://github.com/AmbiqAI/neuralspotx/commit/05a5f51206343599bcf0e3e4a4a8a96e63319fcd)
 and [nsx-ambiq-sdk 5.2.32](https://github.com/AmbiqAI/nsx-ambiq-sdk/commit/fc660806bacdfe4b9f84f1e2ea2bd9ada918cda6).
-Qualification and signoff on the exact 1.0 wheel are pending. [Readiness tracker](https://github.com/AmbiqAI/neuralspotx/issues/226)
+
+The 1.0.0 candidate rebuilt the locked Apollo510 `kws_infer` example with the
+same firmware bytes as 0.9.9. A separate generated hello-world app was flashed
+and ran on a physical Apollo510 EVB. The release owner approved publication,
+and the published PyPI and GitHub artifacts matched the release checksums.
+[Candidate and board results](https://github.com/AmbiqAI/neuralspotx/issues/226#issuecomment-7067585551)
+· [Published artifact verification](https://github.com/AmbiqAI/neuralspotx/issues/226#issuecomment-7068207718)
 
 | Configuration | What was verified |
 | --- | --- |
@@ -145,36 +153,33 @@ distinguish optional extras. [NOTICE correction](https://github.com/AmbiqAI/neur
 
 ## How to pin
 
-Pin an exact version anywhere NSX is a dependency of something you ship or
-automate.
+For a standalone CLI, install the version used to qualify the app. For example:
 
 ```bash
-# One-off tool install
-uv tool install neuralspotx==0.8.1
-
-# Project dependency
-uv add "neuralspotx==0.8.1"
+uv tool install 'neuralspotx==1.0.1'
+nsx --version
 ```
 
-In a `pyproject.toml`:
+If the app manages its Python tools with uv, add NSX as a project dependency
+and commit both `pyproject.toml` and `uv.lock`:
 
-```toml
-dependencies = ["neuralspotx==0.8.1"]
+```bash
+uv add 'neuralspotx==1.0.1'
 ```
 
-A compatible-release constraint such as `~=0.8.1` allows patch updates and is
-reasonable for local development. It is not enough for a build you need to
-reproduce, because pre-1.0 patch releases still carry behavior fixes. For CI,
-pin exactly and record the version alongside the artifacts it produced.
+On a fresh checkout of that app, run:
 
-Two things pin separately from the CLI:
+```bash
+uv sync --locked
+uv run --locked nsx --version
+uv run --locked nsx configure --frozen
+uv run --locked nsx build --frozen
+```
 
-- **Modules.** Your app's `nsx.lock` records the exact revision of every module
-  resolved into it. Commit it. See
-  [Lock and sync](/neuralspotx/guides/modules/lock-and-sync/).
-- **The SDK.** The provider module's pinned revision determines which AmbiqSuite
-  drop you build against. See
-  [SDK foundation and overrides](/neuralspotx/guides/modules/sdk-providers/).
+Here `uv.lock` pins the Python environment, including the CLI. The app's
+`nsx.lock` records the firmware modules for each board, including the SDK
+provider. Commit both locks to reproduce the build. To look up the exact SDK
+and upstream source, see [Which revision you are on](/neuralspotx/guides/modules/sdk-providers/#which-revision-you-are-on).
 
 ## Verifying what you installed
 
