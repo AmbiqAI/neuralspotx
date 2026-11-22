@@ -1,5 +1,5 @@
 {
-  "module_count": 62,
+  "module_count": 63,
   "modules": [
     {
       "agent_keywords": [
@@ -2151,9 +2151,9 @@
       "provider": null,
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/ns-cmsis-nn",
-      "revision": "v7.47.0",
+      "revision": "5a2d78be4eecf376bb1c6bc5c6f568447ca2bea7",
       "slug": "nsx-cmsis-nn",
-      "source_url": "https://github.com/AmbiqAI/ns-cmsis-nn/tree/v7.47.0",
+      "source_url": "https://github.com/AmbiqAI/ns-cmsis-nn/tree/5a2d78be4eecf376bb1c6bc5c6f568447ca2bea7",
       "summary": "Ambiq-optimized CMSIS-NN neural network kernels. Fork of ARM CMSIS-NN with MVE and DSP optimizations for Apollo SoCs.",
       "type": "algorithm",
       "use_cases": [
@@ -2162,7 +2162,7 @@
         "int8/int16/int4 quantized model support",
         "fp32/fp16 floating-point model support"
       ],
-      "version": "7.47.0"
+      "version": "7.47.2"
     },
     {
       "agent_keywords": [
@@ -2447,13 +2447,60 @@
       "provider": null,
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/nsx-corstone-sdk",
-      "revision": "c2972d6636f653a0f25a94dc091fa4c305d52141",
+      "revision": "5de78ec9395f5c872bf7cb83cf74fe9be7c53dd3",
       "slug": "nsx-corstone-bsp",
-      "source_url": "https://github.com/AmbiqAI/nsx-corstone-sdk/tree/c2972d6636f653a0f25a94dc091fa4c305d52141",
+      "source_url": "https://github.com/AmbiqAI/nsx-corstone-sdk/tree/5de78ec9395f5c872bf7cb83cf74fe9be7c53dd3",
       "summary": null,
       "type": "backend_specific",
       "use_cases": [],
       "version": "0.1.0"
+    },
+    {
+      "agent_keywords": [],
+      "anti_use_cases": [],
+      "capabilities": [],
+      "category": null,
+      "compatibility": {
+        "boards": [
+          "corstone320_fvp_u85"
+        ],
+        "socs": [
+          "corstone320"
+        ],
+        "toolchains": [
+          "arm-none-eabi-gcc"
+        ]
+      },
+      "constraints": {},
+      "depends": {
+        "optional": [],
+        "required": [
+          "nsx-corstone-soc"
+        ],
+        "required_dependencies": [
+          {
+            "name": "nsx-corstone-soc",
+            "version": ">=0.2.0"
+          }
+        ]
+      },
+      "example_refs": [],
+      "integrations": {},
+      "manifest_error": null,
+      "manifest_source": "git",
+      "metadata_path": "modules/ns-cmsis-nn/nsx-corstone/nsx-module.yaml",
+      "name": "nsx-corstone-cmsis-nn",
+      "project": "ns-cmsis-nn",
+      "provider": null,
+      "provides": {},
+      "repo_url": "https://github.com/AmbiqAI/ns-cmsis-nn",
+      "revision": "5a2d78be4eecf376bb1c6bc5c6f568447ca2bea7",
+      "slug": "nsx-corstone-cmsis-nn",
+      "source_url": "https://github.com/AmbiqAI/ns-cmsis-nn/tree/5a2d78be4eecf376bb1c6bc5c6f568447ca2bea7",
+      "summary": "Source-built CMSIS-NN integer kernels for Corstone-320 FVP.",
+      "type": "algorithm",
+      "use_cases": [],
+      "version": "7.47.2"
     },
     {
       "agent_keywords": [],
@@ -2498,9 +2545,9 @@
       "provider": null,
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/nsx-corstone-sdk",
-      "revision": "c2972d6636f653a0f25a94dc091fa4c305d52141",
+      "revision": "5de78ec9395f5c872bf7cb83cf74fe9be7c53dd3",
       "slug": "nsx-corstone-npu",
-      "source_url": "https://github.com/AmbiqAI/nsx-corstone-sdk/tree/c2972d6636f653a0f25a94dc091fa4c305d52141",
+      "source_url": "https://github.com/AmbiqAI/nsx-corstone-sdk/tree/5de78ec9395f5c872bf7cb83cf74fe9be7c53dd3",
       "summary": null,
       "type": "backend_specific",
       "use_cases": [],
@@ -2542,9 +2589,9 @@
       "provider": "corstone",
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/nsx-corstone-sdk",
-      "revision": "c2972d6636f653a0f25a94dc091fa4c305d52141",
+      "revision": "5de78ec9395f5c872bf7cb83cf74fe9be7c53dd3",
       "slug": "nsx-corstone-sdk",
-      "source_url": "https://github.com/AmbiqAI/nsx-corstone-sdk/tree/c2972d6636f653a0f25a94dc091fa4c305d52141",
+      "source_url": "https://github.com/AmbiqAI/nsx-corstone-sdk/tree/5de78ec9395f5c872bf7cb83cf74fe9be7c53dd3",
       "summary": null,
       "type": "sdk_provider",
       "use_cases": [],
@@ -2593,13 +2640,13 @@
       "provider": null,
       "provides": {},
       "repo_url": "https://github.com/AmbiqAI/nsx-corstone-sdk",
-      "revision": "c2972d6636f653a0f25a94dc091fa4c305d52141",
+      "revision": "5de78ec9395f5c872bf7cb83cf74fe9be7c53dd3",
       "slug": "nsx-corstone-soc",
-      "source_url": "https://github.com/AmbiqAI/nsx-corstone-sdk/tree/c2972d6636f653a0f25a94dc091fa4c305d52141",
+      "source_url": "https://github.com/AmbiqAI/nsx-corstone-sdk/tree/5de78ec9395f5c872bf7cb83cf74fe9be7c53dd3",
       "summary": null,
       "type": "soc",
       "use_cases": [],
-      "version": "0.1.0"
+      "version": "0.2.0"
     },
     {
       "agent_keywords": [

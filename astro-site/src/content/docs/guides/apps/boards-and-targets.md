@@ -183,6 +183,10 @@ Use a Vela payload compiled for the selected NPU and MAC count. The
 [provider KWS fixture](https://github.com/AmbiqAI/nsx-corstone-sdk/tree/main/tests/kws)
 exercises one Shared_Sram inference.
 
+For integer kernels on the Corstone-320 CPU, run
+`nsx module add nsx-corstone-cmsis-nn --app-dir demo320` and link the app
+to `nsx::cmsis_nn`. This entry point builds the kernels from source with Arm GNU.
+
 ## Boards NSX does not package
 
 `nsx board create` scaffolds a board definition you own, which you then fill in with the
