@@ -309,7 +309,7 @@ def _create_app_body(
     info("  2) Run `nsx configure --app-dir .`")
     if BOARD_SDK_PROVIDER.get(board) == "corstone":
         info(
-            "  3) Run `nsx build --app-dir .`, then launch the ELF on the Arm FVP (see README.md)."
+            "  3) Run `nsx build --app-dir .`, then `nsx run` with the Arm FVP (see README.md)."
         )
     else:
         info("  3) Run `nsx build --app-dir .`, `nsx flash --app-dir .`, or `nsx view --app-dir .`")

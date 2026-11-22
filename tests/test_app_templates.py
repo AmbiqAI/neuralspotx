@@ -230,7 +230,7 @@ def test_corstone_default_scaffold_documents_the_guest_console(tmp_path: Path) -
     app = tmp_path / "demo"
     create_app_impl(app, board="corstone300_fvp_u55", no_bootstrap=True)
     readme = (app / "README.md").read_text()
-    assert "FVP_Corstone_SSE-300_Ethos-U55 -a build/corstone300_fvp_u55/demo" in readme
+    assert "nsx run --fvp /path/to/FVP_Corstone_SSE-300_Ethos-U55" in readme
     assert "nsx flash" not in readme
 
 

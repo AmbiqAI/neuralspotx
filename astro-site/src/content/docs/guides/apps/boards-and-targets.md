@@ -146,10 +146,23 @@ still support the selected target. In particular, the NPU template requires an
 ## Arm Corstone virtual target
 
 `nsx create-app demo --board corstone300_fvp_u55` creates a Cortex-M55 GCC app.
-Run `nsx build --app-dir demo` to link its ELF. The app vendors its Corstone
-firmware sources, and the generated README gives the model arguments and expected
-UART output. The compiler can build the app on a machine without the simulator.
-Execution requires Arm's separately installed Corstone-300 Ethos-U55 FVP.
+Build the app, then run its ELF with Arm's separately installed model:
+
+```sh
+nsx build demo
+nsx run demo --fvp /path/to/FVP_Corstone_SSE-300_Ethos-U55
+```
+
+With the model on PATH, `nsx run demo` is enough. Use `--elf` for another
+built executable in the selected build directory and `--timeout` to change
+the 30-second model limit. The CLI prints guest UART output on completion and
+returns 0 for guest success, 1 for a nonzero guest exit, or 2 for configuration,
+model, timeout, or completion-record errors. Each invocation retains its own
+`uart.log` (when produced) and `model.log` under `<build-dir>/nsx-run/`.
+The model can exit successfully after a guest assertion failure, so NSX
+checks the firmware's signed exit code and its terminal UART marker.
+The Python entry point is `run_app(AppRunRequest(...))`.
+
 The initial board supports CPU execution and the UART console. Corstone-310,
 Corstone-320 and NPU inference each require separate qualification.
 

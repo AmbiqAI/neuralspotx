@@ -291,3 +291,21 @@ class AppRttRequest:
     capture: PathLike | None = None
 
     discover_probe: bool = field(default=False, kw_only=True)
+
+
+@dataclass(slots=True)
+class AppRunRequest:
+    """Run a built Corstone-300/U55 ELF on the locally installed Arm FVP.
+
+    The selected app and board must own the configured build directory.
+    ``elf`` defaults to the app executable and is relative to that directory
+    unless absolute. ``fvp`` is an explicit executable path; if omitted, use
+    the board's model on PATH. The default model execution limit is 30 seconds.
+    """
+
+    app_dir: PathLike = "."
+    board: str | None = None
+    build_dir: PathLike | None = None
+    elf: PathLike | None = None
+    fvp: PathLike | None = None
+    timeout_s: float = 30.0

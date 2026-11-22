@@ -35,8 +35,10 @@ from ._project import (
 )
 from ._requests import ModuleInitRequest
 from ._rtt import RttResult, RttSettings
+from ._run import RunResult
 
 __all__ = [
+    "RunResult",
     "ConsoleConfig",
     "RttResult",
     "RttSettings",

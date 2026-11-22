@@ -10,7 +10,7 @@ import threading
 import time
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any
+from typing import Any, BinaryIO
 
 from .._errors import NSXToolchainError
 from ._signals import defer_termination
@@ -214,6 +214,7 @@ def run(
     *,
     timeout: float | None = None,
     on_line: Callable[[str], None] | None = None,
+    output: BinaryIO | None = None,
 ) -> None:
     """Run a subprocess, raising on failure or timeout.
 
@@ -228,8 +229,10 @@ def run(
     stripped) as the subprocess produces it. The lines are also
     re-emitted on the parent's stdout so the user-visible output is
     unchanged. When *on_line* is ``None`` the subprocess inherits the
-    parent's stdio directly (legacy behaviour).
+    parent's stdio unless ``output`` redirects both output streams to a file.
     """
+    if output is not None and on_line is not None:
+        raise ValueError("Use either output or on_line for subprocess output")
     effective = _effective_timeout(timeout)
     child = _Child()
     try:
@@ -252,6 +255,8 @@ def run(
                     child,
                     cmd,
                     cwd=str(cwd) if cwd else None,
+                    stdout=output,
+                    stderr=subprocess.STDOUT if output is not None else None,
                     start_new_session=(os.name != "nt"),
                 )
             container = child.container

@@ -58,6 +58,7 @@ from ._cmd_module import (
     cmd_module_validate,
 )
 from ._cmd_rtt import cmd_rtt
+from ._cmd_run import cmd_run
 from ._hints import _COMMAND_GRAPH_HINTS, _register_group_hint, command_hint
 from ._render import _command_graph, _render_outdated_report
 
@@ -693,6 +694,18 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     _add_timeout(p_configure)
     p_configure.set_defaults(func=cmd_configure)
+
+    p_run = sub.add_parser("run", help="Run a built Corstone-300/U55 ELF on the Arm FVP")
+    _add_app_selector(p_run)
+    p_run.add_argument("--app-dir", default=".", help="App directory containing nsx.yml")
+    p_run.add_argument("--board", help="Select the execution board from nsx.yml")
+    p_run.add_argument("--build-dir", help="Configured build directory")
+    p_run.add_argument("--elf", help="ELF inside the build directory (default: app name)")
+    p_run.add_argument("--fvp", help="Path to the Arm model executable (default: search PATH)")
+    p_run.add_argument(
+        "--timeout", type=float, default=30.0, help="Model execution limit in seconds (default: 30)"
+    )
+    p_run.set_defaults(func=cmd_run)
 
     p_build = sub.add_parser("build", help="Build a generated NSX app")
     _add_app_selector(p_build)
@@ -1543,7 +1556,7 @@ def main(argv: list[str] | None = None) -> int:
         # child processes are stopped exactly as they are on Ctrl-C.
         with terminate_on_signals():
             try:
-                args.func(args)
+                return args.func(args) or 0
             except KeyboardInterrupt:
                 # Ctrl-C, or SIGTERM/SIGHUP as TerminatedBySignal. The child
                 # of the interrupted call is already stopped; also stop any
@@ -1580,4 +1593,3 @@ def main(argv: list[str] | None = None) -> int:
             raise
         sys.stderr.write(f"error: {exc}\n")
         return 1
-    return 0
