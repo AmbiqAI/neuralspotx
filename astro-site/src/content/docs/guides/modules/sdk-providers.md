@@ -36,7 +36,7 @@ directory and select the board you built.
 | Question | Where to look |
 | --- | --- |
 | Which NSX CLI am I running? | Run `nsx --version`, or `uv run --locked nsx --version` for an app with a committed `uv.lock` and a project dependency on `neuralspotx`. Compare it with `targets.<board>.nsx_tool.version` in `nsx.lock`, which records the tool that wrote the lock. |
-| Which NSX SDK did the app lock? | Open `targets.<board>.modules.nsx-ambiqsuite`. For a Git entry, `constraint` names the requested revision and `resolved.commit` gives the exact commit. For app-owned or local sources, `resolved.vendored_at` locates the app’s copy. Check `nsx.yml` for an external `source.path` or registry `local_path`. |
+| Which NSX SDK did the app lock? | Open `targets.<board>.modules.nsx-ambiqsuite`. For a Git entry, `constraint` names the requested revision and `resolved.commit` gives the exact commit. For app-owned or local sources, `resolved.vendored_at` locates the app’s copy. Look up an external `source.path` or registry `local_path` in `nsx.yml` and the workspace registry files it references. |
 | Which upstream AmbiqSuite source went into that SDK? | For a published SDK, read the release manifest at the **locked SDK revision**. Check the provenance of the specific headers or archives you use. For an unreleased or custom SDK, consult the provider’s artifact manifest or build records. |
 
 For example, an app locked to NSX SDK `v5.2.33` records SDK commit `afc21d0bd9`.
