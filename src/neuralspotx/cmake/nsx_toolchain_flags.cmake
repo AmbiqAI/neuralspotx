@@ -29,6 +29,8 @@ endif()
 
 
 function(nsx_apply_toolchain_flags flags_target)
+    set_property(TARGET ${flags_target} APPEND PROPERTY INTERFACE_LINK_DEPENDS "${NSX_LINKER_SCRIPT}")
+
     # ---- Architecture flags (shared) ----
     set(_arch_flags -mthumb -mcpu=${NSX_CPU} -mfloat-abi=${NSX_FLOAT_ABI})
     if(DEFINED NSX_FPU AND NOT NSX_FPU STREQUAL "")
