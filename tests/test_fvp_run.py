@@ -13,7 +13,8 @@ from neuralspotx.cli import main
 from neuralspotx.operations import _run
 
 BOARD = "corstone300_fvp_u55"
-PASS = b"hello\r\nApplication exit code: 0.\r\n\x04"
+EXIT_ZERO = b"Application exit code: 0.\r\n\x04"
+PASS = b"hello\r\n" + EXIT_ZERO
 FAIL = b"assert failed\nApplication exit code: -7.\n\x04\nEXITTHESIM\n"
 
 
@@ -48,13 +49,17 @@ def fake_model(monkeypatch, uart: bytes, *, error: BaseException | None = None):
 
 def test_api_retains_separate_guest_and_model_logs_per_run(app, monkeypatch) -> None:
     request = AppRunRequest(app_dir=app, fvp=sys.executable)
-    for payload, expected in [(PASS, 0), (FAIL, -7)]:
+    for payload, expected in [
+        (PASS, 0),
+        (FAIL, -7),
+        (b"Application exit code: pending...X" + EXIT_ZERO, 0),
+    ]:
         fake_model(monkeypatch, payload)
         result = run_app(request)
         assert result.guest_exit_code == expected
         assert result.uart_log.read_bytes() == payload
         assert result.model_log.read_bytes() == b"model diagnostic\n"
-    assert len(list((app / "build" / BOARD / "nsx-run").iterdir())) == 2
+    assert len(list((app / "build" / BOARD / "nsx-run").iterdir())) == 3
 
 
 @pytest.mark.parametrize(

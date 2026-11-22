@@ -18,7 +18,6 @@ from ._common import _resolve_build_context
 from ._debug_workflow import DebugState, inspect_build
 
 _MODEL = "FVP_Corstone_SSE-300_Ethos-U55"
-_EXIT_PREFIX = b"Application exit code: "
 _EXIT_RECORD = re.compile(
     rb"Application exit code: (0|-?[1-9][0-9]{0,9})\.\r?\n\x04(?:\r?\nEXITTHESIM(?:\r?\n)?)?"
 )
@@ -31,17 +30,13 @@ def _guest_exit_code(uart: Path) -> int:
             uart.open("rb") as stream,
             mmap.mmap(stream.fileno(), 0, access=mmap.ACCESS_READ) as data,
         ):
-            start = data.find(_EXIT_PREFIX)
-            if (
-                start >= 0
-                and (start == 0 or data[start - 1] == 10)
-                and data.find(_EXIT_PREFIX, start + 1) == -1
-            ):
-                match = _EXIT_RECORD.fullmatch(data, start)
-                if match:
-                    code = int(match[1])
-                    if -(2**31) <= code < 2**31:
-                        return code
+            # The retarget appends its record directly to the final UART byte.
+            # A complete earlier record would make the transcript ambiguous.
+            match = _EXIT_RECORD.search(data)
+            if match and match.end() == len(data):
+                code = int(match[1])
+                if -(2**31) <= code < 2**31:
+                    return code
     raise NSXToolchainError(f"Missing, ambiguous or incomplete guest exit record in {uart}")
 
 
