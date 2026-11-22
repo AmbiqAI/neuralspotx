@@ -9,43 +9,16 @@ import re
 import shutil
 import subprocess
 import tempfile
-from dataclasses import dataclass
 from pathlib import Path
 
 from .._errors import NSXConfigError, NSXTimeoutError, NSXToolchainError
+from .._fvp import FVP_MODELS
 from ..constants import normalize_board
 from ..models import AppConfig, RunResult
 from ..project_config import _default_build_dir, _load_app_cfg
 from ..subprocess_utils import run
 from ._debug_workflow import DebugState, inspect_build
 
-
-@dataclass(frozen=True)
-class _Fvp:
-    executable: str
-    board_component: str
-    settings: tuple[str, ...]
-
-
-_MODELS = {
-    "corstone300_fvp_u55": _Fvp(
-        "FVP_Corstone_SSE-300_Ethos-U55",
-        "mps3_board",
-        (
-            "cpu0.CFGDTCMSZ=12",
-            "cpu0.CFGITCMSZ=12",
-            "ethosu.num_macs=32",
-        ),
-    ),
-    "corstone320_fvp_u85": _Fvp(
-        "FVP_Corstone_SSE-320",
-        "mps4_board",
-        (
-            "vis_hdlcd.disable_visualisation=1",
-            "mps4_board.subsystem.ethosu.num_macs=256",
-        ),
-    ),
-}
 _EXIT_RECORD = re.compile(
     rb"Application exit code: (0|-?[1-9][0-9]{0,9})\.\r?\n\x04(?:\r?\nEXITTHESIM(?:\r?\n)?)?"
 )
@@ -81,10 +54,10 @@ def run_app_impl(
         raise NSXConfigError("Model timeout must be positive and finite.")
     project = AppConfig.from_mapping(_load_app_cfg(app_dir))
     selected = normalize_board(project.resolve_target(board).board)
-    profile = _MODELS.get(selected)
+    profile = FVP_MODELS.get(selected)
     if profile is None:
         raise NSXConfigError(
-            f"Board '{selected}' has no simulator runner. Select one of {', '.join(_MODELS)}."
+            f"Board '{selected}' has no simulator runner. Select one of {', '.join(FVP_MODELS)}."
         )
     build = (build_dir or _default_build_dir(app_dir, selected)).resolve()
     if inspect_build(app_dir, build, selected).state is DebugState.UNCONFIGURED:

@@ -143,7 +143,7 @@ targets:
         resolved:
           tool_version: 0.9.9
           vendored_at: cmake/nsx
-          content_hash: sha256:855ca39280222d70b1ee261aadd0c83d037affbd6bf19abe74eff3373385eee8
+          content_hash: sha256:59a62ea5b0fcb493488bd0398ce030c3be3c757f2da1c6d5b9d34be5d6a3c5af
           acquired_at: '2026-11-21T15:11:18+00:00'
           manifest_path: nsx-module.yaml
       nsx-ambiq-usb:
@@ -335,7 +335,7 @@ targets:
         resolved:
           tool_version: 0.9.9
           vendored_at: cmake/nsx
-          content_hash: sha256:855ca39280222d70b1ee261aadd0c83d037affbd6bf19abe74eff3373385eee8
+          content_hash: sha256:59a62ea5b0fcb493488bd0398ce030c3be3c757f2da1c6d5b9d34be5d6a3c5af
           acquired_at: '2026-11-21T15:11:18+00:00'
           manifest_path: nsx-module.yaml
       nsx-ambiq-usb:
@@ -527,7 +527,7 @@ targets:
         resolved:
           tool_version: 0.9.9
           vendored_at: cmake/nsx
-          content_hash: sha256:855ca39280222d70b1ee261aadd0c83d037affbd6bf19abe74eff3373385eee8
+          content_hash: sha256:59a62ea5b0fcb493488bd0398ce030c3be3c757f2da1c6d5b9d34be5d6a3c5af
           acquired_at: '2026-11-21T15:11:19+00:00'
           manifest_path: nsx-module.yaml
       nsx-ambiq-usb:
@@ -719,7 +719,7 @@ targets:
         resolved:
           tool_version: 0.9.9
           vendored_at: cmake/nsx
-          content_hash: sha256:855ca39280222d70b1ee261aadd0c83d037affbd6bf19abe74eff3373385eee8
+          content_hash: sha256:59a62ea5b0fcb493488bd0398ce030c3be3c757f2da1c6d5b9d34be5d6a3c5af
           acquired_at: '2026-11-21T15:11:19+00:00'
           manifest_path: nsx-module.yaml
       nsx-ambiq-usb:

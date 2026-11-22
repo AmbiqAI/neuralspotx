@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: BSD-3-Clause
 # Copyright (c) 2026, Ambiq
-# C300 CPU images fit in TCM. A linked DDR payload would turn that small
+# C300/310 CPU images occupy a compact load region. A linked DDR payload would turn that small
 # flat binary into a padded image spanning boot memory through 0x70000000.
 # Inspect the linked ELF because one project can build CPU and NPU images.
 execute_process(COMMAND "${SIZE}" -A "${ELF}"

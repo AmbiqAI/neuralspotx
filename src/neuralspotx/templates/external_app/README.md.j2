@@ -20,10 +20,10 @@ nsx build --app-dir .
 With the Arm FVP for {{ board }} installed, run the built app:
 
 ```bash
-nsx run --fvp /path/to/{{ "FVP_Corstone_SSE-320" if board == "corstone320_fvp_u85" else "FVP_Corstone_SSE-300_Ethos-U55" }}
+nsx run --fvp /path/to/{{ fvp_executable }}
 ```
 
-{% if board == "corstone320_fvp_u85" %}
+{% if board in ["corstone310_fvp_u55", "corstone320_fvp_u85"] %}
 On Linux, set the FVP library search path as shown in the
 [Corstone target guide](https://ambiqai.github.io/neuralspotx/guides/apps/boards-and-targets/#arm-corstone-virtual-target).
 {% endif %}

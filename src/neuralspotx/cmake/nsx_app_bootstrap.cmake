@@ -230,7 +230,7 @@ function(nsx_finalize_app app_target)
             # ROM and executable BRAM occupy separate regions even for CPU-only apps.
             add_custom_command(TARGET ${app_target} POST_BUILD
                 COMMAND ${CMAKE_COMMAND} -E rm -f "${flat_bin}" VERBATIM)
-        elseif(CMAKE_OBJCOPY AND NSX_SOC_FAMILY STREQUAL "corstone300")
+        elseif(CMAKE_OBJCOPY AND NSX_SOC_FAMILY MATCHES "^corstone(300|310)$")
             set(size_tool "${CMAKE_SIZE}")
             if(NOT size_tool)
                 get_filename_component(binutils_dir "${CMAKE_OBJCOPY}" DIRECTORY)
