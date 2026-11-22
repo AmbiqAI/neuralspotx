@@ -80,17 +80,17 @@ predates the feature, the default script is used and the profile is ignored.
 
 ## Overriding the script
 
-The whole selection is skipped if `NSX_LINKER_SCRIPT` is already set:
+For a board whose `memory.cmake` guards its selection with
+`if(NOT DEFINED NSX_LINKER_SCRIPT)`, set the variable in the app’s
+`CMakeLists.txt` before calling `nsx_bootstrap_app()`. For example, an
+Apollo510 GCC app with its own layout next to `CMakeLists.txt` can use:
 
 ```cmake
-if(NOT DEFINED NSX_LINKER_SCRIPT)
+set(NSX_LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/my_layout.ld")
 ```
 
-So pointing the build at a script of your own is one CMake variable:
-
-```bash
-nsx configure -- -DNSX_LINKER_SCRIPT=/path/to/my_layout.ld
-```
+The board uses this file in place of its default. With the generated Ninja
+build, editing the selected script triggers a relink on the next `nsx build`.
 
 Start from the script your board would have selected, since it already has the correct
 regions and section names for the part. The `power_benchmark` example ships its own
@@ -98,7 +98,7 @@ regions and section names for the part. The `power_benchmark` example ships its 
 
 :::caution[An override is yours to maintain]
 The vendored scripts change when the SDK revision your app pins changes. A copy you took
-does not. Diff yours against the current one after an `nsx update` that moves the SDK.
+does not. Diff yours against the current one after updating the app’s SDK pin.
 :::
 
 ## Stack and heap

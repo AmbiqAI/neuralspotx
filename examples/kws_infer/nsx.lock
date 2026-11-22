@@ -3,9 +3,9 @@
 schema_version: 6
 targets:
   apollo510_evb:
-    generated_at: '2026-11-21T15:11:12+00:00'
+    generated_at: '2026-11-22T16:30:58+00:00'
     nsx_tool:
-      version: 0.9.9
+      version: 1.0.1
     manifest:
       path: nsx.yml
       hash: sha256:db8948ec5650564db5384cc45c2ef3e5439bbc6100b438747ea81601a6c489fd
@@ -107,10 +107,10 @@ targets:
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.9.9
+          tool_version: 1.0.1
           vendored_at: boards/apollo510_evb
           content_hash: sha256:564f59a6f7f4fb1eea7c645a213eccdbd0261c0ab813343edc4bbb7253216a5f
-          acquired_at: '2026-11-21T15:11:12+00:00'
+          acquired_at: '2026-11-22T16:31:03+00:00'
           manifest_path: nsx-module.yaml
       nsx-core:
         project: nsx-ambiq-sdk
@@ -141,10 +141,10 @@ targets:
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.9.9
+          tool_version: 1.0.1
           vendored_at: cmake/nsx
-          content_hash: sha256:59a62ea5b0fcb493488bd0398ce030c3be3c757f2da1c6d5b9d34be5d6a3c5af
-          acquired_at: '2026-11-21T15:11:12+00:00'
+          content_hash: sha256:30514448925eeb2d199782234fa9639506f39f210ecad32feb95fb45614c905a
+          acquired_at: '2026-11-22T16:31:03+00:00'
           manifest_path: nsx-module.yaml
       nsx-interrupt:
         project: nsx-ambiq-sdk
@@ -185,14 +185,13 @@ targets:
       nsx-cmsis-nn:
         project: ns-cmsis-nn
         kind: git
-        constraint: v7.47.0
+        constraint: 5a2d78be4eecf376bb1c6bc5c6f568447ca2bea7
         resolved:
           url: https://github.com/AmbiqAI/ns-cmsis-nn.git
-          tag: v7.47.0
-          commit: 9f793bd9343b60e794f915b285bd7b7c4a885abe
+          commit: 5a2d78be4eecf376bb1c6bc5c6f568447ca2bea7
           vendored_at: modules/ns-cmsis-nn
-          content_hash: sha256:c9fbd80913a9d6f0137bb497c55f2ae4e33a588f28487e35bf87815088c67b2c
-          acquired_at: '2026-11-20T13:48:37+00:00'
+          content_hash: sha256:d42fcfa7474a25d00490a1190e2a6f835d9828d2ff74822d9d626745142d91d0
+          acquired_at: '2026-11-22T16:31:03+00:00'
           manifest_path: nsx/nsx-module.yaml
       nsx-helia-rt:
         project: helia-rt
@@ -207,9 +206,9 @@ targets:
           acquired_at: '2026-11-20T13:48:37+00:00'
           manifest_path: nsx/nsx-module.yaml
   apollo510b_evb:
-    generated_at: '2026-11-21T15:11:12+00:00'
+    generated_at: '2026-11-22T16:31:08+00:00'
     nsx_tool:
-      version: 0.9.9
+      version: 1.0.1
     manifest:
       path: nsx.yml
       hash: sha256:db8948ec5650564db5384cc45c2ef3e5439bbc6100b438747ea81601a6c489fd
@@ -311,10 +310,10 @@ targets:
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.9.9
+          tool_version: 1.0.1
           vendored_at: boards/apollo510b_evb
           content_hash: sha256:d52af8077c976401653f3ac5d55df80bcf5805d649beff69bc038ca559ab0f64
-          acquired_at: '2026-11-21T15:11:12+00:00'
+          acquired_at: '2026-11-22T16:31:08+00:00'
           manifest_path: nsx-module.yaml
       nsx-core:
         project: nsx-ambiq-sdk
@@ -345,10 +344,10 @@ targets:
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.9.9
+          tool_version: 1.0.1
           vendored_at: cmake/nsx
-          content_hash: sha256:59a62ea5b0fcb493488bd0398ce030c3be3c757f2da1c6d5b9d34be5d6a3c5af
-          acquired_at: '2026-11-21T15:11:12+00:00'
+          content_hash: sha256:30514448925eeb2d199782234fa9639506f39f210ecad32feb95fb45614c905a
+          acquired_at: '2026-11-22T16:31:08+00:00'
           manifest_path: nsx-module.yaml
       nsx-interrupt:
         project: nsx-ambiq-sdk
@@ -389,14 +388,13 @@ targets:
       nsx-cmsis-nn:
         project: ns-cmsis-nn
         kind: git
-        constraint: v7.47.0
+        constraint: 5a2d78be4eecf376bb1c6bc5c6f568447ca2bea7
         resolved:
           url: https://github.com/AmbiqAI/ns-cmsis-nn.git
-          tag: v7.47.0
-          commit: 9f793bd9343b60e794f915b285bd7b7c4a885abe
+          commit: 5a2d78be4eecf376bb1c6bc5c6f568447ca2bea7
           vendored_at: modules/ns-cmsis-nn
-          content_hash: sha256:c9fbd80913a9d6f0137bb497c55f2ae4e33a588f28487e35bf87815088c67b2c
-          acquired_at: '2026-11-20T13:48:38+00:00'
+          content_hash: sha256:d42fcfa7474a25d00490a1190e2a6f835d9828d2ff74822d9d626745142d91d0
+          acquired_at: '2026-11-22T16:31:08+00:00'
           manifest_path: nsx/nsx-module.yaml
       nsx-helia-rt:
         project: helia-rt
@@ -411,9 +409,9 @@ targets:
           acquired_at: '2026-11-20T13:48:38+00:00'
           manifest_path: nsx/nsx-module.yaml
   apollo330mP_evb:
-    generated_at: '2026-11-21T15:11:13+00:00'
+    generated_at: '2026-11-22T16:31:13+00:00'
     nsx_tool:
-      version: 0.9.9
+      version: 1.0.1
     manifest:
       path: nsx.yml
       hash: sha256:db8948ec5650564db5384cc45c2ef3e5439bbc6100b438747ea81601a6c489fd
@@ -515,10 +513,10 @@ targets:
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.9.9
+          tool_version: 1.0.1
           vendored_at: boards/apollo330mP_evb
           content_hash: sha256:51d86a9a90b730482e4851e4eaa11d26cd33489f7a42683dd46751c6448b392d
-          acquired_at: '2026-11-21T15:11:13+00:00'
+          acquired_at: '2026-11-22T16:31:13+00:00'
           manifest_path: nsx-module.yaml
       nsx-core:
         project: nsx-ambiq-sdk
@@ -549,10 +547,10 @@ targets:
         kind: packaged
         constraint: packaged
         resolved:
-          tool_version: 0.9.9
+          tool_version: 1.0.1
           vendored_at: cmake/nsx
-          content_hash: sha256:59a62ea5b0fcb493488bd0398ce030c3be3c757f2da1c6d5b9d34be5d6a3c5af
-          acquired_at: '2026-11-21T15:11:13+00:00'
+          content_hash: sha256:30514448925eeb2d199782234fa9639506f39f210ecad32feb95fb45614c905a
+          acquired_at: '2026-11-22T16:31:13+00:00'
           manifest_path: nsx-module.yaml
       nsx-interrupt:
         project: nsx-ambiq-sdk
@@ -593,14 +591,13 @@ targets:
       nsx-cmsis-nn:
         project: ns-cmsis-nn
         kind: git
-        constraint: v7.47.0
+        constraint: 5a2d78be4eecf376bb1c6bc5c6f568447ca2bea7
         resolved:
           url: https://github.com/AmbiqAI/ns-cmsis-nn.git
-          tag: v7.47.0
-          commit: 9f793bd9343b60e794f915b285bd7b7c4a885abe
+          commit: 5a2d78be4eecf376bb1c6bc5c6f568447ca2bea7
           vendored_at: modules/ns-cmsis-nn
-          content_hash: sha256:c9fbd80913a9d6f0137bb497c55f2ae4e33a588f28487e35bf87815088c67b2c
-          acquired_at: '2026-11-20T13:48:39+00:00'
+          content_hash: sha256:d42fcfa7474a25d00490a1190e2a6f835d9828d2ff74822d9d626745142d91d0
+          acquired_at: '2026-11-22T16:31:13+00:00'
           manifest_path: nsx/nsx-module.yaml
       nsx-helia-rt:
         project: helia-rt
