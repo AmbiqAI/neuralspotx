@@ -1,5 +1,21 @@
 # Changelog
 
+## [1.1.0](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v1.0.1...neuralspotx-v1.1.0) (2026-11-22)
+
+
+### Features
+
+* build Corstone-300 FVP apps with a separate SDK provider ([e110515](https://github.com/AmbiqAI/neuralspotx/commit/e110515b4d7bdcdc2cc5dc15914cc843bdf9e335))
+* **registry:** add Corstone-320 CMSIS-NN kernels ([#370](https://github.com/AmbiqAI/neuralspotx/issues/370)) ([9b1ba1b](https://github.com/AmbiqAI/neuralspotx/commit/9b1ba1b1ec14570c611a6a771eb32a7c77ae4832))
+* run Corstone-300 apps and report firmware exit status ([3d59ae8](https://github.com/AmbiqAI/neuralspotx/commit/3d59ae8818de44737808d12b7755e4df41774d56))
+* run Corstone-310 U55 and Corstone-320 U85 apps with NSX ([#364](https://github.com/AmbiqAI/neuralspotx/issues/364)) ([415abf2](https://github.com/AmbiqAI/neuralspotx/commit/415abf2c0abafad97470c32e7d7c34e27260e834))
+
+
+### Bug Fixes
+
+* promote the Ambiq SDK 5.2.33 registry pin ([#371](https://github.com/AmbiqAI/neuralspotx/issues/371)) ([4f3c842](https://github.com/AmbiqAI/neuralspotx/commit/4f3c842ed5b2b5896f161f8d0713774f7817eed4))
+* relink firmware when the selected board layout changes ([#369](https://github.com/AmbiqAI/neuralspotx/issues/369)) ([6c309b2](https://github.com/AmbiqAI/neuralspotx/commit/6c309b27b74a8564a635e2331baa694371cabc72))
+
 ## [1.0.1](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v1.0.0...neuralspotx-v1.0.1) (2026-11-21)
 
 
