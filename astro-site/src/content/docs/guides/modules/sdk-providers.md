@@ -25,8 +25,8 @@ shipped for the selected part, board and toolchain. A change inside the vendor H
 implementation therefore requires a matching rebuilt archive. A change in a
 wrapper compiled by the app takes effect when you rebuild the app.
 
-For example, SDK v5.2.32 records the files and SHA-256 hashes for its GCC, ATfE
-and Arm Compiler for Embedded archives in its [artifact manifest](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/v5.2.32/modules/nsx-ambiqsuite/sdk/artifact-manifest.yaml).
+For example, SDK v5.2.33 records the files and SHA-256 hashes for its GCC, ATfE
+and Arm Compiler for Embedded archives in its [artifact manifest](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/v5.2.33/modules/nsx-ambiqsuite/sdk/artifact-manifest.yaml).
 
 ## Which revision you are on
 
@@ -39,12 +39,12 @@ directory and select the board you built.
 | Which NSX SDK did the app lock? | Open `targets.<board>.modules.nsx-ambiqsuite`. For a Git entry, `constraint` names the requested revision and `resolved.commit` gives the exact commit. For app-owned or local sources, use the recorded path and content hash. |
 | Which upstream AmbiqSuite source went into that SDK? | Open the release manifest at the **locked SDK revision**. Read the manifest’s description of the upstream identity and the provenance for the specific headers or archives you use. Older SDKs can combine archives from different upstream commits. |
 
-For example, an app locked to NSX SDK `v5.2.32` records SDK commit `fc660806ba`.
+For example, an app locked to NSX SDK `v5.2.33` records SDK commit `afc21d0bd9`.
 Its manifest identifies the AmbiqSuite snapshot from November 5, 2026 as
 `upstream.vendor_source_commit` (`3cfb7d5071`) and the prepared source for its
 HAL/BSP archives as `upstream.source_commit` (`83bd69c37e`). The NSX SDK tag identifies
 our distribution. The release manifest identifies the upstream snapshot and patches.
-[SDK v5.2.32 release manifest](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/v5.2.32/release/nsx-ambiq-sdk-5.2.32.yaml)
+[SDK v5.2.33 release manifest](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/v5.2.33/release/nsx-ambiq-sdk-5.2.33.yaml)
 
 The packaged registry supplies defaults for new resolutions. An existing app can
 override those defaults or retain an earlier compatible Git resolution. To change
@@ -55,15 +55,21 @@ and review the resulting lock diff for each board.
 
 For a local experiment, point `--sdk-root` at a prepared AmbiqSuite payload
 directory containing the headers and archives expected by the selected target.
-Start with a fresh build directory for each distinct SDK root. CMake caches the
-selected archives. To verify the selection, check the `NSX_HAL_LIB` and
-`NSX_BSP_LIB` paths in that directory’s `CMakeCache.txt`.
-From an app targeting the Apollo510 EVB, for example:
+A separate build directory makes it easy to compare the trial with the locked
+build. From an app targeting the Apollo510 EVB, run both commands with the same
+SDK root and build directory.
 
 ```bash
 nsx configure --board apollo510_evb --build-dir build/sdk-trial --sdk-root /path/to/prepared/sdk
 nsx build --board apollo510_evb --build-dir build/sdk-trial --sdk-root /path/to/prepared/sdk
 ```
+
+With SDK v5.2.33, default HAL and BSP archive paths follow the SDK root when
+you reuse a build directory. Explicit archive pins keep their selected paths.
+If CMake reports an ambiguous archive path cached by an older SDK, use a fresh
+build directory or follow the diagnostic to clear or explicitly pin that entry.
+For a Ninja build, `ninja -C build/sdk-trial -t commands <app-target>` shows
+the paths to `libam_hal.a` and `libam_bsp.a` in the link command.
 
 The override is local to the build. The app lock and SBOM still describe the
 vendored SDK, so NSX rejects combining `--sdk-root` with `--frozen`. To build the

@@ -13,11 +13,10 @@ NSX 0.x is Beta. The approved 1.x support scope covers the current release
 for evaluation and integration with modular CMake and AmbiqSuite, including
 bring-up, profiling, validation and demos. Production support, long-term
 support and backports are outside that commitment. Direct Zephyr and CMSIS-Pack
-workflows are outside the tool's scope. Spark hardware qualification is
-tracked separately. For Corstone virtual targets on the development branch, see
-[Boards and targets](/neuralspotx/guides/apps/boards-and-targets/). Check the
-[release notes](https://github.com/AmbiqAI/neuralspotx/releases) for availability
-in your installed CLI. [Spark qualification](https://github.com/AmbiqAI/neuralspotx/issues/154)
+workflows are outside the tool's scope. NSX 1.1.0 supports building and running apps for the Corstone-300, -310 and -320
+virtual targets. Spark custom-board hardware qualification is tracked separately.
+[Boards and targets](/neuralspotx/guides/apps/boards-and-targets/) ·
+[Spark qualification](https://github.com/AmbiqAI/neuralspotx/issues/154)
 
 ## Cadence
 
@@ -112,6 +111,16 @@ the 1.x commitment. Release notes announce deprecations of documented
 interfaces and identify their replacements. Supported aliases deprecated
 during 1.x keep working through the series. [Lock behavior](/neuralspotx/guides/modules/lock-and-sync/#1x-lock-behavior)
 
+## Qualification for 1.1.0
+
+The 1.1.0 wheel generated an Apollo510 app using SDK v5.2.33. Its firmware
+matched the image previously run on the EVB. An existing app frozen to SDK
+v5.2.32 also rebuilt with its original lock and firmware bytes. On the
+Corstone-320 simulator, the release candidate ran a generated hello app and a
+CMSIS-NN max-pooling example that matched all 144 expected outputs.
+[SDK qualification](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/v5.2.33/release/qualification-5.2.33.md) ·
+[NSX 1.1.0 release](https://github.com/AmbiqAI/neuralspotx/releases/tag/neuralspotx-v1.1.0)
+
 ## Qualification baseline for 1.0
 
 The table below records the pre-release baseline from [neuralspotx 0.9.9](https://github.com/AmbiqAI/neuralspotx/commit/05a5f51206343599bcf0e3e4a4a8a96e63319fcd)
@@ -156,7 +165,7 @@ distinguish optional extras. [NOTICE correction](https://github.com/AmbiqAI/neur
 For a standalone CLI, install the version used to qualify the app. For example:
 
 ```bash
-uv tool install 'neuralspotx==1.0.1'
+uv tool install 'neuralspotx==1.1.0'
 nsx --version
 ```
 
@@ -164,7 +173,7 @@ If the app manages its Python tools with uv, add NSX as a project dependency
 and commit both `pyproject.toml` and `uv.lock`:
 
 ```bash
-uv add 'neuralspotx==1.0.1'
+uv add 'neuralspotx==1.1.0'
 ```
 
 On a fresh checkout of that app, run:
