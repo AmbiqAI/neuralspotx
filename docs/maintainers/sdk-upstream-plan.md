@@ -16,20 +16,20 @@ One repo, [`nsx-ambiq-sdk`](https://github.com/AmbiqAI/nsx-ambiq-sdk), vendors
 the AmbiqSuite drop, the HAL/BSP wrappers, and the shared NSX module set for
 every supported SoC (Apollo2 through Apollo5, plus the experimental atomiq110).
 Stable resolution pins every SDK module and SoC family to the published
-[`v5.2.32` release](https://github.com/AmbiqAI/nsx-ambiq-sdk/releases/tag/v5.2.32).
-The immutable tag resolves to `fc660806bacdfe4b9f84f1e2ea2bd9ada918cda6`.
+[`v5.2.33` release](https://github.com/AmbiqAI/nsx-ambiq-sdk/releases/tag/v5.2.33).
+The immutable tag resolves to `afc21d0bd97cb3e560891026b464708767f873fa`.
 The `nsx-ambiqsuite`, `nsx-ambiq-hal` and `nsx-ambiq-bsp` modules are thin
 metadata views onto that same project and revision.
 
-The [5.2.32 release record](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/v5.2.32/release/nsx-ambiq-sdk-5.2.32.yaml)
-identifies the same AmbiqSuite provider and 73 HAL/BSP archives as 5.2.31.
-The NSX integration adds live power-domain status and raw buck pulse counting
-on supported parts. Registry-managed apps require NSX 0.9.6 or newer to
+The [5.2.33 release record](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/v5.2.33/release/nsx-ambiq-sdk-5.2.33.yaml)
+identifies the same AmbiqSuite provider and 73 HAL/BSP archives as 5.2.32.
+Changing the SDK root in an existing build directory now selects the matching
+HAL and BSP archives. Registry-managed apps require NSX 0.9.6 or newer to
 resolve the BSP provider role, including on built-in EVBs.
 
-The [SDK qualification report](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/v5.2.32/release/qualification-5.2.32.md)
-records five-board GCC startup and power tests, generated-app checks on AP510B
-and AP330 Plus, and an over-the-air BLE test on AP510B after the Cordio update.
+The [SDK qualification report](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/v5.2.33/release/qualification-5.2.33.md)
+records a generated GCC app running on Apollo510 and 12 link checks across
+Apollo330 Plus, Apollo510, Apollo510B and Apollo510 Lite with GCC, ATfE and ArmClang.
 
 Board profiles depend on the provider module for their SoC family, and NSX
 vendors the resolved SDK content into the generated app. See

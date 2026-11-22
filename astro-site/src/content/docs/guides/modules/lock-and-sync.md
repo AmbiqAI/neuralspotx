@@ -49,10 +49,10 @@ revision in `nsx.yml`, use the registry override (this applies to its modules):
 module_registry:
   projects:
     nsx-ambiq-sdk:
-      revision: v5.2.32
+      revision: v5.2.33
 ```
 
-SDK 5.2.32 requires neuralspotx 0.9.6 or newer to resolve BSP dependencies,
+SDK 5.2.33 requires neuralspotx 0.9.6 or newer to resolve BSP dependencies,
 including for built-in boards.
 
 For a module-specific override, use `module_registry.modules.<module>.revision`.
