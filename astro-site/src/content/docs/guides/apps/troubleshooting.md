@@ -118,14 +118,15 @@ app-local `boards/<board>` copy of a registered board.
 
 | Source | How to recover |
 | --- | --- |
-| App-owned (`vendored`, or `local` with no registered source path) | Restore the module directory from the app’s version control. For intentional edits, run `nsx lock` and review the diff. |
+| Vendored | Restore the module directory from the app’s version control or backup. For intentional edits, commit the source alongside the reviewed `nsx lock` update. |
+| Local with no registered path | The app directory holds the source and may be ignored by Git. Restore it from a known-good copy. For intentional edits, preserve the source before updating its hash with `nsx lock`. |
 | Registered local directory | Save any edits in the registered source, restore it to the intended revision, then run `nsx sync` to copy it into the app. |
 | Git or packaged module | Run `nsx sync` to replace the app’s copy. For a packaged module, use the CLI version that supplied the locked content. |
 | Unresolved (`unresolved`) | Restore the directory that matches the locked hash. To resolve the dependency again, restore access to its upstream, run `nsx lock`, and review the change. |
 
 `nsx lock` refreshes all declared boards. `nsx sync` operates on the
-default board. To repair another target, run `nsx configure --board <board>`. Add `--frozen` to verify the repaired
-tree. Frozen mode refuses to overwrite an existing module whose content differs
+default board. To repair another target, run `nsx configure --board <board>`.
+Add `--frozen` to verify the repaired tree. Frozen mode refuses to overwrite an existing module whose content differs
 from the lock.
 
 On a fresh checkout, `nsx sync --frozen` can restore a missing Git module at
