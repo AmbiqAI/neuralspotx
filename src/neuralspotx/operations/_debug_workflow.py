@@ -130,7 +130,7 @@ def require_physical_debug(app: Path, board: str) -> None:
         raise NSXConfigError(str(exc)) from exc
     if descriptor and descriptor.sdk_provider == "corstone":
         raise NSXConfigError(
-            f"Board '{board}' runs on an Arm FVP. Build the ELF and launch the model."
+            f"Board '{board}' runs on an Arm FVP. Build the ELF, then use `nsx run`."
         )
 
 

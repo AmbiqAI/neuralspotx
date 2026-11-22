@@ -17,19 +17,14 @@ nsx build --app-dir .
 {% if sdk_provider == "corstone" %}
 ```
 
-With Arm's Corstone-300/U55 FVP installed, run the ELF and inspect its UART log.
+With the Corstone-300/U55 FVP installed, run the built app:
 
 ```bash
-FVP_Corstone_SSE-300_Ethos-U55 -a build/{{ board }}/{{ app_name }} \
-  -C cpu0.CFGDTCMSZ=12 -C cpu0.CFGITCMSZ=12 \
-  -C mps3_board.visualisation.disable-visualisation=1 \
-  -C mps3_board.telnetterminal0.start_telnet=0 -C mps3_board.telnetterminal1.start_telnet=0 \
-  -C mps3_board.telnetterminal2.start_telnet=0 -C mps3_board.telnetterminal5.start_telnet=0 \
-  -C mps3_board.uart0.out_file=uart.log -C mps3_board.uart0.unbuffered_output=1 \
-  -C mps3_board.uart0.shutdown_on_eot=1 -C mps3_board.uart0.shutdown_tag=EXITTHESIM
-cat uart.log
+nsx run --fvp /path/to/FVP_Corstone_SSE-300_Ethos-U55
 ```
 
+Omit `--fvp` when the model is on PATH. Each invocation retains the guest UART
+and model output under the selected build directory's `nsx-run/` directory.
 Expect `nsx hello from generated app` followed by `Application exit code: 0.`
 {% else %}
 nsx flash --app-dir .

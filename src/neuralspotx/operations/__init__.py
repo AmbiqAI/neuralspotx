@@ -75,10 +75,12 @@ from ._modules import (
 )
 from ._reset import reset_impl
 from ._rtt import resolve_rtt_app_impl, rtt_app_impl
+from ._run import run_app_impl
 from ._sbom import coerce_sbom_format, generate_sbom_impl
 from ._sync import sync_app_impl, update_app_impl
 
 __all__ = [
+    "run_app_impl",
     "resolve_rtt_app_impl",
     "rtt_app_impl",
     # Enums
