@@ -105,16 +105,24 @@ Local module 'my-module' content drifted from lock ...
 Local source for 'my-module' at /home/you/src/my-module has drifted ...
 ```
 
-Check the module’s source kind in the selected board’s lock entry. The recovery
-depends on where the source lives. The `nsx sync` commands below apply to the
-app’s default board. For another target, run `nsx configure --board <board>`
-to sync that board’s modules, adding `--frozen` for a frozen restore.
+Check `kind` in the selected board’s `nsx.lock` entry. For a `local`
+entry, look in `nsx.yml` for a module `source.path` or a registry
+`local_path`. If neither is configured, the app owns the source.
+
+Sync processes all modules for the selected board. Before a non-frozen sync
+or configure, save edits you need in the app’s module directories and
+`boards/<board>` copies, including other modules in a shared project directory.
 
 | Source | How to recover |
 | --- | --- |
-| App-owned (`vendored`, or `local` with no registered source path) | Restore the module directory from the app’s version control. Sync can verify these files but has no other copy. For intentional edits, run `nsx lock` and review the diff. |
-| Registered local directory | Restore the registered source to the intended revision first. Save any edits you need from the app’s mirror, then run `nsx sync` to copy the source into the app. |
-| Git or packaged module | Save any edits you need from the app’s copy, then run `nsx sync` to replace it. For a packaged module, use the CLI version recorded by the app. |
+| App-owned (`vendored`, or `local` with no registered source path) | Restore the module directory from the app’s version control. For intentional edits, run `nsx lock` and review the diff. |
+| Registered local directory | Save any edits in the registered source, restore it to the intended revision, then run `nsx sync` to copy it into the app. |
+| Git or packaged module | Run `nsx sync` to replace the app’s copy. For a packaged module, use the CLI version that supplied the locked content. |
+
+The commands above use the app’s default board. To repair another target,
+run `nsx configure --board <board>`. Add `--frozen` to verify the repaired
+tree. Frozen mode refuses to overwrite an existing module whose content differs
+from the lock.
 
 On a fresh checkout, `nsx sync --frozen` can restore a missing Git module at
 its recorded revision and verify its content hash. If a newly fetched tree
