@@ -389,7 +389,7 @@
       ],
       "project": "nsx-ambiq-sdk",
       "provider": "nsx-ambiqsuite",
-      "revision": "v5.2.32",
+      "revision": "v5.2.33",
       "sdk_modules": [
         "nsx-ambiqsuite",
         "nsx-ambiq-hal",
@@ -411,7 +411,7 @@
       ],
       "project": "nsx-ambiq-sdk",
       "provider": "nsx-ambiqsuite",
-      "revision": "v5.2.32",
+      "revision": "v5.2.33",
       "sdk_modules": [
         "nsx-ambiqsuite",
         "nsx-ambiq-hal",
@@ -447,7 +447,7 @@
       ],
       "project": "nsx-ambiq-sdk",
       "provider": "nsx-ambiqsuite",
-      "revision": "v5.2.32",
+      "revision": "v5.2.33",
       "sdk_modules": [
         "nsx-ambiqsuite",
         "nsx-ambiq-hal",
@@ -481,7 +481,7 @@
       ],
       "project": "nsx-ambiq-sdk",
       "provider": "nsx-ambiqsuite",
-      "revision": "v5.2.32",
+      "revision": "v5.2.33",
       "sdk_modules": [
         "nsx-ambiqsuite",
         "nsx-ambiq-hal",
@@ -512,7 +512,7 @@
       ],
       "project": "nsx-ambiq-sdk",
       "provider": "nsx-ambiqsuite",
-      "revision": "v5.2.32",
+      "revision": "v5.2.33",
       "sdk_modules": [
         "nsx-ambiqsuite",
         "nsx-ambiq-hal",
@@ -545,7 +545,7 @@
       ],
       "project": "nsx-ambiq-sdk",
       "provider": "nsx-ambiqsuite",
-      "revision": "v5.2.32",
+      "revision": "v5.2.33",
       "sdk_modules": [
         "nsx-ambiqsuite",
         "nsx-ambiq-hal",
@@ -583,7 +583,7 @@
       ],
       "project": "nsx-ambiq-sdk",
       "provider": "nsx-ambiqsuite",
-      "revision": "v5.2.32",
+      "revision": "v5.2.33",
       "sdk_modules": [
         "nsx-ambiqsuite",
         "nsx-ambiq-hal",
@@ -622,7 +622,7 @@
       ],
       "project": "nsx-ambiq-sdk",
       "provider": "nsx-ambiqsuite",
-      "revision": "v5.2.32",
+      "revision": "v5.2.33",
       "sdk_modules": [
         "nsx-ambiqsuite",
         "nsx-ambiq-hal",
@@ -661,7 +661,7 @@
       ],
       "project": "nsx-ambiq-sdk",
       "provider": "nsx-ambiqsuite",
-      "revision": "v5.2.32",
+      "revision": "v5.2.33",
       "sdk_modules": [
         "nsx-ambiqsuite",
         "nsx-ambiq-hal",
@@ -700,7 +700,7 @@
       ],
       "project": "nsx-ambiq-sdk",
       "provider": "nsx-ambiqsuite",
-      "revision": "v5.2.32",
+      "revision": "v5.2.33",
       "sdk_modules": [
         "nsx-ambiqsuite",
         "nsx-ambiq-hal",
@@ -739,7 +739,7 @@
       ],
       "project": "nsx-ambiq-sdk",
       "provider": "nsx-ambiqsuite",
-      "revision": "v5.2.32",
+      "revision": "v5.2.33",
       "sdk_modules": [
         "nsx-ambiqsuite",
         "nsx-ambiq-hal",
