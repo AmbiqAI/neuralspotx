@@ -22,8 +22,13 @@ def cmd_run(args: argparse.Namespace) -> int:
             timeout_s=args.timeout,
         )
         result = api.run_app(request)
-        with result.uart_log.open("rb") as uart:
-            shutil.copyfileobj(uart, sys.stdout.buffer)
+        binary_output = getattr(sys.stdout, "buffer", None)
+        if binary_output is None:
+            with result.uart_log.open(encoding="utf-8", errors="replace", newline="") as text:
+                shutil.copyfileobj(text, sys.stdout)
+        else:
+            with result.uart_log.open("rb") as uart:
+                shutil.copyfileobj(uart, binary_output)
     except (api.NSXError, OSError) as exc:
         print(f"error: {exc}", file=sys.stderr)
         return 2

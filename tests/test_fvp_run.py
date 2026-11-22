@@ -83,6 +83,7 @@ def test_incomplete_or_conflicting_guest_evidence(app, monkeypatch, payload) -> 
     [
         (subprocess.TimeoutExpired("FVP", 30), NSXTimeoutError),
         (subprocess.CalledProcessError(7, "FVP"), NSXToolchainError),
+        (NSXToolchainError("loader missing"), NSXToolchainError),
     ],
 )
 def test_model_failure_takes_precedence_and_preserves_output(
@@ -117,3 +118,21 @@ def test_refuses_wrong_build_owner_and_escaping_elf(app) -> None:
     )
     with pytest.raises(NSXConfigError, match="board mismatch"):
         run_app(request)
+
+
+def test_old_build_cannot_enable_removed_board(app) -> None:
+    (app / "nsx.yml").write_text(
+        "schema_version: 2\nproject:\n  name: demo\ntarget:\n  board: apollo510_evb\n"
+    )
+    with pytest.raises(NSXConfigError, match="not a supported target"):
+        run_app(AppRunRequest(app_dir=app, board=BOARD, fvp=sys.executable))
+
+
+def test_cli_supports_text_only_stdout(app, monkeypatch) -> None:
+    import io
+    from contextlib import redirect_stdout
+
+    fake_model(monkeypatch, PASS)
+    with redirect_stdout(io.StringIO()) as destination:
+        assert main(["run", str(app), "--fvp", sys.executable]) == 0
+    assert destination.getvalue() == PASS.decode()

@@ -12,9 +12,10 @@ import tempfile
 from pathlib import Path
 
 from .._errors import NSXConfigError, NSXTimeoutError, NSXToolchainError
-from ..models import RunResult
+from ..constants import normalize_board
+from ..models import AppConfig, RunResult
+from ..project_config import _default_build_dir, _load_app_cfg
 from ..subprocess_utils import run
-from ._common import _resolve_build_context
 from ._debug_workflow import DebugState, inspect_build
 
 _MODEL = "FVP_Corstone_SSE-300_Ethos-U55"
@@ -51,17 +52,18 @@ def run_app_impl(
 ) -> RunResult:
     if not math.isfinite(timeout_s) or timeout_s <= 0:
         raise NSXConfigError("Model timeout must be positive and finite.")
-    app, name, selected, build = _resolve_build_context(app_dir, board=board, build_dir=build_dir)
+    project = AppConfig.from_mapping(_load_app_cfg(app_dir))
+    selected = normalize_board(project.resolve_target(board).board)
     if selected != "corstone300_fvp_u55":
         raise NSXConfigError(
             f"Board '{selected}' has no simulator runner. Select corstone300_fvp_u55."
         )
-    build = build.resolve()
-    if inspect_build(app, build, selected).state is DebugState.UNCONFIGURED:
+    build = (build_dir or _default_build_dir(app_dir, selected)).resolve()
+    if inspect_build(app_dir, build, selected).state is DebugState.UNCONFIGURED:
         raise NSXConfigError(
             f"Build directory is not configured for {selected}. Run `nsx build` first."
         )
-    image = (build / (elf if elf is not None else name)).resolve()
+    image = (build / (elf if elf is not None else project.project_name)).resolve()
     if not image.is_relative_to(build) or not image.is_file():
         raise NSXConfigError(
             f"Expected a built ELF inside {build}. Run `nsx build` or select it with --elf."
@@ -109,6 +111,6 @@ def run_app_impl(
             raise NSXToolchainError(
                 f"FVP process exited with status {exc.returncode}. Run logs: {work}"
             ) from exc
-        except OSError as exc:
+        except (NSXToolchainError, OSError) as exc:
             raise NSXToolchainError(f"Could not launch {model}: {exc}. Run logs: {work}") from exc
     return RunResult(selected, image, model, _guest_exit_code(uart), uart, model_log)
