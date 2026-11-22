@@ -107,6 +107,7 @@ def test_skip_env_bypasses_incompatible_module(monkeypatch) -> None:
     ("board", "soc", "provider"),
     [
         ("corstone300_fvp_u55", "corstone300", "corstone"),
+        ("corstone320_fvp_u85", "corstone320", "corstone"),
         ("apollo510_evb", "apollo510", "ambiqsuite"),
     ],
 )

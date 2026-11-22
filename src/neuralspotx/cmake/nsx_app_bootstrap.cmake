@@ -225,7 +225,10 @@ function(nsx_finalize_app app_target)
                 COMMENT "Printing image size (fromelf)")
         endif()
     else()
-        if(CMAKE_OBJCOPY)
+        # FVP loads the ELF segments directly. A flat image spanning ROM and
+        # model DDR on these targets would pad the gap by more than a GiB.
+        if(CMAKE_OBJCOPY AND NOT NSX_SOC_FAMILY STREQUAL "corstone320"
+           AND NOT TARGET nsx::corstone_npu)
             add_custom_command(TARGET ${app_target} POST_BUILD
                 COMMAND ${CMAKE_OBJCOPY} -Obinary $<TARGET_FILE:${app_target}> $<TARGET_FILE_DIR:${app_target}>/${app_target}.bin
                 COMMENT "Generating ${app_target}.bin")

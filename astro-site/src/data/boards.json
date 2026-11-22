@@ -1,5 +1,5 @@
 {
-  "board_count": 18,
+  "board_count": 19,
   "boards": [
     {
       "cpu": {
@@ -334,6 +334,24 @@
       "sdk_provider_module": "nsx-corstone-sdk",
       "soc": "corstone300",
       "soc_family": "corstone300",
+      "tier": "fvp",
+      "toolchains": [
+        "arm-none-eabi-gcc"
+      ]
+    },
+    {
+      "cpu": {
+        "abi": "thumbv8.1m-fpv5-hard",
+        "core": "cortex-m85",
+        "float_abi": "hard"
+      },
+      "name": "corstone320_fvp_u85",
+      "order": 18,
+      "registered": true,
+      "sdk_provider": "corstone",
+      "sdk_provider_module": "nsx-corstone-sdk",
+      "soc": "corstone320",
+      "soc_family": "corstone320",
       "tier": "fvp",
       "toolchains": [
         "arm-none-eabi-gcc"
@@ -737,7 +755,24 @@
       ],
       "project": "nsx-corstone-sdk",
       "provider": "nsx-corstone-sdk",
-      "revision": "9673587418bdcc63438fa8f0f7229aaeb2033ebc",
+      "revision": "b07e77ac8682efb71ce50d2ce83e01ae9d478a13",
+      "sdk_modules": [
+        "nsx-corstone-sdk",
+        "nsx-corstone-soc",
+        "nsx-corstone-bsp"
+      ]
+    },
+    "corstone320": {
+      "core_modules": [
+        "nsx-tooling"
+      ],
+      "modules": [
+        "nsx-corstone-sdk",
+        "nsx-corstone-soc"
+      ],
+      "project": "nsx-corstone-sdk",
+      "provider": "nsx-corstone-sdk",
+      "revision": "b07e77ac8682efb71ce50d2ce83e01ae9d478a13",
       "sdk_modules": [
         "nsx-corstone-sdk",
         "nsx-corstone-soc",

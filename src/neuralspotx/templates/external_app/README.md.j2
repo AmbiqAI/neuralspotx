@@ -17,10 +17,10 @@ nsx build --app-dir .
 {% if sdk_provider == "corstone" %}
 ```
 
-With the Corstone-300/U55 FVP installed, run the built app:
+With the Arm FVP for {{ board }} installed, run the built app:
 
 ```bash
-nsx run --fvp /path/to/FVP_Corstone_SSE-300_Ethos-U55
+nsx run --fvp /path/to/{{ "FVP_Corstone_SSE-320" if board == "corstone320_fvp_u85" else "FVP_Corstone_SSE-300_Ethos-U55" }}
 ```
 
 Omit `--fvp` when the model is on PATH. Each invocation retains the guest UART

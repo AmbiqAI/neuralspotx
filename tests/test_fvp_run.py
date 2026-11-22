@@ -136,3 +136,29 @@ def test_cli_supports_text_only_stdout(app, monkeypatch) -> None:
     with redirect_stdout(io.StringIO()) as destination:
         assert main(["run", str(app), "--fvp", sys.executable]) == 0
     assert destination.getvalue() == PASS.decode()
+
+
+def test_320_runner_uses_mps4_and_u85(app, monkeypatch):
+    board = "corstone320_fvp_u85"
+    manifest = app / "nsx.yml"
+    manifest.write_text(
+        manifest.read_text().replace(BOARD, board).replace("soc: corstone300", "soc: corstone320")
+    )
+    build = app / "build" / board
+    (app / "build" / BOARD).rename(build)
+    cache = build / "CMakeCache.txt"
+    cache.write_text(cache.read_text().replace(BOARD, board))
+
+    def find_model(name):
+        assert name == "FVP_Corstone_SSE-320"
+        return sys.executable
+
+    def launch(command, *, cwd, timeout, output):
+        assert "mps4_board.uart0.shutdown_on_eot=1" in command
+        assert "mps4_board.subsystem.ethosu.num_macs=256" in command
+        assert not any("mps3_board" in arg or "CFGDTCMSZ" in arg for arg in command)
+        (cwd / "uart.log").write_bytes(PASS)
+
+    monkeypatch.setattr(_run.shutil, "which", find_model)
+    monkeypatch.setattr(_run, "run", launch)
+    assert run_app(AppRunRequest(app_dir=app)).guest_exit_code == 0

@@ -1,4 +1,4 @@
-"""Run a previously built Corstone-300/U55 ELF and verify guest completion."""
+"""Run a previously built Corstone ELF and verify guest completion."""
 
 from __future__ import annotations
 
@@ -9,6 +9,7 @@ import re
 import shutil
 import subprocess
 import tempfile
+from dataclasses import dataclass
 from pathlib import Path
 
 from .._errors import NSXConfigError, NSXTimeoutError, NSXToolchainError
@@ -18,7 +19,33 @@ from ..project_config import _default_build_dir, _load_app_cfg
 from ..subprocess_utils import run
 from ._debug_workflow import DebugState, inspect_build
 
-_MODEL = "FVP_Corstone_SSE-300_Ethos-U55"
+
+@dataclass(frozen=True)
+class _Fvp:
+    executable: str
+    board_component: str
+    settings: tuple[str, ...]
+
+
+_MODELS = {
+    "corstone300_fvp_u55": _Fvp(
+        "FVP_Corstone_SSE-300_Ethos-U55",
+        "mps3_board",
+        (
+            "cpu0.CFGDTCMSZ=12",
+            "cpu0.CFGITCMSZ=12",
+            "ethosu.num_macs=32",
+        ),
+    ),
+    "corstone320_fvp_u85": _Fvp(
+        "FVP_Corstone_SSE-320",
+        "mps4_board",
+        (
+            "vis_hdlcd.disable_visualisation=1",
+            "mps4_board.subsystem.ethosu.num_macs=256",
+        ),
+    ),
+}
 _EXIT_RECORD = re.compile(
     rb"Application exit code: (0|-?[1-9][0-9]{0,9})\.\r?\n\x04(?:\r?\nEXITTHESIM(?:\r?\n)?)?"
 )
@@ -54,9 +81,10 @@ def run_app_impl(
         raise NSXConfigError("Model timeout must be positive and finite.")
     project = AppConfig.from_mapping(_load_app_cfg(app_dir))
     selected = normalize_board(project.resolve_target(board).board)
-    if selected != "corstone300_fvp_u55":
+    profile = _MODELS.get(selected)
+    if profile is None:
         raise NSXConfigError(
-            f"Board '{selected}' has no simulator runner. Select corstone300_fvp_u55."
+            f"Board '{selected}' has no simulator runner. Select one of {', '.join(_MODELS)}."
         )
     build = (build_dir or _default_build_dir(app_dir, selected)).resolve()
     if inspect_build(app_dir, build, selected).state is DebugState.UNCONFIGURED:
@@ -73,10 +101,12 @@ def run_app_impl(
     # ELF32, little endian, executable for Arm.
     if header[:6] != b"\x7fELF\x01\x01" or header[16:20] != b"\x02\x00\x28\x00":
         raise NSXConfigError(f"Expected a 32-bit Arm executable ELF: {image}")
-    executable = shutil.which(_MODEL) if fvp is None else str(fvp.expanduser().resolve())
+    executable = (
+        shutil.which(profile.executable) if fvp is None else str(fvp.expanduser().resolve())
+    )
     if not executable or not Path(executable).is_file() or not os.access(executable, os.X_OK):
         raise NSXConfigError(
-            f"Install Arm's {_MODEL} on PATH or pass its executable path with --fvp."
+            f"Install Arm's {profile.executable} on PATH or pass its executable path with --fvp."
         )
     model = Path(executable).resolve()
     output = build / "nsx-run"
@@ -85,14 +115,16 @@ def run_app_impl(
     uart = work / "uart.log"
     model_log = work / "model.log"
     settings = [
-        "cpu0.CFGDTCMSZ=12",
-        "cpu0.CFGITCMSZ=12",
-        "mps3_board.visualisation.disable-visualisation=1",
-        *(f"mps3_board.telnetterminal{port}.start_telnet=0" for port in (0, 1, 2, 5)),
-        "mps3_board.uart0.out_file=uart.log",
-        "mps3_board.uart0.unbuffered_output=1",
-        "mps3_board.uart0.shutdown_on_eot=1",
-        "mps3_board.uart0.shutdown_tag=EXITTHESIM",
+        *profile.settings,
+        f"{profile.board_component}.visualisation.disable-visualisation=1",
+        *(
+            f"{profile.board_component}.telnetterminal{port}.start_telnet=0"
+            for port in (0, 1, 2, 5)
+        ),
+        f"{profile.board_component}.uart0.out_file=uart.log",
+        f"{profile.board_component}.uart0.unbuffered_output=1",
+        f"{profile.board_component}.uart0.shutdown_on_eot=1",
+        f"{profile.board_component}.uart0.shutdown_tag=EXITTHESIM",
     ]
     command = [str(model)]
     for setting in settings:

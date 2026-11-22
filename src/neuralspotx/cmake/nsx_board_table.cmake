@@ -27,6 +27,7 @@ set(_NSX_REGISTERED_BOARDS_LOWER
     "apollo510dl_evb"
     "atomiq110_fpga_turbo"
     "corstone300_fvp_u55"
+    "corstone320_fvp_u85"
 )
 
 function(nsx_board_is_registered board_name out_var)
@@ -62,6 +63,7 @@ set(_NSX_PROVIDER_apollo330mp_evb "ambiqsuite")
 set(_NSX_PROVIDER_apollo510dl_evb "ambiqsuite")
 set(_NSX_PROVIDER_atomiq110_fpga_turbo "ambiqsuite")
 set(_NSX_PROVIDER_corstone300_fvp_u55 "corstone")
+set(_NSX_PROVIDER_corstone320_fvp_u85 "corstone")
 
 function(nsx_board_sdk_provider board_name out_var)
     string(TOLOWER "${board_name}" _board_lc)

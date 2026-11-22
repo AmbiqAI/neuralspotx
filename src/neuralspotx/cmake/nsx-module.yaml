@@ -41,6 +41,7 @@ compatibility:
     - apollo510L
     - atomiq110
     - corstone300
+    - corstone320
   toolchains:
     - arm-none-eabi-gcc
     - armclang
