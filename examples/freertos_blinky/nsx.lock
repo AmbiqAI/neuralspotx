@@ -143,7 +143,7 @@ targets:
         resolved:
           tool_version: 0.9.9
           vendored_at: cmake/nsx
-          content_hash: sha256:59a62ea5b0fcb493488bd0398ce030c3be3c757f2da1c6d5b9d34be5d6a3c5af
+          content_hash: sha256:30514448925eeb2d199782234fa9639506f39f210ecad32feb95fb45614c905a
           acquired_at: '2026-11-21T15:11:08+00:00'
           manifest_path: nsx-module.yaml
       nsx-freertos:
@@ -299,7 +299,7 @@ targets:
         resolved:
           tool_version: 0.9.9
           vendored_at: cmake/nsx
-          content_hash: sha256:59a62ea5b0fcb493488bd0398ce030c3be3c757f2da1c6d5b9d34be5d6a3c5af
+          content_hash: sha256:30514448925eeb2d199782234fa9639506f39f210ecad32feb95fb45614c905a
           acquired_at: '2026-11-21T15:11:08+00:00'
           manifest_path: nsx-module.yaml
       nsx-freertos:
@@ -455,7 +455,7 @@ targets:
         resolved:
           tool_version: 0.9.9
           vendored_at: cmake/nsx
-          content_hash: sha256:59a62ea5b0fcb493488bd0398ce030c3be3c757f2da1c6d5b9d34be5d6a3c5af
+          content_hash: sha256:30514448925eeb2d199782234fa9639506f39f210ecad32feb95fb45614c905a
           acquired_at: '2026-11-21T15:11:09+00:00'
           manifest_path: nsx-module.yaml
       nsx-freertos:
@@ -611,7 +611,7 @@ targets:
         resolved:
           tool_version: 0.9.9
           vendored_at: cmake/nsx
-          content_hash: sha256:59a62ea5b0fcb493488bd0398ce030c3be3c757f2da1c6d5b9d34be5d6a3c5af
+          content_hash: sha256:30514448925eeb2d199782234fa9639506f39f210ecad32feb95fb45614c905a
           acquired_at: '2026-11-21T15:11:09+00:00'
           manifest_path: nsx-module.yaml
       nsx-freertos:
@@ -755,7 +755,7 @@ targets:
         resolved:
           tool_version: 0.9.9
           vendored_at: cmake/nsx
-          content_hash: sha256:59a62ea5b0fcb493488bd0398ce030c3be3c757f2da1c6d5b9d34be5d6a3c5af
+          content_hash: sha256:30514448925eeb2d199782234fa9639506f39f210ecad32feb95fb45614c905a
           acquired_at: '2026-11-21T15:11:09+00:00'
           manifest_path: nsx-module.yaml
       nsx-freertos:

@@ -80,9 +80,10 @@ predates the feature, the default script is used and the profile is ignored.
 
 ## Overriding the script
 
-In the app’s `CMakeLists.txt`, set `NSX_LINKER_SCRIPT` before calling
-`nsx_bootstrap_app()`. For example, an Apollo510 GCC app with its own layout
-next to `CMakeLists.txt` can select it with:
+For a board whose `memory.cmake` guards its selection with
+`if(NOT DEFINED NSX_LINKER_SCRIPT)`, set the variable in the app’s
+`CMakeLists.txt` before calling `nsx_bootstrap_app()`. For example, an
+Apollo510 GCC app with its own layout next to `CMakeLists.txt` can use:
 
 ```cmake
 set(NSX_LINKER_SCRIPT "${CMAKE_CURRENT_SOURCE_DIR}/my_layout.ld")

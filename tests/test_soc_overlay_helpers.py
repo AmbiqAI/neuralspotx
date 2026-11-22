@@ -57,11 +57,11 @@ set(NSX_BOARD demo)
 set(NSX_LINKER_SCRIPT "${{CMAKE_CURRENT_SOURCE_DIR}}/board.ld")
 add_library(nsx_board_demo_flags INTERFACE)
 add_library(app INTERFACE)
-set_property(TARGET nsx_board_demo_flags PROPERTY INTERFACE_LINK_DEPENDS other-input)
+set_property(TARGET nsx_board_demo_flags PROPERTY INTERFACE_LINK_DEPENDS "$<BUILD_INTERFACE:${{CMAKE_CURRENT_SOURCE_DIR}}/other-input>")
 nsx_apply_toolchain_flags(nsx_board_demo_flags)
 function(record stage)
     get_property(deps TARGET nsx_board_demo_flags PROPERTY INTERFACE_LINK_DEPENDS)
-    file(WRITE "${{CMAKE_BINARY_DIR}}/${{stage}}" "${{deps}}")
+    file(GENERATE OUTPUT "${{CMAKE_BINARY_DIR}}/${{stage}}" CONTENT "${{deps}}")
 endfunction()
 record(initial)
 foreach(name IN ITEMS first second)
@@ -69,6 +69,8 @@ foreach(name IN ITEMS first second)
     nsx_target_linker_overlay(app "${{CMAKE_CURRENT_SOURCE_DIR}}/${{name}} overlay.ld")
     record(${{name}})
 endforeach()
+install(TARGETS nsx_board_demo_flags EXPORT boards)
+install(EXPORT boards DESTINATION cmake)
 """,
         encoding="utf-8",
     )
@@ -79,6 +81,6 @@ endforeach()
             "board.ld" if stage == "initial" or compiler == "ARMClang" else f"{stage} overlay.ld"
         )
         assert (build / stage).read_text().split(";") == [
-            "other-input",
+            (tmp_path / "other-input").as_posix(),
             (tmp_path / script).as_posix(),
         ]
