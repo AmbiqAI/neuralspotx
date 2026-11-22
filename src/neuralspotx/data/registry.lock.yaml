@@ -9,7 +9,7 @@ projects:
   nsx-corstone-sdk:
     name: nsx-corstone-sdk
     url: https://github.com/AmbiqAI/nsx-corstone-sdk.git
-    revision: &corstone_rev c2972d6636f653a0f25a94dc091fa4c305d52141
+    revision: &corstone_rev 5de78ec9395f5c872bf7cb83cf74fe9be7c53dd3
   neuralspotx:
     name: neuralspotx
     url: https://github.com/AmbiqAI/neuralspotx.git
@@ -36,7 +36,7 @@ projects:
     url: https://github.com/AmbiqAI/ns-cmsis-nn.git
     # Move together with helia-rt below: nsx-helia-rt depends on nsx-cmsis-nn,
     # so an app builds both against this one ns-cmsis-nn revision.
-    revision: v7.47.0
+    revision: &cmsis_nn_rev 5a2d78be4eecf376bb1c6bc5c6f568447ca2bea7
     path: modules/ns-cmsis-nn
   helia-dsp:
     name: helia-dsp
@@ -302,9 +302,12 @@ modules:
     metadata: modules/nsx-nanopb/nsx-module.yaml
   nsx-cmsis-nn:
     project: ns-cmsis-nn
-    # Tracks the ns-cmsis-nn project pin above.
-    revision: v7.47.0
+    revision: *cmsis_nn_rev
     metadata: modules/ns-cmsis-nn/nsx/nsx-module.yaml
+  nsx-corstone-cmsis-nn:
+    project: ns-cmsis-nn
+    revision: *cmsis_nn_rev
+    metadata: modules/ns-cmsis-nn/nsx-corstone/nsx-module.yaml
   helia-dsp:
     project: helia-dsp
     revision: v1.1.1
