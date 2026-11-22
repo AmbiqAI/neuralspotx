@@ -225,7 +225,24 @@ function(nsx_finalize_app app_target)
                 COMMENT "Printing image size (fromelf)")
         endif()
     else()
-        if(CMAKE_OBJCOPY)
+        set(flat_bin "$<TARGET_FILE_DIR:${app_target}>/${app_target}.bin")
+        if(NSX_SOC_FAMILY STREQUAL "corstone320")
+            # ROM and executable BRAM occupy separate regions even for CPU-only apps.
+            add_custom_command(TARGET ${app_target} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} -E rm -f "${flat_bin}" VERBATIM)
+        elseif(CMAKE_OBJCOPY AND NSX_SOC_FAMILY MATCHES "^corstone(300|310)$")
+            set(size_tool "${CMAKE_SIZE}")
+            if(NOT size_tool)
+                get_filename_component(binutils_dir "${CMAKE_OBJCOPY}" DIRECTORY)
+                unset(size_tool)
+                find_program(size_tool NAMES arm-none-eabi-size HINTS "${binutils_dir}" REQUIRED)
+            endif()
+            add_custom_command(TARGET ${app_target} POST_BUILD
+                COMMAND ${CMAKE_COMMAND} "-DELF=$<TARGET_FILE:${app_target}>" "-DBIN=${flat_bin}"
+                    "-DSIZE=${size_tool}" "-DOBJCOPY=${CMAKE_OBJCOPY}"
+                    -P "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/nsx_corstone_binary.cmake"
+                VERBATIM)
+        elseif(CMAKE_OBJCOPY)
             add_custom_command(TARGET ${app_target} POST_BUILD
                 COMMAND ${CMAKE_OBJCOPY} -Obinary $<TARGET_FILE:${app_target}> $<TARGET_FILE_DIR:${app_target}>/${app_target}.bin
                 COMMENT "Generating ${app_target}.bin")

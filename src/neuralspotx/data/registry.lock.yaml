@@ -9,7 +9,7 @@ projects:
   nsx-corstone-sdk:
     name: nsx-corstone-sdk
     url: https://github.com/AmbiqAI/nsx-corstone-sdk.git
-    revision: &corstone_rev 9673587418bdcc63438fa8f0f7229aaeb2033ebc
+    revision: &corstone_rev c2972d6636f653a0f25a94dc091fa4c305d52141
   neuralspotx:
     name: neuralspotx
     url: https://github.com/AmbiqAI/neuralspotx.git
@@ -105,10 +105,22 @@ modules:
     project: nsx-corstone-sdk
     revision: *corstone_rev
     metadata: modules/nsx-corstone-bsp/nsx-module.yaml
+  nsx-corstone-npu:
+    project: nsx-corstone-sdk
+    revision: *corstone_rev
+    metadata: modules/nsx-corstone-npu/nsx-module.yaml
   nsx-board-corstone300-fvp-u55:
     project: neuralspotx
     revision: main
     metadata: src/neuralspotx/boards/corstone300_fvp_u55/nsx-module.yaml
+  nsx-board-corstone310-fvp-u55:
+    project: neuralspotx
+    revision: main
+    metadata: src/neuralspotx/boards/corstone310_fvp_u55/nsx-module.yaml
+  nsx-board-corstone320-fvp-u85:
+    project: neuralspotx
+    revision: main
+    metadata: src/neuralspotx/boards/corstone320_fvp_u85/nsx-module.yaml
   nsx-segger-rtt:
     project: nsx-segger-rtt
     revision: v0.1.3
@@ -352,7 +364,7 @@ profile_defaults:
     - nsx-tooling
 
 soc_families:
-  corstone300:
+  corstone300: &corstone_family
     provider: nsx-corstone-sdk
     project: nsx-corstone-sdk
     revision: *corstone_rev
@@ -360,6 +372,8 @@ soc_families:
     # The board binds its BSP through the role dependency.
     modules: [nsx-corstone-sdk, nsx-corstone-soc]
     sdk_modules: [nsx-corstone-sdk, nsx-corstone-soc, nsx-corstone-bsp]
+  corstone310: *corstone_family
+  corstone320: *corstone_family
   apollo2: &fam_apollo2
     provider: nsx-ambiqsuite
     project: nsx-ambiq-sdk
@@ -509,6 +523,8 @@ soc_families:
 # 'channel' defaults to profile_defaults.channel when omitted.
 board_profiles:
   corstone300_fvp_u55: {}
+  corstone310_fvp_u55: {}
+  corstone320_fvp_u85: {}
   apollo2_evb: {}
   apollo3_evb: {}
   apollo3_evb_cygnus: {}

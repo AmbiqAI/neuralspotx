@@ -9,6 +9,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from .._errors import NSXConfigError, NSXModuleError
+from .._fvp import FVP_MODELS
 from .._io import info, warn
 from ..constants import (
     BOARD_SDK_PROVIDER,
@@ -199,6 +200,7 @@ def create_app_impl(
                 "app_name": app_name,
                 "board": board,
                 "soc": soc,
+                "fvp_executable": FVP_MODELS[board].executable if board in FVP_MODELS else "",
                 "sdk_provider": BOARD_SDK_PROVIDER.get(board, ""),
             },
         )

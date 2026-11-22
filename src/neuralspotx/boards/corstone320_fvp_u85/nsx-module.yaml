@@ -1,0 +1,40 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026, Ambiq
+schema_version: 1
+
+module:
+  name: nsx-board-corstone320-fvp-u85
+  type: board
+  version: "0.1.0"
+
+licenses:
+  .: BSD-3-Clause
+
+support:
+  ambiqsuite: false
+  corstone: true
+  zephyr: false
+
+build:
+  cmake:
+    package: nsx_board_corstone320_fvp_u85
+    targets:
+      - nsx::board_corstone320_fvp_u85
+
+depends:
+  required:
+    - nsx-corstone-soc
+    - role: bsp
+      contracts: [2]
+  optional: []
+
+constraints:
+  required_sdk_provider: nsx-corstone-sdk
+
+compatibility:
+  boards:
+    - corstone320_fvp_u85
+  socs:
+    - corstone320
+  toolchains:
+    - arm-none-eabi-gcc

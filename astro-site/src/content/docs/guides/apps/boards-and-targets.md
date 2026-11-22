@@ -163,8 +163,25 @@ The model can exit successfully after a guest assertion failure, so NSX
 checks the firmware's signed exit code and its terminal UART marker.
 The Python entry point is `run_app(AppRunRequest(...))`.
 
-The initial board supports CPU execution and the UART console. Corstone-310,
-Corstone-320 and NPU inference each require separate qualification.
+For Cortex-M85 and Ethos-U85 use `--board corstone320_fvp_u85` and Arm's
+`FVP_Corstone_SSE-320`. On Linux, add the model's bundled libraries to the loader path.
+For example, with Arm's x86-64 Corstone-320 11.27 distribution:
+
+```sh
+nsx create-app demo320 --board corstone320_fvp_u85
+nsx build demo320
+fvp_root=/path/to/FVP_Corstone_SSE-320
+model_dir="$fvp_root/models/Linux64_GCC-9.3"
+LD_LIBRARY_PATH="$fvp_root/python/lib:$fvp_root/fmtplib:$model_dir${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}" \
+    nsx run demo320 --fvp "$model_dir/FVP_Corstone_SSE-320"
+```
+
+Run NSX with its normal host Python environment. For Cortex-M85 with U55 choose `corstone310_fvp_u55` and `FVP_Corstone_SSE-310`.
+All three boards support GCC, UART and an optional
+`nsx-corstone-npu` module. The runner selects 32 MACs for U55 and 256 for U85.
+Use a Vela payload compiled for the selected NPU and MAC count. The
+[provider KWS fixture](https://github.com/AmbiqAI/nsx-corstone-sdk/tree/main/tests/kws)
+exercises one Shared_Sram inference.
 
 ## Boards NSX does not package
 

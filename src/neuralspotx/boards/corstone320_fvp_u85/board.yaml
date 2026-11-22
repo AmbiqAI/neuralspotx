@@ -1,0 +1,19 @@
+# SPDX-License-Identifier: BSD-3-Clause
+# Copyright (c) 2026, Ambiq
+schema_version: 2
+board:
+  name: corstone320_fvp_u85
+  tier: fvp
+  soc: corstone320
+  registered: true
+sdk_provider: corstone
+cpu:
+  core: cortex-m85
+  float_abi: hard
+  abi: thumbv8.1m-fpv5-hard
+toolchains:
+  - arm-none-eabi-gcc
+roles:
+  bsp:
+    module: nsx-corstone-bsp
+    contract: 2
