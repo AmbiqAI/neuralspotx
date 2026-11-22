@@ -143,7 +143,7 @@ targets:
         resolved:
           tool_version: 0.9.9
           vendored_at: cmake/nsx
-          content_hash: sha256:f8e70428c408fa00cd26414f0291b4f82f1a908f60366deff77c79be1fc1f713
+          content_hash: sha256:855ca39280222d70b1ee261aadd0c83d037affbd6bf19abe74eff3373385eee8
           acquired_at: '2026-11-21T15:11:12+00:00'
           manifest_path: nsx-module.yaml
       nsx-interrupt:
@@ -347,7 +347,7 @@ targets:
         resolved:
           tool_version: 0.9.9
           vendored_at: cmake/nsx
-          content_hash: sha256:f8e70428c408fa00cd26414f0291b4f82f1a908f60366deff77c79be1fc1f713
+          content_hash: sha256:855ca39280222d70b1ee261aadd0c83d037affbd6bf19abe74eff3373385eee8
           acquired_at: '2026-11-21T15:11:12+00:00'
           manifest_path: nsx-module.yaml
       nsx-interrupt:
@@ -551,7 +551,7 @@ targets:
         resolved:
           tool_version: 0.9.9
           vendored_at: cmake/nsx
-          content_hash: sha256:f8e70428c408fa00cd26414f0291b4f82f1a908f60366deff77c79be1fc1f713
+          content_hash: sha256:855ca39280222d70b1ee261aadd0c83d037affbd6bf19abe74eff3373385eee8
           acquired_at: '2026-11-21T15:11:13+00:00'
           manifest_path: nsx-module.yaml
       nsx-interrupt:

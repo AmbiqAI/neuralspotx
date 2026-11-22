@@ -231,9 +231,15 @@ function(nsx_finalize_app app_target)
             add_custom_command(TARGET ${app_target} POST_BUILD
                 COMMAND ${CMAKE_COMMAND} -E rm -f "${flat_bin}" VERBATIM)
         elseif(CMAKE_OBJCOPY AND NSX_SOC_FAMILY STREQUAL "corstone300")
+            set(size_tool "${CMAKE_SIZE}")
+            if(NOT size_tool)
+                get_filename_component(binutils_dir "${CMAKE_OBJCOPY}" DIRECTORY)
+                unset(size_tool)
+                find_program(size_tool NAMES arm-none-eabi-size HINTS "${binutils_dir}" REQUIRED)
+            endif()
             add_custom_command(TARGET ${app_target} POST_BUILD
                 COMMAND ${CMAKE_COMMAND} "-DELF=$<TARGET_FILE:${app_target}>" "-DBIN=${flat_bin}"
-                    "-DSIZE=${CMAKE_SIZE}" "-DOBJCOPY=${CMAKE_OBJCOPY}"
+                    "-DSIZE=${size_tool}" "-DOBJCOPY=${CMAKE_OBJCOPY}"
                     -P "${CMAKE_CURRENT_FUNCTION_LIST_DIR}/nsx_corstone_binary.cmake"
                 VERBATIM)
         elseif(CMAKE_OBJCOPY)
