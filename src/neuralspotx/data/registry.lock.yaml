@@ -9,7 +9,7 @@ projects:
   nsx-corstone-sdk:
     name: nsx-corstone-sdk
     url: https://github.com/AmbiqAI/nsx-corstone-sdk.git
-    revision: &corstone_rev e9d31b5d7748f818a043ba77ab63e253980d6419
+    revision: &corstone_rev dd895a1f24d31bd3f051497293f44e9c233375c0
   neuralspotx:
     name: neuralspotx
     url: https://github.com/AmbiqAI/neuralspotx.git
