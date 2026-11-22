@@ -773,7 +773,7 @@
       ],
       "project": "nsx-corstone-sdk",
       "provider": "nsx-corstone-sdk",
-      "revision": "b4a7c03ffaed6c833028dc99aecd3c21a2b725ef",
+      "revision": "ccb929b6d88b859eebbc2869a18f2bcffe582c53",
       "sdk_modules": [
         "nsx-corstone-sdk",
         "nsx-corstone-soc",
@@ -790,7 +790,7 @@
       ],
       "project": "nsx-corstone-sdk",
       "provider": "nsx-corstone-sdk",
-      "revision": "b4a7c03ffaed6c833028dc99aecd3c21a2b725ef",
+      "revision": "ccb929b6d88b859eebbc2869a18f2bcffe582c53",
       "sdk_modules": [
         "nsx-corstone-sdk",
         "nsx-corstone-soc",
@@ -807,7 +807,7 @@
       ],
       "project": "nsx-corstone-sdk",
       "provider": "nsx-corstone-sdk",
-      "revision": "b4a7c03ffaed6c833028dc99aecd3c21a2b725ef",
+      "revision": "ccb929b6d88b859eebbc2869a18f2bcffe582c53",
       "sdk_modules": [
         "nsx-corstone-sdk",
         "nsx-corstone-soc",
