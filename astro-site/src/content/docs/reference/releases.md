@@ -113,13 +113,17 @@ during 1.x keep working through the series. [Lock behavior](/neuralspotx/guides/
 
 ## Qualification for 1.1.0
 
-The 1.1.0 wheel generated an Apollo510 app using SDK v5.2.33. Its firmware
-matched the image previously run on the EVB. An existing app frozen to SDK
-v5.2.32 also rebuilt with its original lock and firmware bytes. On the
-Corstone-320 simulator, the release candidate ran a generated hello app and a
-CMSIS-NN max-pooling example that matched all 144 expected outputs.
-[SDK qualification](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/v5.2.33/release/qualification-5.2.33.md) ·
-[NSX 1.1.0 release](https://github.com/AmbiqAI/neuralspotx/releases/tag/neuralspotx-v1.1.0)
+The 1.1.0 candidate wheel (`741094d2`) generated an Apollo510 app using SDK
+v5.2.33. Its firmware matched the image run on the EVB (SHA-256
+`c838f13bbb225b69a6d9114b839e200726665cb5108b693876cc166512f7c996`).
+An app frozen to SDK v5.2.32 rebuilt with its original lock and firmware bytes.
+On the Corstone-320 simulator, the candidate ran a generated hello app and a
+CMSIS-NN max-pooling example that matched all 144 expected outputs. After
+publication, all 339 files under `neuralspotx/` in the PyPI wheel matched the
+candidate wheel's package files.
+[Release candidate](https://github.com/AmbiqAI/neuralspotx/pull/361) ·
+[Apollo510 board evidence](https://github.com/AmbiqAI/nsx-ambiq-sdk/blob/v5.2.33/release/qualification-5.2.33.md) ·
+[Published artifacts and checksums](https://github.com/AmbiqAI/neuralspotx/releases/tag/neuralspotx-v1.1.0)
 
 ## Qualification baseline for 1.0
 
