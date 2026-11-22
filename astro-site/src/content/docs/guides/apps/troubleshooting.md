@@ -111,10 +111,11 @@ in `nsx.yml`, including any workspace files named by `registry.layers`. A
 relative path in a workspace file resolves from that file’s directory. With
 no registered path, the source lives in the app.
 
-Before a non-frozen sync or configure, save edits you need from **all** the
-selected board’s `resolved.vendored_at` directories. This includes shared
-module trees and packaged tooling under `cmake/nsx`. Also save edits to any
-app-local `boards/<board>` copy of a registered board.
+Before running the recovery commands below, save edits you need from the
+affected boards’ `resolved.vendored_at` directories and any app-local
+`boards/<board>` copies. A sync can replace an entire shared module directory,
+and even `nsx lock` refreshes packaged tooling under `cmake/nsx`. Check all
+declared boards before relocking.
 
 | Source | How to recover |
 | --- | --- |
