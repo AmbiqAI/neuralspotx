@@ -90,6 +90,11 @@ or a full update. Publish the combined lock only after every requested board suc
 and reuse in shared operations and validate targeted shared-directory consistency
 before writing the affected lock section.
 
+The board descriptor selects the execution target and SDK provider. A virtual
+board has its own SoC, BSP and startup. Explicit provider compatibility in module
+metadata keeps Apollo HAL dependencies out of Corstone closures. Vendor firmware
+sources through the registry and install licensed host simulators separately.
+
 ### Library-First Direction
 
 The intended layering is:

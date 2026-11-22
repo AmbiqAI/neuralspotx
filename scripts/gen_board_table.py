@@ -22,7 +22,7 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(REPO_ROOT / "src"))
 
-from neuralspotx.constants import BOARDS  # noqa: E402
+from neuralspotx.constants import BOARD_SDK_PROVIDER, BOARDS  # noqa: E402
 
 OUTPUT = REPO_ROOT / "src" / "neuralspotx" / "cmake" / "nsx_board_table.cmake"
 
@@ -61,6 +61,16 @@ def render() -> str:
         "    else()",
         "        set(${out_var} FALSE PARENT_SCOPE)",
         "    endif()",
+        "endfunction()",
+        "",
+    ])
+    for board in BOARDS:
+        lines.append(f'set(_NSX_PROVIDER_{board.lower()} "{BOARD_SDK_PROVIDER[board]}")')
+    lines.extend([
+        "",
+        "function(nsx_board_sdk_provider board_name out_var)",
+        '    string(TOLOWER "${board_name}" _board_lc)',
+        '    set(${out_var} "${_NSX_PROVIDER_${_board_lc}}" PARENT_SCOPE)',
         "endfunction()",
         "",
     ])

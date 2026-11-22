@@ -131,6 +131,11 @@ A single provider module, `nsx-ambiqsuite`, mirrors the upstream AmbiqSuite
 For families with multiple validated minor lines, board defaults pin specific
 provider revisions in app metadata.
 
+The Corstone family resolves the firmware provider `nsx-corstone-sdk` and
+selects its BSP using contract 2. Module manifests opt in with `support.corstone`.
+The board selects the execution platform independently of application sources.
+The application vendors firmware inputs. Arm distributes the host simulator separately.
+
 ## 10. Scope of NSX
 
 NSX is intended for:

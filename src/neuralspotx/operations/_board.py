@@ -52,6 +52,12 @@ def create_board_impl(
             f"unknown parent board '{from_board}' (run `nsx board list` to see available boards)"
         )
 
+    if parent.sdk_provider != "ambiqsuite":
+        raise NSXConfigError(
+            "The custom-board scaffold requires an AmbiqSuite parent. "
+            f"Use the packaged '{parent.name}' target directly."
+        )
+
     root = resolve_app_dir(app_dir)
     board_dir = root / "boards" / name
     if board_dir.exists() and not force:

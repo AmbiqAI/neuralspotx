@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from .._errors import NSXConfigError
+from ..board_descriptors import load_board_for_app
 from ..board_plan import resolve_board_plan
 from ..metadata import derive_board_profile, registry_entry_for_module
 
@@ -226,7 +227,10 @@ def expand_profile_seeds(
         return nsx_cfg
 
     plan = resolve_board_plan(app_dir, nsx_cfg)
-    if plan and (not plan.descriptor.registered or plan.descriptor.bsp.module != "nsx-ambiq-bsp"):
+    packaged = load_board_for_app(board, None) if plan and plan.descriptor.registered else None
+    if plan and (
+        not plan.descriptor.registered or not packaged or plan.descriptor.bsp != packaged.bsp
+    ):
         if app_dir is None:
             raise NSXConfigError("Custom board resolution requires an app directory")
         profile = derive_board_profile(registry, plan.descriptor)

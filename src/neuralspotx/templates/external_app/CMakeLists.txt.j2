@@ -24,8 +24,10 @@ add_executable({{ app_name }}
 
 target_link_libraries({{ app_name }} PRIVATE
     nsx::board
-    nsx::runtime_core
 )
+if(NOT NSX_SDK_PROVIDER STREQUAL "corstone")
+    target_link_libraries({{ app_name }} PRIVATE nsx::runtime_core)
+endif()
 
 nsx_finalize_app({{ app_name }})
 if(NSX_DEBUG_CONTEXT)

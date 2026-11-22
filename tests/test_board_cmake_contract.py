@@ -160,6 +160,8 @@ def _capture(
     linker_script: str | None = None,
 ) -> str:
     """Configure *board* via cmake -P and return its canonical contract dump."""
+    descriptor = bd.load_board(board)
+    assert descriptor is not None
     src_dir = _board_dir(board)
     board_dir = tmp_path / "boards" / board
     board_dir.mkdir(parents=True)
@@ -183,9 +185,13 @@ def _capture(
             f'file(WRITE "{log_file.as_posix()}" "")',
             _STUBS,
             f'set(NSX_ROOT "{_STUB_ROOT}")',
-            f'set(NSX_AMBIQSUITE_ROOT "{_STUB_SDK_ROOT}")',
+            *(
+                [f'set(NSX_AMBIQSUITE_ROOT "{_STUB_SDK_ROOT}")']
+                if descriptor.sdk_provider == "ambiqsuite"
+                else []
+            ),
             f'set(NSX_CMAKE_DIR "{cmake_dir.as_posix()}")',
-            'set(NSX_SDK_PROVIDER "ambiqsuite")',
+            f'set(NSX_SDK_PROVIDER "{descriptor.sdk_provider}")',
             *(
                 [f'set(NSX_LINKER_PROFILE "{linker_profile}")']
                 if linker_profile is not None
@@ -229,6 +235,7 @@ def _board_family_params() -> list:
         pytest.param(desc.name, family, id=f"{desc.name}-{family}")
         for desc in bd.list_boards()
         for family in TOOLCHAIN_FAMILIES
+        if desc.sdk_provider == "ambiqsuite" or family == "gcc"
     ]
 
 

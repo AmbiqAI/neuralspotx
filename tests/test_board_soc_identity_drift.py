@@ -36,6 +36,8 @@ def test_board_yaml_soc_matches_soc_cmake_load() -> None:
     missing_call: list[str] = []
     mismatches: list[str] = []
     for name, desc in sorted(descriptors.items()):
+        if desc.sdk_provider != "ambiqsuite":
+            continue
         soc_cmake = desc.path / "soc.cmake"
         assert soc_cmake.is_file(), f"{name}: missing soc.cmake at {soc_cmake}"
         args = _LOAD_SOC_FACTS_RE.findall(soc_cmake.read_text(encoding="utf-8"))

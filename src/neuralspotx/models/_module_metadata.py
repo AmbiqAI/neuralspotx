@@ -46,6 +46,9 @@ class ModuleMetadata:
     def supports_ambiqsuite(self) -> bool:
         return bool(self.raw["support"]["ambiqsuite"])
 
+    def supports_provider(self, provider: str) -> bool:
+        return self.raw["support"].get(provider) is True
+
     @property
     def required_deps(self) -> list[str]:
         return [dep.name for dep in self.required_dependencies if isinstance(dep, ModuleDependency)]

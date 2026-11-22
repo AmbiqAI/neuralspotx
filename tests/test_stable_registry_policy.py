@@ -151,6 +151,7 @@ def test_packaged_registry_release_projects_are_immutable() -> None:
     sdk_profile_refs = {
         profile["project_overrides"]["nsx-ambiq-sdk"]["revision"]
         for profile in registry["starter_profiles"].values()
+        if profile["soc"] != "corstone300"
     }
     assert sdk_profile_refs == {_SDK_RELEASE_REF}
 

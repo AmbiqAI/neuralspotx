@@ -224,3 +224,18 @@ def test_blinky_requires_a_nonempty_bsp_led_table(tmp_path: Path, led_count: int
         assert result.returncode != 0
         assert "Blinky requires a BSP LED table" in result.stderr
         assert "--template default" in result.stderr
+
+
+def test_corstone_default_scaffold_documents_the_guest_console(tmp_path: Path) -> None:
+    app = tmp_path / "demo"
+    create_app_impl(app, board="corstone300_fvp_u55", no_bootstrap=True)
+    readme = (app / "README.md").read_text()
+    assert "FVP_Corstone_SSE-300_Ethos-U55 -a build/corstone300_fvp_u55/demo" in readme
+    assert "nsx flash" not in readme
+
+
+def test_corstone_rejects_blinky_before_creating_app(tmp_path: Path) -> None:
+    app = tmp_path / "demo"
+    with pytest.raises(NSXConfigError, match="ambiqsuite"):
+        create_app_impl(app, board="corstone300_fvp_u55", template="blinky")
+    assert not app.exists()

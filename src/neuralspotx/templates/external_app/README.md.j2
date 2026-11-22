@@ -14,6 +14,24 @@ cd {{ app_name }}
 ```bash
 nsx configure --app-dir .
 nsx build --app-dir .
+{% if sdk_provider == "corstone" %}
+```
+
+With Arm's Corstone-300/U55 FVP installed, run the ELF and inspect its UART log.
+
+```bash
+FVP_Corstone_SSE-300_Ethos-U55 -a build/{{ board }}/{{ app_name }} \
+  -C cpu0.CFGDTCMSZ=12 -C cpu0.CFGITCMSZ=12 \
+  -C mps3_board.visualisation.disable-visualisation=1 \
+  -C mps3_board.telnetterminal0.start_telnet=0 -C mps3_board.telnetterminal1.start_telnet=0 \
+  -C mps3_board.telnetterminal2.start_telnet=0 -C mps3_board.telnetterminal5.start_telnet=0 \
+  -C mps3_board.uart0.out_file=uart.log -C mps3_board.uart0.unbuffered_output=1 \
+  -C mps3_board.uart0.shutdown_on_eot=1 -C mps3_board.uart0.shutdown_tag=EXITTHESIM
+cat uart.log
+```
+
+Expect `nsx hello from generated app` followed by `Application exit code: 0.`
+{% else %}
 nsx flash --app-dir .
 nsx view --app-dir .
 ```
@@ -30,14 +48,17 @@ nsx hello from generated app
 ...
 ```
 
+{% endif %}
 ## Layout
 
 - `cmake/nsx/` contains copied NSX CMake support.
 - `modules/` contains NSX module sources managed inside this app.
 - `boards/` contains the vendored board definition for the selected target.
 - `nsx.yml` tracks the app board and enabled module set.
+{% if sdk_provider != "corstone" %}
 - Use `--reset-on-open` or `--no-reset-on-open` only when you want to override
   the board default.
+{% endif %}
 
 If you are using a source checkout instead of a `pipx` install, activate the
 `uv` environment first and then run the same `nsx ...` commands.

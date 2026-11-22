@@ -35,6 +35,7 @@ _BOARD_ORDER: tuple[str, ...] = (
     "apollo330mP_evb",
     "apollo510dL_evb",
     "atomiq110_fpga_turbo",
+    "corstone300_fvp_u55",
 )
 
 # Load the packaged board descriptors. A malformed descriptor must NOT make
@@ -198,20 +199,8 @@ def normalize_soc(value: str | None) -> str | None:
 # Board → SDK provider mapping (single source of truth for R17)
 # ---------------------------------------------------------------------------
 #
-# This dict is the authoritative mapping from canonical board name to the
-# SDK provider name that supplies its low-level SDK payload. Today every
-# registered board resolves to the single staged provider (``ambiqsuite``), but
-# the descriptor field remains first-class Python metadata: the CLI / public
-# API expose it, starter-profile derivation copies it through, and tests pin the
-# current single-valued invariant explicitly.
-#
-# The CMake helper ``nsx_select_sdk_provider`` (in
-# ``src/neuralspotx/cmake/nsx_sdk_providers.cmake``) now consumes the generated
-# registered-board table ``nsx_board_table.cmake`` instead of mirroring this
-# dict one-for-one, because the provider is currently single-valued on the CMake
-# side. Drift between the Python board inventory and the committed CMake table
-# is guarded by ``tests/test_board_table_drift.py``.
-
+# The packaged descriptor selects the provider. scripts/gen_board_table.py
+# exports this mapping to standalone CMake, including board inheritance.
 BOARD_SDK_PROVIDER: dict[str, str] = {
     b: _DESCRIPTORS[b].sdk_provider for b in _BOARD_ORDER if b in _DESCRIPTORS
 }
@@ -221,6 +210,7 @@ class SDKProvider(str, enum.Enum):
     """Canonical SDK provider identifiers."""
 
     AMBIQSUITE = "ambiqsuite"
+    CORSTONE = "corstone"
 
     def __str__(self) -> str:  # pragma: no cover — trivial
         return self.value

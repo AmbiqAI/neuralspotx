@@ -143,6 +143,16 @@ This changes board selection, not hardware compatibility: app sources and module
 still support the selected target. In particular, the NPU template requires an
 `atomiq110` board.
 
+## Arm Corstone virtual target
+
+`nsx create-app demo --board corstone300_fvp_u55` creates a Cortex-M55 GCC app.
+Run `nsx build --app-dir demo` to link its ELF. The app vendors its Corstone
+firmware sources, and the generated README gives the model arguments and expected
+UART output. The compiler can build the app on a machine without the simulator.
+Execution requires Arm's separately installed Corstone-300 Ethos-U55 FVP.
+The initial board supports CPU execution and the UART console. Corstone-310,
+Corstone-320 and NPU inference each require separate qualification.
+
 ## Boards NSX does not package
 
 `nsx board create` scaffolds a board definition you own, which you then fill in with the
