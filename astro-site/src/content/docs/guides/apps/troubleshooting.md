@@ -106,7 +106,9 @@ Local source for 'my-module' at /home/you/src/my-module has drifted ...
 ```
 
 Check the module’s source kind in the selected board’s lock entry. The recovery
-depends on where the source lives.
+depends on where the source lives. The `nsx sync` commands below apply to the
+app’s default board. For another target, run `nsx configure --board <board>`
+to sync that board’s modules, adding `--frozen` for a frozen restore.
 
 | Source | How to recover |
 | --- | --- |
