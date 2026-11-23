@@ -65,3 +65,15 @@ can read directly.
   message instead of bus-faulting.
 - If Vela leaves some ops on the CPU (partial offload), add the matching
   `resolver.Add*()` kernels in `src/main.cc` and bump `kNumOps`.
+
+## Updating custom hooks from driver v0.1.2
+
+If your app overrides `ethosu_flush_dcache` or `ethosu_invalidate_dcache`,
+use the declarations in the vendored `ethosu_driver.h`. In v0.2.0 both hooks
+receive arrays of buffer addresses and sizes plus a buffer count. Rebuild any
+precompiled code that uses `struct ethosu_driver` because its layout changed.
+
+If you time inference with `ethosu_inference_begin` and `ethosu_inference_end`,
+the v0.2.0 interval includes post-inference cache invalidation. For U85
+measurements captured with v0.1.2, requesting `NPU_ACTIVE` selected
+`MAC_ACTIVE`. Recapture those measurements before comparing NPU-active cycles.

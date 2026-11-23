@@ -110,7 +110,7 @@ def test_packaged_registry_release_projects_are_immutable() -> None:
 
     assert registry["projects"]["nsx-ambiq-sdk"]["revision"] == _SDK_RELEASE_REF
     assert registry["projects"]["nsx-pmu-armv8m"]["revision"] == "v0.2.0"
-    assert registry["projects"]["nsx-ethos-u-driver"]["revision"] == "nsx-ethos-u-driver-v0.1.2"
+    assert registry["projects"]["nsx-ethos-u-driver"]["revision"] == "nsx-ethos-u-driver-v0.2.0"
     assert registry["projects"]["arm-cmsis-nn"]["revision"] == "v0.1.0"
     assert registry["projects"]["nsx-tflite-micro"]["revision"] == "v0.1.0"
     cmsis_nn_ref = registry["projects"]["ns-cmsis-nn"]["revision"]

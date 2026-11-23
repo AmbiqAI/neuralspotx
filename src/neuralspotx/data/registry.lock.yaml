@@ -46,7 +46,7 @@ projects:
   nsx-ethos-u-driver:
     name: nsx-ethos-u-driver
     url: https://github.com/AmbiqAI/nsx-ethos-u-driver.git
-    revision: nsx-ethos-u-driver-v0.1.2
+    revision: nsx-ethos-u-driver-v0.2.0
     path: modules/nsx-ethos-u-driver
   helia-rt:
     name: helia-rt
@@ -241,7 +241,7 @@ modules:
   # SDK deliberately does not vendor it -- see nsx-ambiq-sdk PR #46).
   nsx-ethos-u-driver:
     project: nsx-ethos-u-driver
-    revision: nsx-ethos-u-driver-v0.1.2
+    revision: nsx-ethos-u-driver-v0.2.0
     metadata: modules/nsx-ethos-u-driver/nsx-module.yaml
   # nsx-npu is atomiq110-only (see the atomiq110 SoC family below).
   nsx-npu:
