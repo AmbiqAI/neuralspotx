@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.1.1](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v1.1.0...neuralspotx-v1.1.1) (2026-11-23)
+
+
+### Bug Fixes
+
+* **registry:** update the Ethos-U driver for correct U85 counters ([#373](https://github.com/AmbiqAI/neuralspotx/issues/373)) ([0419e81](https://github.com/AmbiqAI/neuralspotx/commit/0419e81173ee24e088d0b766bf3591aa545dd4c3))
+
+
+### Documentation
+
+* clarify SDK provenance and reproducible app builds ([#367](https://github.com/AmbiqAI/neuralspotx/issues/367)) ([08c9fba](https://github.com/AmbiqAI/neuralspotx/commit/08c9fba3bc2ad42b104ac24b4c6a6353231dfdb3))
+* match module recovery advice to the locked source ([#368](https://github.com/AmbiqAI/neuralspotx/issues/368)) ([57e87c0](https://github.com/AmbiqAI/neuralspotx/commit/57e87c05c6ef839d8126919b03036d67010a184f))
+
 ## [1.1.0](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v1.0.1...neuralspotx-v1.1.0) (2026-11-22)
 
 
