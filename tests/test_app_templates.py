@@ -206,7 +206,7 @@ def test_blinky_requires_a_nonempty_bsp_led_table(tmp_path: Path, led_count: int
     create_app_impl(app, board="apollo510_evb", template="blinky", no_bootstrap=True)
     headers = tmp_path / "headers"
     headers.mkdir()
-    for name in ("nsx_core.h", "am_devices_led.h"):
+    for name in ("nsx_core.h", "nsx_mem.h", "am_devices_led.h"):
         (headers / name).touch()
     (headers / "am_bsp.h").write_text(
         "" if led_count is None else f"#define AM_BSP_NUM_LEDS {led_count}\n",
@@ -224,6 +224,31 @@ def test_blinky_requires_a_nonempty_bsp_led_table(tmp_path: Path, led_count: int
         assert result.returncode != 0
         assert "Blinky requires a BSP LED table" in result.stderr
         assert "--template default" in result.stderr
+
+
+@pytest.mark.parametrize("template", ["default", "blinky"])
+@pytest.mark.parametrize("part", ["AM_PART_APOLLO4P", "AM_PART_APOLLO4L", "AM_PART_APOLLO510"])
+def test_mram_cache_follows_build_target(tmp_path: Path, template: str, part: str) -> None:
+    compiler = shutil.which("cc") or shutil.which("clang")
+    if compiler is None:
+        pytest.skip("C preprocessor required")
+    app = tmp_path / "demo"
+    create_app_impl(app, board="apollo510_evb", template=template, no_bootstrap=True)
+    for header in ("nsx_core.h", "nsx_mem.h", "am_bsp.h", "am_devices_led.h"):
+        (tmp_path / header).touch()
+    source = subprocess.check_output(
+        [
+            compiler,
+            "-E",
+            f"-D{part}",
+            "-DAM_BSP_NUM_LEDS=1",
+            "-I",
+            str(tmp_path),
+            str(app / "src/main.c"),
+        ],
+        text=True,
+    )
+    assert ("nsx_cache_enable()" in source) == (part in {"AM_PART_APOLLO4P", "AM_PART_APOLLO4L"})
 
 
 def test_corstone_default_scaffold_documents_the_guest_console(tmp_path: Path) -> None:

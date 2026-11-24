@@ -3,9 +3,9 @@ title: System initialization
 description: The two initialization layers a generated app can call, what each one configures, and how to turn on SWO or UART output.
 ---
 
-A generated app starts with the smallest thing that works: bring the runtime core up,
-enable an output transport, then run. There is a second, larger entry point for when you
-want clocks, caches and the BSP configured as well.
+The default Ambiq app initializes the runtime and enables SWO output. On Apollo4 Plus
+and Lite it also enables the MRAM cache. Apps that need to configure the board and
+select a performance mode can use the system initialization API.
 
 :::note[These declarations come from a vendored module]
 The headers below ship in the `nsx-core` module inside the SDK that your app vendors, not
@@ -16,17 +16,26 @@ authoritative one, because the SDK revision NSX pins differs by SoC family.
 
 ## The minimum: `nsx_core_init`
 
-This is what `nsx create-app` generates:
+The default Ambiq app uses this startup sequence:
 
 ```c
 #include "nsx_core.h"
+#include "nsx_mem.h"
 
 int main(void)
 {
     nsx_core_config_t cfg = {
         .api = &nsx_core_V1_0_0,
     };
-    (void)nsx_core_init(&cfg);
+    if (nsx_core_init(&cfg) != NSX_STATUS_SUCCESS) {
+        nsx_core_fail_loop();
+    }
+#if defined(AM_PART_APOLLO4P) || defined(AM_PART_APOLLO4L)
+    /* Enable instruction and data caching for accesses to MRAM. */
+    if (nsx_cache_enable() != NSX_STATUS_SUCCESS) {
+        nsx_core_fail_loop();
+    }
+#endif
 
     nsx_itm_printf_enable();
 
@@ -54,6 +63,19 @@ Passing the version explicitly is what lets the core reject an app built against
 no longer implements, rather than failing somewhere less obvious. `nsx_core_initialized()`
 answers whether the call has happened, which is useful in library code that cannot assume
 it ran.
+
+### Apollo4 MRAM cache
+
+On Apollo4 Plus and Lite, the `default` and `blinky` templates call
+`nsx_cache_enable()` before application work. The unified cache serves instruction
+fetches and data reads from MRAM. With it disabled, code executing from MRAM can
+take substantially more cycles even when its working data is in TCM.
+
+Existing apps keep their generated sources. To adopt this default in an app that
+only calls `nsx_core_init()`, add `nsx_mem.h` and the Apollo4 block shown above.
+For an intentional cache-off measurement, call `nsx_cache_disable()` after startup
+and before timing. To check the running state in a debugger, inspect the
+`ENABLE`, `IENABLE` and `DENABLE` bits in `CPU->CACHECFG`.
 
 ### Output transports
 
@@ -96,7 +118,7 @@ uint32_t nsx_system_init(const nsx_system_config_t *cfg);
 ```c
 typedef struct {
     nsx_perf_mode_e    perf_mode;      ///< CPU performance mode
-    bool               enable_cache;   ///< Enable I/D cache on staged R5 targets
+    bool               enable_cache;   ///< Request cache enable after hardware init (MRAM cache on Apollo4)
     bool               enable_sram;    ///< Reserved — keep shared SRAM powered (not yet wired)
     nsx_debug_config_t debug;          ///< Debug output config
     bool               skip_bsp_init;  ///< Skip am_bsp_low_power_init() (use minimal HW init)
@@ -146,10 +168,10 @@ measuring, which is the usual case in a power benchmark.
 
 ## Which one to use
 
-Start with `nsx_core_init()`. It is what the generated app does and it is enough to print,
-delay and run your own code.
+Use the generated startup sequence for a basic app. `nsx_core_init()` establishes
+the runtime state and leaves cache policy to the app.
 
-Move to `nsx_system_init()` when you need the caches on, a specific performance mode, or
-the BSP configured. Enabling caches is also where
+Use `nsx_system_init()` when you need a specific performance mode or BSP initialization.
+Enabling caches is also where
 [memory placement](/neuralspotx/guides/system/memory-placement/) starts to matter, because
 what a cache does for you depends on which region your hot code and data ended up in.

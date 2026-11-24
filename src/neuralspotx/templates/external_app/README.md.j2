@@ -39,6 +39,9 @@ nsx view --app-dir .
 Most boards reset after the viewer attaches; Apollo4 secure boards attach
 without another reset after `nsx flash`.
 
+On Apollo4 Plus and Lite, `src/main.c` enables the MRAM cache before the
+application loop. See [System initialization](https://ambiqai.github.io/neuralspotx/guides/system/system-init/#apollo4-mram-cache).
+
 Expected SWO output after `flash` + `view`:
 
 ```text

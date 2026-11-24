@@ -20,6 +20,9 @@ With multiple probes connected, add `--probe-serial <serial>` to `nsx flash`
 and `nsx reset`. After flashing, watch the board's first user LED blink.
 `nsx reset` restarts the configured app without reflashing.
 
+On Apollo4 Plus and Lite, `src/main.c` enables the MRAM cache before the
+application loop. See [System initialization](https://ambiqai.github.io/neuralspotx/guides/system/system-init/#apollo4-mram-cache).
+
 ## Board support
 
 The app uses the selected BSP's pin, polarity and drive-mode information

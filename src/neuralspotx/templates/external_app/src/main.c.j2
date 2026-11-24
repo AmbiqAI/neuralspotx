@@ -12,13 +12,22 @@ int main(void)
 }
 #else
 #include "nsx_core.h"
+#include "nsx_mem.h"
 
 int main(void)
 {
     nsx_core_config_t cfg = {
         .api = &nsx_core_V1_0_0,
     };
-    (void)nsx_core_init(&cfg);
+    if (nsx_core_init(&cfg) != NSX_STATUS_SUCCESS) {
+        nsx_core_fail_loop();
+    }
+#if defined(AM_PART_APOLLO4P) || defined(AM_PART_APOLLO4L)
+    /* Enable instruction and data caching for accesses to MRAM. */
+    if (nsx_cache_enable() != NSX_STATUS_SUCCESS) {
+        nsx_core_fail_loop();
+    }
+#endif
 
     nsx_itm_printf_enable();
 
