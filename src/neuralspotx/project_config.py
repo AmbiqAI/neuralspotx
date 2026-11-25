@@ -17,6 +17,7 @@ from typing import Any
 
 import yaml
 
+from ._build_ownership import mark_empty_build
 from ._errors import NSXConfigError, NSXToolchainError
 from .constants import PACKAGED_PROJECT_NAME, normalize_board
 from .metadata import load_registry_lock
@@ -736,6 +737,7 @@ def _write_app_module_file(
         lines.append(")")
 
     content = "\n".join(lines) + "\n"
+    mark_empty_build(app_dir, destination)
     _write_module_input(destination / "nsx" / "modules.cmake", content)
     loader = (
         resources.files("neuralspotx").joinpath("cmake/modules.cmake").read_text(encoding="utf-8")

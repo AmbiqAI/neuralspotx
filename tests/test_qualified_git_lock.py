@@ -457,3 +457,33 @@ def test_clean_reset_and_frozen_restore_from_combined_receipt(
     assert nsx("sync", "--frozen") == 0
     assert driver.is_dir() and file.read_bytes() == original
     assert receipt.read_bytes() == source
+
+
+@pytest.mark.parametrize("case", ["partial", "stale", "unclassified", "nested", "local-source"])
+def test_reset_preserves_uncertain_ownership(
+    tmp_path: Path, registry: dict[str, Any], case: str
+) -> None:
+    receipt = tmp_path / "nsx.lock"
+    shutil.copyfile(FIXTURE / "nsx.lock", receipt)
+    assert cli.main(["sync", "--app-dir", str(tmp_path), "--frozen"]) == 0
+    sdk = tmp_path / "modules/sdk"
+    target = sdk / "revision.txt"
+    doc = yaml.safe_load(receipt.read_text())
+    section = doc["targets"][BOARDS[1]]
+    if case == "partial":
+        del doc["targets"][BOARDS[1]]
+    elif case == "stale":
+        section["manifest"]["hash"] = ""
+    elif case == "unclassified":
+        section["modules"]["sdk"]["kind"] = "future"
+    elif case == "nested":
+        section["modules"]["child"] = {
+            "kind": "vendored",
+            "resolved": {"vendored_at": "modules/sdk/nested"},
+        }
+    else:
+        registry["projects"]["source"] = {"local_path": str(sdk / "nested")}
+    receipt.write_text(yaml.safe_dump(doc))
+    rc = cli.main(["clean", "--app-dir", str(tmp_path), "--reset", "--force"])
+    assert rc == (1 if case == "unclassified" else 0)
+    assert target.is_file()

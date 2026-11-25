@@ -387,7 +387,9 @@ def clean_app(
         operations.clean_app_impl(
             Path(request.app_dir).expanduser().resolve(),
             board=request.board,
-            build_dir=Path(request.build_dir).expanduser().absolute() if request.build_dir else None,
+            build_dir=Path(request.build_dir).expanduser().absolute()
+            if request.build_dir
+            else None,
             toolchain=request.toolchain,
             full=request.full,
             reset=request.reset,

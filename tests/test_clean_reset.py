@@ -6,6 +6,7 @@ import pytest
 import yaml
 
 from neuralspotx import NSXError, clean_app, lock_app
+from neuralspotx._build_ownership import mark_empty_build
 
 BOARD = "apollo510_evb"
 
@@ -30,7 +31,7 @@ def app(tmp_path: Path) -> Path:
 
 
 def build_tree(path: Path, app: Path, board: str = BOARD) -> None:
-    path.mkdir(parents=True, exist_ok=True)
+    mark_empty_build(app, path)
     (path / "CMakeCache.txt").write_text(
         f"CMAKE_HOME_DIRECTORY:INTERNAL={app}\n"
         f"CMAKE_CACHEFILE_DIR:INTERNAL={path}\nNSX_BOARD:STRING={board}\n"
@@ -81,3 +82,53 @@ def test_reset_without_app(tmp_path: Path) -> None:
     with pytest.raises(NSXError, match="nsx.yml"):
         clean_app(tmp_path, reset=True)
     assert not (tmp_path / ".nsx").exists()
+
+
+def test_mixed_directory_and_legacy_cache_are_preserved(app: Path) -> None:
+    build = app / "build_work"
+    build.mkdir()
+    source = build / "work.c"
+    source.write_text("int keep;")
+    build_tree(build, app)
+    assert not (build / ".nsx-build-owner").exists()
+    with pytest.raises(NSXError, match="owned build"):
+        clean_app(app, full=True, build_dir=build)
+    clean_app(app, reset=True, force=True)
+    assert source.read_text() == "int keep;"
+
+
+@pytest.mark.parametrize("reset", [True, False])
+def test_clean_preserves_declared_source_inside_owned_build(app: Path, reset: bool) -> None:
+    build = app / "build_work"
+    build_tree(build, app)
+    source = build / "authored"
+    source.mkdir()
+    (source / "source.c").write_text("int value;")
+    manifest = app / "nsx.yml"
+    cfg = yaml.safe_load(manifest.read_text())
+    cfg["modules"].append({"name": "local", "source": {"path": "build_work/authored"}})
+    manifest.write_text(yaml.safe_dump(cfg))
+    if reset:
+        clean_app(app, reset=True, force=True)
+    else:
+        with pytest.raises(NSXError, match="owned build"):
+            clean_app(app, full=True, build_dir=build)
+    assert (source / "source.c").exists()
+
+
+def test_ambiguous_cache_preserved(app: Path) -> None:
+    build = app / "build" / BOARD
+    build_tree(build, app)
+    with (build / "CMakeCache.txt").open("a") as stream:
+        stream.write(f"CMAKE_HOME_DIRECTORY:INTERNAL={app.parent}\n")
+    with pytest.raises(NSXError, match="owned build"):
+        clean_app(app, full=True)
+    assert build.exists()
+
+
+def test_full_clean_relative_external_path(app: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    build = app.parent / "out"
+    build_tree(build, app)
+    monkeypatch.chdir(app)
+    clean_app(".", full=True, build_dir="../out")
+    assert not build.exists()

@@ -320,17 +320,19 @@ nsx clean --full   # remove the selected, configured build directory
 nsx clean --reset  # remove owned builds and restorable locked module copies
 ```
 
-Full clean checks the source directory, build directory and board recorded by CMake.
-For an out-of-tree build, pass its path with `--build-dir`. If an old or incomplete
-build has no matching cache, inspect the directory before removing it manually.
+NSX records ownership when it initializes an empty build directory. Full clean checks
+that record and the source directory, build directory and board recorded by CMake.
+For an out-of-tree build, pass its path with `--build-dir`. If a build predates the ownership
+record or was initialized in a nonempty directory, inspect the directory before removing it manually.
 
 Reset checks the app's conventional build locations and all board sections in
 `nsx.lock`. It preserves vendored and local source, unrecognized directories,
-and the advisory lock in `.nsx/`. Missing or stale receipts leave dependencies
+and the advisory lock in `.nsx/`. Missing, partial or stale receipts leave dependencies
 in place. If a restorable copy under `modules/` differs from its locked hash,
 reset stops before removing anything. Save the edits or rerun with `--force`
 to discard edits to identified dependencies. Use `nsx sync --frozen` to restore
-the selected board's copies at their recorded revisions.
+the default board's copies at their recorded revisions. For a different board, run
+`nsx configure --board <board> --frozen`.
 
 ## A working loop
 

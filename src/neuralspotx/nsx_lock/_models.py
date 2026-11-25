@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath, PureWindowsPath
 from typing import Any
@@ -10,6 +11,13 @@ from .._errors import NSXLockError
 from ._composition import BoardComposition
 from ._constants import LOCK_SCHEMA_VERSION
 from ._kinds import LockKind
+
+
+def is_locked_commit(value: object) -> bool:
+    """Whether a locked Git object ID can be used for exact restoration."""
+    return (
+        isinstance(value, str) and re.fullmatch(r"[0-9a-f]{40}(?:[0-9a-f]{24})?", value) is not None
+    )
 
 
 def is_portable_manifest_path(value: object) -> bool:

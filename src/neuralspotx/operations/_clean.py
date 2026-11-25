@@ -10,8 +10,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from .._build_ownership import initialized_by_app
 from .._errors import NSXConfigError
 from .._io import info
+from ..constants import normalize_board
 from ..file_lock import app_lock
 from ..metadata import registry_entry_for_module
 from ..models import AppConfig
@@ -24,6 +26,7 @@ from ..nsx_lock import (
     hash_tree,
     read_lock_file,
 )
+from ..nsx_lock._models import is_locked_commit
 from ..project_config import (
     _effective_registry,
     _load_app_cfg,
@@ -32,7 +35,7 @@ from ..project_config import (
     _run_cmake_configure,
 )
 from ..subprocess_utils import run
-from ._cmake_cache import _cmake_cache_value
+from ._cmake_cache import read_owned_cache
 from ._common import _resolve_build_context
 from ._lock import _apply_active_target, _resolved_module_path
 
@@ -40,27 +43,26 @@ from ._lock import _apply_active_target, _resolved_module_path
 def _owned_build(app: Path, path: Path, board: str | None = None) -> bool:
     # A cache can be copied or left by an in-source build. The source and
     # binary directory must identify this exact, separate build.
-    if path != path.resolve() or app.is_relative_to(path) or (path / "CMakeLists.txt").exists():
+    if (
+        Path(os.path.abspath(path)) != path.resolve()
+        or app.is_relative_to(path.resolve())
+        or (path / "CMakeLists.txt").exists()
+    ):
         return False
+    path = path.resolve()
     if any(
         path.is_relative_to(app / name) for name in ("modules", "boards", "cmake", ".nsx", ".git")
     ):
         return False
     if (path / "nsx.yml").exists() or (path / ".git").exists():
         return False
-    source = _cmake_cache_value(path, "CMAKE_HOME_DIRECTORY")
-    owner = _cmake_cache_value(path, "CMAKE_CACHEFILE_DIR")
-    selected = _cmake_cache_value(path, "NSX_BOARD")
-    return bool(
-        source
-        and Path(source).is_absolute()
-        and Path(source).resolve() == app
-        and owner
-        and Path(owner).is_absolute()
-        and Path(owner).resolve() == path
-        and selected
-        and (board is None or selected == board)
-    )
+    if not initialized_by_app(app, path):
+        return False
+    try:
+        selected = read_owned_cache(app, path).get("NSX_BOARD")
+    except NSXConfigError:
+        return False
+    return bool(selected and (board is None or selected == board))
 
 
 @dataclass(frozen=True)
@@ -89,11 +91,7 @@ def _restorable_copy(
     if _resolved_module_path(app, name, registry) != path:
         return None
     if entry.kind == LockKind.GIT:
-        if (
-            not entry.url
-            or entry.url != project.url
-            or not re.fullmatch(r"[0-9a-fA-F]{40}", entry.commit or "")
-        ):
+        if not entry.url or entry.url != project.url or not is_locked_commit(entry.commit):
             return None
         return _ModuleCopy(
             entry.project, entry.kind, entry.url, entry.commit or "", entry.content_hash
@@ -126,23 +124,45 @@ def _unreceipted_content(path: Path) -> bool:
     return False
 
 
-def _module_removals(app: Path, *, force: bool) -> list[Path]:
+def _authored_paths(app: Path, cfg: dict[str, Any]) -> set[Path]:
+    """Include local sources even when a board has no receipt or its lock is stale."""
+    protected = set()
+    for module in AppConfig.from_mapping(cfg).modules:
+        if module.source.vendored or module.local:
+            protected.add((app / "modules" / module.name).resolve())
+        if module.source.path:
+            protected.add((app / Path(module.source.path).expanduser()).resolve())
+    registry = _effective_registry(_load_registry(), cfg, app_dir=app)
+    for key in registry["projects"]:
+        local = _registry_project_entry(registry, key).local_path
+        if local:
+            protected.add(Path(local).resolve())
+    for layer in (cfg.get("registry") or {}).get("layers", []):
+        if isinstance(layer, dict) and "workspace" in layer:
+            protected.add((app / layer["workspace"]).resolve())
+    return protected
+
+
+def _module_removals(
+    app: Path, cfg: dict[str, Any], protected: set[Path], *, force: bool
+) -> list[Path]:
     root = app / "modules"
     if not root.is_dir() or root.is_symlink():
         return []
     receipt = read_lock_file(app, require_known_kinds=True)
     if receipt is None:
         return []
-    cfg = _load_app_cfg(app)
     digest = hash_manifest(app / "nsx.yml")
     if any(section.manifest_hash != digest for section in receipt.targets.values()):
         info("Preserving modules/ because nsx.lock does not match nsx.yml.")
         return []
 
     project = AppConfig.from_mapping(cfg)
+    if {normalize_board(board) for board in project.targets()} != set(receipt.targets):
+        info("Preserving modules/ because nsx.lock does not cover the current board set.")
+        return []
     base = _load_registry()
     copies: dict[Path, set[_ModuleCopy | None]] = defaultdict(set)
-    protected: set[Path] = set()
     for board, section in receipt.targets.items():
         active = (
             _apply_active_target(cfg, project.resolve_target(board))
@@ -190,14 +210,20 @@ def _reset_app(app: Path, *, force: bool) -> Path:
     if not (app / "nsx.yml").is_file():
         raise NSXConfigError(f"--reset requires an app directory containing nsx.yml: {app}")
     with app_lock(app):
-        removals = _module_removals(app, force=force)
+        cfg = _load_app_cfg(app)
+        protected = _authored_paths(app, cfg)
+        removals = _module_removals(app, cfg, protected.copy(), force=force)
         builds = app / "build"
         candidates = list(app.glob("build_*"))
         if _owned_build(app, builds):
             candidates.append(builds)
         elif builds.is_dir() and not builds.is_symlink():
             candidates.extend(builds.iterdir())
-        removals.extend(path for path in candidates if _owned_build(app, path))
+        removals.extend(
+            path
+            for path in candidates
+            if _owned_build(app, path) and not any(_overlap(path, other) for other in protected)
+        )
         for path in removals:
             shutil.rmtree(path)
             info(f"Removed {path}")
@@ -223,7 +249,11 @@ def clean_app_impl(
         return build
     if full:
         with app_lock(app):
-            if not _owned_build(app, build, selected):
+            if not build.exists():
+                return build
+            if not _owned_build(app, build, selected) or any(
+                _overlap(build.resolve(), path) for path in _authored_paths(app, _load_app_cfg(app))
+            ):
                 raise NSXConfigError(
                     f"Cannot confirm {build} is an owned build for {selected}. "
                     "Inspect its contents and CMakeCache.txt before removing it manually."
