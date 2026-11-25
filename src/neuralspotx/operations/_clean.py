@@ -117,6 +117,8 @@ def _unreceipted_content(path: Path) -> bool:
         raise exc
 
     for root, dirs, files in os.walk(path, onerror=raise_error):
+        if not dirs and not files:
+            return True  # The receipt hashes files only; it cannot restore empty directories.
         for name in (*dirs, *files):
             child = Path(root) / name
             if name in _HASH_EXCLUDE_DIRS or child.is_symlink():

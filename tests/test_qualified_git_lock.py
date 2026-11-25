@@ -520,3 +520,16 @@ def test_reset_preserves_unlocked_workspace_checkout(
     assert source.read_bytes() == b"int keep_me;\n"
     assert (tmp_path / "modules/sdk/revision.txt").is_file()
     assert not (tmp_path / "modules/driver").exists()
+
+
+@pytest.mark.parametrize("flags", [(), ("--force",)])
+def test_reset_preserves_empty_directories(
+    tmp_path: Path, registry: dict[str, Any], flags: tuple[str, ...]
+) -> None:
+    shutil.copyfile(FIXTURE / "nsx.lock", tmp_path / "nsx.lock")
+    assert cli.main(["sync", "--app-dir", str(tmp_path), "--frozen"]) == 0
+    empty = tmp_path / "modules/sdk/local-output/logs"
+    empty.mkdir(parents=True)
+    assert cli.main(["clean", "--app-dir", str(tmp_path), "--reset", *flags]) == 0
+    assert empty.is_dir()
+    assert not (tmp_path / "modules/driver").exists()
