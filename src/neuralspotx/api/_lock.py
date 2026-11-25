@@ -9,6 +9,7 @@ from .._io import Emitter, using_emitter
 from ..models import OutdatedReport
 from ..nsx_lock import NsxLock
 from ..subprocess_utils import timeout_budget
+from ._request_arguments import request_arguments
 from ._requests import (
     AppLockRequest,
     AppOutdatedRequest,
@@ -19,6 +20,7 @@ from ._requests import (
 PathLike = str | Path
 
 
+@request_arguments(AppLockRequest)
 def lock_app(
     app_dir: PathLike | AppLockRequest,
     *,
@@ -82,6 +84,7 @@ def lock_app(
         )
 
 
+@request_arguments(AppSyncRequest)
 def sync_app(
     app_dir: PathLike | AppSyncRequest,
     *,
@@ -109,6 +112,7 @@ def sync_app(
         )
 
 
+@request_arguments(AppOutdatedRequest)
 def outdated_app(
     app_dir: PathLike | AppOutdatedRequest,
     *,
@@ -135,6 +139,7 @@ def outdated_app(
         )
 
 
+@request_arguments(AppUpdateRequest)
 def update_app(
     app_dir: PathLike | AppUpdateRequest,
     *,

@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
+from typing import Any, overload
 
 from .. import module_discovery, operations, project_config
 from .._errors import NSXConfigError, NSXError, NSXModuleError
 from ..metadata import load_yaml, validate_nsx_module_metadata
 from ..models import DiscoveryRecord, ModuleChange, SearchResult
+from ._request_arguments import request_arguments
 from ._requests import (
     ModuleChangeRequest,
     ModuleInitRequest,
@@ -19,6 +20,33 @@ from ._requests import (
 PathLike = str | Path
 
 
+@overload
+def add_module(
+    app_dir: PathLike,
+    module: str,
+    *,
+    dry_run: bool = False,
+    local: bool = False,
+    vendored: bool = False,
+    path: str | None = None,
+    boards: tuple[str, ...] = (),
+) -> list[ModuleChange]: ...
+
+
+@overload
+def add_module(
+    app_dir: ModuleChangeRequest,
+    module: str = ...,
+    *,
+    dry_run: bool = False,
+    local: bool = False,
+    vendored: bool = False,
+    path: str | None = None,
+    boards: tuple[str, ...] = (),
+) -> list[ModuleChange]: ...
+
+
+@request_arguments(ModuleChangeRequest)
 def add_module(
     app_dir: PathLike | ModuleChangeRequest,
     module: str | None = None,
@@ -57,6 +85,25 @@ def add_module(
     )
 
 
+@overload
+def remove_module(
+    app_dir: PathLike,
+    module: str,
+    *,
+    dry_run: bool = False,
+) -> list[ModuleChange]: ...
+
+
+@overload
+def remove_module(
+    app_dir: ModuleChangeRequest,
+    module: str = ...,
+    *,
+    dry_run: bool = False,
+) -> list[ModuleChange]: ...
+
+
+@request_arguments(ModuleChangeRequest)
 def remove_module(
     app_dir: PathLike | ModuleChangeRequest,
     module: str | None = None,
@@ -83,6 +130,7 @@ def remove_module(
     )
 
 
+@request_arguments(ModuleUpdateRequest)
 def update_modules(
     app_dir: PathLike | ModuleUpdateRequest,
     *,
@@ -107,6 +155,39 @@ def update_modules(
     )
 
 
+@overload
+def register_module(
+    app_dir: PathLike,
+    module: str,
+    *,
+    metadata: PathLike,
+    project: str,
+    project_url: str | None = None,
+    project_revision: str | None = None,
+    project_path: str | None = None,
+    project_local_path: PathLike | None = None,
+    override: bool = False,
+    dry_run: bool = False,
+) -> ModuleChange: ...
+
+
+@overload
+def register_module(
+    app_dir: ModuleRegisterRequest,
+    module: str = ...,
+    *,
+    metadata: PathLike = ...,
+    project: str = ...,
+    project_url: str | None = None,
+    project_revision: str | None = None,
+    project_path: str | None = None,
+    project_local_path: PathLike | None = None,
+    override: bool = False,
+    dry_run: bool = False,
+) -> ModuleChange: ...
+
+
+@request_arguments(ModuleRegisterRequest)
 def register_module(
     app_dir: PathLike | ModuleRegisterRequest,
     module: str | None = None,
@@ -156,6 +237,7 @@ def register_module(
     )
 
 
+@request_arguments(ModuleInitRequest, legacy_precedence=True)
 def init_module(
     module_dir: PathLike | ModuleInitRequest,
     *,
@@ -173,7 +255,8 @@ def init_module(
 
     Args:
         module_dir: Destination directory or a fully populated request object. When a request
-            object is supplied, the remaining keyword arguments are ignored.
+            object is supplied in 1.x, its values take precedence. Conflicting arguments
+            produce a DeprecationWarning.
         module_name: Manifest module name. Defaults to the destination directory name.
         module_type: NSX module type written to ``nsx-module.yaml``.
         summary: Human-readable module summary. A placeholder is generated when omitted.

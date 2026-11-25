@@ -3,16 +3,43 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import overload
 
 from .. import operations
 from .._errors import NSXConfigError
 from .._io import Emitter, using_emitter
 from ..board_descriptors import BoardDescriptor
+from ._request_arguments import request_arguments
 from ._requests import BoardCreateRequest
 
 PathLike = str | Path
 
 
+@overload
+def create_board(
+    name: str,
+    *,
+    from_board: str,
+    app_dir: PathLike = ".",
+    force: bool = False,
+    bsp_module: str | None = None,
+    emit: Emitter | None = None,
+) -> BoardDescriptor: ...
+
+
+@overload
+def create_board(
+    name: BoardCreateRequest,
+    *,
+    from_board: str = ...,
+    app_dir: PathLike = ".",
+    force: bool = False,
+    bsp_module: str | None = None,
+    emit: Emitter | None = None,
+) -> BoardDescriptor: ...
+
+
+@request_arguments(BoardCreateRequest)
 def create_board(
     name: str | BoardCreateRequest,
     *,
