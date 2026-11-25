@@ -334,6 +334,10 @@ to discard edits to identified dependencies. Use `nsx sync --frozen` to restore
 the default board's copies at their recorded revisions. For a different board, run
 `nsx configure --board <board> --frozen`.
 
+Reset and full clean coordinate with lock, sync and update through the app writer
+lock. Finish builds, debugger sessions and standalone CMake commands using the
+affected directories before running cleanup.
+
 ## A working loop
 
 ```bash

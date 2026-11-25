@@ -258,6 +258,7 @@ def clean_app_impl(
                     f"Cannot confirm {build} is an owned build for {selected}. "
                     "Inspect its contents and CMakeCache.txt before removing it manually."
                 )
+            build = build.resolve()
             shutil.rmtree(build)
         info(f"Removed build directory: {build}")
     else:

@@ -1,5 +1,6 @@
 """Cleanup ownership through the public app API."""
 
+import shutil
 from pathlib import Path
 
 import pytest
@@ -131,4 +132,25 @@ def test_full_clean_relative_external_path(app: Path, monkeypatch: pytest.Monkey
     build_tree(build, app)
     monkeypatch.chdir(app)
     clean_app(".", full=True, build_dir="../out")
+    assert not build.exists()
+
+
+def test_copied_marker_does_not_adopt_mixed_directory(app: Path) -> None:
+    owned, mixed = app / "build_original", app / "build_analysis"
+    build_tree(owned, app)
+    mixed.mkdir()
+    source = mixed / "authored.c"
+    source.write_text("int keep;")
+    shutil.copy(owned / ".nsx-build-owner", mixed)
+    build_tree(mixed, app)
+    clean_app(app, reset=True)
+    assert source.exists()
+    assert not owned.exists()
+
+
+def test_full_clean_normalizes_before_removal(app: Path) -> None:
+    build = app / "build" / BOARD
+    build_tree(build, app)
+    (build / "nsx").mkdir()
+    clean_app(app, full=True, build_dir=build / "nsx/..")
     assert not build.exists()
