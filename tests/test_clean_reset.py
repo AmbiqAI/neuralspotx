@@ -243,3 +243,39 @@ def test_full_clean_external_build_with_separate_sdk_override(app: Path, tmp_pat
         cache.write(f"NSX_AMBIQSUITE_ROOT_OVERRIDE:PATH={sdk}\n")
     clean_app(app, full=True, build_dir=build)
     assert sdk.is_dir() and not build.exists()
+
+
+@pytest.mark.parametrize("layout", ["flat-and-board", "linked-builds", "moved-sdk"])
+def test_reset_discovers_board_sdk_overrides_across_repeated_clean(
+    app: Path, tmp_path: Path, layout: str
+) -> None:
+    builds = app / "build"
+    if layout == "linked-builds":
+        volume = tmp_path / "volume"
+        volume.mkdir()
+        try:
+            builds.symlink_to(volume, target_is_directory=True)
+        except OSError as exc:
+            pytest.skip(f"directory symlinks unavailable: {exc}")
+    elif layout == "flat-and-board":
+        build_tree(builds, app)
+    owner = builds / BOARD
+    build_tree(owner.resolve(), app)
+    work = app / "build_work"
+    build_tree(work, app)
+    sdk = work / "sdk"
+    sdk.mkdir()
+    with (owner / "CMakeCache.txt").open("a", encoding="utf-8") as cache:
+        cache.write(f"NSX_AMBIQSUITE_ROOT_OVERRIDE:PATH={sdk}\n")
+    source = sdk / "hal.c"
+    source.write_bytes(b"int sdk;")
+    if layout == "moved-sdk":
+        moved = tmp_path / "moved"
+        sdk.rename(moved)
+        try:
+            sdk.symlink_to(moved, target_is_directory=True)
+        except OSError as exc:
+            pytest.skip(f"directory symlinks unavailable: {exc}")
+    for _ in range(2):
+        clean_app(app, reset=True, force=True)
+        assert source.read_bytes() == b"int sdk;" and owner.is_dir()

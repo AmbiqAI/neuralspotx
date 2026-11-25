@@ -549,12 +549,15 @@ def test_reset_checks_dirty_empty_module_root(tmp_path: Path, registry: dict[str
     assert not root.exists() and not driver.exists()
 
 
+@pytest.mark.parametrize("external", [True, False])
 def test_cached_sdk_override_protects_module_during_repeated_reset(
-    tmp_path: Path, registry: dict[str, Any]
+    tmp_path: Path, registry: dict[str, Any], external: bool
 ) -> None:
     shutil.copyfile(FIXTURE / "nsx.lock", tmp_path / "nsx.lock")
     assert cli.main(["sync", "--app-dir", str(tmp_path), "--frozen"]) == 0
-    build = tmp_path / "build" / BOARDS[0]
+    build = tmp_path / "out" if external else tmp_path / "build" / BOARDS[0]
+    build.mkdir(exist_ok=True)
+    options = ["--build-dir", str(build)] if external else []
     sdk = tmp_path / "modules/sdk"
     (build / "CMakeCache.txt").write_text(
         f"CMAKE_HOME_DIRECTORY:INTERNAL={tmp_path}\nCMAKE_CACHEFILE_DIR:INTERNAL={build}\n"
@@ -562,6 +565,19 @@ def test_cached_sdk_override_protects_module_during_repeated_reset(
         encoding="utf-8",
     )
     for _ in range(2):
-        assert cli.main(["clean", "--app-dir", str(tmp_path), "--reset", "--force"]) == 0
+        assert cli.main(["clean", "--app-dir", str(tmp_path), "--reset", "--force", *options]) == 0
         assert build.is_dir() and (sdk / "revision.txt").is_file()
         assert not (tmp_path / "modules/driver").exists()
+
+
+def test_marked_corrupt_cache_stops_reset_before_removals(
+    tmp_path: Path, registry: dict[str, Any]
+) -> None:
+    shutil.copyfile(FIXTURE / "nsx.lock", tmp_path / "nsx.lock")
+    assert cli.main(["sync", "--app-dir", str(tmp_path), "--frozen"]) == 0
+    build = tmp_path / "build" / BOARDS[0]
+    (build / "CMakeCache.txt").write_text("truncated cache entry", encoding="utf-8")
+    assert cli.main(["clean", "--app-dir", str(tmp_path), "--reset", "--force"]) == 1
+    assert all(
+        (tmp_path / "modules" / name / "revision.txt").is_file() for name in ("sdk", "driver")
+    )

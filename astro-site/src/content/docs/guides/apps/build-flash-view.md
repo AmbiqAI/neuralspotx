@@ -335,7 +335,8 @@ the default board's copies at their recorded revisions. For a different board, r
 `nsx configure --board <board> --frozen`.
 
 Recursive cleanup checks SDK overrides recorded in the app’s conventional build
-directories and the explicitly selected build. If an override overlaps a cleanup
+directories. If an out-of-tree build selects an SDK inside the app, pass that build
+with `--build-dir` during reset so NSX can read its cache. If an override overlaps a cleanup
 location, NSX preserves the SDK source and the build that records its location.
 Reconfigure with the SDK in a separate source directory to reclaim those builds.
 
