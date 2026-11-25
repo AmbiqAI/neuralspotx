@@ -533,3 +533,17 @@ def test_reset_preserves_empty_directories(
     assert cli.main(["clean", "--app-dir", str(tmp_path), "--reset", *flags]) == 0
     assert empty.is_dir()
     assert not (tmp_path / "modules/driver").exists()
+
+
+def test_reset_checks_dirty_empty_module_root(tmp_path: Path, registry: dict[str, Any]) -> None:
+    shutil.copyfile(FIXTURE / "nsx.lock", tmp_path / "nsx.lock")
+    assert cli.main(["sync", "--app-dir", str(tmp_path), "--frozen"]) == 0
+    root = tmp_path / "modules/sdk"
+    shutil.rmtree(root)
+    root.mkdir()
+    driver = tmp_path / "modules/driver"
+    reset = ["clean", "--app-dir", str(tmp_path), "--reset"]
+    assert cli.main(reset) == 1
+    assert root.is_dir() and driver.is_dir()
+    assert cli.main([*reset, "--force"]) == 0
+    assert not root.exists() and not driver.exists()
