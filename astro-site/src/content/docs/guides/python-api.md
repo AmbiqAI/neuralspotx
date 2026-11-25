@@ -62,7 +62,7 @@ build_app(request)
 ```
 
 When passing a request, set operation options on the request. You may repeat an
-option with an equal value. A conflicting argument raises `TypeError` before the
+option with an equal value (use the same string or `Path` representation for paths). A conflicting argument raises `NSXConfigError` before the
 operation starts, even when you explicitly pass a default such as `False`, `8`
 or `None`. Omitted arguments keep the request's values. Callbacks such as `emit`
 and `on_line` belong to the call and can accompany either style.
@@ -77,9 +77,10 @@ build_app(replace(request, jobs=4), on_line=print)
 lock_app(AppLockRequest(app_dir, check=True))  # check without writing nsx.lock
 ```
 
-Pass only fields used by the operation. For example, setting an inherited
-`probe_serial` on `AppBuildRequest` raises `TypeError`; configure or flash accepts
-that field. In 1.x, `init_module(ModuleInitRequest(...), ...)` retains its documented
+In 1.x, reusing a request for another operation can produce a `DeprecationWarning`.
+For example, configure accepts an `AppBuildRequest` but ignores its build-only
+`jobs` option. If an operation cannot honor `frozen=True`, it raises
+`NSXConfigError` before starting. `init_module(ModuleInitRequest(...), ...)` retains its documented
 request precedence and emits a `DeprecationWarning` for conflicting arguments.
 Use `replace()` there as well.
 

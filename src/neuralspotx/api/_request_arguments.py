@@ -9,6 +9,8 @@ from dataclasses import fields, is_dataclass
 from functools import wraps
 from typing import ParamSpec, TypeVar
 
+from .._errors import NSXConfigError
+
 _P = ParamSpec("_P")
 _R = TypeVar("_R")
 
@@ -55,7 +57,7 @@ def request_arguments(
                             stacklevel=2,
                         )
                     else:
-                        raise TypeError(message)
+                        raise NSXConfigError(message)
                 unused = next(
                     defaults
                     for kind, defaults in unused_by_type.items()
@@ -63,9 +65,10 @@ def request_arguments(
                 )
                 for name, default in unused.items():
                     if getattr(request, name) != default:
-                        raise TypeError(
-                            f"{operation.__name__}() does not use the request field {name!r}; leave it at its default."
-                        )
+                        message = f"{operation.__name__}() does not use the request field {name!r}."
+                        if name == "frozen":
+                            raise NSXConfigError(message)
+                        warnings.warn(message, DeprecationWarning, stacklevel=2)
             return operation(*args, **kwargs)
 
         return checked

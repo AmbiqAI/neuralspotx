@@ -36,7 +36,7 @@ def add_module(
 @overload
 def add_module(
     app_dir: ModuleChangeRequest,
-    module: str | None = None,
+    module: str = ...,
     *,
     dry_run: bool = False,
     local: bool = False,
@@ -97,7 +97,7 @@ def remove_module(
 @overload
 def remove_module(
     app_dir: ModuleChangeRequest,
-    module: str | None = None,
+    module: str = ...,
     *,
     dry_run: bool = False,
 ) -> list[ModuleChange]: ...
@@ -174,10 +174,10 @@ def register_module(
 @overload
 def register_module(
     app_dir: ModuleRegisterRequest,
-    module: str | None = None,
+    module: str = ...,
     *,
-    metadata: PathLike | None = None,
-    project: str | None = None,
+    metadata: PathLike = ...,
+    project: str = ...,
     project_url: str | None = None,
     project_revision: str | None = None,
     project_path: str | None = None,

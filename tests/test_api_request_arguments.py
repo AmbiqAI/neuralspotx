@@ -12,13 +12,13 @@ import neuralspotx as nsx
 def test_frozen_build_and_explicit_defaults(tmp_path: Path) -> None:
     request = nsx.AppBuildRequest(tmp_path, jobs=4, board="apollo510_evb", frozen=True)
     with patch("neuralspotx.operations.build_app_impl") as build:
-        with pytest.raises(TypeError, match="frozen"):
+        with pytest.raises(nsx.NSXConfigError, match="frozen"):
             nsx.build_app(nsx.AppBuildRequest(tmp_path), frozen=True)
-        with pytest.raises(TypeError, match="frozen"):
+        with pytest.raises(nsx.NSXConfigError, match="frozen"):
             nsx.build_app(request, frozen=False)
-        with pytest.raises(TypeError, match="jobs"):
+        with pytest.raises(nsx.NSXConfigError, match="jobs"):
             nsx.build_app(request, jobs=8)
-        with pytest.raises(TypeError, match="board"):
+        with pytest.raises(nsx.NSXConfigError, match="board"):
             nsx.build_app(app_dir=request, board=None)
         build.assert_not_called()
         nsx.build_app(request, frozen=True, on_line=print)
@@ -37,7 +37,7 @@ def test_lock_check_has_no_write_fallback(tmp_path: Path) -> None:
         encoding="utf-8",
     )
     request = nsx.AppLockRequest(tmp_path)
-    with pytest.raises(TypeError, match="check"):
+    with pytest.raises(nsx.NSXConfigError, match="check"):
         nsx.lock_app(app_dir=request, check=True)
     assert list(tmp_path.iterdir()) == [tmp_path / "nsx.yml"]
     with pytest.raises(nsx.NSXError):
@@ -53,7 +53,7 @@ def test_lock_check_has_no_write_fallback(tmp_path: Path) -> None:
 def test_positional_module_name_and_call_callbacks(tmp_path: Path) -> None:
     change = nsx.ModuleChangeRequest(tmp_path, "driver", dry_run=True)
     with patch("neuralspotx.operations.add_module_impl") as add:
-        with pytest.raises(TypeError, match="module conflicts"):
+        with pytest.raises(nsx.NSXConfigError, match="module conflicts"):
             nsx.add_module(change, "different")
         add.assert_not_called()
         nsx.add_module(change, "driver")
@@ -64,14 +64,20 @@ def test_positional_module_name_and_call_callbacks(tmp_path: Path) -> None:
 
 
 def test_inapplicable_request_fields(tmp_path: Path) -> None:
-    with pytest.raises(TypeError, match="probe_serial"):
-        nsx.build_app(nsx.AppBuildRequest(tmp_path, probe_serial="1"))
-    with pytest.raises(TypeError, match="frozen"):
+    with patch("neuralspotx.operations.build_app_impl") as build:
+        with pytest.warns(DeprecationWarning, match="probe_serial"):
+            nsx.build_app(nsx.AppBuildRequest(tmp_path, probe_serial="1"))
+        build.assert_called_once()
+    with pytest.raises(nsx.NSXConfigError, match="frozen"):
         nsx.clean_app(nsx.AppCleanRequest(tmp_path, frozen=True))
-    with pytest.raises(TypeError, match="boards"):
-        nsx.remove_module(nsx.ModuleChangeRequest(tmp_path, "one", boards=("test",)))
-    with pytest.raises(TypeError, match="jobs"):
-        nsx.configure_app(nsx.AppBuildRequest(tmp_path, jobs=4))
+    with patch("neuralspotx.operations.remove_module_impl") as remove:
+        with pytest.warns(DeprecationWarning, match="boards"):
+            nsx.remove_module(nsx.ModuleChangeRequest(tmp_path, "one", boards=("test",)))
+        remove.assert_called_once()
+    with patch("neuralspotx.operations.configure_app_impl") as configure:
+        with pytest.warns(DeprecationWarning, match="jobs"):
+            nsx.configure_app(nsx.AppBuildRequest(tmp_path, jobs=4))
+        configure.assert_called_once()
     assert not list(tmp_path.iterdir())
 
 

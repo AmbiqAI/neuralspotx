@@ -31,7 +31,7 @@ def create_board(
 def create_board(
     name: BoardCreateRequest,
     *,
-    from_board: str | None = None,
+    from_board: str = ...,
     app_dir: PathLike = ".",
     force: bool = False,
     bsp_module: str | None = None,
