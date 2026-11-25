@@ -9,9 +9,11 @@ from __future__ import annotations
 
 import threading
 import time
+from pathlib import Path
 
 import pytest
 
+from neuralspotx import file_lock
 from neuralspotx._parallel import parallel_map, resolve_workers
 
 
@@ -89,3 +91,15 @@ class TestParallelMap:
 
         with pytest.raises(RuntimeError, match="boom"):
             parallel_map(fail, list(range(5)), max_workers=2)
+
+
+def test_workers_cannot_reenter_the_callers_app_lock(tmp_path: Path) -> None:
+    def acquire(_: int) -> None:
+        with (
+            pytest.raises(file_lock.AppLockBusyError),
+            file_lock.app_lock(tmp_path, blocking=False),
+        ):
+            pytest.fail("worker acquired the caller's lock")
+
+    with file_lock.app_lock(tmp_path):
+        parallel_map(acquire, range(2), max_workers=2)

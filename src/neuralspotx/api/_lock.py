@@ -50,6 +50,8 @@ def lock_app(
 
     *resolve_ttl_s* overrides the ``NSX_RESOLVE_TTL`` env for this call
     (e.g. ``1800`` for 30 min in long workflows; ``0`` to disable).
+    Ref resolution and artifact fetching honor *timeout_s* per subprocess,
+    including parallel workers. The ref-cache TTL applies only to ref lookups.
     """
 
     request = (

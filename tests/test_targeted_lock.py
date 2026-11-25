@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import subprocess
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -9,7 +12,8 @@ from typing import Any
 import pytest
 import yaml
 
-from neuralspotx import api, operations
+from neuralspotx import _resolve_cache, api, operations
+from neuralspotx.subprocess_utils import _git
 from neuralspotx._errors import NSXConfigError, NSXError
 from neuralspotx.nsx_lock import LockKind, ResolutionError, read_lock, write_lock
 from neuralspotx.operations import lock_app_impl
@@ -81,10 +85,9 @@ class App:
         return "sha256:" + commit[0] * 64
 
 
-@pytest.fixture
-def app(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> App:
-    result = App(
-        tmp_path,
+def _empty_app(root: Path) -> App:
+    return App(
+        root,
         {
             "schema_version": 2,
             "project": {"name": "targeted"},
@@ -95,6 +98,11 @@ def app(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> App:
             "module_registry": {"projects": {}, "modules": {}},
         },
     )
+
+
+@pytest.fixture
+def app(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> App:
+    result = _empty_app(tmp_path)
     monkeypatch.setattr(operations._lock, "resolve_ref", result.resolve)
     monkeypatch.setattr(operations._lock, "hash_git_artifact", result.artifact)
     # No real cache invalidation or accidental network acquisition in this fixture.
@@ -624,3 +632,57 @@ def test_frozen_rebuild_after_sdk_default_promotion(
     )
     assert (build / "built-sdk.txt").read_text() == expected == "v1"
     assert (sdk.root / "nsx.lock").read_bytes() == sdk.receipt
+
+
+@pytest.mark.parametrize("workers", [1, 2])
+def test_lock_workers_preserve_each_callers_settings(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, workers: int
+) -> None:
+    monkeypatch.setenv("NSX_RESOLVE_PARALLELISM", str(workers))
+    monkeypatch.setenv("NSX_CACHE_DIR", str(tmp_path / "cache"))
+    monkeypatch.setenv("NSX_RESOLVE_TTL", "300")
+    monkeypatch.setenv("NSX_GIT_TIMEOUT", "600")
+    # Two simultaneous lock calls, each with two independent Git dependencies.
+    barrier = threading.Barrier(2 * workers)
+    settings = [(5, 0), (17, 90)]
+    apps = [_empty_app(tmp_path / f"app-{i}") for i in range(2)]
+    expected: dict[str, tuple[str, int, int]] = {}
+    fetch_timeouts: dict[str, int] = {}
+    for i, (app, (timeout, ttl)) in enumerate(zip(apps, settings, strict=True)):
+        for j in range(2):
+            name = f"driver-{i}-{j}"
+            app.add(name)
+            url = f"https://example.invalid/{name}.git"
+            commit = f"{2 * i + j + 1:040x}"
+            expected[url] = (commit, timeout, ttl)
+            if ttl == 0:
+                _resolve_cache.put(url, "main", "f" * 40, "branch")
+
+    def ls_remote(cmd: list[str], *, timeout: float) -> subprocess.CompletedProcess[str]:
+        assert "ls-remote" in cmd
+        url = cmd[cmd.index("ls-remote") + 1]
+        commit, expected_timeout, ttl = expected[url]
+        assert (timeout, _resolve_cache._ttl_seconds()) == (expected_timeout, ttl)
+        barrier.wait(timeout=10)
+        return subprocess.CompletedProcess(cmd, 0, stdout=f"{commit}\trefs/heads/main\n")
+
+    def git_run(cmd: list[str], **kwargs: Any) -> None:
+        if "init" in cmd:
+            Path(cmd[-1]).mkdir()
+        elif "fetch" in cmd:
+            fetch_timeouts[cmd[-1]] = kwargs["timeout"]
+
+    monkeypatch.setattr(_git, "_run_capture", ls_remote)
+    monkeypatch.setattr(_git, "_run", git_run)
+
+    with ThreadPoolExecutor(max_workers=len(apps)) as pool:
+        calls = [
+            pool.submit(api.lock_app, app.root, timeout_s=timeout, resolve_ttl_s=ttl)
+            for app, (timeout, ttl) in zip(apps, settings, strict=True)
+        ]
+        for call in calls:
+            assert len(call.result().modules) == 2
+
+    assert fetch_timeouts == {commit: timeout for commit, timeout, _ in expected.values()}
+    for url, (commit, _, ttl) in expected.items():
+        assert _resolve_cache.get(url, "main") == (commit if ttl else "f" * 40, "branch")
