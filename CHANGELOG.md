@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.2](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v1.1.1...neuralspotx-v1.1.2) (2026-11-24)
+
+
+### Bug Fixes
+
+* enable MRAM caching in generated Apollo4 apps ([#375](https://github.com/AmbiqAI/neuralspotx/issues/375)) ([e02c464](https://github.com/AmbiqAI/neuralspotx/commit/e02c464869b44c712ea2baeeefccd6bcfb53def8))
+
 ## [1.1.1](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v1.1.0...neuralspotx-v1.1.1) (2026-11-23)
 
 
