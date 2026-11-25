@@ -1,5 +1,6 @@
 """Public request-versus-keyword semantics for the dual-form facade."""
 
+import warnings
 from dataclasses import dataclass, replace
 from pathlib import Path
 from unittest.mock import patch
@@ -68,8 +69,10 @@ def test_inapplicable_request_fields(tmp_path: Path) -> None:
         with pytest.warns(DeprecationWarning, match="probe_serial"):
             nsx.build_app(nsx.AppBuildRequest(tmp_path, probe_serial="1"))
         build.assert_called_once()
-    with pytest.raises(nsx.NSXConfigError, match="frozen"):
-        nsx.clean_app(nsx.AppCleanRequest(tmp_path, frozen=True))
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        with pytest.raises(nsx.NSXConfigError, match="frozen"):
+            nsx.clean_app(nsx.AppCleanRequest(tmp_path, frozen=True, probe_serial="1"))
     with patch("neuralspotx.operations.remove_module_impl") as remove:
         with pytest.warns(DeprecationWarning, match="boards"):
             nsx.remove_module(nsx.ModuleChangeRequest(tmp_path, "one", boards=("test",)))

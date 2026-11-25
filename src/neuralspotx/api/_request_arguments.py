@@ -63,12 +63,19 @@ def request_arguments(
                     for kind, defaults in unused_by_type.items()
                     if isinstance(request, kind)
                 )
-                for name, default in unused.items():
-                    if getattr(request, name) != default:
-                        message = f"{operation.__name__}() does not use the request field {name!r}."
-                        if name == "frozen":
-                            raise NSXConfigError(message)
-                        warnings.warn(message, DeprecationWarning, stacklevel=2)
+                ignored = [
+                    name for name, default in unused.items() if getattr(request, name) != default
+                ]
+                if "frozen" in ignored:
+                    raise NSXConfigError(
+                        f"{operation.__name__}() does not use the request field 'frozen'."
+                    )
+                for name in ignored:
+                    warnings.warn(
+                        f"{operation.__name__}() does not use the request field {name!r}.",
+                        DeprecationWarning,
+                        stacklevel=2,
+                    )
             return operation(*args, **kwargs)
 
         return checked
