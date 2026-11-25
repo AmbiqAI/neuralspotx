@@ -150,7 +150,9 @@ def _cleanup_inputs(app: Path, cfg: dict[str, Any]) -> _CleanupInputs:
         if module.source.path:
             _protect(inputs.sources, app / Path(module.source.path).expanduser())
     authored_paths: set[Path] = set()
-    registry = _effective_registry(_load_registry(), cfg, app_dir=app, authored_paths=authored_paths)
+    registry = _effective_registry(
+        _load_registry(), cfg, app_dir=app, authored_paths=authored_paths
+    )
     for path in authored_paths:
         _protect(inputs.sources, path)
     for key in registry["projects"]:

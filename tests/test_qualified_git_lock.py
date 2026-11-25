@@ -468,7 +468,7 @@ def test_reset_preserves_uncertain_ownership(
     assert cli.main(["sync", "--app-dir", str(tmp_path), "--frozen"]) == 0
     sdk = tmp_path / "modules/sdk"
     target = sdk / "revision.txt"
-    doc = yaml.safe_load(receipt.read_text())
+    doc = yaml.safe_load(receipt.read_text(encoding="utf-8"))
     section = doc["targets"][BOARDS[1]]
     if case == "partial":
         del doc["targets"][BOARDS[1]]
@@ -483,7 +483,7 @@ def test_reset_preserves_uncertain_ownership(
         }
     else:
         registry["projects"]["source"] = {"local_path": str(sdk / "nested")}
-    receipt.write_text(yaml.safe_dump(doc))
+    receipt.write_text(yaml.safe_dump(doc), encoding="utf-8")
     rc = cli.main(["clean", "--app-dir", str(tmp_path), "--reset", "--force"])
     assert rc == (1 if case == "unclassified" else 0)
     assert target.is_file()
