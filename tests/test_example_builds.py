@@ -262,3 +262,57 @@ def test_generated_app_builds(board: str, template: str) -> None:
         subprocess.run(["nsx", "configure", *options], check=True, timeout=300)
         subprocess.run(["nsx", "build", *options], check=True, timeout=_BUILD_TIMEOUT_S)
         assert (app / "build" / board / "blink.bin").is_file()
+
+
+def test_explicit_toolchain_produces_requested_object_on_reuse(tmp_path: Path) -> None:
+    from neuralspotx import build_app, configure_app
+    from neuralspotx._errors import NSXToolchainError
+
+    (tmp_path / "nsx.yml").write_text(
+        "schema_version: 2\nproject: {name: identity}\ntarget: {board: apollo510_evb, soc: apollo510}\n"
+        "baseline: none\nmodules: []\n",
+        encoding="utf-8",
+    )
+    (tmp_path / "CMakeLists.txt").write_text(
+        "cmake_minimum_required(VERSION 3.22)\nproject(identity C CXX ASM)\nadd_library(identity STATIC probe.c)\n",
+        encoding="utf-8",
+    )
+    source = tmp_path / "probe.c"
+    source.write_text("int identity(void) { return 1; }\n")
+    configure_app(tmp_path, toolchain=_TOOLCHAIN)
+    requested = "gcc" if _TOOLCHAIN == "arm-none-eabi-gcc" else _TOOLCHAIN
+    build_app(tmp_path, toolchain=requested)
+    build = tmp_path / "build/apollo510_evb"
+    objects = [
+        f for f in (build / "CMakeFiles/identity.dir").iterdir() if f.suffix in {".obj", ".o"}
+    ]
+    (obj,) = objects
+    producer = {"gcc": b"GCC:", "atfe": b"clang version", "armclang": b"armclang"}[requested]
+    with obj.open("rb") as stream:
+        elf = ELFFile(stream)
+        assert elf.header["e_machine"] == "EM_ARM"
+        section = elf.get_section_by_name(".comment")
+        assert section is not None and producer in section.data()
+    obj.unlink()
+    for other in {"gcc", "atfe", "armclang"} - {requested}:
+        with pytest.raises(NSXToolchainError, match="fresh --build-dir"):
+            build_app(tmp_path, toolchain=other)
+        assert not obj.exists()
+    build_app(tmp_path)
+    with obj.open("rb") as stream:
+        elf = ELFFile(stream)
+        assert elf.header["e_machine"] == "EM_ARM"
+        section = elf.get_section_by_name(".comment")
+        assert section is not None and producer in section.data()
+
+    # A changed CMake input invalidates the previously verified generation.
+    # A separate target makes execution observable independently of compiler output.
+    key = {"gcc": "ARM_NONE_EABI_GCC", "atfe": "ATFE_CLANG", "armclang": "ARMCLANG"}[requested]
+    with (tmp_path / "CMakeLists.txt").open("a", encoding="utf-8") as project:
+        project.write(
+            f'set({key} "unmatched-driver" CACHE FILEPATH "" FORCE)\n'
+            "add_custom_target(action COMMAND ${CMAKE_COMMAND} -E touch ran-action)\n"
+        )
+    with pytest.raises(NSXToolchainError, match="fresh --build-dir"):
+        build_app(tmp_path, toolchain=requested, target="action")
+    assert not (build / "ran-action").exists()

@@ -10,6 +10,7 @@ from .._errors import NSXConfigError
 from .._probe_selection import validate_probe_request
 from ..subprocess_utils import format_subprocess_error, run_capture
 from ._cmake_cache import read_owned_cache
+from ._configured_toolchain import selected_toolchain, verify_configured_toolchain
 from ._debug_context._reader import StaleDebugContextError, _parse, load_debug_context
 
 
@@ -35,7 +36,9 @@ _ADOPT = (
 )
 
 
-def inspect_build(app: Path, build: Path, board: str, *, replace_board: bool = False) -> OwnedBuild:
+def inspect_build(
+    app: Path, build: Path, board: str, *, replace_board: bool = False, toolchain: str | None = None
+) -> OwnedBuild:
     """Reject invalid state before writes; only declared freshness failures recover."""
     app, build = app.resolve(), build.resolve()
     cache = build / "CMakeCache.txt"
@@ -44,8 +47,11 @@ def inspect_build(app: Path, build: Path, board: str, *, replace_board: bool = F
     if not cache.exists():
         if any(p.exists() for p in (context, marker, build / "build.ninja")):
             raise NSXConfigError("Incomplete existing build; use a fresh build directory.")
+        if toolchain is not None:
+            selected_toolchain(toolchain)
         return OwnedBuild(DebugState.UNCONFIGURED)
     values = read_owned_cache(app, build)
+    verify_configured_toolchain(app, build, toolchain, values)
     cached_board = values.get("NSX_BOARD")
     if not cached_board or (cached_board != board and not replace_board):
         raise NSXConfigError(

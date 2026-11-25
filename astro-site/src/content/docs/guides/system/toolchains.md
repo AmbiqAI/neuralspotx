@@ -102,13 +102,17 @@ only when they are present, so a clean report does not mean you have all three. 
 
 ## Switching an existing app
 
-The default build directory is per board, not per toolchain. CMake caches the selected
-compiler there, so remove the generated build tree before switching compilers:
+The default build directory is per board. To compare compilers for one board,
+give each compiler its own directory:
 
 ```bash
-nsx clean --full
-nsx build --toolchain armclang
+nsx build --toolchain gcc --build-dir build/gcc
+nsx build --toolchain atfe --build-dir build/atfe
 ```
 
-Re-running `configure` with a different `--toolchain` against an existing build directory
-is the case worth avoiding, because CMake caches the compiler. Clean first.
+An explicit `--toolchain` on configure, build, flash or SWO view must match the
+toolchain CMake loaded for that directory. NSX checks the configured drivers for C, C++ and assembly when those
+languages are enabled. `gcc` and `arm-none-eabi-gcc` are equivalent.
+If NSX cannot confirm a match, use a fresh `--build-dir`. Alternatively, run
+`nsx clean --full` on an NSX-owned build directory before switching compilers.
+Omitting the option on an ordinary incremental build reuses the configured compiler.

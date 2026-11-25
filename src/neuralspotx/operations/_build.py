@@ -31,6 +31,7 @@ from ..tooling import JLINK_SWO_NAMES, find_processes_holding_probe, find_segger
 from . import _common
 from ._cmake_cache import _cmake_cache_value
 from ._common import _resolve_build_context
+from ._configured_toolchain import verify_configured_toolchain
 from ._debug_context import capture_debug_context, load_debug_context
 from ._debug_workflow import inspect_build, prepare_debug, require_adoption, require_physical_debug
 from ._hardware import (
@@ -151,7 +152,13 @@ def configure_app_impl(
         board=board,
         build_dir=build_dir,
     )
-    inspect_build(resolved_app_dir, resolved_build_dir, resolved_board, replace_board=True)
+    inspect_build(
+        resolved_app_dir,
+        resolved_build_dir,
+        resolved_board,
+        replace_board=True,
+        toolchain=toolchain,
+    )
     warn_if_lock_stale(resolved_app_dir, resolved_board)
     _ensure_app_modules(resolved_app_dir, resolved_board, frozen=frozen)
     _run_cmake_configure(
@@ -163,6 +170,7 @@ def configure_app_impl(
         sdk_root=sdk_root,
     )
     prepare_debug(resolved_app_dir, resolved_build_dir, resolved_board)
+    verify_configured_toolchain(resolved_app_dir, resolved_build_dir, toolchain)
     info(f"Configured app at: {resolved_app_dir}")
     info(f"Build directory: {resolved_build_dir}")
     return resolved_build_dir
@@ -180,6 +188,25 @@ def _run_build(
         line(result.stdout.rstrip())
     if result.stderr:
         info(result.stderr.rstrip())
+
+
+def _build_target(
+    app: Path,
+    build: Path,
+    target: str,
+    jobs: int,
+    toolchain: str | None,
+    *,
+    on_line: Callable[[str], None] | None,
+    capture_output: bool,
+) -> None:
+    command = ["cmake", "--build", str(build), "--target"]
+    if toolchain is not None:
+        # Regenerate the Ninja manifest alone so a changed CMake input cannot
+        # switch compilers and run the requested target in the same invocation.
+        _run_build([*command, "build.ninja"], on_line=on_line, capture_output=capture_output)
+        verify_configured_toolchain(app, build, toolchain)
+    _run_build([*command, target, "-j", str(jobs)], on_line=on_line, capture_output=capture_output)
 
 
 def build_app_impl(
@@ -213,7 +240,7 @@ def build_app_impl(
         board=board,
         build_dir=build_dir,
     )
-    owned = inspect_build(resolved_app_dir, resolved_build_dir, resolved_board)
+    owned = inspect_build(resolved_app_dir, resolved_build_dir, resolved_board, toolchain=toolchain)
     if frozen:
         cached_sdk = _cmake_cache_value(resolved_build_dir, "NSX_AMBIQSUITE_ROOT_OVERRIDE")
         if cached_sdk:
@@ -235,12 +262,17 @@ def build_app_impl(
         )
     validate_app_requirements(resolved_app_dir, resolved_board)
     resolved_target = target or app_name
-    _run_build(
-        ["cmake", "--build", str(resolved_build_dir), "--target", resolved_target, "-j", str(jobs)],
+    _build_target(
+        resolved_app_dir,
+        resolved_build_dir,
+        resolved_target,
+        jobs,
+        toolchain,
         on_line=on_line,
         capture_output=_capture_output,
     )
     prepare_debug(resolved_app_dir, resolved_build_dir, resolved_board)
+    verify_configured_toolchain(resolved_app_dir, resolved_build_dir, toolchain)
     return resolved_build_dir
 
 
@@ -250,11 +282,12 @@ def preflight_build(
     board: str | None = None,
     build_dir: Path | None = None,
     sdk_root: Path | None = None,
+    toolchain: str | None = None,
 ) -> None:
     """Guard CLI build/update composition with the same read-only ownership check."""
     _check_sdk_root(sdk_root, frozen=False)
     app, _, selected, build = _resolve_build_context(app_dir, board=board, build_dir=build_dir)
-    inspect_build(app, build, selected)
+    inspect_build(app, build, selected, toolchain=toolchain)
 
 
 def preflight_flash(
@@ -263,6 +296,7 @@ def preflight_flash(
     board: str | None = None,
     build_dir: Path | None = None,
     sdk_root: Path | None = None,
+    toolchain: str | None = None,
     target: str | None = None,
 ) -> tuple[Path, str, str, Path]:
     """Validate ownership before flash, including a CLI-requested dependency update."""
@@ -271,7 +305,7 @@ def preflight_flash(
     require_physical_debug(app, selected)
     resolved_target = name if target is None else target
     validate_flash_target_name(resolved_target)
-    require_adoption(inspect_build(app, build, selected))
+    require_adoption(inspect_build(app, build, selected, toolchain=toolchain))
     return app, resolved_target, selected, build
 
 
@@ -294,6 +328,7 @@ def flash_app_impl(
     _check_sdk_root(sdk_root, frozen=frozen)
     app, resolved_target, selected, build = preflight_flash(
         app_dir,
+        toolchain=toolchain,
         board=board,
         build_dir=build_dir,
         target=target,
@@ -313,8 +348,12 @@ def flash_app_impl(
         )
         prepare_debug(app, build, selected, required=True)
         # Preparation configures again: compile against that final generation.
-        _run_build(
-            ["cmake", "--build", str(build), "--target", resolved_target, "-j", str(jobs)],
+        _build_target(
+            app,
+            build,
+            resolved_target,
+            jobs,
+            toolchain,
             on_line=on_line,
             capture_output=True,
         )
@@ -324,6 +363,7 @@ def flash_app_impl(
                 exc, context=f"Flash build for target '{resolved_target}' in {build}"
             )
         ) from None
+    verify_configured_toolchain(app, build, toolchain)
     load_debug_context(app, build, selected)  # Regeneration here must fail before USB.
     with capture_debug_context(
         app, build, selected, operation="flash", target=resolved_target
@@ -509,7 +549,7 @@ def view_app_impl(
     _check_sdk_root(sdk_root, frozen=frozen)
     app, name, selected, build = _resolve_build_context(app_dir, board=board, build_dir=build_dir)
     require_physical_debug(app, selected)
-    owned = inspect_build(app, build, selected)
+    owned = inspect_build(app, build, selected, toolchain=toolchain)
     require_adoption(owned)
     from ._console import warn_console_mismatch
 
@@ -531,6 +571,7 @@ def view_app_impl(
             sdk_root=sdk_root,
         )
     prepare_debug(app, build, selected, required=True)
+    verify_configured_toolchain(app, build, toolchain)
     with capture_debug_context(app, build, selected, operation="swo", target=name) as snap:
         settings = snap.context.target(name)
         serial = ProbeSelection.from_request(

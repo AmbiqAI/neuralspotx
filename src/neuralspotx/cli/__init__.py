@@ -255,6 +255,7 @@ def cmd_build(args: argparse.Namespace) -> None:
         with timeout_budget(getattr(args, "timeout", None)):
             operations._build.preflight_build(
                 app_dir,
+                toolchain=args.toolchain,
                 board=args.board,
                 build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
                 sdk_root=Path(args.sdk_root).expanduser().resolve()
@@ -291,6 +292,7 @@ def cmd_flash(args: argparse.Namespace) -> None:
         with timeout_budget(getattr(args, "timeout", None)):
             operations._build.preflight_flash(
                 app_dir,
+                toolchain=args.toolchain,
                 board=args.board,
                 build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
                 sdk_root=Path(args.sdk_root).expanduser().resolve()

@@ -1275,10 +1275,12 @@ def _run_cmake_configure(
     sdk_root: Path | None = None,
 ) -> None:
     from .constants import DEFAULT_TOOLCHAIN, EXPERIMENTAL_TOOLCHAINS, SUPPORTED_TOOLCHAINS
+    from .operations._configured_toolchain import selected_toolchain, verify_configured_toolchain
 
     # Resolve toolchain: explicit arg > per-board target toolchain
     # (which itself falls back to the top-level ``toolchain:``) > default
-    tc = toolchain
+    requested = selected_toolchain(toolchain) if toolchain is not None else None
+    tc = requested
     if tc is None:
         cfg_path = app_dir / "nsx.yml"
         if cfg_path.exists():
@@ -1341,6 +1343,7 @@ def _run_cmake_configure(
     cached_jlink = jlink_executable or "NSX_JLINK_EXE-NOTFOUND"
     cmd.append(f"-DNSX_JLINK_EXE:FILEPATH={cached_jlink}")
     run(cmd)
+    verify_configured_toolchain(app_dir, build_dir, requested)
 
 
 def _resolve_app_context(args: argparse.Namespace) -> tuple[Path, dict[str, Any], str, str]:
