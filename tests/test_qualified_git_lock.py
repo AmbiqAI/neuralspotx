@@ -547,3 +547,21 @@ def test_reset_checks_dirty_empty_module_root(tmp_path: Path, registry: dict[str
     assert root.is_dir() and driver.is_dir()
     assert cli.main([*reset, "--force"]) == 0
     assert not root.exists() and not driver.exists()
+
+
+def test_cached_sdk_override_protects_module_during_repeated_reset(
+    tmp_path: Path, registry: dict[str, Any]
+) -> None:
+    shutil.copyfile(FIXTURE / "nsx.lock", tmp_path / "nsx.lock")
+    assert cli.main(["sync", "--app-dir", str(tmp_path), "--frozen"]) == 0
+    build = tmp_path / "build" / BOARDS[0]
+    sdk = tmp_path / "modules/sdk"
+    (build / "CMakeCache.txt").write_text(
+        f"CMAKE_HOME_DIRECTORY:INTERNAL={tmp_path}\nCMAKE_CACHEFILE_DIR:INTERNAL={build}\n"
+        f"NSX_BOARD:STRING={BOARDS[0]}\nNSX_AMBIQSUITE_ROOT_OVERRIDE:PATH={sdk}\n",
+        encoding="utf-8",
+    )
+    for _ in range(2):
+        assert cli.main(["clean", "--app-dir", str(tmp_path), "--reset", "--force"]) == 0
+        assert build.is_dir() and (sdk / "revision.txt").is_file()
+        assert not (tmp_path / "modules/driver").exists()

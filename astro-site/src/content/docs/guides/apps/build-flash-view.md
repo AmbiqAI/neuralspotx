@@ -334,6 +334,11 @@ to discard edits to identified dependencies. Use `nsx sync --frozen` to restore
 the default board's copies at their recorded revisions. For a different board, run
 `nsx configure --board <board> --frozen`.
 
+Recursive cleanup checks SDK overrides recorded in the app’s conventional build
+directories and the explicitly selected build. If an override overlaps a cleanup
+location, NSX preserves the SDK source and the build that records its location.
+Reconfigure with the SDK in a separate source directory to reclaim those builds.
+
 Reset and full clean coordinate with lock, sync and update through the app writer
 lock. Finish builds, debugger sessions and standalone CMake commands using the
 affected directories before running cleanup.

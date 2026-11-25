@@ -160,7 +160,16 @@ def _input_paths(path: Path) -> tuple[Path, Path]:
     return Path(os.path.abspath(path)), path.resolve()
 
 
-def _cleanup_inputs(app: Path, cfg: dict[str, Any]) -> _CleanupInputs:
+def _build_locations(app: Path) -> set[Path]:
+    builds = app / "build"
+    paths = set(app.glob("build_*"))
+    paths.add(builds)
+    if builds.is_dir() and not builds.is_symlink() and not _owned_build(app, builds):
+        paths.update(builds.iterdir())
+    return paths
+
+
+def _cleanup_inputs(app: Path, cfg: dict[str, Any], builds: set[Path]) -> _CleanupInputs:
     """Include declared sources and checkout locations independently of receipt freshness."""
     inputs = _CleanupInputs(set(), {}, read_lock_file(app, require_known_kinds=True))
     for module in AppConfig.from_mapping(cfg).modules:
@@ -179,6 +188,26 @@ def _cleanup_inputs(app: Path, cfg: dict[str, Any]) -> _CleanupInputs:
         for section in inputs.receipt.targets.values():
             for entry in section.modules.values():
                 inputs.register_checkout(app / entry.vendored_at.replace("\\", "/"), entry.project)
+    # An explicit SDK override is a source input recorded only in the build cache.
+    # Keep its declaring cache too when a later cleanup could otherwise forget it.
+    cleanup_roots = {app / "modules", *(path.resolve() for path in builds)}
+    for path in builds:
+        if not (path / "CMakeCache.txt").is_file():
+            continue
+        try:
+            values = read_owned_cache(app, path.resolve())
+        except NSXConfigError:
+            continue
+        override = values.get("NSX_AMBIQSUITE_ROOT_OVERRIDE")
+        if override:
+            sdk_root = Path(override)
+            if not sdk_root.is_absolute():
+                raise NSXConfigError(
+                    f"Cannot identify the SDK override in {path}; reconfigure before cleanup."
+                )
+            inputs.sources.update(_input_paths(sdk_root))
+            if any(_overlap(sdk_root.resolve(), root) for root in cleanup_roots):
+                inputs.sources.update(_input_paths(path))
     return inputs
 
 
@@ -251,14 +280,9 @@ def _reset_app(app: Path, *, force: bool) -> Path:
         raise NSXConfigError(f"--reset requires an app directory containing nsx.yml: {app}")
     with app_lock(app):
         cfg = _load_app_cfg(app)
-        inputs = _cleanup_inputs(app, cfg)
+        candidates = _build_locations(app)
+        inputs = _cleanup_inputs(app, cfg, candidates)
         removals = _module_removals(app, cfg, inputs, force=force)
-        builds = app / "build"
-        candidates = list(app.glob("build_*"))
-        if _owned_build(app, builds):
-            candidates.append(builds)
-        elif builds.is_dir() and not builds.is_symlink():
-            candidates.extend(builds.iterdir())
         removals.extend(
             path
             for path in candidates
@@ -292,7 +316,7 @@ def clean_app_impl(
             if not build.exists():
                 return build
             if not _owned_build(app, build, selected) or _cleanup_inputs(
-                app, _load_app_cfg(app)
+                app, _load_app_cfg(app), _build_locations(app) | {build}
             ).protects_build(build.resolve()):
                 raise NSXConfigError(
                     f"Cannot confirm {build} is an owned build for {selected}. "
