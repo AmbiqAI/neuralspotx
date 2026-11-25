@@ -37,6 +37,7 @@ from ._cache_paths import nsx_cache_root
 
 _ENV_TTL = "NSX_RESOLVE_TTL"
 _DEFAULT_TTL: float = 300.0  # 5 minutes
+_MAX_ENTRIES = 4096
 
 # Per-call override that takes precedence over the env var. Scoped via
 # ``ttl_override`` context manager so concurrent callers can set their
@@ -191,12 +192,13 @@ def put(url: str, ref: str, sha: str, kind: str | None) -> None:
 
     def store_entry() -> None:
         entries = _read_cache()
-        now = time.time()
-        # Only the shared TTL governs routine housekeeping. A per-call TTL
-        # controls this lookup and must not evict another caller's branch.
-        if _ttl_override.get() is None:
-            entries = {k: v for k, v in entries.items() if (now - v[2]) < ttl}
-        entries[key] = (sha, kind, now)
+        # Freshness belongs to the reader. Bound the shared file by keeping
+        # the most recently resolved refs, independently of any caller's TTL.
+        entries.pop(key, None)
+        if len(entries) >= _MAX_ENTRIES:
+            newest = sorted(entries, key=lambda k: entries[k][2], reverse=True)[: _MAX_ENTRIES - 1]
+            entries = {k: entries[k] for k in newest}
+        entries[key] = (sha, kind, time.time())
         _write_cache(entries)
 
     lock_path = _cache_path().with_suffix(_cache_path().suffix + ".lock")
