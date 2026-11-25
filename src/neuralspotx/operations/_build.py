@@ -190,6 +190,25 @@ def _run_build(
         info(result.stderr.rstrip())
 
 
+def _build_target(
+    app: Path,
+    build: Path,
+    target: str,
+    jobs: int,
+    toolchain: str | None,
+    *,
+    on_line: Callable[[str], None] | None,
+    capture_output: bool,
+) -> None:
+    command = ["cmake", "--build", str(build), "--target"]
+    if toolchain is not None:
+        # Regenerate the Ninja manifest alone so a changed CMake input cannot
+        # switch compilers and run the requested target in the same invocation.
+        _run_build([*command, "build.ninja"], on_line=on_line, capture_output=capture_output)
+        verify_configured_toolchain(app, build, toolchain)
+    _run_build([*command, target, "-j", str(jobs)], on_line=on_line, capture_output=capture_output)
+
+
 def build_app_impl(
     app_dir: Path,
     *,
@@ -243,8 +262,12 @@ def build_app_impl(
         )
     validate_app_requirements(resolved_app_dir, resolved_board)
     resolved_target = target or app_name
-    _run_build(
-        ["cmake", "--build", str(resolved_build_dir), "--target", resolved_target, "-j", str(jobs)],
+    _build_target(
+        resolved_app_dir,
+        resolved_build_dir,
+        resolved_target,
+        jobs,
+        toolchain,
         on_line=on_line,
         capture_output=_capture_output,
     )
@@ -325,8 +348,12 @@ def flash_app_impl(
         )
         prepare_debug(app, build, selected, required=True)
         # Preparation configures again: compile against that final generation.
-        _run_build(
-            ["cmake", "--build", str(build), "--target", resolved_target, "-j", str(jobs)],
+        _build_target(
+            app,
+            build,
+            resolved_target,
+            jobs,
+            toolchain,
             on_line=on_line,
             capture_output=True,
         )

@@ -1,17 +1,36 @@
 """Verify explicit NSX selections against the toolchain CMake actually loaded."""
 
 import re
+from dataclasses import dataclass
 from pathlib import Path
 
 from .._errors import NSXToolchainError
 from ..constants import SUPPORTED_TOOLCHAINS, Toolchain
 from ._cmake_cache import read_owned_cache
 
-# The find_program entries used by the shipped CMake toolchains for C and C++.
-_COMPILERS = {
-    Toolchain.GCC: ("gnu", "ARM_NONE_EABI_GCC", "ARM_NONE_EABI_GXX"),
-    Toolchain.ARMCLANG: ("armclang", "ARMCLANG", "ARMCLANG"),
-    Toolchain.ATFE: ("clang", "ATFE_CLANG", "ATFE_CLANGXX"),
+
+@dataclass(frozen=True)
+class _Driver:
+    cache_key: str
+    program: str
+    cmake_id: str
+
+
+# The three NSX toolchain files select these drivers with find_program.
+_ARMCLANG = _Driver("ARMCLANG", "armclang", "armclang")
+_ATFE_CLANG = _Driver("ATFE_CLANG", "clang", "clang")
+_DRIVERS = {
+    Toolchain.GCC: {
+        "C": _Driver("ARM_NONE_EABI_GCC", "arm-none-eabi-gcc", "gnu"),
+        "CXX": _Driver("ARM_NONE_EABI_GXX", "arm-none-eabi-g++", "gnu"),
+        "ASM": _Driver("ARM_NONE_EABI_AS", "arm-none-eabi-gcc", "gnu"),
+    },
+    Toolchain.ARMCLANG: dict.fromkeys(("C", "CXX", "ASM"), _ARMCLANG),
+    Toolchain.ATFE: {
+        "C": _ATFE_CLANG,
+        "CXX": _Driver("ATFE_CLANGXX", "clang++", "clang"),
+        "ASM": _ATFE_CLANG,
+    },
 }
 
 
@@ -50,12 +69,11 @@ def verify_configured_toolchain(
         system = (records / "CMakeSystem.cmake").read_text(encoding="utf-8")
         includes = re.findall(r'^include\("([^"\n]+)"\)$', system, re.MULTILINE)
         expected = app / "cmake" / "nsx" / "toolchains" / SUPPORTED_TOOLCHAINS[toolchain]
-        if len(includes) != 1 or Path(includes[0]) != expected:
+        if len(includes) != 1 or Path(includes[0]).resolve() != expected.resolve():
             observed = ", ".join(includes) or "no toolchain file"
             raise mismatch(observed)
 
-        compiler_id, c_driver, cxx_driver = _COMPILERS[toolchain]
-        for language, key in (("C", c_driver), ("CXX", cxx_driver)):
+        for language, expected_driver in _DRIVERS[toolchain].items():
             record = records / f"CMake{language}Compiler.cmake"
             if not record.exists():
                 continue  # CMake only writes compiler records for enabled languages.
@@ -66,9 +84,10 @@ def verify_configured_toolchain(
             if (
                 len(driver) != 1
                 or len(family) != 1
-                or family[0].lower() != compiler_id
-                or not cache.get(key)
-                or Path(driver[0]) != Path(cache[key])
+                or family[0].lower() != expected_driver.cmake_id
+                or Path(driver[0]).name.lower().removesuffix(".exe") != expected_driver.program
+                or not cache.get(expected_driver.cache_key)
+                or Path(driver[0]).resolve() != Path(cache[expected_driver.cache_key]).resolve()
             ):
                 executable = ", ".join(driver) or "unknown executable"
                 detected = ", ".join(family) or "unknown ID"

@@ -111,8 +111,8 @@ nsx build --toolchain atfe --build-dir build/atfe
 ```
 
 An explicit `--toolchain` on configure, build, flash or SWO view must match the
-toolchain CMake loaded for that directory. NSX checks the detected C and C++
-compilers for enabled languages. `gcc` and `arm-none-eabi-gcc` are equivalent.
+toolchain CMake loaded for that directory. NSX checks the configured drivers for C, C++ and assembly when those
+languages are enabled. `gcc` and `arm-none-eabi-gcc` are equivalent.
 If NSX cannot confirm a match, use a fresh `--build-dir`. Alternatively, run
 `nsx clean --full` on an NSX-owned build directory before switching compilers.
 Omitting the option on an ordinary incremental build reuses the configured compiler.

@@ -274,7 +274,7 @@ def test_explicit_toolchain_produces_requested_object_on_reuse(tmp_path: Path) -
         encoding="utf-8",
     )
     (tmp_path / "CMakeLists.txt").write_text(
-        "cmake_minimum_required(VERSION 3.22)\nproject(identity C)\nadd_library(identity STATIC probe.c)\n",
+        "cmake_minimum_required(VERSION 3.22)\nproject(identity C CXX ASM)\nadd_library(identity STATIC probe.c)\n",
         encoding="utf-8",
     )
     source = tmp_path / "probe.c"
@@ -289,7 +289,9 @@ def test_explicit_toolchain_produces_requested_object_on_reuse(tmp_path: Path) -
     (obj,) = objects
     producer = {"gcc": b"GCC:", "atfe": b"clang version", "armclang": b"armclang"}[requested]
     with obj.open("rb") as stream:
-        section = ELFFile(stream).get_section_by_name(".comment")
+        elf = ELFFile(stream)
+        assert elf.header["e_machine"] == "EM_ARM"
+        section = elf.get_section_by_name(".comment")
         assert section is not None and producer in section.data()
     obj.unlink()
     for other in {"gcc", "atfe", "armclang"} - {requested}:
@@ -298,5 +300,19 @@ def test_explicit_toolchain_produces_requested_object_on_reuse(tmp_path: Path) -
         assert not obj.exists()
     build_app(tmp_path)
     with obj.open("rb") as stream:
-        section = ELFFile(stream).get_section_by_name(".comment")
+        elf = ELFFile(stream)
+        assert elf.header["e_machine"] == "EM_ARM"
+        section = elf.get_section_by_name(".comment")
         assert section is not None and producer in section.data()
+
+    # A changed CMake input invalidates the previously verified generation.
+    # A separate target makes execution observable independently of compiler output.
+    key = {"gcc": "ARM_NONE_EABI_GCC", "atfe": "ATFE_CLANG", "armclang": "ARMCLANG"}[requested]
+    with (tmp_path / "CMakeLists.txt").open("a", encoding="utf-8") as project:
+        project.write(
+            f'set({key} "unmatched-driver" CACHE FILEPATH "" FORCE)\n'
+            "add_custom_target(action COMMAND ${CMAKE_COMMAND} -E touch ran-action)\n"
+        )
+    with pytest.raises(NSXToolchainError, match="fresh --build-dir"):
+        build_app(tmp_path, toolchain=requested, target="action")
+    assert not (build / "ran-action").exists()

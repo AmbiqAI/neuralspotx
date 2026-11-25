@@ -71,3 +71,29 @@ def test_compiler_facts_and_omitted_request(gcc_tree: Path) -> None:
     inspect_build(app, gcc_tree, "apollo510_evb")
     with pytest.raises(NSXToolchainError, match="Clang"):
         inspect_build(app, gcc_tree, "apollo510_evb", toolchain="gcc")
+
+
+def test_app_alias_can_name_same_toolchain(gcc_tree: Path, tmp_path: Path) -> None:
+    app = gcc_tree.parent.parent
+    alias = tmp_path / "app-alias"
+    try:
+        alias.symlink_to(app, target_is_directory=True)
+    except OSError as exc:
+        pytest.skip(f"directory symlinks unavailable: {exc}")
+    record = gcc_tree / "CMakeFiles/3.30.2/CMakeSystem.cmake"
+    record.write_text(record.read_text().replace(app.as_posix(), alias.as_posix()))
+    inspect_build(app, gcc_tree, "apollo510_evb", toolchain="gcc")
+
+
+def test_cached_host_gcc_is_not_the_arm_driver(gcc_tree: Path) -> None:
+    record = gcc_tree / "CMakeFiles/3.30.2/CMakeCCompiler.cmake"
+    cache = gcc_tree / "CMakeCache.txt"
+    for path in (record, cache):
+        path.write_text(
+            path
+            .read_text()
+            .replace("bin/arm-none-eabi-gcc", "bin/gcc")
+            .replace("bin\\arm-none-eabi-gcc", "bin\\gcc")
+        )
+    with pytest.raises(NSXToolchainError, match="fresh --build-dir"):
+        inspect_build(gcc_tree.parent.parent, gcc_tree, "apollo510_evb", toolchain="gcc")
