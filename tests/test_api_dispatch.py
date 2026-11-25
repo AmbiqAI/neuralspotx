@@ -453,4 +453,4 @@ def test_module_api_validates_required_fields(tmp_path: Path) -> None:
         remove_module(tmp_path, "")
 
     with pytest.raises(NSXError, match="register_module requires module, metadata, and project"):
-        register_module(tmp_path, "")
+        register_module(tmp_path, "")  # ty: ignore[invalid-argument-type]  # Exercise the runtime error for missing required inputs.

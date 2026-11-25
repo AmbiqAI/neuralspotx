@@ -159,7 +159,7 @@ def test_api_create_board_requires_parent(tmp_path: Path) -> None:
     from neuralspotx import NSXConfigError
 
     with pytest.raises(NSXConfigError):
-        nsx.create_board("orphan", app_dir=tmp_path, emit=lambda _event: None)
+        nsx.create_board("orphan", app_dir=tmp_path, emit=lambda _event: None)  # ty: ignore[invalid-argument-type]  # Exercise the runtime error for missing required inputs.
 
 
 def test_api_create_board_accepts_request_object(tmp_path: Path) -> None:

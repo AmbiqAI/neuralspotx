@@ -11,6 +11,7 @@ from .._io import Emitter, using_emitter
 from ..constants import DEFAULT_BOARD
 from ..models import DoctorReport, FlashResult, ResetResult
 from ..subprocess_utils import timeout_budget
+from ._request_arguments import request_arguments
 from ._requests import (
     AppActionRequest,
     AppBuildRequest,
@@ -23,6 +24,7 @@ from ._requests import (
 PathLike = str | Path
 
 
+@request_arguments(AppCreateRequest)
 def create_app(
     app_dir: PathLike | AppCreateRequest,
     *,
@@ -85,6 +87,10 @@ def doctor(*, emit: Emitter | None = None) -> DoctorReport:
         return operations.doctor_impl()
 
 
+@request_arguments(
+    AppActionRequest,
+    specializations=(AppBuildRequest, AppCleanRequest, AppFlashRequest, AppViewRequest),
+)
 def configure_app(
     app_dir: PathLike | AppActionRequest,
     *,
@@ -132,6 +138,7 @@ def configure_app(
         )
 
 
+@request_arguments(AppBuildRequest)
 def build_app(
     app_dir: PathLike | AppBuildRequest,
     *,
@@ -186,6 +193,7 @@ def build_app(
         )
 
 
+@request_arguments(AppFlashRequest)
 def flash_app(
     app_dir: PathLike | AppFlashRequest,
     *,
@@ -291,6 +299,7 @@ def reset_target(
         )
 
 
+@request_arguments(AppViewRequest)
 def view_app(
     app_dir: PathLike | AppViewRequest,
     *,
@@ -351,6 +360,7 @@ def view_app(
         )
 
 
+@request_arguments(AppCleanRequest)
 def clean_app(
     app_dir: PathLike | AppCleanRequest,
     *,
