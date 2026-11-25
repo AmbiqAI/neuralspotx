@@ -189,25 +189,24 @@ def put(url: str, ref: str, sha: str, kind: str | None) -> None:
 
     from .file_lock import file_mutex
 
+    def store_entry() -> None:
+        entries = _read_cache()
+        now = time.time()
+        # Only the shared TTL governs routine housekeeping. A per-call TTL
+        # controls this lookup and must not evict another caller's branch.
+        if _ttl_override.get() is None:
+            entries = {k: v for k, v in entries.items() if (now - v[2]) < ttl}
+        entries[key] = (sha, kind, now)
+        _write_cache(entries)
+
     lock_path = _cache_path().with_suffix(_cache_path().suffix + ".lock")
     try:
         with file_mutex(lock_path):
-            entries = _read_cache()
-            # Prune stale entries while we're at it.
-            now = time.time()
-            entries = {k: v for k, v in entries.items() if (now - v[2]) < ttl}
-            entries[key] = (sha, kind, now)
-            _write_cache(entries)
+            store_entry()
     except OSError:
-        # Cache is best-effort; if locking the sidecar fails, fall
-        # back to an unsynchronised write rather than failing the
-        # caller. The atomic ``os.replace`` in ``_write_cache`` still
-        # guarantees no torn file.
-        entries = _read_cache()
-        now = time.time()
-        entries = {k: v for k, v in entries.items() if (now - v[2]) < ttl}
-        entries[key] = (sha, kind, now)
-        _write_cache(entries)
+        # Cache is best-effort: fall back to an unsynchronised write rather
+        # than failing the caller. The atomic replace still prevents torn files.
+        store_entry()
 
 
 def invalidate_all() -> None:

@@ -99,6 +99,18 @@ class TestCorruptCache:
 
 
 class TestPruning:
+    def test_short_override_keeps_another_callers_cached_ref(self):
+        older = "https://example.invalid/older"
+        started = time.time()
+        with patch.object(time, "time", return_value=started):
+            _resolve_cache.put(older, "main", "a" * 40, "branch")
+        with patch.object(time, "time", return_value=started + 30):
+            with _resolve_cache.ttl_override(5):
+                assert _resolve_cache.get(older, "main") is None
+                _resolve_cache.put("https://example.invalid/new", "main", "b" * 40, "branch")
+            with _resolve_cache.ttl_override(90):
+                assert _resolve_cache.get(older, "main") == ("a" * 40, "branch")
+
     def test_stale_entries_pruned_on_put(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
         monkeypatch.setenv("NSX_RESOLVE_TTL", "10")
         cache_file = tmp_path / "resolve-ref-cache.json"

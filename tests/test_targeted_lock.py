@@ -13,10 +13,10 @@ import pytest
 import yaml
 
 from neuralspotx import _resolve_cache, api, operations
-from neuralspotx.subprocess_utils import _git
 from neuralspotx._errors import NSXConfigError, NSXError
 from neuralspotx.nsx_lock import LockKind, ResolutionError, read_lock, write_lock
 from neuralspotx.operations import lock_app_impl
+from neuralspotx.subprocess_utils import _git
 
 
 @dataclass
