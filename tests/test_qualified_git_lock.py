@@ -487,3 +487,36 @@ def test_reset_preserves_uncertain_ownership(
     rc = cli.main(["clean", "--app-dir", str(tmp_path), "--reset", "--force"])
     assert rc == (1 if case == "unclassified" else 0)
     assert target.is_file()
+
+
+@pytest.mark.parametrize("checkout", ["modules/sdk/nested", "modules/sdk"])
+def test_reset_preserves_unlocked_workspace_checkout(
+    tmp_path: Path, registry: dict[str, Any], checkout: str
+) -> None:
+    manifest = tmp_path / "nsx.yml"
+    cfg = yaml.safe_load(manifest.read_text(encoding="utf-8"))
+    cfg["registry"] = {"layers": [{"workspace": "overlay.yml"}]}
+    manifest.write_text(yaml.safe_dump(cfg), encoding="utf-8")
+    overlay = tmp_path / "overlay.yml"
+    overlay.write_text("projects: {}\n", encoding="utf-8")
+
+    def nsx(*args: str) -> int:
+        return cli.main([args[0], "--app-dir", str(tmp_path), *args[1:]])
+
+    assert nsx("lock") == 0
+    assert nsx("sync", "--frozen") == 0
+    overlay.write_text(
+        yaml.safe_dump({
+            "projects": {
+                "additional": {"url": "https://fixture.invalid/additional.git", "path": checkout}
+            }
+        }),
+        encoding="utf-8",
+    )
+    source = tmp_path / checkout / "unlocked.c"
+    source.parent.mkdir(exist_ok=True)
+    source.write_bytes(b"int keep_me;\n")
+    assert nsx("clean", "--reset", "--force") == 0
+    assert source.read_bytes() == b"int keep_me;\n"
+    assert (tmp_path / "modules/sdk/revision.txt").is_file()
+    assert not (tmp_path / "modules/driver").exists()

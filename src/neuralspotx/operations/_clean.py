@@ -129,41 +129,54 @@ def _unreceipted_content(path: Path) -> bool:
 @dataclass
 class _CleanupInputs:
     sources: set[Path]
-    checkout_paths: set[Path]
+    checkout_paths: dict[Path, set[str]]
     receipt: LockFile | None
 
     def protects_build(self, build: Path) -> bool:
-        return any(_overlap(build, path) for path in self.sources | self.checkout_paths)
+        return any(_overlap(build, path) for path in self.sources.union(self.checkout_paths))
+
+    def register_checkout(self, path: Path, project: str) -> None:
+        for location in _input_paths(path):
+            self.checkout_paths.setdefault(location, set()).add(project)
+
+    def include_registry(self, app: Path, registry: dict[str, Any]) -> None:
+        for key in registry["projects"]:
+            project = _registry_project_entry(registry, key)
+            if project.local_path:
+                self.sources.update(_input_paths(Path(project.local_path)))
+            self.register_checkout(_module_clone_dir(app, key, registry), key)
+
+    def overlaps_other_checkout(self, path: Path, project: str) -> bool:
+        return any(
+            _overlap(path, other) and (path != other or owners != {project})
+            for other, owners in self.checkout_paths.items()
+        )
 
 
-def _protect(paths: set[Path], path: Path) -> None:
+def _input_paths(path: Path) -> tuple[Path, Path]:
     # A declared symlink (or one of its parents) is itself an app input.
-    paths.update((Path(os.path.abspath(path)), path.resolve()))
+    return Path(os.path.abspath(path)), path.resolve()
 
 
 def _cleanup_inputs(app: Path, cfg: dict[str, Any]) -> _CleanupInputs:
     """Include declared sources and checkout locations independently of receipt freshness."""
-    inputs = _CleanupInputs(set(), set(), read_lock_file(app, require_known_kinds=True))
+    inputs = _CleanupInputs(set(), {}, read_lock_file(app, require_known_kinds=True))
     for module in AppConfig.from_mapping(cfg).modules:
         if module.source.vendored or module.local:
-            _protect(inputs.sources, app / "modules" / module.name)
+            inputs.sources.update(_input_paths(app / "modules" / module.name))
         if module.source.path:
-            _protect(inputs.sources, app / Path(module.source.path).expanduser())
+            inputs.sources.update(_input_paths(app / Path(module.source.path).expanduser()))
     authored_paths: set[Path] = set()
     registry = _effective_registry(
         _load_registry(), cfg, app_dir=app, authored_paths=authored_paths
     )
     for path in authored_paths:
-        _protect(inputs.sources, path)
-    for key in registry["projects"]:
-        project = _registry_project_entry(registry, key)
-        if project.local_path:
-            _protect(inputs.sources, Path(project.local_path))
-        _protect(inputs.checkout_paths, _module_clone_dir(app, key, registry))
+        inputs.sources.update(_input_paths(path))
+    inputs.include_registry(app, registry)
     if inputs.receipt:
         for section in inputs.receipt.targets.values():
             for entry in section.modules.values():
-                _protect(inputs.checkout_paths, app / entry.vendored_at.replace("\\", "/"))
+                inputs.register_checkout(app / entry.vendored_at.replace("\\", "/"), entry.project)
     return inputs
 
 
@@ -173,7 +186,7 @@ def _module_removals(
     root = app / "modules"
     if not root.is_dir() or root.is_symlink():
         return []
-    protected = inputs.sources.copy()
+    protected: set[Path] = set()
     receipt = inputs.receipt
     if receipt is None:
         return []
@@ -196,10 +209,7 @@ def _module_removals(
         )
         active = expand_profile_seeds(active, base, app_dir=app)
         registry = _effective_registry(base, active, app_dir=app)
-        for key in registry["projects"]:
-            local = _registry_project_entry(registry, key).local_path
-            if local:
-                protected.add(Path(local).resolve())
+        inputs.include_registry(app, registry)
         for name, entry in section.modules.items():
             path = app / entry.vendored_at.replace("\\", "/")
             resolved = path.resolve()
@@ -211,17 +221,20 @@ def _module_removals(
             else:
                 protected.add(path)
 
+    protected.update(inputs.sources)
     removals = []
     for path, claims in copies.items():
         if len(claims) != 1 or None in claims or not path.is_dir():
             continue
         if any(_overlap(path, other) for other in protected | (copies.keys() - {path})):
             continue
+        claim = next(iter(claims))
+        assert claim is not None
+        if inputs.overlaps_other_checkout(path, claim.project):
+            continue
         if _unreceipted_content(path):
             info(f"Preserving {path} because it contains files outside the lock hash.")
             continue
-        claim = next(iter(claims))
-        assert claim is not None
         if not force and hash_tree(path) != claim.digest:
             raise NSXConfigError(
                 f"Refusing to reset: {path} differs from nsx.lock. "
