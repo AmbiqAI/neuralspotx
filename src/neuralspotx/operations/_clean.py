@@ -20,6 +20,7 @@ from ..models import AppConfig
 from ..module_registry import _is_packaged_module, expand_profile_seeds, packaged_module_source_dir
 from ..nsx_lock import (
     _HASH_EXCLUDE_DIRS,
+    LockFile,
     LockKind,
     ResolvedModule,
     hash_manifest,
@@ -31,6 +32,7 @@ from ..project_config import (
     _effective_registry,
     _load_app_cfg,
     _load_registry,
+    _module_clone_dir,
     _registry_project_entry,
     _run_cmake_configure,
 )
@@ -124,32 +126,53 @@ def _unreceipted_content(path: Path) -> bool:
     return False
 
 
-def _authored_paths(app: Path, cfg: dict[str, Any]) -> set[Path]:
-    """Include local sources even when a board has no receipt or its lock is stale."""
-    protected = set()
+@dataclass
+class _CleanupInputs:
+    sources: set[Path]
+    checkout_paths: set[Path]
+    receipt: LockFile | None
+
+    def protects_build(self, build: Path) -> bool:
+        return any(_overlap(build, path) for path in self.sources | self.checkout_paths)
+
+
+def _protect(paths: set[Path], path: Path) -> None:
+    # A declared symlink (or one of its parents) is itself an app input.
+    paths.update((Path(os.path.abspath(path)), path.resolve()))
+
+
+def _cleanup_inputs(app: Path, cfg: dict[str, Any]) -> _CleanupInputs:
+    """Include declared sources and checkout locations independently of receipt freshness."""
+    inputs = _CleanupInputs(set(), set(), read_lock_file(app, require_known_kinds=True))
     for module in AppConfig.from_mapping(cfg).modules:
         if module.source.vendored or module.local:
-            protected.add((app / "modules" / module.name).resolve())
+            _protect(inputs.sources, app / "modules" / module.name)
         if module.source.path:
-            protected.add((app / Path(module.source.path).expanduser()).resolve())
+            _protect(inputs.sources, app / Path(module.source.path).expanduser())
     registry = _effective_registry(_load_registry(), cfg, app_dir=app)
     for key in registry["projects"]:
-        local = _registry_project_entry(registry, key).local_path
-        if local:
-            protected.add(Path(local).resolve())
+        project = _registry_project_entry(registry, key)
+        if project.local_path:
+            _protect(inputs.sources, Path(project.local_path))
+        _protect(inputs.checkout_paths, _module_clone_dir(app, key, registry))
     for layer in (cfg.get("registry") or {}).get("layers", []):
         if isinstance(layer, dict) and "workspace" in layer:
-            protected.add((app / layer["workspace"]).resolve())
-    return protected
+            _protect(inputs.sources, app / layer["workspace"])
+    if inputs.receipt:
+        for section in inputs.receipt.targets.values():
+            for entry in section.modules.values():
+                _protect(inputs.checkout_paths, app / entry.vendored_at.replace("\\", "/"))
+    return inputs
 
 
 def _module_removals(
-    app: Path, cfg: dict[str, Any], protected: set[Path], *, force: bool
+    app: Path, cfg: dict[str, Any], inputs: _CleanupInputs, *, force: bool
 ) -> list[Path]:
     root = app / "modules"
     if not root.is_dir() or root.is_symlink():
         return []
-    receipt = read_lock_file(app, require_known_kinds=True)
+    protected = inputs.sources.copy()
+    receipt = inputs.receipt
     if receipt is None:
         return []
     digest = hash_manifest(app / "nsx.yml")
@@ -211,8 +234,8 @@ def _reset_app(app: Path, *, force: bool) -> Path:
         raise NSXConfigError(f"--reset requires an app directory containing nsx.yml: {app}")
     with app_lock(app):
         cfg = _load_app_cfg(app)
-        protected = _authored_paths(app, cfg)
-        removals = _module_removals(app, cfg, protected.copy(), force=force)
+        inputs = _cleanup_inputs(app, cfg)
+        removals = _module_removals(app, cfg, inputs, force=force)
         builds = app / "build"
         candidates = list(app.glob("build_*"))
         if _owned_build(app, builds):
@@ -222,7 +245,7 @@ def _reset_app(app: Path, *, force: bool) -> Path:
         removals.extend(
             path
             for path in candidates
-            if _owned_build(app, path) and not any(_overlap(path, other) for other in protected)
+            if _owned_build(app, path) and not inputs.protects_build(path)
         )
         for path in removals:
             shutil.rmtree(path)
@@ -251,9 +274,9 @@ def clean_app_impl(
         with app_lock(app):
             if not build.exists():
                 return build
-            if not _owned_build(app, build, selected) or any(
-                _overlap(build.resolve(), path) for path in _authored_paths(app, _load_app_cfg(app))
-            ):
+            if not _owned_build(app, build, selected) or _cleanup_inputs(
+                app, _load_app_cfg(app)
+            ).protects_build(build.resolve()):
                 raise NSXConfigError(
                     f"Cannot confirm {build} is an owned build for {selected}. "
                     "Inspect its contents and CMakeCache.txt before removing it manually."

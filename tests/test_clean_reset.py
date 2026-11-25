@@ -154,3 +154,44 @@ def test_full_clean_normalizes_before_removal(app: Path) -> None:
     (build / "nsx").mkdir()
     clean_app(app, full=True, build_dir=build / "nsx/..")
     assert not build.exists()
+
+
+def test_declared_source_link_inside_owned_build(app: Path, tmp_path: Path) -> None:
+    build = app / "build" / BOARD
+    build_tree(build, app)
+    source = tmp_path / "local"
+    source.mkdir()
+    alias = build / "source_alias"
+    try:
+        alias.symlink_to(source, target_is_directory=True)
+    except OSError as exc:
+        pytest.skip(f"directory symlinks unavailable: {exc}")
+    manifest = app / "nsx.yml"
+    cfg = yaml.safe_load(manifest.read_text())
+    cfg["modules"].append({"name": "local", "source": {"path": alias.relative_to(app).as_posix()}})
+    manifest.write_text(yaml.safe_dump(cfg))
+    clean_app(app, reset=True)
+    assert alias.is_symlink()
+
+
+@pytest.mark.parametrize("reset", [True, False])
+def test_checkout_in_build_preserved_without_receipt(app: Path, reset: bool) -> None:
+    build = app / "build_example"
+    build_tree(build, app)
+    driver = build / "driver"
+    driver.mkdir()
+    (driver / "source.c").write_text("int offline;")
+    manifest = app / "nsx.yml"
+    cfg = yaml.safe_load(manifest.read_text())
+    cfg["module_registry"] = {
+        "projects": {
+            "driver": {"url": "https://example.invalid/driver", "path": "build_example/driver"}
+        }
+    }
+    manifest.write_text(yaml.safe_dump(cfg))
+    if reset:
+        clean_app(app, reset=True)
+    else:
+        with pytest.raises(NSXError, match="owned build"):
+            clean_app(app, full=True, build_dir=build)
+    assert (driver / "source.c").exists()
