@@ -156,7 +156,8 @@ def test_full_clean_normalizes_before_removal(app: Path) -> None:
     assert not build.exists()
 
 
-def test_declared_source_link_inside_owned_build(app: Path, tmp_path: Path) -> None:
+@pytest.mark.parametrize("origin", ["shorthand", "registry", "inline", "workspace"])
+def test_declared_source_link_inside_owned_build(app: Path, tmp_path: Path, origin: str) -> None:
     build = app / "build" / BOARD
     build_tree(build, app)
     source = tmp_path / "local"
@@ -168,7 +169,22 @@ def test_declared_source_link_inside_owned_build(app: Path, tmp_path: Path) -> N
         pytest.skip(f"directory symlinks unavailable: {exc}")
     manifest = app / "nsx.yml"
     cfg = yaml.safe_load(manifest.read_text())
-    cfg["modules"].append({"name": "local", "source": {"path": alias.relative_to(app).as_posix()}})
+    relative = alias.relative_to(app).as_posix()
+    if origin == "shorthand":
+        cfg["modules"].append({"name": "local", "source": {"path": relative}})
+    elif origin == "workspace":
+        overlays = app / "overlays"
+        overlays.mkdir()
+        (overlays / "registry.yml").write_text(
+            yaml.safe_dump({"projects": {"local": {"local_path": "../" + relative}}})
+        )
+        cfg["registry"] = {"layers": [{"workspace": "overlays/registry.yml"}]}
+    else:
+        layer = {"projects": {"local": {"local_path": relative}}}
+        if origin == "registry":
+            cfg["module_registry"] = layer
+        else:
+            cfg["registry"] = {"layers": [{"inline": layer}]}
     manifest.write_text(yaml.safe_dump(cfg))
     clean_app(app, reset=True)
     assert alias.is_symlink()
