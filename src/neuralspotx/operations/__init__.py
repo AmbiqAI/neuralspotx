@@ -52,12 +52,12 @@ from ._app_lifecycle import APP_TEMPLATES, AppTemplate, create_app_impl, init_mo
 from ._board import create_board_impl
 from ._build import (
     build_app_impl,
-    clean_app_impl,
     configure_app_impl,
     flash_app_impl,
     view_app_impl,
 )
 from ._cache import cache_info_impl, clean_cache_impl
+from ._clean import clean_app_impl
 from ._common import OutdatedStatus, ProfileStatus, get_verbosity, set_verbosity, verbosity
 from ._doctor import doctor_impl
 from ._hardware import reset_target_impl

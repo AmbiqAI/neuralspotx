@@ -431,3 +431,29 @@ def test_update_selects_a_shared_project_only_where_named_module_is_present(
     after = pins(tmp_path)
     assert after[BOARDS[0]]["driver"][0] == after[BOARDS[0]]["alias"][0] == updated
     assert after[BOARDS[1]] == before[BOARDS[1]]
+
+
+def test_clean_reset_and_frozen_restore_from_combined_receipt(
+    tmp_path: Path, registry: dict[str, Any]
+) -> None:
+    receipt = tmp_path / "nsx.lock"
+    shutil.copyfile(FIXTURE / "nsx.lock", receipt)
+    source = receipt.read_bytes()
+
+    def nsx(command: str, *flags: str) -> int:
+        return cli.main([command, "--app-dir", str(tmp_path), *flags])
+
+    assert nsx("sync", "--frozen") == 0
+    driver = tmp_path / "modules/driver"
+    sdk = tmp_path / "modules/sdk"
+    file = sdk / "revision.txt"
+    original = file.read_bytes()
+    file.write_text("local edits")
+    assert nsx("clean", "--reset") == 1
+    assert driver.is_dir() and file.read_text() == "local edits"
+    assert nsx("clean", "--reset", "--force") == 0
+    assert not driver.exists() and not sdk.exists()
+    assert nsx("clean", "--reset") == 0
+    assert nsx("sync", "--frozen") == 0
+    assert driver.is_dir() and file.read_bytes() == original
+    assert receipt.read_bytes() == source

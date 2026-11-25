@@ -346,7 +346,7 @@ def cmd_clean(args: argparse.Namespace) -> None:
     api.clean_app(
         _selected_app_dir(args),
         board=args.board,
-        build_dir=Path(args.build_dir).expanduser().resolve() if args.build_dir else None,
+        build_dir=Path(args.build_dir).expanduser() if args.build_dir else None,
         toolchain=args.toolchain,
         full=args.full,
         reset=getattr(args, "reset", False),
@@ -945,15 +945,14 @@ def _build_parser() -> argparse.ArgumentParser:
         "--reset",
         action="store_true",
         help=(
-            "Reset the app to a freshly-cloned state: remove all build*/ directories, "
-            "the synced modules/ tree, and the .nsx/ folder. Use this before `git pull` "
-            "to force `nsx configure` to re-sync from scratch."
+            "Remove owned build trees and restorable locked dependencies under modules/. "
+            "Preserve authored modules and the app lock."
         ),
     )
     p_clean.add_argument(
         "--force",
         action="store_true",
-        help="With --reset, discard locally-modified files under modules/ without prompting",
+        help="With --reset, discard edits in identified restorable dependency directories",
     )
     _add_timeout(p_clean)
     p_clean.set_defaults(func=cmd_clean)

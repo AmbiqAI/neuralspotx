@@ -24,7 +24,7 @@ def lock_path(app_dir: Path) -> Path:
     return app_dir / LOCK_FILENAME
 
 
-def read_lock_file(app_dir: Path) -> LockFile | None:
+def read_lock_file(app_dir: Path, *, require_known_kinds: bool = False) -> LockFile | None:
     """Read the combined :class:`LockFile` for *app_dir*, or ``None``.
 
     Raises :class:`NSXLockError` when the on-disk file uses a schema
@@ -39,6 +39,14 @@ def read_lock_file(app_dir: Path) -> LockFile | None:
     try:
         raw = yaml.safe_load(path.read_text(encoding="utf-8"))
         lock_file = LockFile.from_yaml_dict(raw or {})
+        # Historical readers default an omitted or unknown kind to Git.
+        # Removing a directory requires an explicit ownership classification.
+        if require_known_kinds:
+            for board, section in lock_file.targets.items():
+                records = raw["targets"][board]["modules"] if section.modules else {}
+                for name, entry in section.modules.items():
+                    if records[name].get("kind") != entry.kind.value:
+                        raise ValueError(f"{board}/{name} has no recognized module kind")
     except NSXLockError:
         # Already a typed, well-messaged failure (e.g. a schema-version
         # mismatch carrying the `nsx lock` upgrade hint) — surface as-is.

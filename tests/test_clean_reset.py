@@ -1,98 +1,83 @@
-"""Tests for ``nsx clean --reset`` purge semantics."""
+"""Cleanup ownership through the public app API."""
 
-from __future__ import annotations
-
-import os
 from pathlib import Path
 
 import pytest
+import yaml
 
-from neuralspotx._errors import NSXError
-from neuralspotx.operations._build import clean_app_impl
+from neuralspotx import NSXError, clean_app, lock_app
 
-
-def _make_app(tmp_path: Path) -> Path:
-    app = tmp_path / "app"
-    app.mkdir()
-    (app / "nsx.yml").write_text("name: dummy\n")
-    return app
+BOARD = "apollo510_evb"
 
 
-def test_reset_removes_build_dirs_modules_and_lock(tmp_path: Path) -> None:
-    app = _make_app(tmp_path)
-    (app / "build").mkdir()
-    (app / "build" / "stale.txt").write_text("x")
-    (app / "build_armclang").mkdir()
-    (app / "build_atfe").mkdir()
-    modules = app / "modules"
-    modules.mkdir()
-    (modules / "nsx-core").mkdir()
-    (modules / "nsx-core" / "CMakeLists.txt").write_text("# pinned\n")
-    lock = app / ".nsx" / "sync.lock"
-    lock.parent.mkdir(exist_ok=True)
-    lock.write_text("")
-    # Bring lock mtime forward so synced module files are not flagged dirty.
-    os.utime(lock, None)
-
-    clean_app_impl(app, reset=True)
-
-    assert not (app / "build").exists()
-    assert not (app / "build_armclang").exists()
-    assert not (app / "build_atfe").exists()
-    assert not modules.exists()
-    assert not lock.exists()
-    # The app itself and its manifest are preserved.
-    assert (app / "nsx.yml").exists()
+@pytest.fixture
+def app(tmp_path: Path) -> Path:
+    root = tmp_path / "app"
+    root.mkdir()
+    (root / "nsx.yml").write_text(
+        yaml.safe_dump({
+            "schema_version": 2,
+            "project": {"name": "example"},
+            "target": {"board": BOARD, "soc": "apollo510"},
+            "baseline": "none",
+            "modules": [{"name": "source", "source": {"vendored": True}}],
+        })
+    )
+    source = root / "modules/source"
+    source.mkdir(parents=True)
+    (source / "app.c").write_text("int app;")
+    return root
 
 
-def test_reset_refuses_when_modules_dirty(tmp_path: Path) -> None:
-    app = _make_app(tmp_path)
-    modules = app / "modules" / "nsx-core"
-    modules.mkdir(parents=True)
-    pinned = modules / "CMakeLists.txt"
-    pinned.write_text("# pinned\n")
-    lock = app / ".nsx" / "sync.lock"
-    lock.parent.mkdir(exist_ok=True)
-    lock.write_text("")
-    # Backdate the lock so the pinned file is "newer" => dirty.
-    old = lock.stat().st_mtime - 60
-    os.utime(lock, (old, old))
-
-    with pytest.raises(NSXError, match="Refusing to reset"):
-        clean_app_impl(app, reset=True)
-
-    # Nothing was removed.
-    assert pinned.exists()
-    assert lock.exists()
+def build_tree(path: Path, app: Path, board: str = BOARD) -> None:
+    path.mkdir(parents=True, exist_ok=True)
+    (path / "CMakeCache.txt").write_text(
+        f"CMAKE_HOME_DIRECTORY:INTERNAL={app}\n"
+        f"CMAKE_CACHEFILE_DIR:INTERNAL={path}\nNSX_BOARD:STRING={board}\n"
+    )
 
 
-def test_reset_force_overrides_dirty_check(tmp_path: Path) -> None:
-    app = _make_app(tmp_path)
-    modules = app / "modules" / "nsx-core"
-    modules.mkdir(parents=True)
-    (modules / "CMakeLists.txt").write_text("# locally edited\n")
-    lock = app / ".nsx" / "sync.lock"
-    lock.parent.mkdir(exist_ok=True)
-    lock.write_text("")
-    old = lock.stat().st_mtime - 60
-    os.utime(lock, (old, old))
+@pytest.mark.parametrize("with_receipt", [True, False])
+def test_reset_preserves_authored_unowned_and_lock(app: Path, with_receipt: bool) -> None:
+    if with_receipt:
+        lock_app(app)
+    source = app / "modules/source/app.c"
+    unknown = app / "modules/new.c"
+    unknown.write_text("unclassified")
+    stale = app / "build_notes"
+    stale.mkdir()
+    other = app / "build/unrelated"
+    build_tree(other, app.parent)
+    owned = app / "build" / BOARD
+    legacy = app / "build_armclang"
+    build_tree(owned, app)
+    build_tree(legacy, app)
+    for _ in range(2):
+        clean_app(app, reset=True, force=True)
+        assert source.read_text() == "int app;"
+        assert unknown.read_text() == "unclassified"
+        assert other.exists() and stale.exists()
+        assert not owned.exists() and not legacy.exists()
+        assert (app / ".nsx/sync.lock").is_file()
 
-    clean_app_impl(app, reset=True, force=True)
 
-    assert not (app / "modules").exists()
-    assert not lock.exists()
+def test_full_clean_ownership(app: Path, tmp_path: Path) -> None:
+    external = tmp_path / "external"
+    build_tree(external, app)
+    clean_app(app, build_dir=external, full=True)
+    assert not external.exists()
+    for board, owner in [(BOARD, tmp_path), ("apollo510b_evb", app)]:
+        build_tree(external, owner, board)
+        with pytest.raises(NSXError, match="owned build"):
+            clean_app(app, build_dir=external, full=True, force=True)
+        assert external.is_dir()
+    for unsafe in (app, app.parent, app / "modules/source"):
+        with pytest.raises(NSXError, match="owned build"):
+            clean_app(app, build_dir=unsafe, full=True)
+        assert unsafe.exists()
 
 
-def test_reset_without_nsx_yml_fails(tmp_path: Path) -> None:
+def test_reset_without_app(tmp_path: Path) -> None:
     with pytest.raises(NSXError, match="nsx.yml"):
-        clean_app_impl(tmp_path, reset=True)
-
-
-def test_reset_treats_missing_lock_as_dirty(tmp_path: Path) -> None:
-    app = _make_app(tmp_path)
-    modules = app / "modules" / "nsx-core"
-    modules.mkdir(parents=True)
-    (modules / "file.txt").write_text("hi")
-
-    with pytest.raises(NSXError, match="Refusing to reset"):
-        clean_app_impl(app, reset=True)
+        clean_app(tmp_path, reset=True)
+    assert not (tmp_path / ".nsx").exists()

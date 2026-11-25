@@ -96,12 +96,13 @@ re-vendor before building.
 
 ```bash
 nsx clean          # run the build system's clean target
-nsx clean --full   # remove the build directory outright
-nsx clean --reset  # also remove modules/ and .nsx/, back to a freshly cloned state
+nsx clean --full   # remove the selected, configured build directory
+nsx clean --reset  # remove owned builds and restorable locked module copies
 ```
 
-`--reset` prompts before discarding locally modified files under `modules/`; `--force`
-skips the prompt. See [`nsx clean`](/neuralspotx/reference/cli/clean/).
+Reset preserves app-authored and local modules. Save edits to fetched dependencies
+before using `--force`. See [cleanup behavior](/neuralspotx/guides/apps/build-flash-view/#clean)
+for ownership checks and recovery.
 
 ## Next
 
