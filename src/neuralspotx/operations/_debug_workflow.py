@@ -1,6 +1,5 @@
 """Owned build state and explicit preparation, separate from probe execution."""
 
-import re
 import subprocess
 from dataclasses import dataclass
 from enum import Enum
@@ -10,7 +9,7 @@ from .. import board_descriptors as bd
 from .._errors import NSXConfigError
 from .._probe_selection import validate_probe_request
 from ..subprocess_utils import format_subprocess_error, run_capture
-from ._cmake_cache import _cmake_cache_value
+from ._cmake_cache import read_owned_cache
 from ._debug_context._reader import StaleDebugContextError, _parse, load_debug_context
 
 
@@ -46,40 +45,13 @@ def inspect_build(app: Path, build: Path, board: str, *, replace_board: bool = F
         if any(p.exists() for p in (context, marker, build / "build.ninja")):
             raise NSXConfigError("Incomplete existing build; use a fresh build directory.")
         return OwnedBuild(DebugState.UNCONFIGURED)
-    try:
-        lines = cache.read_text(encoding="utf-8").splitlines()
-    except (OSError, UnicodeError) as exc:
-        raise NSXConfigError(f"Unreadable CMake cache; use a fresh build directory: {exc}") from exc
-    keys: set[str] = set()
-    for line in lines:
-        if not line or line.startswith(("#", "//")):
-            continue
-        match = re.fullmatch(r'(?:"([^"]+)"|([^:=]+)):([A-Z_]+)=(.*)', line)
-        if match is None:
-            raise NSXConfigError("Malformed CMake cache; use a fresh build directory.")
-        key = match.group(1) or match.group(2)
-        if key in keys:
-            raise NSXConfigError(f"Duplicate CMake cache key {key}; use a fresh build directory.")
-        keys.add(key)
-    source = _cmake_cache_value(build, "CMAKE_HOME_DIRECTORY")
-    owner = _cmake_cache_value(build, "CMAKE_CACHEFILE_DIR")
-    cached_board = _cmake_cache_value(build, "NSX_BOARD")
-    if (
-        not source
-        or not Path(source).is_absolute()
-        or Path(source).resolve() != app
-        or not owner
-        or not Path(owner).is_absolute()
-        or Path(owner).resolve() != build
-    ):
-        raise NSXConfigError(
-            "CMake cache belongs to another app/build or is invalid; use a fresh build directory."
-        )
+    values = read_owned_cache(app, build)
+    cached_board = values.get("NSX_BOARD")
     if not cached_board or (cached_board != board and not replace_board):
         raise NSXConfigError(
             "CMake board mismatch; explicitly run `nsx configure --board ...` to replace it."
         )
-    evaluated_board = _cmake_cache_value(build, "NSX_RESET_BOARD")
+    evaluated_board = values.get("NSX_RESET_BOARD")
     if evaluated_board and evaluated_board != cached_board and context.exists():
         raise NSXConfigError(
             "The cached board and retained debug context have conflicting ownership; "
@@ -90,7 +62,7 @@ def inspect_build(app: Path, build: Path, board: str, *, replace_board: bool = F
             "Incomplete CMake board replacement; explicitly run `nsx configure --board ...` "
             "to set or clear the probe preference before continuing."
         )
-    serial = _cmake_cache_value(build, "NSX_JLINK_SERIAL") or None
+    serial = values.get("NSX_JLINK_SERIAL") or None
     validate_probe_request(serial)
     if context.exists():
         try:
@@ -106,7 +78,7 @@ def inspect_build(app: Path, build: Path, board: str, *, replace_board: bool = F
             raise NSXConfigError("Unsupported debug helper protocol; upgrade helpers/tool.")
     elif context.exists():
         raise NSXConfigError("Debug context has no helper protocol marker; reconfigure explicitly.")
-    enabled = (_cmake_cache_value(build, "NSX_DEBUG_CONTEXT") or "").upper() in {
+    enabled = (values.get("NSX_DEBUG_CONTEXT") or "").upper() in {
         "ON",
         "YES",
         "TRUE",

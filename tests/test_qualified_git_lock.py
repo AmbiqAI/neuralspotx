@@ -431,3 +431,153 @@ def test_update_selects_a_shared_project_only_where_named_module_is_present(
     after = pins(tmp_path)
     assert after[BOARDS[0]]["driver"][0] == after[BOARDS[0]]["alias"][0] == updated
     assert after[BOARDS[1]] == before[BOARDS[1]]
+
+
+def test_clean_reset_and_frozen_restore_from_combined_receipt(
+    tmp_path: Path, registry: dict[str, Any]
+) -> None:
+    receipt = tmp_path / "nsx.lock"
+    shutil.copyfile(FIXTURE / "nsx.lock", receipt)
+    source = receipt.read_bytes()
+
+    def nsx(command: str, *flags: str) -> int:
+        return cli.main([command, "--app-dir", str(tmp_path), *flags])
+
+    assert nsx("sync", "--frozen") == 0
+    driver = tmp_path / "modules/driver"
+    sdk = tmp_path / "modules/sdk"
+    file = sdk / "revision.txt"
+    original = file.read_bytes()
+    file.write_text("local edits")
+    assert nsx("clean", "--reset") == 1
+    assert driver.is_dir() and file.read_text() == "local edits"
+    assert nsx("clean", "--reset", "--force") == 0
+    assert not driver.exists() and not sdk.exists()
+    assert nsx("clean", "--reset") == 0
+    assert nsx("sync", "--frozen") == 0
+    assert driver.is_dir() and file.read_bytes() == original
+    assert receipt.read_bytes() == source
+
+
+@pytest.mark.parametrize("case", ["partial", "stale", "unclassified", "nested", "local-source"])
+def test_reset_preserves_uncertain_ownership(
+    tmp_path: Path, registry: dict[str, Any], case: str
+) -> None:
+    receipt = tmp_path / "nsx.lock"
+    shutil.copyfile(FIXTURE / "nsx.lock", receipt)
+    assert cli.main(["sync", "--app-dir", str(tmp_path), "--frozen"]) == 0
+    sdk = tmp_path / "modules/sdk"
+    target = sdk / "revision.txt"
+    doc = yaml.safe_load(receipt.read_text(encoding="utf-8"))
+    section = doc["targets"][BOARDS[1]]
+    if case == "partial":
+        del doc["targets"][BOARDS[1]]
+    elif case == "stale":
+        section["manifest"]["hash"] = ""
+    elif case == "unclassified":
+        section["modules"]["sdk"]["kind"] = "future"
+    elif case == "nested":
+        section["modules"]["child"] = {
+            "kind": "vendored",
+            "resolved": {"vendored_at": "modules/sdk/nested"},
+        }
+    else:
+        registry["projects"]["source"] = {"local_path": str(sdk / "nested")}
+    receipt.write_text(yaml.safe_dump(doc), encoding="utf-8")
+    rc = cli.main(["clean", "--app-dir", str(tmp_path), "--reset", "--force"])
+    assert rc == (1 if case == "unclassified" else 0)
+    assert target.is_file()
+
+
+@pytest.mark.parametrize("checkout", ["modules/sdk/nested", "modules/sdk"])
+def test_reset_preserves_unlocked_workspace_checkout(
+    tmp_path: Path, registry: dict[str, Any], checkout: str
+) -> None:
+    manifest = tmp_path / "nsx.yml"
+    cfg = yaml.safe_load(manifest.read_text(encoding="utf-8"))
+    cfg["registry"] = {"layers": [{"workspace": "overlay.yml"}]}
+    manifest.write_text(yaml.safe_dump(cfg), encoding="utf-8")
+    overlay = tmp_path / "overlay.yml"
+    overlay.write_text("projects: {}\n", encoding="utf-8")
+
+    def nsx(*args: str) -> int:
+        return cli.main([args[0], "--app-dir", str(tmp_path), *args[1:]])
+
+    assert nsx("lock") == 0
+    assert nsx("sync", "--frozen") == 0
+    overlay.write_text(
+        yaml.safe_dump({
+            "projects": {
+                "additional": {"url": "https://fixture.invalid/additional.git", "path": checkout}
+            }
+        }),
+        encoding="utf-8",
+    )
+    source = tmp_path / checkout / "unlocked.c"
+    source.parent.mkdir(exist_ok=True)
+    source.write_bytes(b"int keep_me;\n")
+    assert nsx("clean", "--reset", "--force") == 0
+    assert source.read_bytes() == b"int keep_me;\n"
+    assert (tmp_path / "modules/sdk/revision.txt").is_file()
+    assert not (tmp_path / "modules/driver").exists()
+
+
+@pytest.mark.parametrize("flags", [(), ("--force",)])
+def test_reset_preserves_empty_directories(
+    tmp_path: Path, registry: dict[str, Any], flags: tuple[str, ...]
+) -> None:
+    shutil.copyfile(FIXTURE / "nsx.lock", tmp_path / "nsx.lock")
+    assert cli.main(["sync", "--app-dir", str(tmp_path), "--frozen"]) == 0
+    empty = tmp_path / "modules/sdk/local-output/logs"
+    empty.mkdir(parents=True)
+    assert cli.main(["clean", "--app-dir", str(tmp_path), "--reset", *flags]) == 0
+    assert empty.is_dir()
+    assert not (tmp_path / "modules/driver").exists()
+
+
+def test_reset_checks_dirty_empty_module_root(tmp_path: Path, registry: dict[str, Any]) -> None:
+    shutil.copyfile(FIXTURE / "nsx.lock", tmp_path / "nsx.lock")
+    assert cli.main(["sync", "--app-dir", str(tmp_path), "--frozen"]) == 0
+    root = tmp_path / "modules/sdk"
+    shutil.rmtree(root)
+    root.mkdir()
+    driver = tmp_path / "modules/driver"
+    reset = ["clean", "--app-dir", str(tmp_path), "--reset"]
+    assert cli.main(reset) == 1
+    assert root.is_dir() and driver.is_dir()
+    assert cli.main([*reset, "--force"]) == 0
+    assert not root.exists() and not driver.exists()
+
+
+@pytest.mark.parametrize("external", [True, False])
+def test_cached_sdk_override_protects_module_during_repeated_reset(
+    tmp_path: Path, registry: dict[str, Any], external: bool
+) -> None:
+    shutil.copyfile(FIXTURE / "nsx.lock", tmp_path / "nsx.lock")
+    assert cli.main(["sync", "--app-dir", str(tmp_path), "--frozen"]) == 0
+    build = tmp_path / "out" if external else tmp_path / "build" / BOARDS[0]
+    build.mkdir(exist_ok=True)
+    options = ["--build-dir", str(build)] if external else []
+    sdk = tmp_path / "modules/sdk"
+    (build / "CMakeCache.txt").write_text(
+        f"CMAKE_HOME_DIRECTORY:INTERNAL={tmp_path}\nCMAKE_CACHEFILE_DIR:INTERNAL={build}\n"
+        f"NSX_BOARD:STRING={BOARDS[0]}\nNSX_AMBIQSUITE_ROOT_OVERRIDE:PATH={sdk}\n",
+        encoding="utf-8",
+    )
+    for _ in range(2):
+        assert cli.main(["clean", "--app-dir", str(tmp_path), "--reset", "--force", *options]) == 0
+        assert build.is_dir() and (sdk / "revision.txt").is_file()
+        assert not (tmp_path / "modules/driver").exists()
+
+
+def test_marked_corrupt_cache_stops_reset_before_removals(
+    tmp_path: Path, registry: dict[str, Any]
+) -> None:
+    shutil.copyfile(FIXTURE / "nsx.lock", tmp_path / "nsx.lock")
+    assert cli.main(["sync", "--app-dir", str(tmp_path), "--frozen"]) == 0
+    build = tmp_path / "build" / BOARDS[0]
+    (build / "CMakeCache.txt").write_text("truncated cache entry", encoding="utf-8")
+    assert cli.main(["clean", "--app-dir", str(tmp_path), "--reset", "--force"]) == 1
+    assert all(
+        (tmp_path / "modules" / name / "revision.txt").is_file() for name in ("sdk", "driver")
+    )

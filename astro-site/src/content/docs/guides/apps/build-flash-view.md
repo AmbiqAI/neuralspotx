@@ -316,13 +316,33 @@ the J-Link device identifier for the part, which for a generated app appears as 
 
 ```bash
 nsx clean          # run the build system's clean target
-nsx clean --full   # remove the build directory outright
-nsx clean --reset  # also remove modules/ and .nsx/
+nsx clean --full   # remove the selected, configured build directory
+nsx clean --reset  # remove owned builds and restorable locked module copies
 ```
 
-`--reset` takes the app back to the state of a fresh clone, so the next `nsx configure`
-re-fetches everything from `nsx.lock`. It prompts before discarding locally modified files
-under `modules/`; `--force` skips the prompt.
+NSX records ownership when it initializes an empty build directory. Full clean checks
+that record and the source directory, build directory and board recorded by CMake.
+For an out-of-tree build, pass its path with `--build-dir`. If a build predates the ownership
+record or was initialized in a nonempty directory, inspect the directory before removing it manually.
+
+Reset checks the app's conventional build locations and all board sections in
+`nsx.lock`. It preserves vendored and local source, unrecognized directories,
+and the advisory lock in `.nsx/`. Missing, partial or stale receipts leave dependencies
+in place. If a restorable copy under `modules/` differs from its locked hash,
+reset stops before removing anything. Save the edits or rerun with `--force`
+to discard edits to identified dependencies. Use `nsx sync --frozen` to restore
+the default board's copies at their recorded revisions. For a different board, run
+`nsx configure --board <board> --frozen`.
+
+Recursive cleanup checks SDK overrides recorded in the app’s conventional build
+directories. If an out-of-tree build selects an SDK inside the app, pass that build
+with `--build-dir` during reset so NSX can read its cache. If an override overlaps a cleanup
+location, NSX preserves the SDK source and the build that records its location.
+Reconfigure with the SDK in a separate source directory to reclaim those builds.
+
+Reset and full clean coordinate with lock, sync and update through the app writer
+lock. Finish builds, debugger sessions and standalone CMake commands using the
+affected directories before running cleanup.
 
 ## A working loop
 

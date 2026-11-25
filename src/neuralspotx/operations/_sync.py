@@ -36,6 +36,7 @@ from ..nsx_lock import (
     read_lock,
     read_lock_file,
 )
+from ..nsx_lock._models import is_locked_commit
 from ..project_config import (
     _board_key_for_app,
     _board_overlay_dir,
@@ -161,7 +162,6 @@ def sync_app_impl(
 
 
 # A git object id: SHA-1 (40 hex) or SHA-256 (64 hex).
-_FULL_SHA = re.compile(r"[0-9a-f]{40}(?:[0-9a-f]{24})?")
 
 
 def _is_absent(path: Path) -> bool:
@@ -570,7 +570,7 @@ def _sync_fetchable_entry(
             "exactly. Run `nsx lock` to re-record it, or drop --frozen.",
             module=name,
         )
-    if entry.kind == LockKind.GIT and entry.commit and not _FULL_SHA.fullmatch(entry.commit):
+    if entry.kind == LockKind.GIT and entry.commit and not is_locked_commit(entry.commit):
         # The value reaches git as an argument; only accept a full object id.
         raise NSXIntegrityError(
             f"Module '{name}' has an invalid commit in nsx.lock "

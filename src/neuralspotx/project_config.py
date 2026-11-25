@@ -17,6 +17,7 @@ from typing import Any
 
 import yaml
 
+from ._build_ownership import mark_empty_build
 from ._errors import NSXConfigError, NSXToolchainError
 from .constants import PACKAGED_PROJECT_NAME, normalize_board
 from .metadata import load_registry_lock
@@ -74,6 +75,7 @@ def _resolve_override_local_paths(
     override: ModuleRegistryOverride,
     *,
     base_dir: Path,
+    authored_paths: set[Path] | None = None,
 ) -> ModuleRegistryOverride:
     """Resolve relative project ``local_path`` values against their authoring context."""
 
@@ -85,12 +87,14 @@ def _resolve_override_local_paths(
         path = Path(local_path).expanduser()
         if not path.is_absolute():
             path = base_dir / path
+        if authored_paths is not None:
+            authored_paths.add(path)
         project["local_path"] = str(path.resolve())
     return ModuleRegistryOverride(projects=projects, modules=copy.deepcopy(override.modules))
 
 
 def _iter_registry_layers(
-    nsx_cfg: dict[str, Any], app_dir: Path | None
+    nsx_cfg: dict[str, Any], app_dir: Path | None, *, authored_paths: set[Path] | None = None
 ) -> list[tuple[str, str, ModuleRegistryOverride]]:
     """Resolve the ordered ``registry.layers`` block into labeled overrides.
 
@@ -145,13 +149,17 @@ def _iter_registry_layers(
         if kind == "packaged":
             continue
         if kind == "workspace":
-            overlay_path = (base_dir / str(value)).resolve()
+            declared = base_dir / str(value)
+            if authored_paths is not None:
+                authored_paths.add(declared)
+            overlay_path = declared.resolve()
             resolved.append((
                 f"registry.layers[{index}] (workspace: {value})",
                 f"registry.layers[{index}]",
                 _resolve_override_local_paths(
                     ModuleRegistryOverride.from_mapping(_load_workspace_overlay(overlay_path)),
                     base_dir=overlay_path.parent,
+                    authored_paths=authored_paths,
                 ),
             ))
         elif kind == "inline":
@@ -161,6 +169,7 @@ def _iter_registry_layers(
                 _resolve_override_local_paths(
                     ModuleRegistryOverride.from_mapping(value),
                     base_dir=base_dir,
+                    authored_paths=authored_paths,
                 ),
             ))
         else:
@@ -404,6 +413,7 @@ def _effective_registry(
     *,
     app_dir: Path | None = None,
     authorship: RegistryAuthorship | None = None,
+    authored_paths: set[Path] | None = None,
 ) -> dict[str, Any]:
     """Fold the registry layer stack onto *base_registry*.
 
@@ -437,8 +447,9 @@ def _effective_registry(
     app_override = _resolve_override_local_paths(
         ModuleRegistryOverride.from_mapping(nsx_cfg.get("module_registry")),
         base_dir=app_dir if app_dir is not None else Path.cwd(),
+        authored_paths=authored_paths,
     )
-    layers = _iter_registry_layers(nsx_cfg, app_dir)
+    layers = _iter_registry_layers(nsx_cfg, app_dir, authored_paths=authored_paths)
     layers.append(("module_registry", "module_registry", app_override))
     for label, field_prefix, layer in layers:
         if authorship is not None:
@@ -736,6 +747,7 @@ def _write_app_module_file(
         lines.append(")")
 
     content = "\n".join(lines) + "\n"
+    mark_empty_build(app_dir, destination)
     _write_module_input(destination / "nsx" / "modules.cmake", content)
     loader = (
         resources.files("neuralspotx").joinpath("cmake/modules.cmake").read_text(encoding="utf-8")

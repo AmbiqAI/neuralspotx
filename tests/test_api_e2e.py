@@ -766,6 +766,11 @@ def test_full_clean_removes_build_directory(tmp_path: Path) -> None:
     build_dir.mkdir(parents=True, exist_ok=True)
     (build_dir / "build.ninja").write_text("# fake\n", encoding="utf-8")
 
+    (build_dir / "CMakeCache.txt").write_text(
+        f"CMAKE_HOME_DIRECTORY:INTERNAL={build_dir.parent.parent}\n"
+        f"CMAKE_CACHEFILE_DIR:INTERNAL={build_dir}\nNSX_BOARD:STRING=apollo510_evb\n"
+    )
+
     clean_app(
         AppCleanRequest(
             app_dir=tmp_path / "hello_clean",
