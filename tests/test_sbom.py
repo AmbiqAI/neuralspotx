@@ -367,7 +367,7 @@ class TestSpdxDownloadLocationGitPrefix:
                 )
             }
         )
-        doc = _build_spdx_document(Path("/tmp/app"), lock)
+        doc = _build_spdx_document(Path("/tmp/app"), lock, "apollo510_evb")
         pkg = next(p for p in doc["packages"] if p["name"] == "mod")
         return pkg["downloadLocation"]
 
@@ -380,3 +380,126 @@ class TestSpdxDownloadLocationGitPrefix:
         loc = self._build("git+https://example.com/foo.git")
         assert loc.startswith("git+https://")
         assert not loc.startswith("git+git+")
+
+
+@pytest.fixture
+def two_board_lock(app_with_lock: Path) -> Path:
+    from dataclasses import replace
+
+    from neuralspotx.nsx_lock import read_lock
+
+    app = app_with_lock
+    default = "apollo510_evb"
+    custom = "MyBoard"
+    (app / "nsx.yml").write_text(
+        yaml.safe_dump({
+            "schema_version": 2,
+            "project": {"name": "demo"},
+            "targets": {"default": default, "supported": [default, custom]},
+            "baseline": "none",
+            "modules": [],
+        })
+    )
+    original = read_lock(app, default)
+    assert original is not None
+    root = app / "modules/shared"
+    root.mkdir()
+    (root / "nsx-module.yaml").write_text(
+        "schema_version: 1\nmodule: {name: shared}\nlicenses: {'.': MIT}\n"
+    )
+    shared = replace(
+        original.modules["alpha"],
+        project="shared",
+        kind=LockKind.GIT,
+        url="https://example.invalid/shared.git",
+        vendored_at="modules/shared",
+        manifest_path="nsx-module.yaml",
+        commit="a" * 40,
+        content_hash=hash_tree(root),
+    )
+    for board, only, entry in [
+        (default, "alpha", shared),
+        (custom, "beta", replace(shared, commit="b" * 40, content_hash="sha256:" + "b" * 64)),
+    ]:
+        # The outer section key identifies the board even for a minimal receipt.
+        write_lock(app, NsxLock(modules={only: original.modules[only], "shared": entry}), board)
+    return app
+
+
+@pytest.mark.parametrize("fmt", ["spdx", "cyclonedx"])
+def test_sbom_selects_one_locked_board(
+    two_board_lock: Path,
+    fmt: str,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from neuralspotx import cli
+
+    app = two_board_lock
+    monkeypatch.setattr("neuralspotx.operations._sbom._utc_now", lambda: "2026-11-26T00:00:00Z")
+    before = {p: p.read_bytes() for p in app.rglob("*") if p.is_file()}
+    documents = []
+    for board, only, rev in [("apollo510_evb", "alpha", "a" * 40), ("MyBoard", "beta", "b" * 40)]:
+        doc = json.loads(generate_sbom(app, board=board, format=fmt))
+        documents.append(doc)
+        assert cli.main(["sbom", "--app-dir", str(app), "--board", board, "--format", fmt]) == 0
+        assert json.loads(capsys.readouterr().out) == doc
+        if fmt == "spdx":
+            assert doc["comment"] == f"nsx:board={board}"
+            packages = {p["name"]: p for p in doc["packages"]}
+            assert set(packages) == {app.name, only, "shared"}
+            shared = packages["shared"]
+            assert shared["versionInfo"] == rev
+            assert ("licenseComments" in shared) == (only == "alpha")
+            digest = shared["checksums"][0]["checksumValue"]
+        else:
+            assert _cyclonedx_properties(doc["metadata"])["nsx:board"] == board
+            components = {c["name"]: c for c in doc["components"]}
+            assert set(components) == {only, "shared"}
+            shared = components["shared"]
+            assert shared["version"] == rev
+            assert ("nsx:license:." in _cyclonedx_properties(shared)) == (only == "alpha")
+            digest = shared["hashes"][0]["content"]
+        expected = (
+            hash_tree(app / "modules/shared").removeprefix("sha256:")
+            if only == "alpha"
+            else "b" * 64
+        )
+        assert digest == expected
+    identity = "documentNamespace" if fmt == "spdx" else "serialNumber"
+    assert documents[0][identity] != documents[1][identity]
+    assert json.loads(generate_sbom(app, format=fmt)) == documents[0]
+    assert {p: p.read_bytes() for p in app.rglob("*") if p.is_file()} == before
+
+
+def test_sbom_lock_only_selection_and_errors(
+    two_board_lock: Path, capsys: pytest.CaptureFixture[str]
+) -> None:
+    from neuralspotx import cli
+
+    app = two_board_lock
+    config = app / "nsx.yml"
+    config.unlink()
+    assert (
+        json.loads(generate_sbom(app, board="APOLLO510_EVB"))["comment"]
+        == "nsx:board=apollo510_evb"
+    )
+    with pytest.raises(NSXConfigError, match="--board.*MyBoard.*apollo510_evb"):
+        generate_sbom(app)
+    output = app / "report.json"
+    output.write_bytes(b"existing")
+    assert (
+        cli.main(["sbom", "--app-dir", str(app), "--board", "other", "--output", str(output)]) == 1
+    )
+    assert "other" in capsys.readouterr().err and output.read_bytes() == b"existing"
+
+    path = app / "nsx.lock"
+    receipt = yaml.safe_load(path.read_text())
+    del receipt["targets"]["apollo510_evb"]
+    path.write_text(yaml.safe_dump(receipt))
+    assert json.loads(generate_sbom(app))["comment"] == "nsx:board=MyBoard"
+    with pytest.raises(NSXConfigError, match="apollo510_evb.*missing"):
+        generate_sbom(app, board="apollo510_evb")
+    _write_nsx_yml(app, [])
+    with pytest.raises(NSXConfigError, match="apollo510_evb.*missing"):
+        generate_sbom(app)
