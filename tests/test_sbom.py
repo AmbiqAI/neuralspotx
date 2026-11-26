@@ -398,14 +398,15 @@ def two_board_lock(app_with_lock: Path) -> Path:
             "targets": {"default": default, "supported": [default, custom]},
             "baseline": "none",
             "modules": [],
-        })
+        }),
+        encoding="utf-8",
     )
     original = read_lock(app, default)
     assert original is not None
     root = app / "modules/shared"
     root.mkdir()
     (root / "nsx-module.yaml").write_text(
-        "schema_version: 1\nmodule: {name: shared}\nlicenses: {'.': MIT}\n"
+        "schema_version: 1\nmodule: {name: shared}\nlicenses: {'.': MIT}\n", encoding="utf-8"
     )
     shared = replace(
         original.modules["alpha"],
@@ -494,9 +495,9 @@ def test_sbom_lock_only_selection_and_errors(
     assert "other" in capsys.readouterr().err and output.read_bytes() == b"existing"
 
     path = app / "nsx.lock"
-    receipt = yaml.safe_load(path.read_text())
+    receipt = yaml.safe_load(path.read_text(encoding="utf-8"))
     del receipt["targets"]["apollo510_evb"]
-    path.write_text(yaml.safe_dump(receipt))
+    path.write_text(yaml.safe_dump(receipt), encoding="utf-8")
     assert json.loads(generate_sbom(app))["comment"] == "nsx:board=MyBoard"
     with pytest.raises(NSXConfigError, match="apollo510_evb.*missing"):
         generate_sbom(app, board="apollo510_evb")
