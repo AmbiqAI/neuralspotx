@@ -500,6 +500,28 @@ def test_sbom_lock_only_selection_and_errors(
     assert json.loads(generate_sbom(app))["comment"] == "nsx:board=MyBoard"
     with pytest.raises(NSXConfigError, match="apollo510_evb.*missing"):
         generate_sbom(app, board="apollo510_evb")
+    config.write_bytes(b"\xff")
+    assert json.loads(generate_sbom(app))["comment"] == "nsx:board=MyBoard"
     _write_nsx_yml(app, [])
     with pytest.raises(NSXConfigError, match="apollo510_evb.*missing"):
         generate_sbom(app)
+
+
+@pytest.mark.parametrize("subdir", [".", "reports"])
+def test_sbom_cli_prefers_nearest_archived_receipt(
+    app_with_lock: Path,
+    subdir: str,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    from neuralspotx import cli, find_app_root
+
+    archive = app_with_lock / "archive"
+    cwd = archive / subdir
+    cwd.mkdir(parents=True)
+    write_lock(archive, NsxLock(), board="apollo510_evb")
+    monkeypatch.chdir(cwd)
+    assert find_app_root() == app_with_lock
+    assert cli.main(["sbom", "--board", "apollo510_evb", "--format", "cyclonedx"]) == 0
+    doc = json.loads(capsys.readouterr().out)
+    assert doc["metadata"]["component"]["name"] == "archive" and doc["components"] == []

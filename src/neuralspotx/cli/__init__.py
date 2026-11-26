@@ -447,7 +447,7 @@ def cmd_update(args: argparse.Namespace) -> None:
 @command_hint("sbom", _C.DISCOVERY, _S.APP, "nsx lock", "nsx sync")
 def cmd_sbom(args: argparse.Namespace) -> None:
     document = api.generate_sbom(
-        resolve_app_dir(args.app_dir),
+        resolve_app_dir(args.app_dir, include_lock=True),
         format=args.format,
         board=args.board,
     )

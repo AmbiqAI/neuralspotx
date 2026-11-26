@@ -10,6 +10,8 @@ nsx sbom --board apollo510b_evb --format cyclonedx --output bom.json
 ```
 
 An explicit board selects a section directly from the lock, even without `nsx.yml`.
+From a subdirectory, the CLI uses the nearest directory containing `nsx.yml` or
+`nsx.lock`, up to the Git repository boundary.
 Omit `--board` to export the configured default. If the default is unavailable and
 the lock contains one board, NSX uses that board. For a lock with multiple boards
 and no configured default, pass `--board`. A configured default needs its own lock section.

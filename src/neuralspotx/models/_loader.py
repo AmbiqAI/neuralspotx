@@ -337,11 +337,11 @@ class NsxProject:
             text = path.read_text(encoding="utf-8")
         except FileNotFoundError as exc:
             raise NSXConfigError(f"{path}: file not found") from exc
-        except OSError as exc:
+        except (OSError, UnicodeError) as exc:
             raise NSXConfigError(f"{path}: cannot read file: {exc}") from exc
         try:
             loaded = yaml.safe_load(text)
-        except yaml.YAMLError as exc:
+        except (yaml.YAMLError, ValueError) as exc:
             raise NSXConfigError(f"{path}: invalid YAML: {exc}") from None
         if loaded is None:
             raise NSXConfigError(f"{path}: file is empty or contains only comments")
