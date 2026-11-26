@@ -171,3 +171,65 @@ def test_api_create_board_accepts_request_object(tmp_path: Path) -> None:
     desc = nsx.create_board(request, emit=lambda _event: None)
     assert desc.name == "my510"
     assert (tmp_path / "boards" / "my510" / "board.yaml").is_file()
+
+
+def test_inspection_uses_the_selected_app_and_its_parent_snapshot(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import neuralspotx as nsx
+
+    app = tmp_path / "app"
+    app.mkdir()
+    (app / "nsx.yml").touch()
+    custom = nsx.create_board(
+        "ProtoA", from_board="apollo510_evb", app_dir=app, emit=lambda _: None
+    )
+    parent = app / "boards/apollo510_evb/board.yaml"
+    parent.write_text(parent.read_text().replace("soc: apollo510\n", "soc: apollo510b\n"))
+    monkeypatch.chdir(custom.path)
+
+    assert nsx.describe_board("APOLLO510_EVB").soc == "apollo510"
+    assert nsx.api.describe_board("APOLLO510_EVB", app_dir=app).soc == "apollo510b"
+    desc = nsx.describe_board("ProtoA", app_dir=app)
+    assert desc.soc == "apollo510b"
+    assert desc.descriptor_inputs == (parent, custom.path / "board.yaml")
+    shown, stderr, status = _invoke("board", "show", "ProtoA", "--json")
+    assert status == 0, stderr
+    assert json.loads(shown)["roles"]["bsp"] == custom.bsp.to_dict()
+    assert json.loads(shown)["soc"] == desc.soc
+    listed, _, status = _invoke("board", "list", "--json")
+    assert status == 0 and "ProtoA" not in [item["name"] for item in json.loads(listed)]
+
+    second = tmp_path / "second"
+    second.mkdir()
+    shown, stderr, status = _invoke("board", "show", "apollo510_evb", "--app-dir", str(second))
+    assert status == 0, stderr
+    assert "soc:          apollo510\n" in shown
+    _, stderr, status = _invoke("board", "show", "apollo510_evb", "--app-dir", str(second / "oops"))
+    assert status and "not a directory" in stderr
+
+    (app / "nsx.yml").unlink()
+    (app / ".git").mkdir()
+    _, stderr, status = _invoke("board", "show", "ProtoA")
+    assert status and "unknown board" in stderr
+
+
+@pytest.mark.parametrize(
+    ("yaml_text", "message"),
+    [
+        ("schema_version: 999", "unsupported schema_version"),
+        ("board: {revision: 2026-02-31}", "invalid YAML"),
+    ],
+)
+def test_invalid_local_descriptor_reports_the_source(
+    tmp_path: Path, yaml_text: str, message: str
+) -> None:
+    import neuralspotx as nsx
+
+    board = tmp_path / "boards/apollo510_evb/board.yaml"
+    board.parent.mkdir(parents=True)
+    board.write_text(yaml_text)
+    with pytest.raises(nsx.NSXConfigError, match=message):
+        nsx.describe_board("apollo510_evb", app_dir=tmp_path)
+    _, stderr, status = _invoke("board", "show", "apollo510_evb", "--app-dir", str(tmp_path))
+    assert status and str(board) in stderr

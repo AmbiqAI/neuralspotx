@@ -5,9 +5,10 @@ from dataclasses import dataclass
 from enum import Enum
 from pathlib import Path
 
-from .. import board_descriptors as bd
 from .._errors import NSXConfigError
 from .._probe_selection import validate_probe_request
+from ..board_descriptors import BoardDescriptor
+from ..board_plan import resolve_board_descriptor
 from ..subprocess_utils import format_subprocess_error, run_capture
 from ._cmake_cache import read_owned_cache
 from ._configured_toolchain import selected_toolchain, verify_configured_toolchain
@@ -101,15 +102,13 @@ def inspect_build(
     return OwnedBuild(DebugState.VALID, serial)
 
 
-def require_physical_debug(app: Path, board: str) -> None:
-    try:
-        descriptor = bd.load_board_for_app(board, app)
-    except bd.BoardDescriptorError as exc:
-        raise NSXConfigError(str(exc)) from exc
+def require_physical_debug(app: Path, board: str) -> BoardDescriptor | None:
+    descriptor = resolve_board_descriptor(board, app)
     if descriptor and descriptor.sdk_provider == "corstone":
         raise NSXConfigError(
             f"Board '{board}' runs on an Arm FVP. Build the ELF, then use `nsx run`."
         )
+    return descriptor
 
 
 def require_adoption(state: OwnedBuild) -> None:

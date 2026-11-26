@@ -25,7 +25,7 @@ from ._app import (
     reset_target,
     view_app,
 )
-from ._board import create_board
+from ._board import create_board, describe_board
 from ._cache import cache_info, clean_cache
 from ._lock import lock_app, outdated_app, sync_app, update_app
 from ._modules import (
@@ -99,6 +99,7 @@ __all__ = [
     "configure_app",
     "create_app",
     "create_board",
+    "describe_board",
     "describe_module",
     "doctor",
     "find_app_root",
