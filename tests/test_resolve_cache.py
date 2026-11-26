@@ -99,20 +99,35 @@ class TestCorruptCache:
 
 
 class TestPruning:
-    def test_stale_entries_pruned_on_put(self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    @pytest.mark.parametrize("writer_ttl", [None, 5])
+    def test_short_ttl_keeps_another_callers_cached_ref(
+        self, monkeypatch: pytest.MonkeyPatch, writer_ttl: int | None
+    ):
         monkeypatch.setenv("NSX_RESOLVE_TTL", "10")
+        older = "https://example.invalid/older"
+        started = time.time()
+        with patch.object(time, "time", return_value=started):
+            _resolve_cache.put(older, "main", "a" * 40, "branch")
+        with patch.object(time, "time", return_value=started + 30):
+            with _resolve_cache.ttl_override(writer_ttl):
+                assert _resolve_cache.get(older, "main") is None
+                _resolve_cache.put("https://example.invalid/new", "main", "b" * 40, "branch")
+            with _resolve_cache.ttl_override(90):
+                assert _resolve_cache.get(older, "main") == ("a" * 40, "branch")
+
+    def test_oversized_cache_keeps_new_ref_and_newest_existing_records(
+        self, monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    ):
+        monkeypatch.setattr(_resolve_cache, "_MAX_ENTRIES", 2)
         cache_file = tmp_path / "resolve-ref-cache.json"
-        # Seed a stale entry manually
-        stale_ts = time.time() - 100
-        data = {"https://github.com/old\told-ref": ["x" * 40, "branch", stale_ts]}
+        data = {f"url\tref-{i}": ["a" * 40, "branch", i] for i in range(4)}
         cache_file.write_text(json.dumps(data), encoding="utf-8")
-
-        # Put a fresh entry — the stale one should be pruned
-        _resolve_cache.put("https://github.com/new", "main", "y" * 40, "branch")
-
-        raw = json.loads(cache_file.read_text(encoding="utf-8"))
-        assert "https://github.com/old\told-ref" not in raw
-        assert "https://github.com/new\tmain" in raw
+        with _resolve_cache.ttl_override(5):
+            _resolve_cache.put("url", "new", "b" * 40, "branch")
+        assert set(json.loads(cache_file.read_text())) == {"url\tref-3", "url\tnew"}
+        _resolve_cache.put("url", "new", "c" * 40, "tag")
+        assert set(json.loads(cache_file.read_text())) == {"url\tref-3", "url\tnew"}
+        assert _resolve_cache.get("url", "new") == ("c" * 40, "tag")
 
 
 # ---------------------------------------------------------------------------

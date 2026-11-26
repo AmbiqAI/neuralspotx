@@ -23,7 +23,11 @@ from __future__ import annotations
 import os
 from collections.abc import Callable, Iterable
 from concurrent.futures import ThreadPoolExecutor
+from contextvars import Context
 from typing import TypeVar
+
+from ._resolve_cache import _ttl_override
+from .subprocess_utils._verbosity import _TIMEOUT
 
 T = TypeVar("T")
 R = TypeVar("R")
@@ -78,9 +82,18 @@ def parallel_map(
         # exception semantics.
         return [fn(item) for item in materialised]
 
+    # Carry only Git policy. The caller's context also holds app-lock ownership
+    # and a mutable metadata cache, both of which belong to its execution context.
+    policy = Context()
+    policy.run(_TIMEOUT.set, _TIMEOUT.get())
+    policy.run(_ttl_override.set, _ttl_override.get())
+
+    def run_item(item: T) -> R:
+        return policy.copy().run(fn, item)
+
     ex = ThreadPoolExecutor(max_workers=workers, thread_name_prefix="nsx-resolve")
     try:
-        results = list(ex.map(fn, materialised))
+        results = list(ex.map(run_item, materialised))
     except BaseException:
         # Cancel anything still queued and return without waiting for the
         # running workers, so an interrupt (Ctrl-C, or SIGTERM raised as

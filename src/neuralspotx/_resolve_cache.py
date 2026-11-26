@@ -37,6 +37,7 @@ from ._cache_paths import nsx_cache_root
 
 _ENV_TTL = "NSX_RESOLVE_TTL"
 _DEFAULT_TTL: float = 300.0  # 5 minutes
+_MAX_ENTRIES = 4096
 
 # Per-call override that takes precedence over the env var. Scoped via
 # ``ttl_override`` context manager so concurrent callers can set their
@@ -189,25 +190,25 @@ def put(url: str, ref: str, sha: str, kind: str | None) -> None:
 
     from .file_lock import file_mutex
 
+    def store_entry() -> None:
+        entries = _read_cache()
+        # Freshness belongs to the reader. Bound the shared file by keeping
+        # the most recently resolved refs, independently of any caller's TTL.
+        entries.pop(key, None)
+        if len(entries) >= _MAX_ENTRIES:
+            newest = sorted(entries, key=lambda k: entries[k][2], reverse=True)[: _MAX_ENTRIES - 1]
+            entries = {k: entries[k] for k in newest}
+        entries[key] = (sha, kind, time.time())
+        _write_cache(entries)
+
     lock_path = _cache_path().with_suffix(_cache_path().suffix + ".lock")
     try:
         with file_mutex(lock_path):
-            entries = _read_cache()
-            # Prune stale entries while we're at it.
-            now = time.time()
-            entries = {k: v for k, v in entries.items() if (now - v[2]) < ttl}
-            entries[key] = (sha, kind, now)
-            _write_cache(entries)
+            store_entry()
     except OSError:
-        # Cache is best-effort; if locking the sidecar fails, fall
-        # back to an unsynchronised write rather than failing the
-        # caller. The atomic ``os.replace`` in ``_write_cache`` still
-        # guarantees no torn file.
-        entries = _read_cache()
-        now = time.time()
-        entries = {k: v for k, v in entries.items() if (now - v[2]) < ttl}
-        entries[key] = (sha, kind, now)
-        _write_cache(entries)
+        # Cache is best-effort: fall back to an unsynchronised write rather
+        # than failing the caller. The atomic replace still prevents torn files.
+        store_entry()
 
 
 def invalidate_all() -> None:
