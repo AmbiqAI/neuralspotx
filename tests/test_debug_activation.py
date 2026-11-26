@@ -599,7 +599,7 @@ def test_cli_update_preflight_obeys_timeout_before_mutation(
     assert "timed out" in capsys.readouterr().err
 
 
-def test_swo_reset_uses_the_builds_local_board_snapshot(app):
+def test_swo_reset_uses_the_builds_local_board_snapshot(app, monkeypatch):
     from neuralspotx.board_plan import resolve_board_plan
 
     root, _build_dir, calls = app
@@ -607,9 +607,18 @@ def test_swo_reset_uses_the_builds_local_board_snapshot(app):
     packaged = api.describe_board(board)
     local = root / "boards" / board / "board.yaml"
     local.parent.mkdir(parents=True, exist_ok=True)
-    local.write_text(
-        (packaged.path / "board.yaml").read_text().replace("soc: apollo510\n", "soc: apollo510b\n")
-    )
+
+    def restore_missing_board(*args, **kwargs):
+        assert kwargs["frozen"] is True
+        local.write_text(
+            (packaged.path / "board.yaml")
+            .read_text()
+            .replace("soc: apollo510\n", "soc: apollo510b\n")
+        )
+
+    monkeypatch.setattr(_build, "_ensure_app_modules", restore_missing_board)
+    api.view_app(root, frozen=True)
+    assert calls[-1]["serial"] == "1234" and calls[-1]["recipe"] is None
     plan = resolve_board_plan(root, {"target": {"board": board}})
     assert plan is not None and plan.descriptor == api.describe_board(board, app_dir=root)
     assert plan.descriptor.soc == "apollo510b"

@@ -214,13 +214,22 @@ def test_inspection_uses_the_selected_app_and_its_parent_snapshot(
     assert status and "unknown board" in stderr
 
 
-def test_invalid_local_descriptor_reports_the_source(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    ("yaml_text", "message"),
+    [
+        ("schema_version: 999", "unsupported schema_version"),
+        ("board: {revision: 2026-02-31}", "invalid YAML"),
+    ],
+)
+def test_invalid_local_descriptor_reports_the_source(
+    tmp_path: Path, yaml_text: str, message: str
+) -> None:
     import neuralspotx as nsx
 
     board = tmp_path / "boards/apollo510_evb/board.yaml"
     board.parent.mkdir(parents=True)
-    board.write_text("schema_version: 999\n")
-    with pytest.raises(nsx.NSXConfigError, match="unsupported schema_version"):
+    board.write_text(yaml_text)
+    with pytest.raises(nsx.NSXConfigError, match=message):
         nsx.describe_board("apollo510_evb", app_dir=tmp_path)
     _, stderr, status = _invoke("board", "show", "apollo510_evb", "--app-dir", str(tmp_path))
     assert status and str(board) in stderr

@@ -215,7 +215,7 @@ def _parse_descriptor(
         raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
     except (OSError, UnicodeError) as exc:
         raise BoardDescriptorError(f"{path}: cannot read descriptor: {exc}") from exc
-    except yaml.YAMLError as exc:
+    except (yaml.YAMLError, ValueError) as exc:
         raise BoardDescriptorError(f"{path}: invalid YAML: {exc}") from exc
     if not isinstance(raw, dict):
         raise BoardDescriptorError(f"{path}: top-level YAML must be a mapping")

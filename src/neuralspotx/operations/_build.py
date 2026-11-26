@@ -531,7 +531,7 @@ def view_app_impl(
         raise NSXConfigError("SWO delay must be nonnegative and duration positive and finite.")
     _check_sdk_root(sdk_root, frozen=frozen)
     app, name, selected, build = _resolve_build_context(app_dir, board=board, build_dir=build_dir)
-    descriptor = require_physical_debug(app, selected)
+    require_physical_debug(app, selected)
     owned = inspect_build(app, build, selected, toolchain=toolchain)
     require_adoption(owned)
     from ._console import warn_console_mismatch
@@ -553,6 +553,9 @@ def view_app_impl(
             probe_serial=owned.preference,
             sdk_root=sdk_root,
         )
+    # Sync can restore a missing board overlay. Use the descriptor that is now
+    # present for the build before choosing a probe or constructing a reset command.
+    descriptor = require_physical_debug(app, selected)
     prepare_debug(app, build, selected, required=True)
     verify_configured_toolchain(app, build, toolchain)
     with capture_debug_context(app, build, selected, operation="swo", target=name) as snap:
