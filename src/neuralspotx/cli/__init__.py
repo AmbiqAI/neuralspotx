@@ -1317,7 +1317,7 @@ def _build_parser() -> argparse.ArgumentParser:
         "board",
         help="Inspect packaged boards and scaffold custom boards",
         description=(
-            "List and describe packaged board descriptors, or scaffold a "
+            "List packaged boards, inspect board descriptors, or scaffold a "
             "custom board that inherits an EVB baseline."
         ),
     )
@@ -1348,9 +1348,13 @@ def _build_parser() -> argparse.ArgumentParser:
     p_board_show = board_sub.add_parser(
         "show",
         help="Show details for a single board",
-        description="Print the derived facts for one board descriptor.",
+        description="Inspect a board in the nearest app, or the packaged board outside an app.",
     )
     p_board_show.add_argument("board", help="Board name (e.g. apollo510_evb)")
+    p_board_show.add_argument(
+        "--app-dir",
+        help="Inspect this app's board snapshot (defaults to the nearest app root)",
+    )
     p_board_show.add_argument(
         "--json",
         action="store_true",

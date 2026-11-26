@@ -43,6 +43,10 @@ Implementation packages such as `neuralspotx.operations` and private modules are
 extension APIs. The existing `neuralspotx.api.operations` attribute remains importable
 for compatibility, but is not a supported export.
 
+`describe_board(name, app_dir=app_dir)` returns the board descriptor used by that
+app, including facts inherited from its parent board. Omit `app_dir` to inspect
+the packaged board regardless of the Python process's working directory.
+
 ## Two calling styles
 
 Keyword arguments are the direct style:
@@ -176,7 +180,7 @@ The exported surface is wider than the app lifecycle. It covers modules
 (`list_modules`, `describe_module`, `search_modules`, `init_module`,
 `validate_module_metadata`), locking (`lock_app`, `sync_app`, `outdated_app`,
 `update_app`), the registry (`load_registry`, `starter_profile`,
-`registry_module_project`), boards (`create_board`), caches (`cache_info`, `clean_cache`),
+`registry_module_project`), boards (`create_board`, `describe_board`), caches (`cache_info`, `clean_cache`),
 SBOM generation (`generate_sbom`) and app discovery (`find_app_root`, `resolve_app_dir`).
 
 `load_registry()` and `starter_profile()` return independent snapshots. You may edit

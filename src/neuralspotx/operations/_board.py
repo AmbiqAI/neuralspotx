@@ -1,4 +1,4 @@
-"""Board scaffolding operations (``create_board_impl``)."""
+"""Board inspection and scaffolding operations."""
 
 from __future__ import annotations
 
@@ -8,11 +8,23 @@ from pathlib import Path
 from .. import board_descriptors as bd
 from .._errors import NSXConfigError
 from .._io import info
+from ..board_plan import resolve_board_descriptor
 from ..bsp_contracts import identifier
 from ..project_config import resolve_app_dir
 from ..templating import render_template_tree
 
 PathLike = str | Path
+
+
+def describe_board_impl(name: str, *, app_dir: Path | None = None) -> bd.BoardDescriptor:
+    if app_dir is not None and not app_dir.is_dir():
+        raise NSXConfigError(f"App directory does not exist or is not a directory: {app_dir}")
+    descriptor = resolve_board_descriptor(name, app_dir)
+    if descriptor is None:
+        raise NSXConfigError(
+            f"unknown board '{name}' (run `nsx board list` to see packaged boards)"
+        )
+    return descriptor
 
 
 def create_board_impl(

@@ -12,7 +12,6 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import TextIO
 
-from .. import board_descriptors as bd
 from .._errors import NSXConfigError, NSXError
 from .._io import info, line, warn
 from .._probe_selection import ProbeSelection, validate_probe_request
@@ -482,21 +481,6 @@ def _raise_if_viewer_exited(
     )
 
 
-def _view_board_soc(app_dir: Path, board: str) -> str | None:
-    """Resolve the SoC for a packaged or app-local board."""
-
-    descriptor = bd.load_board(board)
-    if descriptor is not None:
-        return descriptor.soc
-
-    board_yaml = app_dir / "boards" / board / "board.yaml"
-    if board_yaml.exists():
-        descriptor = bd.load_board_for_app(board, app_dir)
-        return descriptor.soc if descriptor else None
-
-    return None
-
-
 # SoCs confirmed (via J-Link "Secure Part... Secure Chip. Bootloader needs to
 # run which will then halt when finish." reset behavior) to hang the SWO
 # viewer if it issues a reset after attach: the secure bootloader halts the
@@ -508,13 +492,12 @@ def _view_board_soc(app_dir: Path, board: str) -> str | None:
 _SWO_SECURE_RESET_SOCS = frozenset({"apollo3p", "apollo4l", "apollo4p", "apollo510b"})
 
 
-def _resolved_view_reset_on_open(app_dir: Path, board: str, reset_on_open: bool | None) -> bool:
-    """Return the effective SWO reset policy for *board*."""
+def _resolved_view_reset_on_open(soc: str | None, reset_on_open: bool | None) -> bool:
+    """Return the effective SWO reset policy for the selected board’s SoC."""
 
     if reset_on_open is not None:
         return reset_on_open
 
-    soc = _view_board_soc(app_dir, board)
     if soc in _SWO_SECURE_RESET_SOCS:
         info(
             "Using attach-only SWO view for this secure-reset SoC; "
@@ -548,7 +531,7 @@ def view_app_impl(
         raise NSXConfigError("SWO delay must be nonnegative and duration positive and finite.")
     _check_sdk_root(sdk_root, frozen=frozen)
     app, name, selected, build = _resolve_build_context(app_dir, board=board, build_dir=build_dir)
-    require_physical_debug(app, selected)
+    descriptor = require_physical_debug(app, selected)
     owned = inspect_build(app, build, selected, toolchain=toolchain)
     require_adoption(owned)
     from ._console import warn_console_mismatch
@@ -602,11 +585,10 @@ def view_app_impl(
                 probe_serial=serial,
                 command_file=snap.directory / "reset_cmds.jlink",
             )
-            if _resolved_view_reset_on_open(app, selected, reset_on_open)
+            if _resolved_view_reset_on_open(descriptor.soc if descriptor else None, reset_on_open)
             else []
         )
         return _run_viewer(
-            app,
             build,
             selected,
             name,
@@ -620,7 +602,6 @@ def view_app_impl(
 
 
 def _run_viewer(
-    resolved_app_dir: Path,
     resolved_build_dir: Path,
     resolved_board: str,
     app_name: str,
@@ -633,9 +614,6 @@ def _run_viewer(
     capture: Path | None,
 ) -> Path:
     info(f"Starting SWO viewer for {app_name} on {resolved_board}")
-    effective_reset_on_open = _resolved_view_reset_on_open(
-        resolved_app_dir, resolved_board, reset_on_open
-    )
 
     probe = _probe_serial_from_view_cmd(view_cmd)
     if probe:
@@ -715,7 +693,7 @@ def _run_viewer(
             container.attach(viewer_proc)
         viewer_pid = getattr(viewer_proc, "pid", "unknown")
         info(f"SWO viewer launched (pid={viewer_pid})")
-        if effective_reset_on_open:
+        if reset_on_open:
             if reset_delay_ms > 0:
                 time.sleep(reset_delay_ms / 1000.0)
             _raise_if_viewer_exited(

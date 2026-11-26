@@ -20,15 +20,20 @@ class ResolvedBoardPlan:
         return "nsx-board-" + self.descriptor.name.replace("_", "-").lower()
 
 
+def resolve_board_descriptor(board: str, app_dir: Path | None) -> BoardDescriptor | None:
+    """Look up the named board using the same snapshot and spelling as a build."""
+    try:
+        return load_board_for_app(normalize_board(board), app_dir)
+    except BoardDescriptorError as exc:
+        raise NSXConfigError(str(exc)) from exc
+
+
 def resolve_board_plan(app_dir: Path | None, config: dict[str, Any]) -> ResolvedBoardPlan | None:
     target = config.get("target") or {}
     board = target.get("board")
     if not isinstance(board, str) or not board:
         return None
-    try:
-        descriptor = load_board_for_app(normalize_board(board), app_dir)
-    except BoardDescriptorError as exc:
-        raise NSXConfigError(str(exc)) from exc
+    descriptor = resolve_board_descriptor(board, app_dir)
     if descriptor is None:
         if config.get("baseline") == "none":
             return None

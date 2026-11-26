@@ -124,7 +124,9 @@ def _merge_inherited(
     (currently ``toolchains``).
     """
 
-    board = dict(raw.get("board") or {})
+    board = raw.get("board") or {}
+    if not isinstance(board, dict):
+        raise BoardDescriptorError(f"{where}: 'board' must be a mapping")
     merged: dict = {
         "schema_version": raw.get("schema_version", SCHEMA_VERSION),
         "sdk_provider": raw.get("sdk_provider", parent.sdk_provider),
@@ -211,6 +213,8 @@ def _parse_descriptor(
 ) -> BoardDescriptor:
     try:
         raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    except (OSError, UnicodeError) as exc:
+        raise BoardDescriptorError(f"{path}: cannot read descriptor: {exc}") from exc
     except yaml.YAMLError as exc:
         raise BoardDescriptorError(f"{path}: invalid YAML: {exc}") from exc
     if not isinstance(raw, dict):

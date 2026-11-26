@@ -49,7 +49,7 @@ from . import (  # noqa: F401
     _sync,
 )
 from ._app_lifecycle import APP_TEMPLATES, AppTemplate, create_app_impl, init_module_impl
-from ._board import create_board_impl
+from ._board import create_board_impl, describe_board_impl
 from ._build import (
     build_app_impl,
     configure_app_impl,
@@ -93,6 +93,7 @@ __all__ = [
     "init_module_impl",
     # Board scaffolding
     "create_board_impl",
+    "describe_board_impl",
     # Cache
     "cache_info_impl",
     "clean_cache_impl",

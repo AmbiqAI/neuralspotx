@@ -1,4 +1,4 @@
-"""Board-scoped programmatic API: ``create_board``."""
+"""Board inspection and creation."""
 
 from __future__ import annotations
 
@@ -13,6 +13,17 @@ from ._request_arguments import request_arguments
 from ._requests import BoardCreateRequest
 
 PathLike = str | Path
+
+
+def describe_board(name: str, *, app_dir: PathLike | None = None) -> BoardDescriptor:
+    """Return the effective descriptor, including inherited board facts.
+
+    With an explicit app directory, look in its boards/ tree first and fall back
+    to packaged descriptors. Omit app_dir to inspect the packaged catalog.
+    Raises NSXConfigError for an unknown board, invalid descriptor or missing directory.
+    """
+    root = Path(app_dir).expanduser().resolve() if app_dir is not None else None
+    return operations.describe_board_impl(name, app_dir=root)
 
 
 @overload

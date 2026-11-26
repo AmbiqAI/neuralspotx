@@ -69,8 +69,12 @@ def app(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(_build, "run_capture", execute)
     monkeypatch.setattr(_hardware, "run_capture", execute)
 
-    def viewer(source, output, board, name, view_cmd, reset_cmd, **kwargs):
+    def viewer(output, board, name, view_cmd, reset_cmd, **kwargs):
         serial = view_cmd[view_cmd.index("-USB") + 1]
+        assert kwargs["reset_on_open"] == bool(reset_cmd)
+        if not reset_cmd:
+            calls.append({"serial": serial, "recipe": None})
+            return output
         assert reset_cmd[reset_cmd.index("-USB") + 1] == serial
         recipe = Path(reset_cmd[reset_cmd.index("-commandfile") + 1])
         assert recipe.is_file()
@@ -593,3 +597,28 @@ def test_cli_update_preflight_obeys_timeout_before_mutation(
         assert _effective_timeout(None) == 9
     assert len(attempts) == 1 and not calls
     assert "timed out" in capsys.readouterr().err
+
+
+def test_swo_reset_uses_the_builds_local_board_snapshot(app):
+    from neuralspotx.board_plan import resolve_board_plan
+
+    root, _build_dir, calls = app
+    board = "apollo510_evb"
+    packaged = api.describe_board(board)
+    local = root / "boards" / board / "board.yaml"
+    local.parent.mkdir(parents=True, exist_ok=True)
+    local.write_text(
+        (packaged.path / "board.yaml").read_text().replace("soc: apollo510\n", "soc: apollo510b\n")
+    )
+    plan = resolve_board_plan(root, {"target": {"board": board}})
+    assert plan is not None and plan.descriptor == api.describe_board(board, app_dir=root)
+    assert plan.descriptor.soc == "apollo510b"
+    api.view_app(root)
+    assert calls[-1]["serial"] == "1234" and calls[-1]["recipe"] is None
+    api.view_app(root, reset_on_open=True)
+    assert calls[-1]["recipe"] is not None
+    local.unlink()
+    api.view_app(root)
+    assert calls[-1]["recipe"] is not None
+    api.view_app(root, reset_on_open=False)
+    assert calls[-1]["recipe"] is None

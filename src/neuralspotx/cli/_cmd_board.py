@@ -13,9 +13,9 @@ import json
 
 from .. import api
 from .. import board_descriptors as bd
-from .._errors import NSXConfigError
 from ..models import CommandCategory, CommandScope
 from ._hints import command_hint
+from ._render import _resolve_cli_app_dir
 
 _C = CommandCategory
 _S = CommandScope
@@ -73,11 +73,8 @@ def cmd_board_list(args: argparse.Namespace) -> None:
     "nsx board create <name> --from <evb>",
 )
 def cmd_board_show(args: argparse.Namespace) -> None:
-    desc = bd.load_board(args.board)
-    if desc is None:
-        raise NSXConfigError(
-            f"unknown board '{args.board}' (run `nsx board list` to see available boards)"
-        )
+    root = _resolve_cli_app_dir(args.app_dir) if args.app_dir is not None else api.find_app_root()
+    desc = api.describe_board(args.board, app_dir=root)
     if args.json:
         print(json.dumps(_descriptor_to_dict(desc), indent=2))
         return

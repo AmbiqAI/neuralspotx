@@ -194,6 +194,7 @@ connected target SoC.
 
 ### The reset policy
 
+NSX selects the SoC from the same app-local or packaged board descriptor as the build.
 By default `view` resets the target as it attaches, so you see output from the start of
 `main`. Four SoCs are the exception and default to attaching without a reset:
 `apollo3p`, `apollo4l`, `apollo4p` and `apollo510b`. On those, NSX says what it is doing:

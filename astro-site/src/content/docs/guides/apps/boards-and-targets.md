@@ -68,8 +68,11 @@ atomiq110_fpga_turbo           atomiq110   fpga     ambiqsuite
 ```
 
 `nsx board list --json` adds the CPU core, float ABI, ABI string and declared toolchains
-for each entry, and `nsx board show <board>` prints one board in full. The
-[board matrix](/neuralspotx/modules/boards/) is the same data rendered as a page.
+for each packaged board. Inside an app, `nsx board show <board>` reads its local
+`boards/<board>/board.yaml`, including inherited descriptors, using the same lookup
+as the build. From elsewhere, use `nsx board show <board> --app-dir <app>`.
+Outside an app, `board show` uses the packaged catalog. The
+[board matrix](/neuralspotx/modules/boards/) lists the packaged boards.
 
 :::note[Board names and SoC names are not the same]
 `apollo510dL_evb` targets the `apollo510L` SoC, and several Apollo4 boards share the

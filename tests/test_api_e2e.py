@@ -51,9 +51,11 @@ def view_app(request: AppViewRequest) -> None:
         board=request.board,
         build_dir=Path(request.build_dir) if request.build_dir else None,
     )
-    reset = operations._build._resolved_view_reset_on_open(app, board, request.reset_on_open)
+    descriptor = operations._build.require_physical_debug(app, board)
+    reset = operations._build._resolved_view_reset_on_open(
+        descriptor.soc if descriptor else None, request.reset_on_open
+    )
     operations._build._run_viewer(
-        app,
         build,
         board,
         name,
