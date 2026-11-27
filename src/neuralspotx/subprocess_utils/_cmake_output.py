@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import codecs
+import errno
 import io
 import os
+import stat
 import sys
 import threading
 from contextlib import ExitStack, suppress
@@ -16,6 +18,11 @@ def _open_shared(path: str) -> IO[bytes]:
     return open(
         path, "rb", opener=lambda p, flags: os.open(p, flags | getattr(os, "O_TEMPORARY", 0))
     )
+
+
+def _closed_pipe(exc: OSError) -> bool:
+    # The Windows CRT can report EINVAL when a pipe reader has exited.
+    return isinstance(exc, BrokenPipeError) or (os.name == "nt" and exc.errno == errno.EINVAL)
 
 
 def main() -> None:
@@ -61,7 +68,11 @@ def main() -> None:
                     if done and decoder is not None:
                         output.write(decoder.decode(b"", final=True))
                         output.flush()
-                except BrokenPipeError:
+                except OSError as exc:
+                    if not isinstance(exc, BrokenPipeError) and not (
+                        _closed_pipe(exc) and stat.S_ISFIFO(os.fstat(output.fileno()).st_mode)
+                    ):
+                        raise
                     # The downstream consumer closed. Discard future bytes and
                     # any pending text-wrapper flush during interpreter shutdown.
                     with open(os.devnull, "wb") as sink:

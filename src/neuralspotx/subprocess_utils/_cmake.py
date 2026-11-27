@@ -18,18 +18,17 @@ from pathlib import Path
 from typing import IO
 
 from .._errors import NSXToolchainError
-from ._cmake_output import _open_shared
+from ._cmake_output import _closed_pipe, _open_shared
 from ._runner import _Child, _split_emitted_lines, _start_child, _tail
 from ._verbosity import _effective_timeout
 
 _TAIL_BYTES = 16 * 1024
 
 
-def _diagnostic(path: str) -> str:
-    with _open_shared(path) as stream:
-        size = os.fstat(stream.fileno()).st_size
-        stream.seek(max(0, size - _TAIL_BYTES))
-        return stream.read(_TAIL_BYTES).decode("utf-8", "replace")
+def _diagnostic(stream: IO[bytes]) -> str:
+    size = os.fstat(stream.fileno()).st_size
+    stream.seek(max(0, size - _TAIL_BYTES))
+    return stream.read(_TAIL_BYTES).decode("utf-8", "replace")
 
 
 def _deliver_lines(
@@ -125,9 +124,11 @@ def _wait_for_build(
     assert proc is not None and relay is not None and relay.stdin is not None
     try:
         status = wait(proc)
-        with suppress(BrokenPipeError):
+        try:
             relay.stdin.write(b"D")
-            relay.stdin.flush()
+        except OSError as exc:
+            if not _closed_pipe(exc):
+                raise
         try:
             relay_status = wait(relay)
         except subprocess.TimeoutExpired:
@@ -175,6 +176,10 @@ def run_cmake(
         out = stack.enter_context(tempfile.NamedTemporaryFile())
         err = None if on_line is not None else stack.enter_context(tempfile.NamedTemporaryFile())
         paths = [out.name] if err is None else [out.name, err.name]
+        # Keep independent readers from the start: once a Windows delete-on-close
+        # reader closes, opening another handle by pathname can be denied.
+        out_log = stack.enter_context(_open_shared(out.name))
+        err_log = stack.enter_context(_open_shared(err.name)) if err is not None else None
         console_stdout, mirror = _console_stdout(on_line is not None)
         console = stack.enter_context(_contained(_Child()))
         tool = stack.enter_context(_contained(_Child()))
@@ -193,6 +198,7 @@ def run_cmake(
                 *paths,
             ],
             stdin=subprocess.PIPE,
+            bufsize=0,
             stdout=console_stdout,
             stderr=subprocess.DEVNULL if sys.stderr is None else None,
             start_new_session=(os.name != "nt"),
@@ -212,16 +218,16 @@ def run_cmake(
             # Callbacks stay on the caller's thread. Tool and console deadlines
             # must still be enforced while an embedder is handling a line.
             cancel = threading.Event()
-            with _open_shared(out.name) as log, ThreadPoolExecutor(max_workers=1) as pool:
+            with ThreadPoolExecutor(max_workers=1) as pool:
                 try:
                     completion = pool.submit(_wait_for_build, cmd, tool, console, timeout, cancel)
-                    sink_error = _deliver_lines(completion, log, on_line, mirror)
+                    sink_error = _deliver_lines(completion, out_log, on_line, mirror)
                     status = completion.result()
                 finally:
                     cancel.set()
         if status:
-            output = _diagnostic(out.name)
-            errors = _diagnostic(err.name) if err is not None else ""
+            output = _diagnostic(out_log)
+            errors = _diagnostic(err_log) if err_log is not None else ""
             cause = subprocess.CalledProcessError(status, cmd, output=output, stderr=errors)
             command = subprocess.list2cmdline(cmd) if os.name == "nt" else shlex.join(cmd)
             message = f"{context} failed with exit code {status}: {command}"
