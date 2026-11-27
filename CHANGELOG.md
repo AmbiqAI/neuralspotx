@@ -1,5 +1,23 @@
 # Changelog
 
+## [1.2.0](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v1.1.2...neuralspotx-v1.2.0) (2026-11-27)
+
+
+### Features
+
+* select a locked board when exporting an SBOM ([#383](https://github.com/AmbiqAI/neuralspotx/issues/383)) ([a3dcbbb](https://github.com/AmbiqAI/neuralspotx/commit/a3dcbbbd7d353be6a0abfd4fae5c2991c867fc35))
+
+
+### Bug Fixes
+
+* give Python callers the documented CMake build errors ([#384](https://github.com/AmbiqAI/neuralspotx/issues/384)) ([c7dd3bf](https://github.com/AmbiqAI/neuralspotx/commit/c7dd3bfb745ef7a4bc8bc6c75395469188aca650))
+* preserve authored inputs during app cleanup ([#377](https://github.com/AmbiqAI/neuralspotx/issues/377)) ([7fb1681](https://github.com/AmbiqAI/neuralspotx/commit/7fb1681ed145fc9ba547bba3ece0711d0629c2d0))
+* preserve caller Git settings in parallel lock workers ([#381](https://github.com/AmbiqAI/neuralspotx/issues/381)) ([f2b217a](https://github.com/AmbiqAI/neuralspotx/commit/f2b217a4785c880089ff6a77cf52229905eb1e69))
+* reject conflicting Python request arguments before dispatch ([#380](https://github.com/AmbiqAI/neuralspotx/issues/380)) ([bb62e76](https://github.com/AmbiqAI/neuralspotx/commit/bb62e769e3787cb26b3f6e1a009bfb96178b2a6e))
+* use the app board descriptor for inspection and SWO reset ([#382](https://github.com/AmbiqAI/neuralspotx/issues/382)) ([b7cb760](https://github.com/AmbiqAI/neuralspotx/commit/b7cb7608d23099714cbadc560d84ce416512bde9))
+* validate board facts and metadata schema versions ([#385](https://github.com/AmbiqAI/neuralspotx/issues/385)) ([5c2d603](https://github.com/AmbiqAI/neuralspotx/commit/5c2d60343159d8770b3911bacf4a949d578f3606))
+* verify explicit compiler selection before build and flash ([#379](https://github.com/AmbiqAI/neuralspotx/issues/379)) ([deb7b5d](https://github.com/AmbiqAI/neuralspotx/commit/deb7b5d45e5132ff017c5d9473f0efb38f2faa3f))
+
 ## [1.1.2](https://github.com/AmbiqAI/neuralspotx/compare/neuralspotx-v1.1.1...neuralspotx-v1.1.2) (2026-11-24)
 
 
