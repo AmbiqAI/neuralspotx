@@ -167,3 +167,23 @@ else:
         )
     assert result.returncode == 0, result.stderr
     assert b"Traceback" not in result.stderr
+
+
+def test_redirected_full_pipe_with_callback_keeps_timeout():
+    script = """
+import contextlib, os, sys
+from neuralspotx import NSXTimeoutError
+from neuralspotx.subprocess_utils import timeout_budget
+from neuralspotx.subprocess_utils._cmake import run_cmake
+reader, writer = os.pipe()
+with os.fdopen(reader, "rb"), os.fdopen(writer, "w") as sink, contextlib.redirect_stdout(sink):
+    try:
+        with timeout_budget(.7):
+            run_cmake([sys.executable, "-c", "for i in range(1000): print('A'*1000)"],
+                      context="CMake", on_line=lambda line: None)
+    except NSXTimeoutError:
+        sys.exit(0)
+sys.exit(1)
+"""
+    result = subprocess.run([sys.executable, "-c", script], capture_output=True, timeout=8)
+    assert result.returncode == 0, result.stderr

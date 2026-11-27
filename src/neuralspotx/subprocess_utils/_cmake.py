@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 import shlex
+import stat
 import subprocess
 import sys
 import tempfile
@@ -127,6 +128,23 @@ def _wait_for_build(
         raise
 
 
+def _console_stdout(streaming: bool) -> tuple[int | None, bool]:
+    """Keep Python redirection semantics while isolating backpressure from native pipes."""
+    if sys.stdout is None:
+        return subprocess.DEVNULL, False
+    if not streaming or sys.stdout is sys.__stdout__:
+        return None, False
+    try:
+        fd = sys.stdout.fileno()
+        mode = os.fstat(fd).st_mode
+    except (OSError, ValueError):
+        pass  # In-memory and notebook streams receive text on the caller thread.
+    else:
+        if stat.S_ISFIFO(mode) or stat.S_ISSOCK(mode):
+            return fd, False
+    return subprocess.DEVNULL, True
+
+
 def run_cmake(
     cmd: list[str], *, context: str, on_line: Callable[[str], None] | None = None
 ) -> None:
@@ -138,14 +156,14 @@ def run_cmake(
         out = stack.enter_context(tempfile.NamedTemporaryFile())
         err = None if on_line is not None else stack.enter_context(tempfile.NamedTemporaryFile())
         paths = [out.name] if err is None else [out.name, err.name]
-        mirror = on_line is not None and sys.stdout is not sys.__stdout__
+        console_stdout, mirror = _console_stdout(on_line is not None)
         console = stack.enter_context(_contained(_Child()))
         tool = stack.enter_context(_contained(_Child()))
         relay = _start_child(
             console,
             [sys.executable, "-I", "-S", str(Path(__file__).with_name("_cmake_output.py")), *paths],
             stdin=subprocess.PIPE,
-            stdout=subprocess.DEVNULL if mirror or sys.stdout is None else None,
+            stdout=console_stdout,
             stderr=subprocess.DEVNULL if sys.stderr is None else None,
             start_new_session=(os.name != "nt"),
         )
