@@ -12,21 +12,26 @@ from neuralspotx.subprocess_utils import timeout_budget
 from neuralspotx.subprocess_utils._cmake import run_cmake
 
 
-def test_full_console_pipe_keeps_timeout():
+@pytest.mark.parametrize("exit_status", [0, 17])
+def test_full_console_pipe_keeps_timeout(exit_status):
     script = """
 import sys
-from neuralspotx import NSXTimeoutError
+from neuralspotx import NSXTimeoutError, NSXToolchainError
 from neuralspotx.subprocess_utils import timeout_budget
 from neuralspotx.subprocess_utils._cmake import run_cmake
 try:
     with timeout_budget(0.5):
-        run_cmake([sys.executable, "-c", "print('A' * 2000000)"], context="CMake")
+        run_cmake([sys.executable, "-c", "print('A' * 2000000); raise SystemExit(" + sys.argv[1] + ")"], context="CMake")
 except NSXTimeoutError:
-    sys.exit(0)
+    sys.exit(0 if sys.argv[1] == "0" else 1)
+except NSXToolchainError as exc:
+    sys.exit(0 if sys.argv[1] == "17" and exc.__cause__.returncode == 17 else 1)
 sys.exit(1)
 """
     # Keep the read end open and deliberately don't consume it during wait().
-    with subprocess.Popen([sys.executable, "-c", script], stdout=subprocess.PIPE) as proc:
+    with subprocess.Popen(
+        [sys.executable, "-c", script, str(exit_status)], stdout=subprocess.PIPE
+    ) as proc:
         try:
             assert proc.wait(timeout=8) == 0
         finally:
@@ -68,3 +73,33 @@ def test_tool_finishes_when_detached_helper_inherits_output(tmp_path):
             run_cmake(command, context="CMake")
     finally:
         sentinel.touch()
+
+
+def test_closed_console_pipe_preserves_tool_success():
+    script = """
+import sys
+from neuralspotx.subprocess_utils._cmake import run_cmake
+run_cmake([sys.executable, "-c", "print('x' * 2000000)"], context="CMake")
+"""
+    with subprocess.Popen(
+        [sys.executable, "-c", script], stdout=subprocess.PIPE, stderr=subprocess.PIPE
+    ) as proc:
+        assert proc.stdout is not None and proc.stderr is not None
+        proc.stdout.close()
+        try:
+            assert proc.wait(timeout=8) == 0, proc.stderr.read()
+            assert b"Traceback" not in proc.stderr.read()
+        finally:
+            proc.kill()
+
+
+def test_callback_mirrors_to_redirected_python_stream():
+    import contextlib
+    import io
+
+    capture = io.StringIO()
+    lines = []
+    with contextlib.redirect_stdout(capture):
+        run_cmake([sys.executable, "-c", "print('hello')"], context="CMake", on_line=lines.append)
+    assert lines == ["hello"]
+    assert capture.getvalue().splitlines() == ["hello"]

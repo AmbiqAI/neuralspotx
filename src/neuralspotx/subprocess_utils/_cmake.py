@@ -34,8 +34,17 @@ def _deliver_lines(
     log: IO[bytes],
     on_line: Callable[[str], None],
     remaining: Callable[[], float | None],
+    mirror: bool,
 ) -> None:
     pending = b""
+
+    def deliver(segments: list[tuple[str, str]]) -> None:
+        for text, terminator in segments:
+            on_line(text)
+            if mirror and sys.stdout is not None:
+                sys.stdout.write(text + terminator)
+                sys.stdout.flush()
+
     while True:
         done = proc.poll() is not None
         end = os.fstat(log.fileno()).st_size
@@ -43,12 +52,10 @@ def _deliver_lines(
             remaining()
             chunk = log.read(min(65536, end - log.tell()))
             segments, pending = _split_emitted_lines(pending + chunk, at_eof=False)
-            for text, _ in segments:
-                on_line(text)
+            deliver(segments)
         if done:
             segments, _ = _split_emitted_lines(pending, at_eof=True)
-            for text, _ in segments:
-                on_line(text)
+            deliver(segments)
             return
         budget = remaining()
         time.sleep(0.02 if budget is None else min(0.02, budget))
@@ -84,6 +91,7 @@ def run_cmake(
         out = stack.enter_context(tempfile.NamedTemporaryFile())
         err = None if on_line is not None else stack.enter_context(tempfile.NamedTemporaryFile())
         paths = [out.name] if err is None else [out.name, err.name]
+        mirror = on_line is not None and sys.stdout is not sys.__stdout__
         # A stalled console pipe must not block the thread enforcing timeout_s.
         relay_child = _Child()
         child = _Child()
@@ -98,6 +106,8 @@ def run_cmake(
                     *paths,
                 ],
                 stdin=subprocess.PIPE,
+                stdout=subprocess.DEVNULL if mirror or sys.stdout is None else None,
+                stderr=subprocess.DEVNULL if sys.stderr is None else None,
                 start_new_session=(os.name != "nt"),
                 preexec_fn=die_with_parent_preexec(),
             )
@@ -111,10 +121,18 @@ def run_cmake(
             )
             if on_line is not None:
                 with _open_shared(out.name) as log:
-                    _deliver_lines(proc, log, on_line, remaining)
+                    _deliver_lines(proc, log, on_line, remaining, mirror)
             status = wait(proc)
             relay.stdin.close()
-            relay_status = wait(relay)
+            try:
+                relay_status = wait(relay)
+            except subprocess.TimeoutExpired:
+                if not status:
+                    raise
+                # The tool failed before its deadline. Preserve that failure
+                # even when a downstream reader prevents the relay exiting.
+                relay_child.stop()
+                relay_status = relay.returncode
         except BaseException:
             relay_child.stop()
             child.stop()

@@ -26,18 +26,24 @@ def main() -> None:
     threading.Thread(target=wait_for_parent, daemon=True).start()
     with ExitStack() as stack:
         logs = [stack.enter_context(_open_shared(path)) for path in sys.argv[1:]]
-        outputs = (sys.stdout, sys.stderr)[: len(logs)]
+        outputs = [sys.stdout, sys.stderr][: len(logs)]
         while True:
             done = finished.is_set()
             sizes = [os.fstat(log.fileno()).st_size for log in logs]
-            for log, size, output in zip(logs, sizes, outputs, strict=True):
+            for index, (log, size) in enumerate(zip(logs, sizes, strict=True)):
                 while log.tell() < size:
                     chunk = log.read(min(65536, size - log.tell()))
                     if not chunk:
                         break
+                    output = outputs[index]
                     if output is not None:
-                        output.buffer.write(chunk)
-                        output.buffer.flush()
+                        try:
+                            data = memoryview(chunk)
+                            while data:
+                                data = data[os.write(output.fileno(), data) :]
+                        except BrokenPipeError:
+                            # A consumer such as head has finished with this stream.
+                            outputs[index] = None
             if done:
                 return
             finished.wait(0.02)
