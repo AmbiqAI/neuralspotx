@@ -230,3 +230,28 @@ def test_callback_preserves_native_pipe_encoding():
                 [sys.executable, "-c", "print('hello')"], context="CMake", on_line=lines.append
             )
         assert source.read().decode("utf-16-le").splitlines() == lines == ["hello"]
+
+
+@pytest.mark.parametrize("status", [0, 23])
+def test_python_output_error_preserves_tool_result(status):
+    import contextlib
+    import io
+
+    class FailedOutput(io.StringIO):
+        def write(self, text):
+            raise OSError("console unavailable")
+
+    lines = []
+    with contextlib.redirect_stdout(FailedOutput()), pytest.raises(NSXToolchainError) as failure:
+        run_cmake(
+            [sys.executable, "-c", f"print('build output'); raise SystemExit({status})"],
+            context="CMake",
+            on_line=lines.append,
+        )
+    assert lines == ["build output"]
+    cause = failure.value.__cause__
+    if status:
+        assert isinstance(cause, subprocess.CalledProcessError) and cause.returncode == status
+        assert "build output" in str(failure.value)
+    else:
+        assert isinstance(cause, OSError) and "console unavailable" in str(failure.value)

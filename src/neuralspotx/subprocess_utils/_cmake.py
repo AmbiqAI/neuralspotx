@@ -37,17 +37,25 @@ def _deliver_lines(
     log: IO[bytes],
     on_line: Callable[[str], None],
     mirror: bool,
-) -> None:
+) -> OSError | ValueError | None:
     pending = bytearray()
+    sink_error: OSError | ValueError | None = None
 
     def deliver(segments: list[tuple[str, str]]) -> None:
+        nonlocal mirror, sink_error
         for text, terminator in segments:
             if completion.done():
                 completion.result()  # Stop dispatch immediately on a tool timeout.
             on_line(text)
             if mirror and sys.stdout is not None:
-                sys.stdout.write(text + terminator)
-                sys.stdout.flush()
+                try:
+                    sys.stdout.write(text + terminator)
+                    sys.stdout.flush()
+                except BrokenPipeError:
+                    mirror = False
+                except (OSError, ValueError) as exc:
+                    mirror = False
+                    sink_error = exc
 
     while True:
         done = completion.done()
@@ -67,7 +75,7 @@ def _deliver_lines(
             completion.result()
             segments, _ = _split_emitted_lines(bytes(pending), at_eof=True)
             deliver(segments)
-            return
+            return sink_error
         time.sleep(0.02)
 
 
@@ -197,6 +205,7 @@ def run_cmake(
             stderr=err if err is not None else subprocess.STDOUT,
             start_new_session=(os.name != "nt"),
         )
+        sink_error = None
         if on_line is None:
             status = _wait_for_build(cmd, tool, console, timeout)
         else:
@@ -206,7 +215,7 @@ def run_cmake(
             with _open_shared(out.name) as log, ThreadPoolExecutor(max_workers=1) as pool:
                 try:
                     completion = pool.submit(_wait_for_build, cmd, tool, console, timeout, cancel)
-                    _deliver_lines(completion, log, on_line, mirror)
+                    sink_error = _deliver_lines(completion, log, on_line, mirror)
                     status = completion.result()
                 finally:
                     cancel.set()
@@ -220,3 +229,5 @@ def run_cmake(
                 if text:
                     message += f"\n{_tail(text)}"
             raise NSXToolchainError(message) from cause
+        if sink_error is not None:
+            raise NSXToolchainError(f"Could not forward CMake output: {sink_error}") from sink_error
