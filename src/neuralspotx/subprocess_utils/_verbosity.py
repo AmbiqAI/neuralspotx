@@ -5,7 +5,7 @@ from __future__ import annotations
 import contextlib
 import contextvars
 import subprocess
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 
 from .._errors import NSXTimeoutError
 
@@ -48,21 +48,36 @@ def verbosity(level: int) -> Iterator[None]:
 
 
 @contextlib.contextmanager
-def timeout_budget(seconds: float | None) -> Iterator[None]:
+def timeout_budget(
+    seconds: float | None, *, on_line: Callable[[str], None] | None = None
+) -> Iterator[Callable[[str], None] | None]:
     """Set a default per-subprocess wall-clock timeout for this scope.
 
     Calls to :func:`run` / :func:`run_capture` inside the ``with`` block
     use *seconds* as their default timeout.  ``None`` clears any
     inherited budget.
 
-    Any :class:`subprocess.TimeoutExpired` raised inside the block is
-    translated into :class:`NSXTimeoutError` so callers can rely on the
+    The yielded line callback forwards to *on_line* and preserves any
+    timeout raised by that callback. Subprocess timeouts are translated into :class:`NSXTimeoutError` so callers can rely on the
     typed exception hierarchy.
     """
+    callback_timeout: subprocess.TimeoutExpired | None = None
+
+    def forward(text: str) -> None:
+        nonlocal callback_timeout
+        assert on_line is not None
+        try:
+            on_line(text)
+        except subprocess.TimeoutExpired as exc:
+            callback_timeout = exc
+            raise
+
     token = _TIMEOUT.set(seconds)
     try:
-        yield
+        yield forward if on_line is not None else None
     except subprocess.TimeoutExpired as exc:
+        if exc is callback_timeout:
+            raise
         cmd = exc.cmd
         cmd_str = " ".join(cmd) if isinstance(cmd, list) else str(cmd)
         raise NSXTimeoutError(

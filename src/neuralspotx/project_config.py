@@ -1343,7 +1343,7 @@ def _run_cmake_configure(
     # a stale cached executable.
     cached_jlink = jlink_executable or "NSX_JLINK_EXE-NOTFOUND"
     cmd.append(f"-DNSX_JLINK_EXE:FILEPATH={cached_jlink}")
-    run(cmd)
+    run(cmd, failure_context="CMake configure")
     verify_configured_toolchain(app_dir, build_dir, requested)
 
 

@@ -180,7 +180,7 @@ def _run_build(
 ) -> None:
     """Keep normal build streaming; route non-streaming flash output through emitters."""
     if not capture_output or on_line is not None:
-        run(command, on_line=on_line)
+        run(command, on_line=on_line, failure_context="CMake build")
         return
     result = run_capture(command)
     if result.stdout:

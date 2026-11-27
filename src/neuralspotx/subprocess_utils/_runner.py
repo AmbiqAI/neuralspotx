@@ -2,8 +2,9 @@
 
 from __future__ import annotations
 
+import codecs
 import os
-import select
+import shlex
 import subprocess
 import sys
 import threading
@@ -14,6 +15,7 @@ from typing import Any, BinaryIO
 
 from .._errors import NSXToolchainError
 from ._signals import defer_termination
+from ._stream import output_chunks
 from ._verbosity import _VERBOSITY, _effective_timeout
 from ._winjob import _ProcessContainer
 
@@ -215,6 +217,7 @@ def run(
     timeout: float | None = None,
     on_line: Callable[[str], None] | None = None,
     output: BinaryIO | None = None,
+    failure_context: str | None = None,
 ) -> None:
     """Run a subprocess, raising on failure or timeout.
 
@@ -229,136 +232,81 @@ def run(
     stripped) as the subprocess produces it. The lines are also
     re-emitted on the parent's stdout so the user-visible output is
     unchanged. When *on_line* is ``None`` the subprocess inherits the
-    parent's stdio unless ``output`` redirects both output streams to a file.
+    parent's stdio unless ``output`` redirects both output streams to a file
+    or ``failure_context`` requests live output with bounded diagnostic tails.
+    In the latter case a nonzero exit raises NSXToolchainError chained from
+    the original CalledProcessError.
     """
-    if output is not None and on_line is not None:
-        raise ValueError("Use either output or on_line for subprocess output")
+    if output is not None and (on_line is not None or failure_context is not None):
+        raise ValueError("Use either output or streamed subprocess output")
     effective = _effective_timeout(timeout)
+    streamed = on_line is not None or failure_context is not None
+    tails = [bytearray(), bytearray()]
     child = _Child()
     try:
-        try:
-            if on_line is not None:
-                # Binary pipe: we read raw bytes (``os.read`` on POSIX,
-                # ``readline`` on Windows) and decode ourselves so we can
-                # split on \r as well as \n and re-emit the original
-                # terminator for in-place progress.
-                proc = _start_child(
-                    child,
-                    cmd,
-                    cwd=str(cwd) if cwd else None,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.STDOUT,
-                    start_new_session=(os.name != "nt"),
-                )
-            else:
-                proc = _start_child(
-                    child,
-                    cmd,
-                    cwd=str(cwd) if cwd else None,
-                    stdout=output,
-                    stderr=subprocess.STDOUT if output is not None else None,
-                    start_new_session=(os.name != "nt"),
-                )
-            container = child.container
-            if on_line is not None and proc.stdout is not None:
-                # Stream output through the callback while still enforcing
-                # the wall-clock timeout. On POSIX we ``select`` on the raw
-                # fd and read chunks so a subprocess that stops producing
-                # output (even mid-line) cannot escape the budget, and we
-                # split on \r as well as \n so live progress redraws render
-                # in place. Windows falls back to a blocking readline with a
-                # per-iteration deadline check.
-                started = time.monotonic()
-                stream = proc.stdout
-
-                def _emit(text_line: str, terminator: str) -> None:
-                    try:
-                        on_line(text_line)
-                    except BaseException:
-                        # Caller-supplied callback raised; tear down the
-                        # subprocess tree before propagating so we don't
-                        # leak processes (POSIX) or job-object handles
-                        # (Windows).
-                        container.terminate(proc)
-                        raise
-                    sys.stdout.write(text_line + terminator)
-                    if not terminator.endswith("\n"):
-                        # A bare \r (or no terminator) won't flush a
-                        # line-buffered stdout, so force it for live progress.
-                        sys.stdout.flush()
-
-                if os.name != "nt":
-                    fd = stream.fileno()
-                    pending = b""
-                    while True:
-                        if effective is not None:
-                            remaining = effective - (time.monotonic() - started)
-                            if remaining <= 0:
-                                container.terminate(proc)
-                                raise subprocess.TimeoutExpired(cmd, effective)
+        proc = _start_child(
+            child,
+            cmd,
+            cwd=str(cwd) if cwd else None,
+            stdout=subprocess.PIPE if streamed else output,
+            stderr=subprocess.STDOUT
+            if on_line is not None or output is not None
+            else subprocess.PIPE
+            if streamed
+            else None,
+            start_new_session=(os.name != "nt"),
+        )
+        deadline = None if effective is None else time.monotonic() + effective
+        if streamed:
+            assert proc.stdout is not None
+            streams = [proc.stdout]
+            if proc.stderr is not None:
+                streams.append(proc.stderr)
+            pending = b""
+            decoders = [codecs.getincrementaldecoder("utf-8")("replace") for _ in streams]
+            with output_chunks(streams, cmd, effective, deadline) as chunks:
+                for index, chunk in chunks:
+                    if failure_context is not None:
+                        tails[index].extend(chunk)
+                        del tails[index][:-16384]
+                    sink = sys.stdout if index == 0 else sys.stderr
+                    if on_line is None:
+                        raw_sink = getattr(sink, "buffer", None)
+                        if raw_sink is None:
+                            sink.write(decoders[index].decode(chunk, final=not chunk))
                         else:
-                            remaining = None
-                        ready, _, _ = select.select([fd], [], [], remaining)
-                        if not ready and effective is not None:
-                            # select only returns empty on timeout, which
-                            # requires a finite budget -> deadline reached
-                            container.terminate(proc)
-                            raise subprocess.TimeoutExpired(cmd, effective)
-                        chunk = os.read(fd, 65536)
-                        at_eof = not chunk
-                        pending += chunk
-                        segments, pending = _split_emitted_lines(pending, at_eof=at_eof)
-                        for text_line, terminator in segments:
-                            _emit(text_line, terminator)
-                        if at_eof:
-                            break
-                else:  # pragma: no cover - exercised on Windows CI
-                    # Windows pipes don't support ``select``; fall back to a
-                    # blocking readline (which only breaks on \n) but still
-                    # run each line through the splitter so \r progress within
-                    # a completed line is emitted segment-by-segment.
-                    pending = b""
-                    while True:
-                        if effective is not None:
-                            remaining = effective - (time.monotonic() - started)
-                            if remaining <= 0:
-                                container.terminate(proc)
-                                raise subprocess.TimeoutExpired(cmd, effective)
-                        raw = stream.readline()
-                        at_eof = not raw
-                        pending += raw
-                        segments, pending = _split_emitted_lines(pending, at_eof=at_eof)
-                        for text_line, terminator in segments:
-                            _emit(text_line, terminator)
-                        if at_eof:
-                            break
-                wait_timeout = (
-                    None
-                    if effective is None
-                    else max(0.0, effective - (time.monotonic() - started))
-                )
-                rc = proc.wait(timeout=wait_timeout)
-            else:
-                rc = proc.wait(timeout=effective)
+                            raw_sink.write(chunk)
+                    else:
+                        segments, pending = _split_emitted_lines(pending + chunk, at_eof=not chunk)
+                        for text, terminator in segments:
+                            on_line(text)
+                            sink.write(text + terminator)
+                    sink.flush()
+        remaining = None if deadline is None else max(0.0, deadline - time.monotonic())
+        try:
+            rc = proc.wait(timeout=remaining)
         except subprocess.TimeoutExpired as exc:
-            child.stop()
-            # Report the full budget; the inner wait may have carried only
-            # the remainder. A timeout is unreachable without a budget, so
-            # fall back to the expired exception's own value.
             raise subprocess.TimeoutExpired(
                 cmd, effective if effective is not None else exc.timeout
             ) from None
-        except KeyboardInterrupt:
-            # ``start_new_session=True`` (POSIX) and the Job Object (Windows)
-            # both isolate the child from our terminal's signals, so the
-            # Ctrl-C the user typed does NOT propagate.  Kill the whole tree
-            # before re-raising, otherwise hung builds/flashes keep running.
-            child.stop()
-            raise
+    except BaseException:
+        child.stop()
+        raise
     finally:
         child.release()
     if rc != 0:
-        raise subprocess.CalledProcessError(rc, cmd)
+        failure = subprocess.CalledProcessError(rc, cmd)
+        if failure_context is not None:
+            failure.output = tails[0].decode("utf-8", "replace")
+            failure.stderr = tails[1].decode("utf-8", "replace")
+            output_tail = "\n".join(
+                _tail(text) for text in (failure.output, failure.stderr) if text
+            )
+            message = f"{failure_context} failed with exit code {rc}: {shlex.join(cmd)}"
+            if output_tail:
+                message += f"\n{output_tail}"
+            raise NSXToolchainError(message) from failure
+        raise failure
 
 
 def run_capture(

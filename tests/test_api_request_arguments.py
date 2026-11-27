@@ -22,10 +22,12 @@ def test_frozen_build_and_explicit_defaults(tmp_path: Path) -> None:
         with pytest.raises(nsx.NSXConfigError, match="board"):
             nsx.build_app(app_dir=request, board=None)
         build.assert_not_called()
-        nsx.build_app(request, frozen=True, on_line=print)
+        lines: list[str] = []
+        nsx.build_app(request, frozen=True, on_line=lines.append)
         assert build.call_args.kwargs["frozen"] is True
         assert build.call_args.kwargs["jobs"] == 4
-        assert build.call_args.kwargs["on_line"] is print
+        build.call_args.kwargs["on_line"]("compile")
+        assert lines == ["compile"]
         nsx.build_app(replace(request, frozen=False, jobs=8))
         assert build.call_args.kwargs["frozen"] is False
         assert request.frozen and request.jobs == 4
