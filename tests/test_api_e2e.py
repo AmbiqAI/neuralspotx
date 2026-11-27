@@ -904,12 +904,12 @@ def test_build_app_uses_shared_impl_and_triggers_configure_when_needed(
             f"CMAKE_HOME_DIRECTORY:INTERNAL={app}\nCMAKE_CACHEFILE_DIR:INTERNAL={build}\nNSX_BOARD:STRING={board}\n"
         )
 
-    def fake_run(cmd: list[str], cwd: Path | None = None, *, on_line: object = None) -> None:
+    def fake_run(cmd: list[str], cwd: Path | None = None, **kwargs: object) -> None:
         del cwd
         build_calls.append(cmd)
 
     monkeypatch.setattr(operations._build, "_run_cmake_configure", fake_configure)
-    monkeypatch.setattr(operations._build, "run", fake_run)
+    monkeypatch.setattr(operations._build, "run_cmake", fake_run)
 
     build_app(AppBuildRequest(app_dir=app_dir, jobs=3))
 

@@ -58,7 +58,7 @@ def _stub_cmake_side_effects(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(_build_mod, "regenerate_active_board_glue", lambda *a, **k: None)
     monkeypatch.setattr(_build_mod, "find_segger_tool", lambda _names: None)
     monkeypatch.setattr(_build_mod, "_run_cmake_configure", lambda *a, **k: None)
-    monkeypatch.setattr(_build_mod, "run", lambda *a, **k: None)
+    monkeypatch.setattr(_build_mod, "run_cmake", lambda *a, **k: None)
     monkeypatch.setattr(
         _build_mod, "run_capture", lambda *a, **k: type("R", (), {"stdout": "", "stderr": ""})()
     )

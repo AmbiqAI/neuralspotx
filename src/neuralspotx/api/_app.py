@@ -126,7 +126,7 @@ def configure_app(
             timeout_s=timeout_s,
         )
     )
-    with using_emitter(emit), timeout_budget(request.timeout_s):
+    with timeout_budget(request.timeout_s) as callbacks, using_emitter(callbacks.protect(emit)):
         operations.configure_app_impl(
             Path(request.app_dir).expanduser().resolve(),
             board=request.board,
@@ -179,7 +179,7 @@ def build_app(
             timeout_s=timeout_s,
         )
     )
-    with using_emitter(emit), timeout_budget(request.timeout_s):
+    with timeout_budget(request.timeout_s) as callbacks, using_emitter(callbacks.protect(emit)):
         operations.build_app_impl(
             Path(request.app_dir).expanduser().resolve(),
             board=request.board,
@@ -189,7 +189,7 @@ def build_app(
             jobs=request.jobs,
             sdk_root=Path(request.sdk_root).expanduser().resolve() if request.sdk_root else None,
             frozen=request.frozen,
-            on_line=on_line,
+            on_line=callbacks.protect(on_line),
         )
 
 

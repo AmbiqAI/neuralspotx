@@ -268,9 +268,9 @@ def test_existing_lock_rejects_incompatible_metadata_before_cmake(
     def no_subprocess(*args: object, **kwargs: object) -> None:
         pytest.fail("CMake/build must not run after an incompatible dependency is detected")
 
-    monkeypatch.setattr(_build, "run", no_subprocess)
+    monkeypatch.setattr(_build, "run_cmake", no_subprocess)
     monkeypatch.setattr(_build, "run_capture", no_subprocess)
-    monkeypatch.setattr(project_config, "run", no_subprocess)
+    monkeypatch.setattr(project_config, "run_cmake", no_subprocess)
     with pytest.raises(NSXModuleError, match="parent.*dep.*0.9"):
         getattr(operations, f"{operation}_app_impl")(app)
 
@@ -384,7 +384,7 @@ def test_cached_build_refuses_new_cycle_without_rewriting_lock(
     def no_build(*args: object, **kwargs: object) -> None:
         pytest.fail("must reject cycle before build")
 
-    monkeypatch.setattr(_build, "run", no_build)
+    monkeypatch.setattr(_build, "run_cmake", no_build)
     with pytest.raises(NSXModuleError, match="dependency cycle"):
         _build.build_app_impl(app)
     assert (app / "nsx.lock").read_bytes() == original_lock
@@ -413,7 +413,7 @@ def test_cached_build_validates_compiled_copy_not_external_override(
     (app / "build/apollo510_evb/build.ninja").write_text("# configured")
     write_owned_cache(app)
     calls: list[object] = []
-    monkeypatch.setattr(_build, "run", lambda *a, **k: calls.append(a))
+    monkeypatch.setattr(_build, "run_cmake", lambda *a, **k: calls.append(a))
     if accepted:
         _build.build_app_impl(app)
         assert len(calls) == 1
@@ -495,7 +495,7 @@ def test_cached_build_reads_board_overlay_not_project_mirror(
     (app / "build/apollo510_evb/build.ninja").write_text("# configured")
     write_owned_cache(app)
     calls: list[object] = []
-    monkeypatch.setattr(_build, "run", lambda *a, **k: calls.append(a))
+    monkeypatch.setattr(_build, "run_cmake", lambda *a, **k: calls.append(a))
     if overlay_invalid:
         with pytest.raises(NSXModuleError, match="nsx-board-apollo510-evb.*dep.*1.0"):
             _build.build_app_impl(app)
@@ -545,7 +545,7 @@ def test_cached_build_validates_active_tooling_bootstrap(
     (tmp_path / "build/apollo510_evb/build.ninja").write_text("# configured")
     write_owned_cache(tmp_path)
     calls: list[object] = []
-    monkeypatch.setattr(_build, "run", lambda *a, **k: calls.append(a))
+    monkeypatch.setattr(_build, "run_cmake", lambda *a, **k: calls.append(a))
     if accepted:
         _build.build_app_impl(tmp_path)
         assert len(calls) == 1

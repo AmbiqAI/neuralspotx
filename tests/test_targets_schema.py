@@ -246,7 +246,9 @@ def test_configure_uses_per_board_target_toolchain(
     )
 
     captured: dict[str, list[str]] = {}
-    monkeypatch.setattr(project_config, "run", lambda cmd: captured.setdefault("cmd", cmd))
+    monkeypatch.setattr(
+        project_config, "run_cmake", lambda cmd, **kw: captured.setdefault("cmd", cmd)
+    )
 
     project_config._run_cmake_configure(tmp_path, tmp_path / "build", "apollo510b_evb")
     cmd = captured["cmd"]
@@ -279,7 +281,9 @@ def test_configure_falls_back_to_top_level_toolchain_for_unknown_board(
     )
 
     captured: dict[str, list[str]] = {}
-    monkeypatch.setattr(project_config, "run", lambda cmd: captured.setdefault("cmd", cmd))
+    monkeypatch.setattr(
+        project_config, "run_cmake", lambda cmd, **kw: captured.setdefault("cmd", cmd)
+    )
 
     project_config._run_cmake_configure(tmp_path, tmp_path / "build", "apollo330mP_evb")
     tc_arg = next(a for a in captured["cmd"] if a.startswith("-DCMAKE_TOOLCHAIN_FILE="))
@@ -290,7 +294,9 @@ def test_configure_passes_sdk_root_override(tmp_path, monkeypatch: pytest.Monkey
     from neuralspotx import project_config
 
     captured: dict[str, list[str]] = {}
-    monkeypatch.setattr(project_config, "run", lambda cmd: captured.setdefault("cmd", cmd))
+    monkeypatch.setattr(
+        project_config, "run_cmake", lambda cmd, **kw: captured.setdefault("cmd", cmd)
+    )
 
     sdk_root = tmp_path / "sdk"
     project_config._run_cmake_configure(
@@ -315,7 +321,9 @@ def test_configure_clears_sdk_root_override_when_unset(
     from neuralspotx import project_config
 
     captured: dict[str, list[str]] = {}
-    monkeypatch.setattr(project_config, "run", lambda cmd: captured.setdefault("cmd", cmd))
+    monkeypatch.setattr(
+        project_config, "run_cmake", lambda cmd, **kw: captured.setdefault("cmd", cmd)
+    )
 
     project_config._run_cmake_configure(tmp_path, tmp_path / "build", "apollo510_evb")
 
@@ -333,7 +341,9 @@ def test_cmake_configure_propagates_jlink_path_override(
     commander.write_bytes(b"")
     monkeypatch.setenv("JLINK_PATH", str(commander))
     captured: dict[str, list[str]] = {}
-    monkeypatch.setattr(project_config, "run", lambda cmd: captured.setdefault("cmd", cmd))
+    monkeypatch.setattr(
+        project_config, "run_cmake", lambda cmd, **kw: captured.setdefault("cmd", cmd)
+    )
 
     project_config._run_cmake_configure(tmp_path, tmp_path / "build", "apollo510_evb")
 
@@ -348,7 +358,9 @@ def test_cmake_configure_clears_probe_and_missing_jlink_cache(
     captured: dict[str, list[str]] = {}
     monkeypatch.delenv("JLINK_PATH", raising=False)
     monkeypatch.setattr(project_config, "find_segger_tool", lambda _names: None)
-    monkeypatch.setattr(project_config, "run", lambda cmd: captured.setdefault("cmd", cmd))
+    monkeypatch.setattr(
+        project_config, "run_cmake", lambda cmd, **kw: captured.setdefault("cmd", cmd)
+    )
 
     project_config._run_cmake_configure(tmp_path, tmp_path / "build", "apollo510_evb")
 

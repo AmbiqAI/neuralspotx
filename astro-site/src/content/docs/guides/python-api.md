@@ -3,8 +3,7 @@ title: Python API guide
 description: Drive NSX from Python instead of the shell, handle its results and errors, and give an agent a machine-readable view of the CLI.
 ---
 
-Everything the CLI does is a thin wrapper over a Python API, and the package exports that
-API deliberately. Use it when you want a build matrix, a bring-up script, a test harness,
+The CLI and Python API share workflow operations. Use it when you want a build matrix, a bring-up script, a test harness,
 or NSX wired into a larger tool.
 
 Every public symbol and signature is in the generated
@@ -138,8 +137,8 @@ for installation and timing contracts.
 
 ## Errors
 
-Everything NSX raises derives from `NSXError`, so one `except` clause is enough to catch
-any NSX failure and let real bugs through:
+Catch `NSXError` to handle a configure or build tool failure in a Python workflow.
+For example, a build matrix can record the failed board and continue:
 
 ```python
 from neuralspotx import NSXError, build_app
@@ -149,6 +148,13 @@ try:
 except NSXError as exc:
     print(f"build failed: {exc}")
 ```
+
+When the main CMake configure or build command exits unsuccessfully,
+`configure_app` and `build_app` raise `NSXToolchainError`. Its message includes the command, exit code
+and trailing tool output. The chained `subprocess.CalledProcessError` exposes the
+argument list (`cmd`) and exit status (`returncode`). A subprocess that exceeds
+`timeout_s` raises `NSXTimeoutError`. A failure while preparing the optional debug context raises `NSXConfigError`.
+Exceptions from your `emit` or build `on_line` callback propagate to your code.
 
 Catch a narrower type when you intend to handle a specific case. The ten exported types
 are `NSXCacheError`, `NSXConfigError`, `NSXGitError`, `NSXIntegrityError`, `NSXLockError`,
@@ -171,8 +177,8 @@ build_app(app_dir, emit=default_emitter)
 ```
 
 `build_app` and `flash_app` additionally take `on_line`, called once per line of compiler
-output, which is what you want for streaming a build into a test report rather than
-buffering it.
+output. The callback runs on the calling thread. Return promptly or queue slow report
+processing so the next line can be delivered.
 
 ## Beyond the five commands
 
@@ -236,6 +242,5 @@ Several module commands take `--json` too, including `nsx module list`,
 also published as data at
 [`/neuralspotx/modules/catalog.json`](/neuralspotx/modules/catalog.json).
 
-For anything beyond inspection, import the API rather than shelling out. You get typed
-results and typed exceptions instead of exit codes and text, and `find_app_root` and
-`resolve_app_dir` give you the same app resolution the CLI uses.
+For programmatic workflows, import the API. Use `find_app_root` and `resolve_app_dir`
+for the same app resolution the CLI uses.
