@@ -79,6 +79,12 @@ def _require(mapping: dict, key: str, *, where: Path) -> object:
     return mapping[key]
 
 
+def _text(value: object, field: str, *, where: Path) -> str:
+    if not isinstance(value, str) or not value.strip():
+        raise BoardDescriptorError(f"{where}: {field} must be a nonempty string")
+    return value
+
+
 def _apply_list_overrides(base: list[str], delta: object, *, where: Path) -> list[str]:
     """Apply a list override using ``+item`` / ``-item`` delta syntax.
 
@@ -124,19 +130,21 @@ def _merge_inherited(
     (currently ``toolchains``).
     """
 
-    board = raw.get("board") or {}
+    board = raw.get("board", {})
     if not isinstance(board, dict):
         raise BoardDescriptorError(f"{where}: 'board' must be a mapping")
     merged: dict = {
         "schema_version": raw.get("schema_version", SCHEMA_VERSION),
         "sdk_provider": raw.get("sdk_provider", parent.sdk_provider),
         "roles": raw.get("roles"),
-        "cpu": raw.get("cpu")
-        or {
-            "core": parent.cpu.core,
-            "float_abi": parent.cpu.float_abi,
-            "abi": parent.cpu.abi,
-        },
+        "cpu": raw.get(
+            "cpu",
+            {
+                "core": parent.cpu.core,
+                "float_abi": parent.cpu.float_abi,
+                "abi": parent.cpu.abi,
+            },
+        ),
         "board": {
             "name": board.get("name"),
             "revision": board.get("revision"),
@@ -147,7 +155,7 @@ def _merge_inherited(
     }
 
     toolchains = list(parent.toolchains)
-    overrides = raw.get("overrides") or {}
+    overrides = raw.get("overrides", {})
     if not isinstance(overrides, dict):
         raise BoardDescriptorError(f"{where}: 'overrides' must be a mapping")
     if "toolchains" in overrides:
@@ -169,7 +177,7 @@ def _build_descriptor(raw: dict, *, path: Path) -> BoardDescriptor:
     if not isinstance(cpu, dict):
         raise BoardDescriptorError(f"{path}: 'cpu' must be a mapping")
 
-    toolchains = raw.get("toolchains") or []
+    toolchains = raw.get("toolchains", [])
     if not isinstance(toolchains, list) or not all(isinstance(t, str) for t in toolchains):
         raise BoardDescriptorError(f"{path}: 'toolchains' must be a list of strings")
 
@@ -180,25 +188,28 @@ def _build_descriptor(raw: dict, *, path: Path) -> BoardDescriptor:
         )
     try:
         binding = BspBinding.parse(roles["bsp"], f"{path}: roles.bsp")
-        identifier(board.get("name"), f"{path}: board.name")
+        name = identifier(board.get("name"), f"{path}: board.name")
     except ValueError as exc:
         raise BoardDescriptorError(str(exc)) from exc
     revision = board.get("revision")
     if revision is not None and (not isinstance(revision, str) or not revision.strip()):
         raise BoardDescriptorError(f"{path}: board.revision must be a nonempty string")
+    registered = board.get("registered", True)
+    if not isinstance(registered, bool):
+        raise BoardDescriptorError(f"{path}: board.registered must be a boolean (true or false)")
     return BoardDescriptor(
         bsp=binding,
         revision=revision,
         descriptor_inputs=(path,),
-        name=str(_require(board, "name", where=path)),
-        tier=str(board.get("tier", "evb")),
-        soc=str(_require(board, "soc", where=path)),
-        sdk_provider=str(_require(raw, "sdk_provider", where=path)),
-        registered=bool(board.get("registered", True)),
+        name=name,
+        tier=_text(board.get("tier", "evb"), "board.tier", where=path),
+        soc=_text(board.get("soc"), "board.soc", where=path),
+        sdk_provider=_text(raw.get("sdk_provider"), "sdk_provider", where=path),
+        registered=registered,
         cpu=BoardCpu(
-            core=str(_require(cpu, "core", where=path)),
-            float_abi=str(_require(cpu, "float_abi", where=path)),
-            abi=str(_require(cpu, "abi", where=path)),
+            core=_text(cpu.get("core"), "cpu.core", where=path),
+            float_abi=_text(cpu.get("float_abi"), "cpu.float_abi", where=path),
+            abi=_text(cpu.get("abi"), "cpu.abi", where=path),
         ),
         toolchains=tuple(toolchains),
         path=path.parent,
@@ -229,8 +240,12 @@ def _parse_descriptor(
 
     inherits = raw.get("inherits")
     if inherits is not None:
+        try:
+            inherits = identifier(inherits, f"{path}: inherits")
+        except ValueError as exc:
+            raise BoardDescriptorError(str(exc)) from exc
         lookup = parent_lookup if parent_lookup is not None else load_board_descriptors()
-        parent = parent_resolver(str(inherits)) if parent_resolver else lookup.get(str(inherits))
+        parent = parent_resolver(inherits) if parent_resolver else lookup.get(inherits)
         if parent is None:
             raise BoardDescriptorError(
                 f"{path}: inherits unknown board '{inherits}' (known: {sorted(lookup)})"

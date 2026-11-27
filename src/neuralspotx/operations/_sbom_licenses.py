@@ -6,6 +6,7 @@ from pathlib import Path
 import yaml
 
 from .._errors import NSXConfigError
+from ..metadata import matches_schema_version
 from ..models._module_license import parse_module_licenses
 from ..nsx_lock import NSX_TOOLING_AUTOGEN_FILES, LockKind, NsxLock, hash_tree
 
@@ -43,7 +44,7 @@ def locked_module_licenses(app_dir: Path, lock: NsxLock) -> dict[str, dict[str, 
                 continue
             if (
                 not isinstance(data, dict)
-                or data.get("schema_version") != 1
+                or not matches_schema_version(data.get("schema_version"), 1)
                 or "licenses" not in data
             ):
                 continue

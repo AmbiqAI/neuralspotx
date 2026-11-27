@@ -16,6 +16,6 @@ build:
     package: nsx_board_{{ name }}
     targets: ["nsx::board_{{ name }}"]
 compatibility:
-  boards: [{{ name }}]
-  socs: [{{ soc }}]
-  toolchains: {{ toolchains }}
+  boards: [{{ name | tojson }}]
+  socs: [{{ soc | tojson }}]
+  toolchains: {{ toolchains | tojson }}

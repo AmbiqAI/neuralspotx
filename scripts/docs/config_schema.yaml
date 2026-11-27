@@ -251,17 +251,17 @@ schemas:
       Kept. Unrecognized keys are ignored by the parser.
     fields:
       - {path: schema_version, type: int, required: true, values: "2", description: "Board descriptor schema version."}
-      - {path: board.name, model_field: name, type: string, required: true, required_when: "inherits is not set", description: "Board name as used by --board and by targets.supported."}
+      - {path: board.name, model_field: name, type: string, required: true, description: "Board name as used by --board and by targets.supported."}
       - {path: board.revision, model_field: revision, type: string, required: false, description: "Optional hardware revision identity."}
       - {path: roles.bsp.module, model_field: bsp.module, type: string, required: true, description: "Explicit BSP provider module; never inherited."}
       - {path: roles.bsp.contract, model_field: bsp.contract, type: int, required: true, values: "1, 2", description: "Selected contract. Version 1 is reserved for nsx-ambiq-bsp."}
       - {path: board.soc, model_field: soc, type: string, required: true, required_when: "inherits is not set", description: "SoC this board carries."}
       - {path: board.tier, model_field: tier, type: string, required: false, default: evb, description: "Board tier. Custom boards created from an EVB baseline record their own tier."}
-      - {path: board.registered, model_field: registered, type: bool, required: false, default: "true", description: "Whether the board appears in nsx board list."}
+      - {path: board.registered, model_field: registered, type: bool, required: false, default: "true", description: "Include the board in the registered catalog. Defaults to false on inherited boards. Use a YAML boolean."}
       - {path: sdk_provider, model_field: sdk_provider, type: string, required: true, required_when: "inherits is not set", description: "SDK provider module the board builds against."}
-      - {path: cpu.core, model_field: cpu.core, type: string, required: true, description: "Arm core name, for example cortex-m55."}
-      - {path: cpu.float_abi, model_field: cpu.float_abi, type: string, required: true, description: "Floating-point ABI passed to the toolchain."}
-      - {path: cpu.abi, model_field: cpu.abi, type: string, required: true, description: "Full ABI triple used to select toolchain flags."}
+      - {path: cpu.core, model_field: cpu.core, type: string, required: true, required_when: "the cpu block is not inherited", description: "Arm core name, for example cortex-m55."}
+      - {path: cpu.float_abi, model_field: cpu.float_abi, type: string, required: true, required_when: "the cpu block is not inherited", description: "Floating-point ABI passed to the toolchain."}
+      - {path: cpu.abi, model_field: cpu.abi, type: string, required: true, required_when: "the cpu block is not inherited", description: "Full ABI triple used to select toolchain flags."}
       - {path: toolchains, model_field: toolchains, type: list of string, required: false, description: "Toolchains the board supports."}
       - {path: inherits, type: string, required: false, description: "Board this descriptor inherits from. Only custom boards set it."}
       - {path: overrides.toolchains, type: list of string, required: false, description: "Delta applied to the inherited toolchain list, using +name to add and -name to remove. Only valid with inherits."}

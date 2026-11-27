@@ -57,6 +57,19 @@ def _expect_type(container: dict[str, Any], key: str, expected: type, ctx: str) 
     return value
 
 
+def matches_schema_version(value: object, expected: int) -> bool:
+    """Match an authored YAML integer without accepting equal booleans or floats."""
+    return type(value) is int and value == expected
+
+
+def _check_schema_version(data: dict[str, Any], expected: int, source: str) -> None:
+    version = data.get("schema_version")
+    if not matches_schema_version(version, expected):
+        raise ValueError(
+            f"{source}: unsupported schema_version={version!r}, expected integer {expected}"
+        )
+
+
 def _expect_optional_str(container: dict[str, Any], key: str, ctx: str) -> None:
     if key in container and not isinstance(container[key], str):
         raise ValueError(f"{ctx}: key '{key}' must be string when provided")
@@ -173,9 +186,7 @@ def _derive_starter_profiles(data: dict[str, Any]) -> dict[str, Any]:
 
 def load_registry_lock(path: Path) -> dict[str, Any]:
     data = load_yaml(path)
-    schema_version = _expect_type(data, "schema_version", int, "registry.lock")
-    if schema_version != 1:
-        raise ValueError(f"registry.lock: unsupported schema_version={schema_version}, expected 1")
+    _check_schema_version(data, 1, str(path))
     _expect_type(data, "channels", dict, "registry.lock")
     _expect_type(data, "projects", dict, "registry.lock")
     _expect_type(data, "modules", dict, "registry.lock")
@@ -189,9 +200,7 @@ def load_registry_lock(path: Path) -> dict[str, Any]:
 
 
 def validate_nsx_module_metadata(data: dict[str, Any], module_path: str) -> None:
-    schema_version = _expect_type(data, "schema_version", int, module_path)
-    if schema_version != 1:
-        raise ValueError(f"{module_path}: unsupported schema_version={schema_version}, expected 1")
+    _check_schema_version(data, 1, module_path)
 
     module = _expect_type(data, "module", dict, module_path)
     module_name = _expect_type(module, "name", str, f"{module_path}.module")

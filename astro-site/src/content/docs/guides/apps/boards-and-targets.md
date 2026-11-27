@@ -13,7 +13,7 @@ Each packaged board is a directory under the NSX package holding a `board.yaml` 
 plus the CMake fragments that implement it. The descriptor for `apollo510_evb` is:
 
 ```yaml
-schema_version: 1
+schema_version: 2
 board:
   name: apollo510_evb
   tier: evb
@@ -28,7 +28,15 @@ toolchains:
   - arm-none-eabi-gcc
   - armclang
   - atfe
+roles:
+  bsp:
+    module: nsx-ambiq-bsp
+    contract: 1
 ```
+
+Use an integer for `schema_version` and a YAML boolean such as `false` for
+`board.registered`. SoC, SDK provider and CPU facts take nonempty strings.
+A custom board can omit `cpu` to inherit all three CPU facts from its parent.
 
 `toolchains` is the set the board declares it can be built with. `tier` distinguishes an
 evaluation board from an FPGA platform. Every field is documented on the generated
