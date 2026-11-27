@@ -92,6 +92,7 @@ def _contained(child: _Child) -> Iterator[_Child]:
                     child.proc.stdin.close()
         finally:
             child.release()
+            child.proc = None  # Retained tool errors must not own a Windows process handle.
 
 
 def _wait_for_build(
@@ -184,7 +185,7 @@ def run_cmake(
         text_console = on_line is not None and not mirror and sys.stdout is not None
         encoding = sys.stdout.encoding if text_console else ""
         errors = (sys.stdout.errors or "strict") if text_console else ""
-        relay = _start_child(
+        _start_child(
             console,
             [
                 sys.executable,
@@ -201,7 +202,6 @@ def run_cmake(
             stderr=subprocess.DEVNULL if sys.stderr is None else None,
             start_new_session=(os.name != "nt"),
         )
-        assert relay.stdin is not None
         _start_child(
             tool,
             cmd,

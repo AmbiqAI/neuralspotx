@@ -38,10 +38,24 @@ sys.exit(1)
             proc.kill()
 
 
-@pytest.mark.skipif(not Path("/proc/self/fd").is_dir(), reason="Linux FD accounting")
 def test_retained_failures_release_files():
-    def count():
-        return len(os.listdir("/proc/self/fd"))
+    if os.name == "nt":
+        import ctypes
+
+        def count():
+            value = ctypes.c_ulong()
+            kernel = ctypes.windll.kernel32
+            if not kernel.GetProcessHandleCount(ctypes.c_void_p(-1), ctypes.byref(value)):
+                raise ctypes.WinError()
+            return value.value
+
+    elif Path("/proc/self/fd").is_dir():
+
+        def count():
+            return len(os.listdir("/proc/self/fd"))
+
+    else:
+        pytest.skip("requires Windows handle or Linux file descriptor accounting")
 
     baseline = count()
     failures = []
