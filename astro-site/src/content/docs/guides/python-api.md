@@ -177,8 +177,8 @@ build_app(app_dir, emit=default_emitter)
 ```
 
 `build_app` and `flash_app` additionally take `on_line`, called once per line of compiler
-output, which is what you want for streaming a build into a test report rather than
-buffering it.
+output. The callback runs on the calling thread. Return promptly or queue slow report
+processing so the next line can be delivered.
 
 ## Beyond the five commands
 

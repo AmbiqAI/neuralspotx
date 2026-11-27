@@ -103,3 +103,24 @@ def test_callback_mirrors_to_redirected_python_stream():
         run_cmake([sys.executable, "-c", "print('hello')"], context="CMake", on_line=lines.append)
     assert lines == ["hello"]
     assert capture.getvalue().splitlines() == ["hello"]
+
+
+def test_slow_callback_preserves_completed_tool_failure():
+    import time
+
+    lines = []
+
+    def receive(line):
+        if not lines:
+            time.sleep(0.8)
+        lines.append(line)
+
+    with pytest.raises(NSXToolchainError) as error, timeout_budget(0.5):
+        run_cmake(
+            [sys.executable, "-c", "print('a'*65536); print('diagnostic'); raise SystemExit(17)"],
+            context="CMake",
+            on_line=receive,
+        )
+    assert isinstance(error.value.__cause__, subprocess.CalledProcessError)
+    assert error.value.__cause__.returncode == 17
+    assert lines[-1] == "diagnostic"
