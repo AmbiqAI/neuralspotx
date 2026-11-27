@@ -67,6 +67,9 @@ def app(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         )
 
     monkeypatch.setattr(_build, "run_capture", execute)
+    from neuralspotx.operations import _jlink_flash
+
+    monkeypatch.setattr(_jlink_flash, "run_capture", execute)
     monkeypatch.setattr(_hardware, "run_capture", execute)
 
     def viewer(output, board, name, view_cmd, reset_cmd, **kwargs):
@@ -631,3 +634,20 @@ def test_swo_reset_uses_the_builds_local_board_snapshot(app, monkeypatch):
     assert calls[-1]["recipe"] is not None
     api.view_app(root, reset_on_open=False)
     assert calls[-1]["recipe"] is None
+
+
+def test_swo_only_backend_can_attach_without_reset(app, monkeypatch):
+    from dataclasses import replace
+
+    from neuralspotx.operations import _debug_backend as backend
+
+    root, _, calls = app
+    tools = replace(backend.for_board(root, "apollo510_evb"), reset=None)
+    monkeypatch.setattr(backend, "for_board", lambda *args: tools)
+    with pytest.raises(NSXConfigError, match="Reset on SWO open unavailable"):
+        api.view_app(root, reset_on_open=True)
+    with pytest.raises(NSXConfigError, match="Reset on SWO open unavailable"):
+        api.view_app(root)  # AP510 defaults to resetting after viewer startup.
+    assert not any("serial" in call for call in calls)
+    api.view_app(root, reset_on_open=False)
+    assert calls[-1] == {"serial": "1234", "recipe": None}

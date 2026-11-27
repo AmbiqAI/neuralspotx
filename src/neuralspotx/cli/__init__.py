@@ -30,7 +30,7 @@ from pathlib import Path
 from .. import api, operations
 from .._errors import NSXConfigError, NSXError, NSXToolchainError
 from .._logging import configure_logging
-from .._probe_selection import validate_probe_request
+from .._probe_selection import ProbeRequest
 from ..constants import DEFAULT_BOARD
 from ..metadata import SUPPORTED_MODULE_TYPES
 from ..models import CommandCategory, CommandHint, CommandScope, OutdatedReport
@@ -280,9 +280,6 @@ def cmd_build(args: argparse.Namespace) -> None:
 
 @command_hint("flash", _C.DEPLOY, _S.APP, "nsx view")
 def cmd_flash(args: argparse.Namespace) -> None:
-    validate_probe_request(
-        getattr(args, "probe_serial", None), getattr(args, "discover_probe", False)
-    )
     if getattr(args, "target", None) is not None:
         operations._hardware.validate_flash_target_name(args.target)
     if getattr(args, "update", False) and getattr(args, "frozen", False):
@@ -299,6 +296,9 @@ def cmd_flash(args: argparse.Namespace) -> None:
                 if getattr(args, "sdk_root", None)
                 else None,
                 target=getattr(args, "target", None),
+                probe=ProbeRequest(
+                    getattr(args, "probe_serial", None), getattr(args, "discover_probe", False)
+                ),
             )
         api.update_app(app_dir, timeout_s=getattr(args, "timeout", None))
     quiet_emit = (lambda _event: None) if getattr(args, "quiet", False) else None

@@ -28,6 +28,17 @@ reset primary is a different target. Register that executable for SWO use.
 With `--device`, reset ignores app selectors. `probes` lists the attached J-Link
 inventory without selecting a target.
 
+| Operation | Target input | Host tool and transport |
+| --- | --- | --- |
+| Flash | Built binary and board load address | J-Link Commander over SWD |
+| App reset | Configured primary target and verified connection settings | J-Link Commander over SWD |
+| SWO view | CPU and trace clocks, SWO wiring, firmware emitting ITM data | SEGGER SWO Viewer over the SWO trace pin; reset-on-open also uses Commander over SWD |
+| RTT capture | Matched ELF with the RTT control block, running firmware | pylink and the J-Link library reading target RAM over SWD |
+
+A build-only board can configure and link firmware. Each physical operation also
+requires support from its configured target and execution tool. Arm FVP targets
+use `nsx run`. The physical implementation shipped with NSX uses a local USB J-Link.
+
 ## Configure
 
 `nsx configure` resolves the module graph, writes `nsx.lock` if there is not one, syncs
@@ -206,7 +217,8 @@ Using attach-only SWO view for this secure-reset SoC; flash first or pass --rese
 This set is defined in the NSX source, not inferred from the SoC family name, so it does
 not line up neatly with "all Apollo4" or "all secure parts". Override it either way with
 `--reset-on-open` or `--no-reset-on-open`. `--reset-delay-ms` controls how long NSX waits
-after the reset before reading, and defaults to 400.
+between launching the viewer and issuing the optional reset. The default is 400 ms.
+Attach-only mode skips that delay.
 
 ### Capturing instead of watching
 
