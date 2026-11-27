@@ -8,7 +8,7 @@ from pathlib import Path
 import pytest
 
 from neuralspotx import NSXTimeoutError, NSXToolchainError
-from neuralspotx.subprocess_utils import timeout_budget
+from neuralspotx.subprocess_utils import _cmake, timeout_budget
 from neuralspotx.subprocess_utils._cmake import run_cmake
 
 
@@ -39,24 +39,25 @@ sys.exit(1)
 
 
 @pytest.mark.parametrize("mode", ["nonzero", "timeout", "callback"])
-def test_retained_failures_release_files(mode):
-    if os.name == "nt":
-        import ctypes
+def test_retained_failures_release_files(mode, monkeypatch):
+    logs = []
+    process_handles = []
+    open_shared = _cmake._open_shared
+    start_child = _cmake._start_child
 
-        def count():
-            value = ctypes.c_ulong()
-            kernel = ctypes.windll.kernel32
-            if not kernel.GetProcessHandleCount(ctypes.c_void_p(-1), ctypes.byref(value)):
-                raise ctypes.WinError()
-            return value.value
+    def record_log(path):
+        log = open_shared(path)
+        logs.append(log)
+        return log
 
-    elif Path("/proc/self/fd").is_dir():
+    def record_child(*args, **kwargs):
+        proc = start_child(*args, **kwargs)
+        if os.name == "nt":
+            process_handles.append(proc._handle)  # ty: ignore[unresolved-attribute]  # Real Win32 process handle.
+        return proc
 
-        def count():
-            return len(os.listdir("/proc/self/fd"))
-
-    else:
-        pytest.skip("requires Windows handle or Linux file descriptor accounting")
+    monkeypatch.setattr(_cmake, "_open_shared", record_log)
+    monkeypatch.setattr(_cmake, "_start_child", record_child)
 
     def reject_line(_):
         raise ValueError("callback failed")
@@ -67,7 +68,8 @@ def test_retained_failures_release_files(mode):
         else ("import time; print('ready', flush=True); time.sleep(15)")
     )
     expected = {"nonzero": NSXToolchainError, "timeout": NSXTimeoutError, "callback": ValueError}
-    baseline = count()
+    fd_dir = Path("/proc/self/fd")
+    baseline = len(os.listdir(fd_dir)) if fd_dir.is_dir() else None
     failures = []
     for _ in range(6):
         with (
@@ -80,7 +82,15 @@ def test_retained_failures_release_files(mode):
                 on_line=reject_line if mode == "callback" else None,
             )
         failures.append(error.value)
-    assert count() <= baseline + 1
+    assert len(logs) == (6 if mode == "callback" else 12)
+    assert all(log.closed and not Path(log.name).exists() for log in logs)
+    if os.name == "nt":
+        # A retained traceback also owns Python objects with synchronization handles.
+        # Check the native process handles belonging to the tool and relay directly.
+        assert len(process_handles) == 12
+        assert all(handle.closed for handle in process_handles)
+    if baseline is not None:
+        assert len(os.listdir(fd_dir)) <= baseline + 1
 
 
 def test_tool_finishes_when_detached_helper_inherits_output(tmp_path):
