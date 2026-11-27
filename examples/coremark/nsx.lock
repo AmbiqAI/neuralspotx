@@ -143,7 +143,7 @@ targets:
         resolved:
           tool_version: 1.0.1
           vendored_at: cmake/nsx
-          content_hash: sha256:30514448925eeb2d199782234fa9639506f39f210ecad32feb95fb45614c905a
+          content_hash: sha256:e4e0bb0fe48e6cfb5d37036a3551fa27167c40a3b26394fb48e6e6546759acd0
           acquired_at: '2026-11-22T17:43:46+00:00'
           manifest_path: nsx-module.yaml
       nsx-interrupt:
@@ -323,7 +323,7 @@ targets:
         resolved:
           tool_version: 1.0.1
           vendored_at: cmake/nsx
-          content_hash: sha256:30514448925eeb2d199782234fa9639506f39f210ecad32feb95fb45614c905a
+          content_hash: sha256:e4e0bb0fe48e6cfb5d37036a3551fa27167c40a3b26394fb48e6e6546759acd0
           acquired_at: '2026-11-22T17:43:53+00:00'
           manifest_path: nsx-module.yaml
       nsx-interrupt:
@@ -503,7 +503,7 @@ targets:
         resolved:
           tool_version: 1.0.1
           vendored_at: cmake/nsx
-          content_hash: sha256:30514448925eeb2d199782234fa9639506f39f210ecad32feb95fb45614c905a
+          content_hash: sha256:e4e0bb0fe48e6cfb5d37036a3551fa27167c40a3b26394fb48e6e6546759acd0
           acquired_at: '2026-11-22T17:43:59+00:00'
           manifest_path: nsx-module.yaml
       nsx-interrupt:
@@ -683,7 +683,7 @@ targets:
         resolved:
           tool_version: 1.0.1
           vendored_at: cmake/nsx
-          content_hash: sha256:30514448925eeb2d199782234fa9639506f39f210ecad32feb95fb45614c905a
+          content_hash: sha256:e4e0bb0fe48e6cfb5d37036a3551fa27167c40a3b26394fb48e6e6546759acd0
           acquired_at: '2026-11-22T17:44:06+00:00'
           manifest_path: nsx-module.yaml
       nsx-interrupt:
@@ -851,7 +851,7 @@ targets:
         resolved:
           tool_version: 1.0.1
           vendored_at: cmake/nsx
-          content_hash: sha256:30514448925eeb2d199782234fa9639506f39f210ecad32feb95fb45614c905a
+          content_hash: sha256:e4e0bb0fe48e6cfb5d37036a3551fa27167c40a3b26394fb48e6e6546759acd0
           acquired_at: '2026-11-22T17:44:12+00:00'
           manifest_path: nsx-module.yaml
       nsx-interrupt:

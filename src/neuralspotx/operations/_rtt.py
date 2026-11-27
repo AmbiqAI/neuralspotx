@@ -14,10 +14,11 @@ from elftools.elf.sections import SymbolTableSection
 from .._errors import NSXConfigError
 from .._probe_selection import ProbeSelection, validate_probe_request
 from ..models._rtt import RttResult, RttSettings
+from . import _debug_backend as backend
 from ._common import _resolve_build_context
 from ._console import warn_console_mismatch
 from ._debug_context import capture_debug_context, load_debug_context
-from ._debug_workflow import inspect_build, require_adoption, require_physical_debug
+from ._debug_workflow import inspect_build, require_adoption
 from ._hardware import validate_flash_target_name
 
 
@@ -69,12 +70,23 @@ def resolve_rtt_app_impl(
     discover_probe: bool = False,
 ) -> RttSettings:
     """Resolve the exact CMake target artifact and its RTT symbol offline."""
-    validate_probe_request(probe_serial, discover_probe)
+    probe = backend.ProbeRequest(probe_serial, discover_probe)
     app, name, selected, build = _resolve_build_context(app_dir, board=board, build_dir=build_dir)
     target = name if target is None else target
     validate_flash_target_name(target)
+    tools = backend.for_board(app, selected)
+    rtt = backend.require(tools.rtt, "RTT", selected, tools)
     warn_console_mismatch(app, selected, "rtt", target=target)
-    require_physical_debug(app, selected)
+    return rtt.resolve(
+        backend.DebugBuild(app, selected, build, target),
+        probe,
+    )
+
+
+def _resolve_jlink_rtt(context: backend.DebugBuild, probe: backend.ProbeRequest) -> RttSettings:
+    app, selected, build, target = context.app, context.board, context.build, context.target
+    probe_serial, discover_probe = probe.identity, probe.discover
+    validate_probe_request(probe_serial, discover_probe)
     require_adoption(inspect_build(app, build, selected))
     debug = load_debug_context(app, build, selected).target(target)
     if debug.rtt_unavailable:
@@ -107,13 +119,33 @@ def rtt_app_impl(
     on_data: Callable[[bytes], None] | None = None,
 ) -> RttResult:
     """Capture using the contained native worker; callbacks must return promptly."""
-    from .._rtt_capture import capture_rtt
-
     for name, value in (("duration_s", duration_s), ("startup_timeout_s", startup_timeout_s)):
         if not math.isfinite(value) or value <= 0:
             raise NSXConfigError(f"{name} must be positive and finite.")
+    tools = backend.for_board(settings.app_dir, settings.board)
+    rtt = backend.require(tools.rtt, "RTT", settings.board, tools)
+    return rtt.capture(
+        settings,
+        backend.ProbeRequest(probe_serial, discover_probe),
+        duration_s,
+        startup_timeout_s,
+        capture,
+        on_data,
+    )
+
+
+def _capture_jlink_rtt(
+    settings: RttSettings,
+    probe: backend.ProbeRequest,
+    duration_s: float,
+    startup_timeout_s: float,
+    capture: Path | None,
+    on_data: Callable[[bytes], None] | None,
+) -> RttResult:
+    from .._rtt_capture import capture_rtt
+
+    probe_serial, discover_probe = probe.identity, probe.discover
     validate_probe_request(probe_serial, discover_probe)
-    require_physical_debug(settings.app_dir, settings.board)
     require_adoption(inspect_build(settings.app_dir, settings.build_dir, settings.board))
     with capture_debug_context(
         settings.app_dir,

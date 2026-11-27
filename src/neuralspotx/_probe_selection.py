@@ -6,14 +6,28 @@ from . import tooling
 from ._errors import NSXConfigError
 
 
-def validate_probe_request(serial: str | None, discover: bool = False) -> None:
-    if type(discover) is not bool:
-        raise NSXConfigError("discover_probe must be a boolean.")
-    if serial is not None:
-        if not serial.isascii() or not serial.isdecimal() or int(serial) <= 0:
-            raise NSXConfigError("Probe serial must be a positive decimal USB serial number.")
-        if discover:
+@dataclass(frozen=True, slots=True)
+class ProbeRequest:
+    identity: str | None
+    discover: bool
+
+    def __post_init__(self) -> None:
+        if type(self.discover) is not bool:
+            raise NSXConfigError("discover_probe must be a boolean.")
+        if self.identity is not None and self.discover:
             raise NSXConfigError("Use either --probe-serial or --discover-probe, not both.")
+
+
+def validate_probe_request(serial: str | None, discover: bool = False) -> None:
+    """Validate a J-Link request before updating a build or enumerating USB."""
+    ProbeRequest(serial, discover)
+    if serial is not None and (
+        not isinstance(serial, str)
+        or not serial.isascii()
+        or not serial.isdecimal()
+        or int(serial) <= 0
+    ):
+        raise NSXConfigError("Probe serial must be a positive decimal USB serial number.")
 
 
 @dataclass(frozen=True, slots=True)

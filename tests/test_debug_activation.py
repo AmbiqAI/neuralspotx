@@ -43,6 +43,7 @@ def app(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
             output,
             f"-DNSX_BOARD={board}",
             f"-DNSX_JLINK_SERIAL={probe_serial or ''}",
+            f"-DNSX_AMBIQSUITE_ROOT_OVERRIDE={kwargs.get('sdk_root') or ''}",
         )
 
     monkeypatch.setattr(_build, "_run_cmake_configure", configure)
@@ -67,6 +68,9 @@ def app(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         )
 
     monkeypatch.setattr(_build, "run_capture", execute)
+    from neuralspotx.operations import _jlink_flash
+
+    monkeypatch.setattr(_jlink_flash, "run_capture", execute)
     monkeypatch.setattr(_hardware, "run_capture", execute)
 
     def viewer(output, board, name, view_cmd, reset_cmd, **kwargs):
@@ -631,3 +635,62 @@ def test_swo_reset_uses_the_builds_local_board_snapshot(app, monkeypatch):
     assert calls[-1]["recipe"] is not None
     api.view_app(root, reset_on_open=False)
     assert calls[-1]["recipe"] is None
+
+
+def test_swo_only_backend_can_attach_without_reset(app, monkeypatch):
+    from dataclasses import replace
+
+    from neuralspotx.operations import _debug_backend as backend
+
+    root, _, calls = app
+    tools = replace(backend.for_board(root, "apollo510_evb"), reset=None)
+    monkeypatch.setattr(backend, "for_board", lambda *args: tools)
+    with pytest.raises(NSXConfigError, match="Reset on SWO open unavailable"):
+        api.view_app(root, reset_on_open=True)
+    with pytest.raises(NSXConfigError, match="Reset on SWO open unavailable"):
+        api.view_app(root)  # AP510 defaults to resetting after viewer startup.
+    assert not any("serial" in call for call in calls)
+    api.view_app(root, reset_on_open=False)
+    assert calls[-1] == {"serial": "1234", "recipe": None}
+
+    def other_reset(*args):
+        pytest.fail("attempted to reset with a different provider")
+
+    tools = replace(tools, reset=other_reset)
+    with pytest.raises(NSXConfigError, match="same probe"):
+        api.view_app(root, reset_on_open=True)
+
+
+def test_fresh_target_checks_each_operation_before_update(app, monkeypatch):
+    from neuralspotx import cli
+
+    root, build, calls = app
+    with (root / "board.cmake").open("a", encoding="utf-8") as board:
+        board.write('set(NSX_SEGGER_CPUFREQ "")\n')
+    prepare(root, build)
+    monkeypatch.setattr(
+        api, "update_app", lambda *a, **k: pytest.fail("updated unsupported target")
+    )
+    monkeypatch.setattr(_build, "build_app_impl", lambda *a, **k: pytest.fail("started build"))
+    with pytest.raises(NSXConfigError, match="FLASH unavailable"):
+        api.flash_app(root)
+    assert cli.main(["flash", "--app-dir", str(root), "--update"]) == 1
+    assert not calls
+    assert api.reset_target(app_dir=root).probe_serial == "1234"
+
+
+@pytest.mark.parametrize("operation", ["flash", "swo"])
+def test_alternate_sdk_can_enable_a_previously_unavailable_operation(app, operation):
+    root, build, calls = app
+    alternate = root / "alternate-sdk"
+    alternate.mkdir()
+    with (root / "board.cmake").open("a", encoding="utf-8") as board:
+        board.write('if(NOT NSX_AMBIQSUITE_ROOT_OVERRIDE)\n  set(NSX_SEGGER_CPUFREQ "")\nendif()\n')
+    prepare(root, build)
+    if operation == "flash":
+        assert api.flash_app(root, sdk_root=alternate).programming_verified
+    else:
+        api.view_app(root, sdk_root=alternate, reset_on_open=False)
+    cached = _build._cmake_cache_value(build, "NSX_AMBIQSUITE_ROOT_OVERRIDE")
+    assert cached is not None and Path(cached) == alternate
+    assert calls[-1]["serial"] == "1234"

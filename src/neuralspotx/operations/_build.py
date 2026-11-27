@@ -29,15 +29,14 @@ from ..subprocess_utils import (
 from ..subprocess_utils._cmake import run_cmake
 from ..tooling import JLINK_SWO_NAMES, find_processes_holding_probe, find_segger_tool
 from . import _common
+from . import _debug_backend as backend
 from ._cmake_cache import _cmake_cache_value
 from ._common import _resolve_build_context
 from ._configured_toolchain import verify_configured_toolchain
-from ._debug_context import capture_debug_context, load_debug_context
+from ._debug_context import capture_debug_context
 from ._debug_workflow import inspect_build, prepare_debug, require_adoption, require_physical_debug
 from ._hardware import (
     _jlink_command,
-    flash_programming_verified,
-    validate_flash_paths,
     validate_flash_target_name,
 )
 from ._lock import warn_if_lock_stale
@@ -301,15 +300,25 @@ def preflight_flash(
     sdk_root: Path | None = None,
     toolchain: str | None = None,
     target: str | None = None,
-) -> tuple[Path, str, str, Path]:
+    probe: backend.ProbeRequest,
+    frozen: bool = False,
+) -> tuple[backend.DebugBuild, backend.FlashDriver]:
     """Validate ownership before flash, including a CLI-requested dependency update."""
-    _check_sdk_root(sdk_root, frozen=False)
+    _check_sdk_root(sdk_root, frozen=frozen)
     app, name, selected, build = _resolve_build_context(app_dir, board=board, build_dir=build_dir)
-    require_physical_debug(app, selected)
+    tools = backend.for_board(app, selected)
+    driver = backend.require(tools.flash, "Flash", selected, tools)
     resolved_target = name if target is None else target
     validate_flash_target_name(resolved_target)
-    require_adoption(inspect_build(app, build, selected, toolchain=toolchain))
-    return app, resolved_target, selected, build
+    driver.validate_probe(probe)
+    context = backend.DebugBuild(app, selected, build, resolved_target)
+    owned = inspect_build(app, build, selected, toolchain=toolchain)
+    driver.preflight(
+        context,
+        owned,
+        same_configuration=sdk_root is None or _sdk_root_cache_matches(build, sdk_root),
+    )
+    return context, driver
 
 
 def flash_app_impl(
@@ -327,117 +336,49 @@ def flash_app_impl(
     on_line: Callable[[str], None] | None = None,
 ) -> FlashResult:
     """Build and capture a target, then connect once without persisting overrides."""
-    validate_probe_request(probe_serial, discover_probe)
-    _check_sdk_root(sdk_root, frozen=frozen)
-    app, resolved_target, selected, build = preflight_flash(
+    probe = backend.ProbeRequest(probe_serial, discover_probe)
+    context, driver = preflight_flash(
         app_dir,
         toolchain=toolchain,
         board=board,
         build_dir=build_dir,
         target=target,
+        sdk_root=sdk_root,
+        frozen=frozen,
+        probe=probe,
     )
     try:
         build_app_impl(
-            app,
-            board=selected,
-            build_dir=build,
+            context.app,
+            board=context.board,
+            build_dir=context.build,
             toolchain=toolchain,
-            target=resolved_target,
+            target=context.target,
             jobs=jobs,
             sdk_root=sdk_root,
             frozen=frozen,
             _capture_output=True,
             on_line=on_line,
         )
-        prepare_debug(app, build, selected, required=True)
-        # Preparation configures again: compile against that final generation.
-        _build_target(
-            app,
-            build,
-            resolved_target,
-            jobs,
-            toolchain,
-            on_line=on_line,
-            capture_output=True,
-        )
+        if driver.prepare(context):
+            _build_target(
+                context.app,
+                context.build,
+                context.target,
+                jobs,
+                toolchain,
+                on_line=on_line,
+                capture_output=True,
+            )
     except subprocess.CalledProcessError as exc:
         raise NSXError(
             format_subprocess_error(
-                exc, context=f"Flash build for target '{resolved_target}' in {build}"
+                exc, context=f"Flash build for target '{context.target}' in {context.build}"
             )
         ) from None
-    verify_configured_toolchain(app, build, toolchain)
-    load_debug_context(app, build, selected)  # Regeneration here must fail before USB.
-    with capture_debug_context(
-        app, build, selected, operation="flash", target=resolved_target
-    ) as snap:
-        settings = snap.context.target(resolved_target)
-        artifact = snap.directory / "firmware.bin"
-        recipe = snap.directory / "flash_cmds.jlink"
-        validate_flash_paths(artifact, recipe, resolved_target)
-        serial = ProbeSelection.from_request(
-            probe_serial, discover_probe, settings.configured_serial
-        ).resolve()
-        assert settings.speed_khz is not None
-        cmd = _jlink_command(
-            device=settings.device,
-            interface="SWD",
-            speed_khz=settings.speed_khz,
-            probe_serial=serial,
-            command_file=recipe,
-        )
-        return _execute_flash(
-            cmd, resolved_target, settings.binary, settings.flash_recipe, serial, on_line
-        )
-
-
-def _execute_flash(
-    flash_cmd: list[str],
-    resolved_target: str,
-    artifact: Path,
-    recipe: Path,
-    probe_serial: str,
-    on_line: Callable[[str], None] | None,
-) -> FlashResult:
-    captured_lines: list[str] = []
-
-    def _capture_line(output_line: str) -> None:
-        captured_lines.append(output_line)
-        if on_line is not None:
-            on_line(output_line)
-
-    if _common.get_verbosity() > 0 or on_line is not None:
-        try:
-            run(flash_cmd, on_line=_capture_line)
-        except subprocess.CalledProcessError as exc:
-            raise NSXError(format_subprocess_error(exc, context="Flash")) from None
-        output = "\n".join(captured_lines)
-    else:
-        try:
-            result = run_capture(flash_cmd)
-        except subprocess.CalledProcessError as exc:
-            raise NSXError(format_subprocess_error(exc, context="Flash")) from None
-        if result.stdout:
-            line(result.stdout.rstrip())
-        if result.stderr:
-            info(result.stderr.rstrip())
-        output = (result.stdout or "") + "\n" + (result.stderr or "")
-
-    if not flash_programming_verified(output):
-        raise NSXError(
-            f"J-Link exited successfully for target '{resolved_target}' but printed no "
-            "recognized flash result: neither a 'Flash download: Total' summary nor a "
-            "'Skipped. Contents already match' notice. The device was most likely "
-            "programmed; this usually means the installed J-Link Commander words its "
-            "summary differently. Inspect the echoed J-Link output for what actually happened."
-        )
-    return FlashResult(
-        target=resolved_target,
-        artifact=artifact,
-        recipe=recipe,
-        probe_serial=probe_serial,
-        programming_verified=True,
-    )
+    verify_configured_toolchain(context.app, context.build, toolchain)
+    with driver.capture(context) as prepared:
+        return prepared.program(prepared.image, probe, on_line)
 
 
 def _stop_viewer(
@@ -528,16 +469,38 @@ def view_app_impl(
     capture: Path | None = None,
 ) -> Path:
     """Capture configured SWO inputs and retain one probe through viewer/reset cleanup."""
-    validate_probe_request(probe_serial, discover_probe)
+    probe = backend.ProbeRequest(probe_serial, discover_probe)
     if reset_delay_ms < 0 or (
         duration_s is not None and (not math.isfinite(duration_s) or duration_s <= 0)
     ):
         raise NSXConfigError("SWO delay must be nonnegative and duration positive and finite.")
     _check_sdk_root(sdk_root, frozen=frozen)
     app, name, selected, build = _resolve_build_context(app_dir, board=board, build_dir=build_dir)
-    require_physical_debug(app, selected)
+    tools = backend.for_board(app, selected)
+    view = backend.require(tools.swo, "SWO", selected, tools)
+    if reset_on_open is True:
+        backend.require(tools.reset, "Reset on SWO open", selected, tools)
+    return view(
+        backend.DebugBuild(app, selected, build, name),
+        probe,
+        backend.SwoOptions(
+            toolchain, sdk_root, frozen, reset_on_open, reset_delay_ms, duration_s, capture
+        ),
+    )
+
+
+def _jlink_view(
+    context: backend.DebugBuild, probe: backend.ProbeRequest, options: backend.SwoOptions
+) -> Path:
+    app, name, selected, build = context.app, context.target, context.board, context.build
+    toolchain, sdk_root, frozen = options.toolchain, options.sdk_root, options.frozen
+    probe_serial, discover_probe = probe.identity, probe.discover
+    validate_probe_request(probe_serial, discover_probe)
     owned = inspect_build(app, build, selected, toolchain=toolchain)
     require_adoption(owned)
+    same_configuration = _sdk_root_cache_matches(build, sdk_root)
+    if same_configuration and owned.context is not None:
+        owned.context.target(name).require("swo")
     from ._console import warn_console_mismatch
 
     warn_console_mismatch(app, selected, "swo")
@@ -547,7 +510,7 @@ def view_app_impl(
             _check_sdk_root(Path(cached_sdk), frozen=True)
         _ensure_app_modules(app, selected, frozen=True)
     regenerate_active_board_glue(app, selected, build_dir=build)
-    if not (build / "build.ninja").exists() or not _sdk_root_cache_matches(build, sdk_root):
+    if not (build / "build.ninja").exists() or not same_configuration:
         _ensure_app_modules(app, selected, frozen=frozen)
         _run_cmake_configure(
             app,
@@ -560,9 +523,23 @@ def view_app_impl(
     # Sync can restore a missing board overlay. Use the descriptor that is now
     # present for the build before choosing a probe or constructing a reset command.
     descriptor = require_physical_debug(app, selected)
+    reset_requested = _resolved_view_reset_on_open(
+        descriptor.soc if descriptor else None, options.reset_on_open
+    )
+    if reset_requested:
+        from ._reset import _jlink_reset
+
+        tools = backend.for_board(app, selected)
+        reset = backend.require(tools.reset, "Reset on SWO open", selected, tools)
+        if reset is not _jlink_reset:
+            raise NSXConfigError(
+                "J-Link SWO reset-on-open requires a J-Link reset on the same probe. Use --no-reset-on-open."
+            )
     prepare_debug(app, build, selected, required=True)
     verify_configured_toolchain(app, build, toolchain)
-    with capture_debug_context(app, build, selected, operation="swo", target=name) as snap:
+    with capture_debug_context(
+        app, build, selected, operation="swo", target=name, swo_reset=reset_requested
+    ) as snap:
         settings = snap.context.target(name)
         serial = ProbeSelection.from_request(
             probe_serial, discover_probe, settings.configured_serial
@@ -592,7 +569,7 @@ def view_app_impl(
                 probe_serial=serial,
                 command_file=snap.directory / "reset_cmds.jlink",
             )
-            if _resolved_view_reset_on_open(descriptor.soc if descriptor else None, reset_on_open)
+            if reset_requested
             else []
         )
         return _run_viewer(
@@ -602,9 +579,9 @@ def view_app_impl(
             view_cmd,
             reset_cmd,
             reset_on_open=bool(reset_cmd),
-            reset_delay_ms=reset_delay_ms,
-            duration_s=duration_s,
-            capture=capture,
+            reset_delay_ms=options.reset_delay_ms,
+            duration_s=options.duration_s,
+            capture=options.capture,
         )
 
 

@@ -63,7 +63,6 @@ def _stub_cmake_side_effects(monkeypatch: pytest.MonkeyPatch) -> None:
         _build_mod, "run_capture", lambda *a, **k: type("R", (), {"stdout": "", "stderr": ""})()
     )
     monkeypatch.setattr(_build_mod, "print_captured_output", lambda *a, **k: None)
-    monkeypatch.setattr(_build_mod, "flash_programming_verified", lambda _output: True)
     from neuralspotx.operations._debug_workflow import DebugState, OwnedBuild
 
     # This suite isolates frozen sync threading; real ownership/context is tested separately.

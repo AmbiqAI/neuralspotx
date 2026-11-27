@@ -423,3 +423,9 @@ snapshot lifetime. Keep dependency declarations explicit and document the
 stable-writer requirement; repeated hashes do not provide arbitrary concurrency
 safety. Never turn read-only inspection into implicit configure/build. Retain
 old cache/artifact exports and direct CMake targets through this pre-v1 transition.
+
+App-scoped physical operations select handlers through `operations._debug_backend`.
+Keep capability checks ahead of probe discovery. Flash drivers own snapshot and
+programming semantics, including probe identity validation and success evidence.
+The shipped J-Link driver consumes the existing v1 CMake handoff. Standalone
+explicit-device reset and the FVP runner have separate entry points.

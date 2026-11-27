@@ -11,7 +11,7 @@ import pytest
 import neuralspotx.cli as cli
 from neuralspotx import NSXConfigError, NSXError
 from neuralspotx._io import using_emitter
-from neuralspotx.operations import _build, _hardware
+from neuralspotx.operations import _hardware, _jlink_flash
 
 
 def _flash_build(tmp_path: Path, target: str) -> tuple[Path, Path]:
@@ -38,14 +38,14 @@ def test_captured_flash_output_can_be_quiet(
 ) -> None:
     build_dir, _ = _flash_build(tmp_path, "primary")
     monkeypatch.setattr(
-        _build,
+        _jlink_flash,
         "run_capture",
         lambda cmd, **_kwargs: subprocess.CompletedProcess(
             cmd, 0, stdout="Flash download: Total time needed: 0.2s\n", stderr=""
         ),
     )
     with using_emitter(lambda _event: None):
-        _build._execute_flash(
+        _jlink_flash._execute_flash(
             ["fake-commander"],
             "primary",
             build_dir / "primary.bin",
@@ -61,7 +61,7 @@ def test_reflashing_an_unchanged_image_succeeds(
 ) -> None:
     build_dir, _ = _flash_build(tmp_path, "primary")
     monkeypatch.setattr(
-        _build,
+        _jlink_flash,
         "run_capture",
         lambda cmd, **_kwargs: subprocess.CompletedProcess(
             cmd,
@@ -71,7 +71,7 @@ def test_reflashing_an_unchanged_image_succeeds(
         ),
     )
     assert (
-        _build._execute_flash(
+        _jlink_flash._execute_flash(
             ["fake-commander"],
             "primary",
             build_dir / "primary.bin",
@@ -90,7 +90,7 @@ def test_unrecognized_flash_output_still_raises(
 
     build_dir, _ = _flash_build(tmp_path, "primary")
     monkeypatch.setattr(
-        _build,
+        _jlink_flash,
         "run_capture",
         lambda cmd, **_kwargs: subprocess.CompletedProcess(
             cmd, 0, stdout="Connecting to J-Link via USB...O.K.\n", stderr=""
@@ -100,7 +100,7 @@ def test_unrecognized_flash_output_still_raises(
         using_emitter(lambda _event: None),
         pytest.raises(NSXError, match="no recognized flash result"),
     ):
-        _build._execute_flash(
+        _jlink_flash._execute_flash(
             ["fake-commander"],
             "primary",
             build_dir / "primary.bin",

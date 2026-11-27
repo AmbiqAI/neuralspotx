@@ -574,3 +574,5 @@ def test_capture_rejects_unsupported_swo_reset(
     with pytest.raises(NSXConfigError, match="unsupported captured"):
         with capture_debug_context(source, build, "fixture", operation="swo"):
             pytest.fail("must not return unsupported reset commands")
+    with capture_debug_context(source, build, "fixture", operation="swo", swo_reset=False) as snap:
+        assert not (snap.directory / "reset_cmds.jlink").exists()

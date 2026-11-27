@@ -220,7 +220,7 @@ Using attach-only SWO view for this secure-reset SoC; flash first or pass --rese
 ```
 
 Flash first, or pass `--reset-on-open`. On other SoCs `view` resets by default, and
-`--reset-delay-ms` controls how long it waits before reading.
+`--reset-delay-ms` sets the time between starting the viewer and issuing that reset.
 
 If the firmware never enabled SWO output, nothing will appear regardless. The generated
 app calls `nsx_itm_printf_enable()` before its first `nsx_printf()`; see

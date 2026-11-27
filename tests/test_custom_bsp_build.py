@@ -10,14 +10,25 @@ from pathlib import Path
 import pytest
 import yaml
 
-from neuralspotx._errors import NSXIntegrityError
-from neuralspotx.api import build_app, configure_app, create_app, create_board, lock_app, sync_app
+from neuralspotx import api, cli
+from neuralspotx._errors import NSXConfigError, NSXIntegrityError
+from neuralspotx.api import (
+    build_app,
+    configure_app,
+    create_app,
+    create_board,
+    flash_app,
+    lock_app,
+    sync_app,
+)
 
 
 @pytest.mark.parametrize(
     "parent,soc", [("apollo330mP_evb", "apollo330P"), ("apollo510_evb", "apollo510")]
 )
-def test_custom_bsp_app_links_without_evb(tmp_path: Path, parent: str, soc: str) -> None:
+def test_custom_bsp_app_links_without_evb(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, parent: str, soc: str
+) -> None:
     sdk = os.environ.get("NSX_TEST_CUSTOM_BSP_SDK")
     if not sdk:
         pytest.skip("Explicit SDK candidate required for cross-repository integration")
@@ -69,7 +80,12 @@ nsx_register_bsp(TARGET test_bsp CONTRACT 2 DEBUG_ITM 0 DEBUG_UART 0)
     (root / "nsx.yml").write_text(yaml.safe_dump(config), encoding="utf-8")
     cmake = root / "CMakeLists.txt"
     cmake.write_text(
-        cmake.read_text(encoding="utf-8")
+        cmake.read_text(encoding="utf-8").replace(
+            "include(${CMAKE_CURRENT_LIST_DIR}/cmake/nsx/nsx_debug_template.cmake)",
+            'set(NSX_DEBUG_CONTEXT ON CACHE BOOL "Prepare configured debug handoff")\n'
+            "set(NSX_DEBUG_INPUT_CONTRACT 1)\n"
+            "include(${CMAKE_CURRENT_LIST_DIR}/cmake/nsx/nsx_debug_template.cmake)",
+        )
         + "\ntarget_link_options(custom_probe PRIVATE LINKER:-u,nsx_system_init)\n",
         encoding="utf-8",
     )
@@ -90,6 +106,16 @@ nsx_register_bsp(TARGET test_bsp CONTRACT 2 DEBUG_ITM 0 DEBUG_UART 0)
     assert f"boards/{parent}/bsp" not in ninja
     guarded_outputs = [image, build / "CMakeCache.txt", build / "build.ninja"]
     before = {path: (path.read_bytes(), path.stat().st_mtime_ns) for path in guarded_outputs}
+    # The real custom board has no physical debug configuration. Its current
+    # configured target rejects flash (including update) before rebuilding.
+    monkeypatch.setattr(api, "update_app", lambda *a, **k: pytest.fail("updated build-only board"))
+
+    with pytest.raises(NSXConfigError, match="FLASH unavailable.*verified board debug settings"):
+        flash_app(root, frozen=True)
+    assert cli.main(["flash", "--app-dir", str(root), "--update"]) == 1
+    assert before == {
+        path: (path.read_bytes(), path.stat().st_mtime_ns) for path in guarded_outputs
+    }
     manifest = provider / "nsx-module.yaml"
     manifest.write_text(
         manifest.read_text(encoding="utf-8") + "\n# changed contract input\n", encoding="utf-8"

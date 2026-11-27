@@ -12,7 +12,12 @@ from ..board_plan import resolve_board_descriptor
 from ..subprocess_utils import format_subprocess_error, run_capture
 from ._cmake_cache import read_owned_cache
 from ._configured_toolchain import selected_toolchain, verify_configured_toolchain
-from ._debug_context._reader import StaleDebugContextError, _parse, load_debug_context
+from ._debug_context._reader import (
+    ConfiguredDebugContext,
+    StaleDebugContextError,
+    _parse,
+    load_debug_context,
+)
 
 
 class DebugState(Enum):
@@ -27,6 +32,7 @@ class DebugState(Enum):
 class OwnedBuild:
     state: DebugState
     preference: str | None = None
+    context: ConfiguredDebugContext | None = None
 
 
 _ADOPT = (
@@ -96,10 +102,10 @@ def inspect_build(
     if not context.exists():
         return OwnedBuild(DebugState.UNPREPARED, serial)
     try:
-        load_debug_context(app, build, cached_board)
+        configured = load_debug_context(app, build, cached_board)
     except StaleDebugContextError:
         return OwnedBuild(DebugState.STALE, serial)
-    return OwnedBuild(DebugState.VALID, serial)
+    return OwnedBuild(DebugState.VALID, serial, configured)
 
 
 def require_physical_debug(app: Path, board: str) -> BoardDescriptor | None:
