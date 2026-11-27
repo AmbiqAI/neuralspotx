@@ -32,7 +32,9 @@ class FixtureProgrammer:
         if probe.identity != "bench-A":
             raise NSXConfigError("Select the fixture with bench-A")
 
-    def preflight(self, target: backend.DebugBuild, owned: OwnedBuild) -> None:
+    def preflight(
+        self, target: backend.DebugBuild, owned: OwnedBuild, *, same_configuration: bool
+    ) -> None:
         pass  # The fixture needs no additional build configuration.
 
     def prepare(self, target: backend.DebugBuild) -> bool:

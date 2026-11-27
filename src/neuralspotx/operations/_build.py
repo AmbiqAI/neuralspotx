@@ -301,9 +301,10 @@ def preflight_flash(
     toolchain: str | None = None,
     target: str | None = None,
     probe: backend.ProbeRequest,
+    frozen: bool = False,
 ) -> tuple[backend.DebugBuild, backend.FlashDriver]:
     """Validate ownership before flash, including a CLI-requested dependency update."""
-    _check_sdk_root(sdk_root, frozen=False)
+    _check_sdk_root(sdk_root, frozen=frozen)
     app, name, selected, build = _resolve_build_context(app_dir, board=board, build_dir=build_dir)
     tools = backend.for_board(app, selected)
     driver = backend.require(tools.flash, "Flash", selected, tools)
@@ -311,7 +312,12 @@ def preflight_flash(
     validate_flash_target_name(resolved_target)
     driver.validate_probe(probe)
     context = backend.DebugBuild(app, selected, build, resolved_target)
-    driver.preflight(context, inspect_build(app, build, selected, toolchain=toolchain))
+    owned = inspect_build(app, build, selected, toolchain=toolchain)
+    driver.preflight(
+        context,
+        owned,
+        same_configuration=sdk_root is None or _sdk_root_cache_matches(build, sdk_root),
+    )
     return context, driver
 
 
@@ -331,13 +337,14 @@ def flash_app_impl(
 ) -> FlashResult:
     """Build and capture a target, then connect once without persisting overrides."""
     probe = backend.ProbeRequest(probe_serial, discover_probe)
-    _check_sdk_root(sdk_root, frozen=frozen)
     context, driver = preflight_flash(
         app_dir,
         toolchain=toolchain,
         board=board,
         build_dir=build_dir,
         target=target,
+        sdk_root=sdk_root,
+        frozen=frozen,
         probe=probe,
     )
     try:
@@ -491,7 +498,8 @@ def _jlink_view(
     validate_probe_request(probe_serial, discover_probe)
     owned = inspect_build(app, build, selected, toolchain=toolchain)
     require_adoption(owned)
-    if owned.context is not None:
+    same_configuration = _sdk_root_cache_matches(build, sdk_root)
+    if same_configuration and owned.context is not None:
         owned.context.target(name).require("swo")
     from ._console import warn_console_mismatch
 
@@ -502,7 +510,7 @@ def _jlink_view(
             _check_sdk_root(Path(cached_sdk), frozen=True)
         _ensure_app_modules(app, selected, frozen=True)
     regenerate_active_board_glue(app, selected, build_dir=build)
-    if not (build / "build.ninja").exists() or not _sdk_root_cache_matches(build, sdk_root):
+    if not (build / "build.ninja").exists() or not same_configuration:
         _ensure_app_modules(app, selected, frozen=frozen)
         _run_cmake_configure(
             app,

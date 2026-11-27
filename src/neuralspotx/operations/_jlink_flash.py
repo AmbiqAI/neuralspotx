@@ -23,12 +23,12 @@ class JLinkFlash:
     def validate_probe(self, probe: ProbeRequest) -> None:
         validate_probe_request(probe.identity, probe.discover)
 
-    def preflight(self, target: DebugBuild, owned: OwnedBuild) -> None:
+    def preflight(self, target: DebugBuild, owned: OwnedBuild, *, same_configuration: bool) -> None:
         try:
             require_adoption(owned)
         except NSXConfigError as exc:
             raise NSXConfigError(f"Flash unavailable for board '{target.board}'. {exc}") from exc
-        if owned.context is not None:
+        if same_configuration and owned.context is not None:
             owned.context.target(target.target).require("flash")
 
     def prepare(self, target: DebugBuild) -> bool:

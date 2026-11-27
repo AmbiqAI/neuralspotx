@@ -43,6 +43,7 @@ def app(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
             output,
             f"-DNSX_BOARD={board}",
             f"-DNSX_JLINK_SERIAL={probe_serial or ''}",
+            f"-DNSX_AMBIQSUITE_ROOT_OVERRIDE={kwargs.get('sdk_root') or ''}",
         )
 
     monkeypatch.setattr(_build, "_run_cmake_configure", configure)
@@ -676,3 +677,21 @@ def test_fresh_target_checks_each_operation_before_update(app, monkeypatch):
     assert cli.main(["flash", "--app-dir", str(root), "--update"]) == 1
     assert not calls
     assert api.reset_target(app_dir=root).probe_serial == "1234"
+
+
+@pytest.mark.parametrize("operation", ["flash", "swo"])
+def test_alternate_sdk_can_enable_a_previously_unavailable_operation(app, operation):
+    root, build, calls = app
+    alternate = root / "alternate-sdk"
+    alternate.mkdir()
+    with (root / "board.cmake").open("a", encoding="utf-8") as board:
+        board.write(
+            f'if(NOT NSX_AMBIQSUITE_ROOT_OVERRIDE STREQUAL "{alternate.as_posix()}")\n'
+            '  set(NSX_SEGGER_CPUFREQ "")\nendif()\n'
+        )
+    prepare(root, build)
+    if operation == "flash":
+        assert api.flash_app(root, sdk_root=alternate).programming_verified
+    else:
+        api.view_app(root, sdk_root=alternate, reset_on_open=False)
+    assert calls[-1]["serial"] == "1234"
