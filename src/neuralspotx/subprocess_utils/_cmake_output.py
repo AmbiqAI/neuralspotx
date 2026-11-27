@@ -86,7 +86,7 @@ def main() -> None:
 if __name__ == "__main__":
     try:
         main()
-    except OSError as exc:
+    except (OSError, UnicodeError, LookupError) as exc:
         with suppress(OSError):
             os.write(2, f"Could not forward CMake output: {exc}\n".encode("utf-8", "replace"))
         os._exit(1)  # The failed output stream cannot be flushed at shutdown.

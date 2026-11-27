@@ -255,3 +255,27 @@ def test_python_output_error_preserves_tool_result(status):
         assert "build output" in str(failure.value)
     else:
         assert isinstance(cause, OSError) and "console unavailable" in str(failure.value)
+
+
+def test_strict_console_encoding_preserves_tool_error_without_traceback(capfd):
+    import contextlib
+
+    reader, writer = os.pipe()
+    lines = []
+    with os.fdopen(reader, "rb"), os.fdopen(writer, "w", encoding="ascii") as sink:
+        with contextlib.redirect_stdout(sink), pytest.raises(NSXToolchainError) as error:
+            run_cmake(
+                [
+                    sys.executable,
+                    "-c",
+                    "import os; os.write(1, bytes([195,169,10])); raise SystemExit(37)",
+                ],
+                context="CMake",
+                on_line=lines.append,
+            )
+    assert isinstance(error.value.__cause__, subprocess.CalledProcessError)
+    assert error.value.__cause__.returncode == 37
+    assert lines == ["\u00e9"]
+    stderr = capfd.readouterr().err
+    assert "Could not forward CMake output" in stderr
+    assert "Traceback" not in stderr
