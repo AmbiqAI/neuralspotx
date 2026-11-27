@@ -685,13 +685,12 @@ def test_alternate_sdk_can_enable_a_previously_unavailable_operation(app, operat
     alternate = root / "alternate-sdk"
     alternate.mkdir()
     with (root / "board.cmake").open("a", encoding="utf-8") as board:
-        board.write(
-            f'if(NOT NSX_AMBIQSUITE_ROOT_OVERRIDE STREQUAL "{alternate.as_posix()}")\n'
-            '  set(NSX_SEGGER_CPUFREQ "")\nendif()\n'
-        )
+        board.write('if(NOT NSX_AMBIQSUITE_ROOT_OVERRIDE)\n  set(NSX_SEGGER_CPUFREQ "")\nendif()\n')
     prepare(root, build)
     if operation == "flash":
         assert api.flash_app(root, sdk_root=alternate).programming_verified
     else:
         api.view_app(root, sdk_root=alternate, reset_on_open=False)
+    cached = _build._cmake_cache_value(build, "NSX_AMBIQSUITE_ROOT_OVERRIDE")
+    assert cached is not None and Path(cached) == alternate
     assert calls[-1]["serial"] == "1234"
