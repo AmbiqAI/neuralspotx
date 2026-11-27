@@ -9,16 +9,15 @@ import sys
 import tempfile
 import threading
 import time
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
 from concurrent.futures import CancelledError, Future, ThreadPoolExecutor
-from contextlib import ExitStack
+from contextlib import ExitStack, contextmanager
 from pathlib import Path
 from typing import IO
 
 from .._errors import NSXToolchainError
 from ._cmake_output import _open_shared
 from ._runner import _Child, _split_emitted_lines, _start_child, _tail
-from ._signals import die_with_parent_preexec
 from ._verbosity import _effective_timeout
 
 _TAIL_BYTES = 16 * 1024
@@ -41,6 +40,8 @@ def _deliver_lines(
 
     def deliver(segments: list[tuple[str, str]]) -> None:
         for text, terminator in segments:
+            if completion.done():
+                completion.result()  # Stop dispatch immediately on a tool timeout.
             on_line(text)
             if mirror and sys.stdout is not None:
                 sys.stdout.write(text + terminator)
@@ -60,13 +61,24 @@ def _deliver_lines(
         time.sleep(0.02)
 
 
-def _execute(
+@contextmanager
+def _contained(child: _Child) -> Iterator[_Child]:
+    try:
+        yield child
+    except BaseException:
+        child.stop()
+        raise
+    finally:
+        if child.proc is not None and child.proc.stdin is not None:
+            child.proc.stdin.close()
+        child.release()
+
+
+def _wait_for_build(
     cmd: list[str],
-    out: IO[bytes],
-    err: IO[bytes] | None,
-    paths: list[str],
+    tool: _Child,
+    console: _Child,
     timeout: float | None,
-    mirror: bool,
     cancel: threading.Event | None = None,
 ) -> int:
     deadline = None if timeout is None else time.monotonic() + timeout
@@ -88,47 +100,27 @@ def _execute(
                 raise CancelledError()
         return proc.returncode
 
-    relay_child = _Child()
-    child = _Child()
+    proc, relay = tool.proc, console.proc
+    assert proc is not None and relay is not None and relay.stdin is not None
     try:
-        relay = _start_child(
-            relay_child,
-            [sys.executable, "-I", "-S", str(Path(__file__).with_name("_cmake_output.py")), *paths],
-            stdin=subprocess.PIPE,
-            stdout=subprocess.DEVNULL if mirror or sys.stdout is None else None,
-            stderr=subprocess.DEVNULL if sys.stderr is None else None,
-            start_new_session=(os.name != "nt"),
-            preexec_fn=die_with_parent_preexec(),
-        )
-        assert relay.stdin is not None
-        proc = _start_child(
-            child,
-            cmd,
-            stdout=out,
-            stderr=err if err is not None else subprocess.STDOUT,
-            start_new_session=(os.name != "nt"),
-        )
         status = wait(proc)
-        relay.stdin.close()
+        relay.stdin.write(b"D")
+        relay.stdin.flush()
         try:
             relay_status = wait(relay)
         except subprocess.TimeoutExpired:
             if not status:
                 raise
-            relay_child.stop()
+            console.stop()
             return status
         if relay_status and not status:
             raise NSXToolchainError(f"Could not forward CMake output (exit code {relay_status}).")
         return status
-    except BaseException:
-        relay_child.stop()
-        child.stop()
+    except subprocess.TimeoutExpired:
+        # The caller might still be in its callback when the deadline expires.
+        console.stop()
+        tool.stop()
         raise
-    finally:
-        if relay_child.proc is not None and relay_child.proc.stdin is not None:
-            relay_child.proc.stdin.close()
-        relay_child.release()
-        child.release()
 
 
 def run_cmake(
@@ -142,24 +134,38 @@ def run_cmake(
         out = stack.enter_context(tempfile.NamedTemporaryFile())
         err = None if on_line is not None else stack.enter_context(tempfile.NamedTemporaryFile())
         paths = [out.name] if err is None else [out.name, err.name]
+        mirror = on_line is not None and sys.stdout is not sys.__stdout__
+        console = stack.enter_context(_contained(_Child()))
+        tool = stack.enter_context(_contained(_Child()))
+        relay = _start_child(
+            console,
+            [sys.executable, "-I", "-S", str(Path(__file__).with_name("_cmake_output.py")), *paths],
+            stdin=subprocess.PIPE,
+            stdout=subprocess.DEVNULL if mirror or sys.stdout is None else None,
+            stderr=subprocess.DEVNULL if sys.stderr is None else None,
+            start_new_session=(os.name != "nt"),
+        )
+        assert relay.stdin is not None
+        _start_child(
+            tool,
+            cmd,
+            stdout=out,
+            stderr=err if err is not None else subprocess.STDOUT,
+            start_new_session=(os.name != "nt"),
+        )
         if on_line is None:
-            status = _execute(
-                cmd, out.file, err.file if err is not None else None, paths, timeout, False
-            )
+            status = _wait_for_build(cmd, tool, console, timeout)
         else:
             # Callbacks stay on the caller's thread. Tool and console deadlines
             # must still be enforced while an embedder is handling a line.
-            mirror = sys.stdout is not sys.__stdout__
             cancel = threading.Event()
             with _open_shared(out.name) as log, ThreadPoolExecutor(max_workers=1) as pool:
-                completion = pool.submit(
-                    _execute, cmd, out.file, None, paths, timeout, mirror, cancel
-                )
                 try:
+                    completion = pool.submit(_wait_for_build, cmd, tool, console, timeout, cancel)
                     _deliver_lines(completion, log, on_line, mirror)
+                    status = completion.result()
                 finally:
                     cancel.set()
-                status = completion.result()
         if status:
             output = _diagnostic(out.name)
             errors = _diagnostic(err.name) if err is not None else ""

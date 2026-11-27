@@ -124,3 +124,23 @@ def test_slow_callback_preserves_completed_tool_failure():
     assert isinstance(error.value.__cause__, subprocess.CalledProcessError)
     assert error.value.__cause__.returncode == 17
     assert lines[-1] == "diagnostic"
+
+
+def test_timeout_stops_dispatching_queued_lines():
+    import time
+
+    from neuralspotx import NSXTimeoutError
+
+    lines = []
+
+    def slow(line):
+        lines.append(line)
+        time.sleep(1.2)
+
+    with pytest.raises(NSXTimeoutError), timeout_budget(0.6):
+        run_cmake(
+            [sys.executable, "-c", "import time; print('a\\nb', flush=True); time.sleep(8)"],
+            context="CMake",
+            on_line=slow,
+        )
+    assert lines == ["a"]

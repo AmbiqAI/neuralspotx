@@ -20,8 +20,12 @@ def main() -> None:
     finished = threading.Event()
 
     def wait_for_parent() -> None:
-        sys.stdin.buffer.read()
-        finished.set()
+        if os.read(0, 1) == b"D":
+            finished.set()
+            os.read(0, 1)
+        # The parent keeps the control pipe open through the final drain.
+        # EOF also terminates a relay blocked writing to an abandoned console.
+        os._exit(0)
 
     threading.Thread(target=wait_for_parent, daemon=True).start()
     with ExitStack() as stack:
