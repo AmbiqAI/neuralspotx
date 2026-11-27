@@ -92,7 +92,10 @@ def _contained(child: _Child) -> Iterator[_Child]:
                     child.proc.stdin.close()
         finally:
             child.release()
-            child.proc = None  # Retained tool errors must not own a Windows process handle.
+            if os.name == "nt" and child.proc is not None and child.proc.returncode is not None:
+                # Timeout and callback tracebacks can keep a waited Popen alive.
+                child.proc._handle.Close()  # ty: ignore[unresolved-attribute]  # No public Win32 process handle close.
+            child.proc = None
 
 
 def _wait_for_build(

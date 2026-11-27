@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from neuralspotx import NSXToolchainError
+from neuralspotx import NSXTimeoutError, NSXToolchainError
 from neuralspotx.subprocess_utils import timeout_budget
 from neuralspotx.subprocess_utils._cmake import run_cmake
 
@@ -38,7 +38,8 @@ sys.exit(1)
             proc.kill()
 
 
-def test_retained_failures_release_files():
+@pytest.mark.parametrize("mode", ["nonzero", "timeout", "callback"])
+def test_retained_failures_release_files(mode):
     if os.name == "nt":
         import ctypes
 
@@ -57,11 +58,27 @@ def test_retained_failures_release_files():
     else:
         pytest.skip("requires Windows handle or Linux file descriptor accounting")
 
+    def reject_line(_):
+        raise ValueError("callback failed")
+
+    tool = (
+        "raise SystemExit(3)"
+        if mode == "nonzero"
+        else ("import time; print('ready', flush=True); time.sleep(15)")
+    )
+    expected = {"nonzero": NSXToolchainError, "timeout": NSXTimeoutError, "callback": ValueError}
     baseline = count()
     failures = []
     for _ in range(6):
-        with pytest.raises(NSXToolchainError) as error:
-            run_cmake([sys.executable, "-c", "raise SystemExit(3)"], context="CMake")
+        with (
+            pytest.raises(expected[mode]) as error,
+            timeout_budget(0.3 if mode == "timeout" else 5),
+        ):
+            run_cmake(
+                [sys.executable, "-c", tool],
+                context="CMake",
+                on_line=reject_line if mode == "callback" else None,
+            )
         failures.append(error.value)
     assert count() <= baseline + 1
 
