@@ -147,14 +147,21 @@ def test_timeout_stops_dispatching_queued_lines():
 
 
 @pytest.mark.skipif(not Path("/dev/full").exists(), reason="requires a failing output device")
-def test_relay_failure_keeps_tool_status_and_releases_processes():
+@pytest.mark.parametrize("redirect", [False, True])
+def test_relay_failure_keeps_tool_status_and_releases_processes(redirect):
     script = """
-import sys
+import contextlib, sys
 from neuralspotx import NSXToolchainError
 from neuralspotx.subprocess_utils._cmake import run_cmake
 from neuralspotx.subprocess_utils._runner import _LIVE
 try:
-    run_cmake([sys.executable, "-c", "import time; print('progress', flush=True); time.sleep(.5); raise SystemExit(17)"], context="CMake")
+    with contextlib.ExitStack() as stack:
+        callback = None
+        if sys.argv[1] == "True":
+            sink = stack.enter_context(open("/dev/full", "w"))
+            stack.enter_context(contextlib.redirect_stdout(sink))
+            callback = lambda line: None
+        run_cmake([sys.executable, "-c", "import time; print('progress', flush=True); time.sleep(.5); raise SystemExit(17)"], context="CMake", on_line=callback)
 except NSXToolchainError as exc:
     assert exc.__cause__.returncode == 17
     assert not _LIVE
@@ -163,7 +170,10 @@ else:
 """
     with open("/dev/full", "wb") as sink:
         result = subprocess.run(
-            [sys.executable, "-c", script], stdout=sink, stderr=subprocess.PIPE, timeout=8
+            [sys.executable, "-c", script, str(redirect)],
+            stdout=sink,
+            stderr=subprocess.PIPE,
+            timeout=8,
         )
     assert result.returncode == 0, result.stderr
     assert b"Traceback" not in result.stderr

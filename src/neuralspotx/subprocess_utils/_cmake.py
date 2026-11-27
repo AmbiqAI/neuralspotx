@@ -38,7 +38,7 @@ def _deliver_lines(
     on_line: Callable[[str], None],
     mirror: bool,
 ) -> None:
-    pending = b""
+    pending = bytearray()
 
     def deliver(segments: list[tuple[str, str]]) -> None:
         for text, terminator in segments:
@@ -53,11 +53,18 @@ def _deliver_lines(
         done = completion.done()
         end = os.fstat(log.fileno()).st_size
         while log.tell() < end:
+            if completion.done():
+                completion.result()
             chunk = log.read(min(65536, end - log.tell()))
-            segments, pending = _split_emitted_lines(pending + chunk, at_eof=False)
+            trailing_cr = pending.endswith(b"\r")
+            pending.extend(chunk)
+            if not trailing_cr and b"\n" not in chunk and b"\r" not in chunk:
+                continue
+            segments, rest = _split_emitted_lines(bytes(pending), at_eof=False)
+            pending = bytearray(rest)
             deliver(segments)
         if done:
-            segments, _ = _split_emitted_lines(pending, at_eof=True)
+            segments, _ = _split_emitted_lines(bytes(pending), at_eof=True)
             deliver(segments)
             return
         time.sleep(0.02)
@@ -143,7 +150,7 @@ def _console_stdout(streaming: bool) -> tuple[int | None, bool]:
     except (OSError, ValueError):
         pass  # In-memory and notebook streams receive text on the caller thread.
     else:
-        if stat.S_ISFIFO(mode) or stat.S_ISSOCK(mode):
+        if stat.S_ISFIFO(mode) or stat.S_ISSOCK(mode) or stat.S_ISCHR(mode):
             return fd, False
     return subprocess.DEVNULL, True
 
