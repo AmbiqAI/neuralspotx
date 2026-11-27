@@ -90,3 +90,14 @@ def test_cli_build_failure(app, capsys):
     assert "CMake build failed with exit code" in stderr
     assert "fixture build diagnostic" in stderr
     assert "Traceback" not in stderr
+
+
+def test_emitter_timeout_is_caller_owned(app):
+    error = subprocess.TimeoutExpired("reporter", 10)
+
+    def emit(_event):
+        raise error
+
+    with pytest.raises(subprocess.TimeoutExpired) as raised:
+        configure_app(app, emit=emit)
+    assert raised.value is error

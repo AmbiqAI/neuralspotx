@@ -22,7 +22,7 @@ from ._errors import NSXConfigError, NSXToolchainError
 from .constants import PACKAGED_PROJECT_NAME, normalize_board
 from .metadata import load_registry_lock
 from .models import AppConfig, ModuleRegistryOverride, NsxProject, ProjectEntry
-from .subprocess_utils import run
+from .subprocess_utils._cmake import run_cmake
 from .tooling import JLINK_NAMES, find_segger_tool
 
 _log = logging.getLogger(__name__)
@@ -1343,7 +1343,7 @@ def _run_cmake_configure(
     # a stale cached executable.
     cached_jlink = jlink_executable or "NSX_JLINK_EXE-NOTFOUND"
     cmd.append(f"-DNSX_JLINK_EXE:FILEPATH={cached_jlink}")
-    run(cmd, failure_context="CMake configure")
+    run_cmake(cmd, context="CMake configure")
     verify_configured_toolchain(app_dir, build_dir, requested)
 
 

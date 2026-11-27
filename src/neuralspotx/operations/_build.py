@@ -26,6 +26,7 @@ from ..subprocess_utils import (
     run,
     run_capture,
 )
+from ..subprocess_utils._cmake import run_cmake
 from ..tooling import JLINK_SWO_NAMES, find_processes_holding_probe, find_segger_tool
 from . import _common
 from ._cmake_cache import _cmake_cache_value
@@ -180,7 +181,7 @@ def _run_build(
 ) -> None:
     """Keep normal build streaming; route non-streaming flash output through emitters."""
     if not capture_output or on_line is not None:
-        run(command, on_line=on_line, failure_context="CMake build")
+        run_cmake(command, context="CMake build", on_line=on_line)
         return
     result = run_capture(command)
     if result.stdout:

@@ -149,12 +149,12 @@ except NSXError as exc:
     print(f"build failed: {exc}")
 ```
 
-When CMake configure or the Ninja build exits unsuccessfully, `configure_app` and
-`build_app` raise `NSXToolchainError`. Its message includes the command, exit code
+When the main CMake configure or build command exits unsuccessfully,
+`configure_app` and `build_app` raise `NSXToolchainError`. Its message includes the command, exit code
 and trailing tool output. The chained `subprocess.CalledProcessError` exposes the
 argument list (`cmd`) and exit status (`returncode`). A subprocess that exceeds
-`timeout_s` raises `NSXTimeoutError`. Exceptions from your build `on_line` callback
-propagate to your code.
+`timeout_s` raises `NSXTimeoutError`. A failure while preparing the optional debug context raises `NSXConfigError`.
+Exceptions from your `emit` or build `on_line` callback propagate to your code.
 
 Catch a narrower type when you intend to handle a specific case. The ten exported types
 are `NSXCacheError`, `NSXConfigError`, `NSXGitError`, `NSXIntegrityError`, `NSXLockError`,

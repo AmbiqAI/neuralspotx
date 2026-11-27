@@ -6,6 +6,7 @@ import contextlib
 import contextvars
 import subprocess
 from collections.abc import Callable, Iterator
+from typing import TypeVar
 
 from .._errors import NSXTimeoutError
 
@@ -47,36 +48,42 @@ def verbosity(level: int) -> Iterator[None]:
         _VERBOSITY.reset(token)
 
 
+_T = TypeVar("_T")
+
+
+class _CallerCallbacks:
+    """Recognize a caller's own timeout when it crosses the tool timeout boundary."""
+
+    def __init__(self) -> None:
+        self.timeout: subprocess.TimeoutExpired | None = None
+
+    def protect(self, callback: Callable[[_T], None] | None) -> Callable[[_T], None] | None:
+        if callback is None:
+            return None
+
+        def forward(value: _T) -> None:
+            try:
+                callback(value)
+            except subprocess.TimeoutExpired as exc:
+                self.timeout = exc
+                raise
+
+        return forward
+
+
 @contextlib.contextmanager
-def timeout_budget(
-    seconds: float | None, *, on_line: Callable[[str], None] | None = None
-) -> Iterator[Callable[[str], None] | None]:
-    """Set a default per-subprocess wall-clock timeout for this scope.
+def timeout_budget(seconds: float | None) -> Iterator[_CallerCallbacks]:
+    """Set the per-subprocess timeout and translate tool timeouts to NSXTimeoutError.
 
-    Calls to :func:`run` / :func:`run_capture` inside the ``with`` block
-    use *seconds* as their default timeout.  ``None`` clears any
-    inherited budget.
-
-    The yielded line callback forwards to *on_line* and preserves any
-    timeout raised by that callback. Subprocess timeouts are translated into :class:`NSXTimeoutError` so callers can rely on the
-    typed exception hierarchy.
+    Operations taking caller callbacks can protect them with the yielded scope
+    so that a callback's own TimeoutExpired propagates unchanged.
     """
-    callback_timeout: subprocess.TimeoutExpired | None = None
-
-    def forward(text: str) -> None:
-        nonlocal callback_timeout
-        assert on_line is not None
-        try:
-            on_line(text)
-        except subprocess.TimeoutExpired as exc:
-            callback_timeout = exc
-            raise
-
+    callbacks = _CallerCallbacks()
     token = _TIMEOUT.set(seconds)
     try:
-        yield forward if on_line is not None else None
+        yield callbacks
     except subprocess.TimeoutExpired as exc:
-        if exc is callback_timeout:
+        if exc is callbacks.timeout:
             raise
         cmd = exc.cmd
         cmd_str = " ".join(cmd) if isinstance(cmd, list) else str(cmd)

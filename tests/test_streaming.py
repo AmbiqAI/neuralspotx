@@ -56,6 +56,9 @@ def test_run_enforces_timeout_when_streaming_child_hangs_without_output() -> Non
     """A child that never produces newlines must still hit the timeout."""
     import subprocess
 
+    if sys.platform.startswith("win"):
+        pytest.skip("Windows pipe select() not supported by stdlib select.select")
+
     captured: list[str] = []
     with pytest.raises(subprocess.TimeoutExpired):
         run(
