@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 import sys
 import threading
-from contextlib import ExitStack
+from contextlib import ExitStack, suppress
 from typing import IO
 
 
@@ -54,4 +54,9 @@ def main() -> None:
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except OSError as exc:
+        with suppress(OSError):
+            os.write(2, f"Could not forward CMake output: {exc}\n".encode("utf-8", "replace"))
+        sys.exit(1)

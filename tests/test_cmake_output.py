@@ -144,3 +144,26 @@ def test_timeout_stops_dispatching_queued_lines():
             on_line=slow,
         )
     assert lines == ["a"]
+
+
+@pytest.mark.skipif(not Path("/dev/full").exists(), reason="requires a failing output device")
+def test_relay_failure_keeps_tool_status_and_releases_processes():
+    script = """
+import sys
+from neuralspotx import NSXToolchainError
+from neuralspotx.subprocess_utils._cmake import run_cmake
+from neuralspotx.subprocess_utils._runner import _LIVE
+try:
+    run_cmake([sys.executable, "-c", "import time; print('progress', flush=True); time.sleep(.5); raise SystemExit(17)"], context="CMake")
+except NSXToolchainError as exc:
+    assert exc.__cause__.returncode == 17
+    assert not _LIVE
+else:
+    raise AssertionError("expected tool failure")
+"""
+    with open("/dev/full", "wb") as sink:
+        result = subprocess.run(
+            [sys.executable, "-c", script], stdout=sink, stderr=subprocess.PIPE, timeout=8
+        )
+    assert result.returncode == 0, result.stderr
+    assert b"Traceback" not in result.stderr
