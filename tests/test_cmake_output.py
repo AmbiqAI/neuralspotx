@@ -187,3 +187,36 @@ sys.exit(1)
 """
     result = subprocess.run([sys.executable, "-c", script], capture_output=True, timeout=8)
     assert result.returncode == 0, result.stderr
+
+
+def test_callback_supports_a_write_only_python_sink():
+    import contextlib
+
+    class Sink:
+        def __init__(self):
+            self.text = ""
+
+        def write(self, text):
+            self.text += text
+
+        def flush(self):
+            pass
+
+    sink = Sink()
+    lines = []
+    with contextlib.redirect_stdout(sink):
+        run_cmake([sys.executable, "-c", "print('hello')"], context="CMake", on_line=lines.append)
+    assert sink.text.splitlines() == lines == ["hello"]
+
+
+def test_callback_preserves_native_pipe_encoding():
+    import contextlib
+
+    reader, writer = os.pipe()
+    lines = []
+    with os.fdopen(reader, "rb") as source:
+        with os.fdopen(writer, "w", encoding="utf-16-le") as sink, contextlib.redirect_stdout(sink):
+            run_cmake(
+                [sys.executable, "-c", "print('hello')"], context="CMake", on_line=lines.append
+            )
+        assert source.read().decode("utf-16-le").splitlines() == lines == ["hello"]

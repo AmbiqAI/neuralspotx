@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import codecs
+import io
 import os
 import sys
 import threading
@@ -29,25 +31,42 @@ def main() -> None:
 
     threading.Thread(target=wait_for_parent, daemon=True).start()
     with ExitStack() as stack:
-        logs = [stack.enter_context(_open_shared(path)) for path in sys.argv[1:]]
+        encoding, errors, *paths = sys.argv[1:]
+        logs = [stack.enter_context(_open_shared(path)) for path in paths]
+        decoder = None
+        if encoding and isinstance(sys.stdout, io.TextIOWrapper):
+            sys.stdout.reconfigure(encoding=encoding, errors=errors, newline="")
+            decoder = codecs.getincrementaldecoder("utf-8")("replace")
         outputs = [sys.stdout, sys.stderr][: len(logs)]
         while True:
             done = finished.is_set()
             sizes = [os.fstat(log.fileno()).st_size for log in logs]
             for index, (log, size) in enumerate(zip(logs, sizes, strict=True)):
-                while log.tell() < size:
-                    chunk = log.read(min(65536, size - log.tell()))
-                    if not chunk:
-                        break
-                    output = outputs[index]
-                    if output is not None:
-                        try:
+                output = outputs[index]
+                if output is None:
+                    log.seek(size)
+                    continue
+                try:
+                    while log.tell() < size:
+                        chunk = log.read(min(65536, size - log.tell()))
+                        if not chunk:
+                            break
+                        if decoder is None:
                             data = memoryview(chunk)
                             while data:
                                 data = data[os.write(output.fileno(), data) :]
-                        except BrokenPipeError:
-                            # A consumer such as head has finished with this stream.
-                            outputs[index] = None
+                        else:
+                            output.write(decoder.decode(chunk))
+                            output.flush()
+                    if done and decoder is not None:
+                        output.write(decoder.decode(b"", final=True))
+                        output.flush()
+                except BrokenPipeError:
+                    # The downstream consumer closed. Discard future bytes and
+                    # any pending text-wrapper flush during interpreter shutdown.
+                    with open(os.devnull, "wb") as sink:
+                        os.dup2(sink.fileno(), output.fileno())
+                    outputs[index] = None
             if done:
                 return
             finished.wait(0.02)

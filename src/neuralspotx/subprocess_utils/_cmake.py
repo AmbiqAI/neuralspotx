@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import io
 import os
 import shlex
 import stat
@@ -134,6 +135,8 @@ def _console_stdout(streaming: bool) -> tuple[int | None, bool]:
         return subprocess.DEVNULL, False
     if not streaming or sys.stdout is sys.__stdout__:
         return None, False
+    if not isinstance(sys.stdout, io.TextIOWrapper):
+        return subprocess.DEVNULL, True
     try:
         fd = sys.stdout.fileno()
         mode = os.fstat(fd).st_mode
@@ -159,9 +162,20 @@ def run_cmake(
         console_stdout, mirror = _console_stdout(on_line is not None)
         console = stack.enter_context(_contained(_Child()))
         tool = stack.enter_context(_contained(_Child()))
+        text_console = on_line is not None and not mirror and sys.stdout is not None
+        encoding = sys.stdout.encoding if text_console else ""
+        errors = (sys.stdout.errors or "strict") if text_console else ""
         relay = _start_child(
             console,
-            [sys.executable, "-I", "-S", str(Path(__file__).with_name("_cmake_output.py")), *paths],
+            [
+                sys.executable,
+                "-I",
+                "-S",
+                str(Path(__file__).with_name("_cmake_output.py")),
+                encoding,
+                errors,
+                *paths,
+            ],
             stdin=subprocess.PIPE,
             stdout=console_stdout,
             stderr=subprocess.DEVNULL if sys.stderr is None else None,
