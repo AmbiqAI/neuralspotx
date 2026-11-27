@@ -143,6 +143,36 @@ def test_license_scopes_follow_locked_monorepo_sources(
     assert not any(key.startswith("nsx:license:") for key in _cyclonedx_properties(cdx))
 
 
+@pytest.mark.parametrize("invalid_version", ["true", "1.0"])
+def test_wrong_module_schema_omits_license_claim(tmp_path: Path, invalid_version: str) -> None:
+    root = tmp_path / "modules" / "alpha"
+    root.mkdir(parents=True)
+    (root / "nsx-module.yaml").write_text(
+        f"schema_version: {invalid_version}\nmodule: {{name: alpha}}\nlicenses: {{'.': MIT}}\n",
+        encoding="utf-8",
+    )
+    write_lock(
+        tmp_path,
+        NsxLock(
+            target={"board": "apollo510_evb"},
+            modules={
+                "alpha": ResolvedModule(
+                    project="alpha",
+                    kind=LockKind.VENDORED,
+                    constraint="",
+                    acquired_at="2026-07-28T00:00:00Z",
+                    vendored_at="modules/alpha",
+                    manifest_path="nsx-module.yaml",
+                    content_hash=hash_tree(root),
+                )
+            },
+        ),
+    )
+    package = json.loads(generate_sbom(tmp_path))["packages"][1]
+    assert package["name"] == "alpha" and package["licenseDeclared"] == "NOASSERTION"
+    assert "licenseComments" not in package
+
+
 class TestGenerateSbomSpdx:
     def test_default_format_is_spdx_and_returns_valid_json(self, app_with_lock: Path) -> None:
         out = generate_sbom(app_with_lock)

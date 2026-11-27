@@ -77,7 +77,7 @@ def test_metadata_versions_require_the_declared_integer(tmp_path: Path, filename
     assert str(path) in str(error.value) and "schema_version" in str(error.value)
 
 
-def test_generated_yaml_preserves_string_identifiers(tmp_path: Path):
+def test_generated_yaml_preserves_string_identifiers(tmp_path: Path, capsys):
     parent = create_board("No", from_board="apollo330mP_evb", app_dir=tmp_path)
     child = create_board("On", from_board=parent.name, bsp_module="Off", app_dir=tmp_path)
     assert (child.name, child.bsp.module, child.soc) == ("On", "Off", "apollo330P")
@@ -85,3 +85,4 @@ def test_generated_yaml_preserves_string_identifiers(tmp_path: Path):
     module = load_yaml(path)
     validate_nsx_module_metadata(module, str(path))
     assert module["compatibility"]["boards"] == ["On"]
+    assert "target.board: 'On'" in capsys.readouterr().err

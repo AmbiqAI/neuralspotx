@@ -57,9 +57,14 @@ def _expect_type(container: dict[str, Any], key: str, expected: type, ctx: str) 
     return value
 
 
+def matches_schema_version(value: object, expected: int) -> bool:
+    """Match an authored YAML integer without accepting equal booleans or floats."""
+    return type(value) is int and value == expected
+
+
 def _check_schema_version(data: dict[str, Any], expected: int, source: str) -> None:
     version = data.get("schema_version")
-    if type(version) is not int or version != expected:
+    if not matches_schema_version(version, expected):
         raise ValueError(
             f"{source}: unsupported schema_version={version!r}, expected integer {expected}"
         )

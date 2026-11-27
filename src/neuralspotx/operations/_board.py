@@ -102,7 +102,7 @@ def create_board_impl(
     info(f"  {board_dir}")
     info("Next steps:")
     info(f"  1) Edit boards/{name}/board.yaml to add an 'overrides:' block if needed")
-    info(f"  2) Set target.board: {name} in nsx.yml")
+    info(f"  2) Set target.board: '{name}' in nsx.yml")
     info(f"  3) Register BSP module {bsp_module} offering contract 2 for {parent.soc}")
     info("  4) Run `nsx lock` then `nsx configure`")
     return resolved
