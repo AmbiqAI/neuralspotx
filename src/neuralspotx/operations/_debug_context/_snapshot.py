@@ -29,6 +29,7 @@ def capture_debug_context(
     operation: Literal["flash", "reset", "swo", "rtt"],
     target: str | None = None,
     timeout_s: float = 30,
+    swo_reset: bool = True,
 ) -> Iterator[DebugSnapshot]:
     """Capture stable files; caller retains the context through process cleanup.
 
@@ -38,9 +39,9 @@ def capture_debug_context(
     """
     context = load_debug_context(source, build, board, timeout_s=timeout_s)
     selected = context.target(target)
-    reason = selected.unavailable(operation)
-    if reason:
-        raise NSXConfigError(f"Debug operation unavailable: {reason}")
+    selected.require(operation)
+    if operation == "swo" and swo_reset:
+        selected.require("reset")
     with TemporaryDirectory(prefix="nsx-debug-") as temporary:
         directory = Path(temporary)
         _run_script(
@@ -51,6 +52,7 @@ def capture_debug_context(
             NSX_DEBUG_BOARD=board,
             NSX_DEBUG_TARGET=selected.name,
             NSX_DEBUG_OPERATION=operation,
+            NSX_DEBUG_SWO_RESET="ON" if swo_reset else "OFF",
             NSX_DEBUG_CAPTURE_DIR=str(directory),
         )
         captured = _parse(

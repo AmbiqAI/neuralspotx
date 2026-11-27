@@ -49,6 +49,13 @@ class ConfiguredDebugTarget:
             "rtt": self.rtt_unavailable,
         }[operation]
 
+    def require(self, operation: Literal["flash", "reset", "swo", "rtt"]) -> None:
+        reason = self.unavailable(operation)
+        if reason:
+            raise NSXConfigError(
+                f"{operation.upper()} unavailable for target '{self.name}': {reason}"
+            )
+
 
 @dataclass(frozen=True, slots=True)
 class ConfiguredDebugContext:

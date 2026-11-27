@@ -42,7 +42,9 @@ class PreparedFlash:
 
 
 class FlashDriver(Protocol):
-    def preflight(self, probe: ProbeRequest, owned: OwnedBuild) -> None: ...
+    def validate_probe(self, probe: ProbeRequest) -> None: ...
+
+    def preflight(self, target: DebugBuild, owned: OwnedBuild) -> None: ...
 
     def prepare(self, target: DebugBuild) -> bool:
         """Prepare tool inputs; return whether the final generation needs a rebuild."""

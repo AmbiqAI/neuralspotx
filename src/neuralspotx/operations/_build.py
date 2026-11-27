@@ -309,8 +309,10 @@ def preflight_flash(
     driver = backend.require(tools.flash, "Flash", selected, tools)
     resolved_target = name if target is None else target
     validate_flash_target_name(resolved_target)
-    driver.preflight(probe, inspect_build(app, build, selected, toolchain=toolchain))
-    return backend.DebugBuild(app, selected, build, resolved_target), driver
+    driver.validate_probe(probe)
+    context = backend.DebugBuild(app, selected, build, resolved_target)
+    driver.preflight(context, inspect_build(app, build, selected, toolchain=toolchain))
+    return context, driver
 
 
 def flash_app_impl(
@@ -489,6 +491,8 @@ def _jlink_view(
     validate_probe_request(probe_serial, discover_probe)
     owned = inspect_build(app, build, selected, toolchain=toolchain)
     require_adoption(owned)
+    if owned.context is not None:
+        owned.context.target(name).require("swo")
     from ._console import warn_console_mismatch
 
     warn_console_mismatch(app, selected, "swo")
@@ -515,14 +519,20 @@ def _jlink_view(
         descriptor.soc if descriptor else None, options.reset_on_open
     )
     if reset_requested:
+        from ._reset import _jlink_reset
+
         tools = backend.for_board(app, selected)
-        backend.require(tools.reset, "Reset on SWO open", selected, tools)
+        reset = backend.require(tools.reset, "Reset on SWO open", selected, tools)
+        if reset is not _jlink_reset:
+            raise NSXConfigError(
+                "J-Link SWO reset-on-open requires a J-Link reset on the same probe. Use --no-reset-on-open."
+            )
     prepare_debug(app, build, selected, required=True)
     verify_configured_toolchain(app, build, toolchain)
-    with capture_debug_context(app, build, selected, operation="swo", target=name) as snap:
+    with capture_debug_context(
+        app, build, selected, operation="swo", target=name, swo_reset=reset_requested
+    ) as snap:
         settings = snap.context.target(name)
-        if reset_requested and settings.reset_unavailable:
-            raise NSXConfigError(f"Reset on SWO open unavailable: {settings.reset_unavailable}")
         serial = ProbeSelection.from_request(
             probe_serial, discover_probe, settings.configured_serial
         ).resolve()

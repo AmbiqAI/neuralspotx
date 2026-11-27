@@ -651,3 +651,28 @@ def test_swo_only_backend_can_attach_without_reset(app, monkeypatch):
     assert not any("serial" in call for call in calls)
     api.view_app(root, reset_on_open=False)
     assert calls[-1] == {"serial": "1234", "recipe": None}
+
+    def other_reset(*args):
+        pytest.fail("attempted to reset with a different provider")
+
+    tools = replace(tools, reset=other_reset)
+    with pytest.raises(NSXConfigError, match="same probe"):
+        api.view_app(root, reset_on_open=True)
+
+
+def test_fresh_target_checks_each_operation_before_update(app, monkeypatch):
+    from neuralspotx import cli
+
+    root, build, calls = app
+    with (root / "board.cmake").open("a", encoding="utf-8") as board:
+        board.write('set(NSX_SEGGER_CPUFREQ "")\n')
+    prepare(root, build)
+    monkeypatch.setattr(
+        api, "update_app", lambda *a, **k: pytest.fail("updated unsupported target")
+    )
+    monkeypatch.setattr(_build, "build_app_impl", lambda *a, **k: pytest.fail("started build"))
+    with pytest.raises(NSXConfigError, match="FLASH unavailable"):
+        api.flash_app(root)
+    assert cli.main(["flash", "--app-dir", str(root), "--update"]) == 1
+    assert not calls
+    assert api.reset_target(app_dir=root).probe_serial == "1234"

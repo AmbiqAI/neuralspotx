@@ -428,8 +428,9 @@ Captured flash recipes support the existing single-image command sequence only:
 `ExitOnError 1`, `Reset`, `LoadFile`, `Reset`, `Go`, `Exit` (full-line comments
 and blank lines are allowed). The load command must reference the private binary copy and
 the recorded address. Other commands or file references are rejected; direct
-CMake recipes are unchanged. Captured SWO reset recipes likewise require the
-standard `ExitOnError 1`, `Reset`, `Go`, `Exit` sequence, without file references.
+CMake recipes are unchanged. When SWO resets the board on open, its reset recipe
+must follow the standard `ExitOnError 1`, `Reset`, `Go`, `Exit` sequence without
+file references. Attach-only SWO skips capture and validation of the reset recipe.
 
 Context and private snapshots do not establish which firmware is running on a
 physical device. Flash builds before capturing; reset and RTT never configure or

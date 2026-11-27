@@ -28,9 +28,12 @@ from neuralspotx.operations._debug_workflow import OwnedBuild
 class FixtureProgrammer:
     """Read an address emitted by the fixture's build and check the captured bytes."""
 
-    def preflight(self, probe: backend.ProbeRequest, owned: OwnedBuild) -> None:
+    def validate_probe(self, probe: backend.ProbeRequest) -> None:
         if probe.identity != "bench-A":
             raise NSXConfigError("Select the fixture with bench-A")
+
+    def preflight(self, target: backend.DebugBuild, owned: OwnedBuild) -> None:
+        pass  # The fixture needs no additional build configuration.
 
     def prepare(self, target: backend.DebugBuild) -> bool:
         return False

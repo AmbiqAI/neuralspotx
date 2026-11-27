@@ -7,7 +7,7 @@ from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
 
-from .._errors import NSXError
+from .._errors import NSXConfigError, NSXError
 from .._io import info, line
 from .._probe_selection import ProbeSelection, validate_probe_request
 from ..models import FlashResult
@@ -20,9 +20,16 @@ from ._hardware import _jlink_command, flash_programming_verified, validate_flas
 
 
 class JLinkFlash:
-    def preflight(self, probe: ProbeRequest, owned: OwnedBuild) -> None:
+    def validate_probe(self, probe: ProbeRequest) -> None:
         validate_probe_request(probe.identity, probe.discover)
-        require_adoption(owned)
+
+    def preflight(self, target: DebugBuild, owned: OwnedBuild) -> None:
+        try:
+            require_adoption(owned)
+        except NSXConfigError as exc:
+            raise NSXConfigError(f"Flash unavailable for board '{target.board}'. {exc}") from exc
+        if owned.context is not None:
+            owned.context.target(target.target).require("flash")
 
     def prepare(self, target: DebugBuild) -> bool:
         prepare_debug(target.app, target.build, target.board, required=True)
