@@ -11,7 +11,7 @@ import threading
 import time
 from collections.abc import Callable, Iterator
 from concurrent.futures import CancelledError, Future, ThreadPoolExecutor
-from contextlib import ExitStack, contextmanager
+from contextlib import ExitStack, contextmanager, suppress
 from pathlib import Path
 from typing import IO
 
@@ -69,9 +69,12 @@ def _contained(child: _Child) -> Iterator[_Child]:
         child.stop()
         raise
     finally:
-        if child.proc is not None and child.proc.stdin is not None:
-            child.proc.stdin.close()
-        child.release()
+        try:
+            if child.proc is not None and child.proc.stdin is not None:
+                with suppress(BrokenPipeError):
+                    child.proc.stdin.close()
+        finally:
+            child.release()
 
 
 def _wait_for_build(
@@ -104,8 +107,9 @@ def _wait_for_build(
     assert proc is not None and relay is not None and relay.stdin is not None
     try:
         status = wait(proc)
-        relay.stdin.write(b"D")
-        relay.stdin.flush()
+        with suppress(BrokenPipeError):
+            relay.stdin.write(b"D")
+            relay.stdin.flush()
         try:
             relay_status = wait(relay)
         except subprocess.TimeoutExpired:
