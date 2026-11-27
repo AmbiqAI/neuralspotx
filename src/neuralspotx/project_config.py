@@ -1091,17 +1091,18 @@ def _module_project_dir_relative_to_app(
     return _module_clone_dir(Path("."), entry.project, registry)
 
 
-def find_app_root(start: Path | None = None) -> Path | None:
+def find_app_root(start: Path | None = None, *, include_lock: bool = False) -> Path | None:
     """Walk upward from *start* to find the nearest ``nsx.yml``.
 
     Stops at the filesystem root or a git repository boundary (a directory
     containing ``.git``).  Returns the resolved directory containing
-    ``nsx.yml``, or ``None`` when no app root is found.
+    ``nsx.yml``, or ``None`` when no app root is found. For receipt readers,
+    ``include_lock`` also recognizes a directory containing only ``nsx.lock``.
     """
 
     current = (start or Path.cwd()).expanduser().resolve()
     while True:
-        if (current / "nsx.yml").exists():
+        if (current / "nsx.yml").exists() or (include_lock and (current / "nsx.lock").is_file()):
             return current
         # Stop at git boundary — do not cross into a parent repo.
         if (current / ".git").exists():
@@ -1112,7 +1113,7 @@ def find_app_root(start: Path | None = None) -> Path | None:
         current = parent
 
 
-def resolve_app_dir(explicit: str | Path | None) -> Path:
+def resolve_app_dir(explicit: str | Path | None, *, include_lock: bool = False) -> Path:
     """Return a resolved app directory from an explicit path or upward walk.
 
     Resolution order when *explicit* is given (and is not ``"."``):
@@ -1142,7 +1143,7 @@ def resolve_app_dir(explicit: str | Path | None) -> Path:
                 return match
         return candidate.resolve()
 
-    found = find_app_root()
+    found = find_app_root(include_lock=include_lock)
     if found is not None:
         return found
     # Fall back to explicit value (usually ".") so downstream code

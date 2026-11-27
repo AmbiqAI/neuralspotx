@@ -9,14 +9,14 @@ from materialized sources that match the receipt.
 from __future__ import annotations
 
 import datetime as _dt
-import hashlib
 import json
 import uuid
 from pathlib import Path
 from typing import Any, Final, Literal, TypeGuard
 
 from .._errors import NSXConfigError
-from ..nsx_lock import LockKind, NsxLock, lock_path, read_lock
+from ..constants import normalize_board
+from ..nsx_lock import LockKind, NsxLock, lock_path, read_lock_file
 from ..project_config import _board_key_for_app
 from ._sbom_licenses import locked_module_licenses
 
@@ -46,31 +46,38 @@ def coerce_sbom_format(value: str) -> SBOMFormat:
 _SPDX_NOASSERTION: Final[str] = "NOASSERTION"
 
 
-def generate_sbom_impl(app_dir: Path, *, format: SBOMFormat = "spdx") -> str:
-    """Return a serialized SBOM for the app at *app_dir*.
-
-    Args:
-        app_dir: App root containing ``nsx.lock``.
-        format: ``"spdx"`` for SPDX 2.3 JSON (default) or
-            ``"cyclonedx"`` for CycloneDX 1.5 JSON.
-
-    Raises:
-        NSXConfigError: ``nsx.lock`` is missing. Callers narrow *format*
-            with :func:`coerce_sbom_format` first.
-
-    The returned string is a complete JSON document, ready to write to
-    disk or pipe into another SBOM tool.
-    """
-
-    board_key = _board_key_for_app(app_dir)
-    lock = read_lock(app_dir, board_key)
-    if lock is None:
+def _select_locked_board(app_dir: Path, board: str | None) -> tuple[str, NsxLock]:
+    receipt = read_lock_file(app_dir)
+    if receipt is None:
         raise NSXConfigError(f"{lock_path(app_dir)} not found. Run `nsx lock` first.")
+    if not receipt.targets:
+        raise NSXConfigError("nsx.lock has no locked boards. Run `nsx lock` first.")
 
+    key = normalize_board(board) if board is not None else _board_key_for_app(app_dir)
+    if key is None and len(receipt.targets) == 1:
+        return next(iter(receipt.targets.items()))
+    if key is not None and key in receipt.targets:
+        return key, receipt.targets[key]
+
+    available = ", ".join(sorted(receipt.targets))
+    if key is None:
+        raise NSXConfigError(
+            f"Select a board with --board or board=. Locked boards: {available}.", field="board"
+        )
+    raise NSXConfigError(
+        f"Board {key!r} is missing from nsx.lock. Locked boards: {available}.", field="board"
+    )
+
+
+def generate_sbom_impl(
+    app_dir: Path, *, format: SBOMFormat = "spdx", board: str | None = None
+) -> str:
+    """Serialize one board's locked inputs as SPDX or CycloneDX JSON."""
+    key, lock = _select_locked_board(app_dir, board)
     if format == "spdx":
-        doc = _build_spdx_document(app_dir, lock)
+        doc = _build_spdx_document(app_dir, lock, key)
     else:
-        doc = _build_cyclonedx_document(app_dir, lock)
+        doc = _build_cyclonedx_document(app_dir, lock, key)
 
     return json.dumps(doc, indent=2, sort_keys=False)
 
@@ -80,7 +87,7 @@ def generate_sbom_impl(app_dir: Path, *, format: SBOMFormat = "spdx") -> str:
 # ---------------------------------------------------------------------------
 
 
-def _build_spdx_document(app_dir: Path, lock: NsxLock) -> dict[str, Any]:
+def _build_spdx_document(app_dir: Path, lock: NsxLock, board: str) -> dict[str, Any]:
     """Build a minimal valid SPDX 2.3 JSON document from *lock*.
 
     The schema is intentionally a faithful subset — the required
@@ -168,8 +175,7 @@ def _build_spdx_document(app_dir: Path, lock: NsxLock) -> dict[str, Any]:
         })
 
     namespace = (
-        "https://github.com/AmbiqAI/neuralspotx/sbom/"
-        f"{app_name}-{hashlib.sha256(timestamp.encode('utf-8')).hexdigest()[:16]}"
+        f"https://github.com/AmbiqAI/neuralspotx/sbom/{_document_uuid(app_name, board, timestamp)}"
     )
 
     return {
@@ -178,6 +184,7 @@ def _build_spdx_document(app_dir: Path, lock: NsxLock) -> dict[str, Any]:
         "SPDXID": "SPDXRef-DOCUMENT",
         "name": f"{app_name}-sbom",
         "documentNamespace": namespace,
+        "comment": f"nsx:board={board}",
         "creationInfo": {
             "created": timestamp,
             "creators": [
@@ -215,7 +222,7 @@ def _spdxid_safe(name: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-def _build_cyclonedx_document(app_dir: Path, lock: NsxLock) -> dict[str, Any]:
+def _build_cyclonedx_document(app_dir: Path, lock: NsxLock, board: str) -> dict[str, Any]:
     """Build a minimal valid CycloneDX 1.5 JSON document from *lock*."""
 
     app_name = app_dir.name or "nsx-app"
@@ -258,17 +265,14 @@ def _build_cyclonedx_document(app_dir: Path, lock: NsxLock) -> dict[str, Any]:
 
         components.append(comp)
 
-    # CycloneDX requires an RFC 4122 UUID URN; derive it deterministically
-    # from app_name + timestamp via uuid5 so two identical inputs produce
-    # an identical (and well-formed) serial number.
-    serial_uuid = uuid.uuid5(uuid.NAMESPACE_URL, f"nsx-sbom:{app_name}:{timestamp}")
     return {
         "bomFormat": "CycloneDX",
         "specVersion": "1.5",
-        "serialNumber": f"urn:uuid:{serial_uuid}",
+        "serialNumber": f"urn:uuid:{_document_uuid(app_name, board, timestamp)}",
         "version": 1,
         "metadata": {
             "timestamp": timestamp,
+            "properties": [{"name": "nsx:board", "value": board}],
             "tools": [
                 {
                     "vendor": "AmbiqAI",
@@ -310,6 +314,10 @@ def _purl_for_entry(name: str, entry) -> str:
             commit_q += f"&commit={entry.commit}"
         return f"pkg:generic/{name}{commit_q}"
     return f"pkg:generic/{name}"
+
+
+def _document_uuid(app_name: str, board: str, timestamp: str) -> uuid.UUID:
+    return uuid.uuid5(uuid.NAMESPACE_URL, json.dumps(["nsx-sbom", app_name, board, timestamp]))
 
 
 def _utc_now() -> str:

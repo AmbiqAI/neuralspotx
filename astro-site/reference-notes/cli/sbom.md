@@ -1,17 +1,24 @@
-The SBOM is generated from the app's `nsx.lock`. It lists every vendored module by name
-with its upstream URL, locked commit SHA and content hash, so downstream tools (audits,
-vulnerability scanners, reproducibility checks) can verify exactly what an `nsx sync` of the
-lock would materialize.
+The SBOM is a receipt for one board’s locked inputs. It lists the modules recorded in
+that section of `nsx.lock`, including their available source revisions and hashes.
 
 ```bash
 # SPDX 2.3 to stdout
 nsx sbom
 
-# CycloneDX 1.5 to disk
-nsx sbom --format cyclonedx --output bom.json
+# CycloneDX 1.5 for a specific board
+nsx sbom --board apollo510b_evb --format cyclonedx --output bom.json
 ```
 
-For each module in `nsx.lock` the SBOM records the upstream URL and commit SHA (for `git`
+An explicit board selects a section directly from the lock, even without `nsx.yml`.
+From a subdirectory, the CLI uses the nearest directory containing `nsx.yml` or
+`nsx.lock`, up to the Git repository boundary.
+Omit `--board` to export the configured default. If the default is unavailable and
+the lock contains one board, NSX uses that board. For a lock with multiple boards
+and no configured default, pass `--board`. A configured default needs its own lock section.
+The SPDX document comment and the
+CycloneDX metadata property `nsx:board` identify the selected board.
+
+For each module in that section the SBOM records the upstream URL and commit SHA (for `git`
 and `unresolved` kinds), the locked `content_hash` (always, as a SHA-256 checksum), and the
 resolution kind, registry project key, requested constraint and matched tag as
 package-level annotations. It also records the neuralspotx tool version that produced the
@@ -37,8 +44,8 @@ The same payload is available from Python:
 ```python
 from neuralspotx import generate_sbom
 
-doc = generate_sbom("/path/to/app", format="spdx")
+doc = generate_sbom("/path/to/app", board="apollo510b_evb", format="spdx")
 ```
 
 `generate_sbom` returns the JSON document as a string. It raises `NSXConfigError` if
-`nsx.lock` is missing or if `format` is not `spdx` or `cyclonedx`.
+the board cannot be selected, `nsx.lock` is missing, or `format` is not `spdx` or `cyclonedx`.

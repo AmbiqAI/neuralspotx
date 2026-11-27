@@ -447,8 +447,9 @@ def cmd_update(args: argparse.Namespace) -> None:
 @command_hint("sbom", _C.DISCOVERY, _S.APP, "nsx lock", "nsx sync")
 def cmd_sbom(args: argparse.Namespace) -> None:
     document = api.generate_sbom(
-        resolve_app_dir(args.app_dir),
+        resolve_app_dir(args.app_dir, include_lock=True),
         format=args.format,
+        board=args.board,
     )
     if args.output:
         out_path = Path(args.output).expanduser().resolve()
@@ -1443,11 +1444,13 @@ def _build_parser() -> argparse.ArgumentParser:
         help="Generate a Software Bill of Materials from nsx.lock",
         description=(
             "Read nsx.lock and emit a single-document SBOM describing "
-            "every vendored module by upstream URL, commit SHA, and "
-            "content hash."
+            "one board’s locked modules and their recorded provenance."
         ),
     )
     p_sbom.add_argument("--app-dir", default=".", help="App directory containing nsx.lock")
+    p_sbom.add_argument(
+        "--board", help="Locked board to export (defaults to the app’s default board)"
+    )
     p_sbom.add_argument(
         "--format",
         choices=("spdx", "cyclonedx"),
