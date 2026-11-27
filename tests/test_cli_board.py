@@ -8,6 +8,7 @@ from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
 
 import pytest
+import yaml
 
 from neuralspotx import cli
 
@@ -88,7 +89,7 @@ def test_board_create_scaffolds_inheriting_board(tmp_path: Path) -> None:
     board_dir = tmp_path / "boards" / "my510"
     assert (board_dir / "board.yaml").is_file()
     assert (board_dir / "board.cmake").is_file()
-    assert "inherits: apollo510_evb" in (board_dir / "board.yaml").read_text()
+    assert yaml.safe_load((board_dir / "board.yaml").read_text())["inherits"] == "apollo510_evb"
 
 
 def test_board_create_unknown_parent_raises(tmp_path: Path) -> None:
@@ -151,7 +152,7 @@ def test_api_create_board_programmatic(tmp_path: Path) -> None:
     board_dir = tmp_path / "boards" / "my510"
     assert (board_dir / "board.yaml").is_file()
     assert (board_dir / "board.cmake").is_file()
-    assert "inherits: apollo510_evb" in (board_dir / "board.yaml").read_text()
+    assert yaml.safe_load((board_dir / "board.yaml").read_text())["inherits"] == "apollo510_evb"
 
 
 def test_api_create_board_requires_parent(tmp_path: Path) -> None:
