@@ -18,11 +18,11 @@ def app(tmp_path: Path) -> Path:
         "schema_version: 2\nproject: {name: demo}\nbaseline: none\n"
         "targets: {default: apollo510_evb, supported: [apollo510_evb]}\n"
     )
-    toolchain = tmp_path / "cmake/nsx/toolchains/arm-none-eabi-gcc.cmake"
-    toolchain.parent.mkdir(parents=True)
-    toolchain.write_text("# Host-only project with no compiler.\n")
     (tmp_path / "CMakeLists.txt").write_text(
-        "cmake_minimum_required(VERSION 3.20)\nproject(demo NONE)\n"
+        "cmake_minimum_required(VERSION 3.20)\n"
+        # NSX sync refreshes the bundled toolchain. This fixture has no compiler.
+        'set(CMAKE_TOOLCHAIN_FILE "" CACHE FILEPATH "" FORCE)\n'
+        "project(demo NONE)\n"
         "add_custom_target(demo COMMAND ${CMAKE_COMMAND} -E echo success)\n"
         'add_custom_target(broken COMMAND ${CMAKE_COMMAND} -P "${CMAKE_SOURCE_DIR}/fail.cmake")\n'
         "add_custom_target(slow COMMAND ${CMAKE_COMMAND} -E sleep 15)\n"
