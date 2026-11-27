@@ -64,6 +64,7 @@ def _deliver_lines(
             pending = bytearray(rest)
             deliver(segments)
         if done:
+            completion.result()
             segments, _ = _split_emitted_lines(bytes(pending), at_eof=True)
             deliver(segments)
             return
