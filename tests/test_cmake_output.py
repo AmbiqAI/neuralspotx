@@ -279,3 +279,25 @@ def test_strict_console_encoding_preserves_tool_error_without_traceback(capfd):
     stderr = capfd.readouterr().err
     assert "Could not forward CMake output" in stderr
     assert "Traceback" not in stderr
+
+
+def test_relay_encoding_error_delivers_pending_callbacks():
+    import contextlib
+    import time
+
+    reader, writer = os.pipe()
+    lines = []
+
+    def receive(line):
+        if not lines:
+            time.sleep(0.2)
+        lines.append(line)
+
+    with os.fdopen(reader, "rb"), os.fdopen(writer, "w", encoding="ascii") as sink:
+        with contextlib.redirect_stdout(sink), pytest.raises(NSXToolchainError, match="forward"):
+            run_cmake(
+                [sys.executable, "-c", "import os; os.write(1, bytes([195,169,10])*64)"],
+                context="CMake",
+                on_line=receive,
+            )
+    assert lines == ["\u00e9"] * 64

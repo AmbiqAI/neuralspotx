@@ -32,7 +32,7 @@ def _diagnostic(stream: IO[bytes]) -> str:
 
 
 def _deliver_lines(
-    completion: Future[int],
+    completion: Future[tuple[int, int | None]],
     log: IO[bytes],
     on_line: Callable[[str], None],
     mirror: bool,
@@ -100,7 +100,7 @@ def _wait_for_build(
     console: _Child,
     timeout: float | None,
     cancel: threading.Event | None = None,
-) -> int:
+) -> tuple[int, int | None]:
     deadline = None if timeout is None else time.monotonic() + timeout
 
     def wait(proc: subprocess.Popen) -> int:
@@ -135,10 +135,8 @@ def _wait_for_build(
             if not status:
                 raise
             console.stop()
-            return status
-        if relay_status and not status:
-            raise NSXToolchainError(f"Could not forward CMake output (exit code {relay_status}).")
-        return status
+            return status, None
+        return status, relay_status
     except subprocess.TimeoutExpired:
         # The caller might still be in its callback when the deadline expires.
         console.stop()
@@ -213,7 +211,7 @@ def run_cmake(
         )
         sink_error = None
         if on_line is None:
-            status = _wait_for_build(cmd, tool, console, timeout)
+            status, relay_status = _wait_for_build(cmd, tool, console, timeout)
         else:
             # Callbacks stay on the caller's thread. Tool and console deadlines
             # must still be enforced while an embedder is handling a line.
@@ -222,7 +220,7 @@ def run_cmake(
                 try:
                     completion = pool.submit(_wait_for_build, cmd, tool, console, timeout, cancel)
                     sink_error = _deliver_lines(completion, out_log, on_line, mirror)
-                    status = completion.result()
+                    status, relay_status = completion.result()
                 finally:
                     cancel.set()
         if status:
@@ -235,5 +233,7 @@ def run_cmake(
                 if text:
                     message += f"\n{_tail(text)}"
             raise NSXToolchainError(message) from cause
+        if relay_status:
+            raise NSXToolchainError(f"Could not forward CMake output (exit code {relay_status}).")
         if sink_error is not None:
             raise NSXToolchainError(f"Could not forward CMake output: {sink_error}") from sink_error
